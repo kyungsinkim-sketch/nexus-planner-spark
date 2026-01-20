@@ -19,6 +19,8 @@ const eventTypeBadges: Record<EventType, { label: string; className: string }> =
   MEETING: { label: 'Meeting', className: 'event-badge event-badge-meeting' },
   PT: { label: 'Presentation', className: 'event-badge event-badge-pt' },
   DELIVERY: { label: 'Delivery', className: 'event-badge event-badge-delivery' },
+  TODO: { label: 'To-do', className: 'event-badge event-badge-task' },
+  DELIVERABLE: { label: 'Deliverable', className: 'event-badge event-badge-delivery' },
 };
 
 // Google Calendar Icon SVG

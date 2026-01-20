@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useAppStore } from '@/stores/appStore';
+import { Currency, User } from '@/types/core';
 import {
   Dialog,
   DialogContent,
@@ -19,9 +20,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Checkbox } from '@/components/ui/checkbox';
-import { X } from 'lucide-react';
+import { CurrencyInput } from '@/components/ui/currency-input';
+import { UserSearchInput } from '@/components/ui/user-search-input';
+import { Upload, X, Image } from 'lucide-react';
 
 interface NewProjectModalProps {
   open: boolean;
@@ -30,6 +31,7 @@ interface NewProjectModalProps {
 
 export function NewProjectModal({ open, onOpenChange }: NewProjectModalProps) {
   const { users, addProject } = useAppStore();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [formData, setFormData] = useState({
     title: '',
     client: '',
@@ -39,9 +41,14 @@ export function NewProjectModal({ open, onOpenChange }: NewProjectModalProps) {
     startDate: '',
     endDate: '',
     budget: '',
+    currency: 'KRW' as Currency,
     pmId: '',
     teamMemberIds: [] as string[],
+    thumbnail: '' as string,
   });
+
+  const selectedPM = users.find(u => u.id === formData.pmId);
+  const selectedTeamMembers = users.filter(u => formData.teamMemberIds.includes(u.id));
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -57,6 +64,7 @@ export function NewProjectModal({ open, onOpenChange }: NewProjectModalProps) {
       startDate: new Date(formData.startDate).toISOString(),
       endDate: new Date(formData.endDate).toISOString(),
       budget: parseInt(formData.budget) || 0,
+      currency: formData.currency,
       pmId: formData.pmId,
       teamMemberIds: formData.teamMemberIds,
       progress: 0,
@@ -65,6 +73,7 @@ export function NewProjectModal({ open, onOpenChange }: NewProjectModalProps) {
       milestones: [],
       tasksCompleted: 0,
       tasksTotal: 0,
+      thumbnail: formData.thumbnail,
     };
 
     addProject(newProject);
@@ -78,22 +87,51 @@ export function NewProjectModal({ open, onOpenChange }: NewProjectModalProps) {
       startDate: '',
       endDate: '',
       budget: '',
+      currency: 'KRW',
       pmId: '',
       teamMemberIds: [],
+      thumbnail: '',
     });
   };
 
-  const toggleTeamMember = (userId: string) => {
+  const handleSelectPM = (user: User) => {
+    setFormData(prev => ({ ...prev, pmId: user.id }));
+  };
+
+  const handleRemovePM = () => {
+    setFormData(prev => ({ ...prev, pmId: '' }));
+  };
+
+  const handleSelectTeamMember = (user: User) => {
     setFormData(prev => ({
       ...prev,
-      teamMemberIds: prev.teamMemberIds.includes(userId)
-        ? prev.teamMemberIds.filter(id => id !== userId)
-        : [...prev.teamMemberIds, userId],
+      teamMemberIds: [...prev.teamMemberIds, user.id],
     }));
   };
 
-  const getInitials = (name: string) => {
-    return name.split(' ').map(n => n[0]).join('').toUpperCase();
+  const handleRemoveTeamMember = (userId: string) => {
+    setFormData(prev => ({
+      ...prev,
+      teamMemberIds: prev.teamMemberIds.filter(id => id !== userId),
+    }));
+  };
+
+  const handleThumbnailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setFormData(prev => ({ ...prev, thumbnail: reader.result as string }));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const removeThumbnail = () => {
+    setFormData(prev => ({ ...prev, thumbnail: '' }));
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
   };
 
   return (
@@ -107,6 +145,48 @@ export function NewProjectModal({ open, onOpenChange }: NewProjectModalProps) {
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Thumbnail Upload */}
+          <div className="space-y-2">
+            <Label>Project Thumbnail</Label>
+            <div className="flex items-start gap-4">
+              {formData.thumbnail ? (
+                <div className="relative w-32 h-20 rounded-lg overflow-hidden border border-border">
+                  <img 
+                    src={formData.thumbnail} 
+                    alt="Project thumbnail" 
+                    className="w-full h-full object-cover"
+                  />
+                  <button
+                    type="button"
+                    onClick={removeThumbnail}
+                    className="absolute top-1 right-1 p-1 bg-background/80 rounded-full hover:bg-background transition-colors"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="w-32 h-20 rounded-lg border-2 border-dashed border-border flex flex-col items-center justify-center gap-1 hover:border-primary/50 hover:bg-muted/50 transition-colors"
+                >
+                  <Image className="w-5 h-5 text-muted-foreground" />
+                  <span className="text-xs text-muted-foreground">Upload</span>
+                </button>
+              )}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleThumbnailChange}
+                className="hidden"
+              />
+              <p className="text-xs text-muted-foreground flex-1">
+                Recommended: 16:9 aspect ratio, max 2MB. This will be displayed on the Projects page.
+              </p>
+            </div>
+          </div>
+
           {/* Basic Info */}
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
@@ -178,7 +258,7 @@ export function NewProjectModal({ open, onOpenChange }: NewProjectModalProps) {
           </div>
 
           {/* Dates & Budget */}
-          <div className="grid gap-4 sm:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <div className="space-y-2">
               <Label htmlFor="startDate">Start Date *</Label>
               <Input
@@ -199,14 +279,13 @@ export function NewProjectModal({ open, onOpenChange }: NewProjectModalProps) {
                 required
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="budget">Budget (KRW)</Label>
-              <Input
-                id="budget"
-                type="number"
-                placeholder="500000000"
+            <div className="space-y-2 lg:col-span-1 sm:col-span-2">
+              <Label>Budget</Label>
+              <CurrencyInput
                 value={formData.budget}
-                onChange={(e) => setFormData(prev => ({ ...prev, budget: e.target.value }))}
+                currency={formData.currency}
+                onValueChange={(value) => setFormData(prev => ({ ...prev, budget: value }))}
+                onCurrencyChange={(currency) => setFormData(prev => ({ ...prev, currency }))}
               />
             </div>
           </div>
@@ -214,75 +293,26 @@ export function NewProjectModal({ open, onOpenChange }: NewProjectModalProps) {
           {/* PM Selection */}
           <div className="space-y-2">
             <Label>Project Manager</Label>
-            <Select
-              value={formData.pmId}
-              onValueChange={(value) => setFormData(prev => ({ ...prev, pmId: value }))}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select PM" />
-              </SelectTrigger>
-              <SelectContent>
-                {users.map((user) => (
-                  <SelectItem key={user.id} value={user.id}>
-                    <div className="flex items-center gap-2">
-                      <Avatar className="w-5 h-5">
-                        <AvatarFallback className="text-[10px]">{getInitials(user.name)}</AvatarFallback>
-                      </Avatar>
-                      {user.name}
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <UserSearchInput
+              users={users}
+              selectedUser={selectedPM}
+              onSelect={handleSelectPM}
+              onRemove={handleRemovePM}
+              placeholder="Type a name to search..."
+            />
           </div>
 
           {/* Team Members */}
-          <div className="space-y-3">
+          <div className="space-y-2">
             <Label>Team Members</Label>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-              {users.map((user) => (
-                <div
-                  key={user.id}
-                  className="flex items-center gap-2 p-2 rounded-lg border border-border cursor-pointer hover:bg-muted/50 transition-colors"
-                  onClick={() => toggleTeamMember(user.id)}
-                >
-                  <Checkbox
-                    checked={formData.teamMemberIds.includes(user.id)}
-                    onCheckedChange={() => toggleTeamMember(user.id)}
-                  />
-                  <Avatar className="w-6 h-6">
-                    <AvatarFallback className="text-[10px]">{getInitials(user.name)}</AvatarFallback>
-                  </Avatar>
-                  <span className="text-sm truncate">{user.name}</span>
-                </div>
-              ))}
-            </div>
-            {formData.teamMemberIds.length > 0 && (
-              <div className="flex flex-wrap gap-2 mt-2">
-                {formData.teamMemberIds.map((id) => {
-                  const user = users.find(u => u.id === id);
-                  if (!user) return null;
-                  return (
-                    <div
-                      key={id}
-                      className="flex items-center gap-1 px-2 py-1 bg-primary/10 text-primary rounded-full text-xs"
-                    >
-                      {user.name}
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          toggleTeamMember(id);
-                        }}
-                        className="hover:bg-primary/20 rounded-full p-0.5"
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
+            <UserSearchInput
+              users={users}
+              selectedUsers={selectedTeamMembers}
+              onSelect={handleSelectTeamMember}
+              onRemove={handleRemoveTeamMember}
+              placeholder="Type a name to add team member..."
+              multiple
+            />
           </div>
 
           <DialogFooter>

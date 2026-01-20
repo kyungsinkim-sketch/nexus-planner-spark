@@ -177,6 +177,14 @@
     @apply bg-orange-500/10 text-orange-600;
   }
 
+  .event-badge-todo {
+    @apply bg-cyan-500/10 text-cyan-600;
+  }
+
+  .event-badge-deliverable {
+    @apply bg-amber-500/10 text-amber-600;
+  }
+
   .status-badge {
     @apply inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium;
   }
@@ -318,6 +326,14 @@
 
 .fc-event-delivery {
   background-color: hsl(var(--event-delivery)) !important;
+}
+
+.fc-event-todo {
+  background-color: hsl(188 94% 43%) !important;
+}
+
+.fc-event-todo.completed {
+  opacity: 0.5;
 }
 
 /* Scrollbar Styling */

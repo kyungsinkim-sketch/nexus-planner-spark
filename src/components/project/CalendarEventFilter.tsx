@@ -15,10 +15,12 @@ const eventTypeConfig: Record<EventType, { label: string; icon: typeof CheckSqua
   MEETING: { label: 'Meeting', icon: Users, colorClass: 'bg-emerald-500/10 text-emerald-600 border-emerald-500/30' },
   PT: { label: 'PT / Deck', icon: Presentation, colorClass: 'bg-violet-500/10 text-violet-600 border-violet-500/30' },
   DELIVERY: { label: 'Delivery', icon: Truck, colorClass: 'bg-orange-500/10 text-orange-600 border-orange-500/30' },
+  TODO: { label: 'To-do', icon: CheckSquare, colorClass: 'bg-cyan-500/10 text-cyan-600 border-cyan-500/30' },
+  DELIVERABLE: { label: 'Deliverable', icon: Truck, colorClass: 'bg-amber-500/10 text-amber-600 border-amber-500/30' },
 };
 
 export function CalendarEventFilter({ selectedTypes, onToggleType, eventCounts }: CalendarEventFilterProps) {
-  const allTypes: EventType[] = ['TASK', 'PT', 'MEETING', 'DELIVERY', 'DEADLINE'];
+  const allTypes: EventType[] = ['TASK', 'PT', 'MEETING', 'DELIVERY', 'DEADLINE', 'TODO', 'DELIVERABLE'];
 
   return (
     <div className="flex flex-wrap gap-2">

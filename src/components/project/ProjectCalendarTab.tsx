@@ -23,6 +23,8 @@ const eventTypeColors: Record<EventType, string> = {
   MEETING: 'fc-event-meeting',
   PT: 'fc-event-pt',
   DELIVERY: 'fc-event-delivery',
+  TODO: 'fc-event-task',
+  DELIVERABLE: 'fc-event-delivery',
 };
 
 export function ProjectCalendarTab({ projectId }: ProjectCalendarTabProps) {
@@ -30,7 +32,7 @@ export function ProjectCalendarTab({ projectId }: ProjectCalendarTabProps) {
   const projectEvents = getEventsByProject(projectId);
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [isPanelOpen, setIsPanelOpen] = useState(false);
-  const [selectedTypes, setSelectedTypes] = useState<EventType[]>(['TASK', 'DEADLINE', 'MEETING', 'PT', 'DELIVERY']);
+  const [selectedTypes, setSelectedTypes] = useState<EventType[]>(['TASK', 'DEADLINE', 'MEETING', 'PT', 'DELIVERY', 'TODO', 'DELIVERABLE']);
 
   // Calculate event counts by type
   const eventCounts = useMemo(() => {
