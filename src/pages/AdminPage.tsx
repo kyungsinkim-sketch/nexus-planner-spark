@@ -5,19 +5,15 @@ import {
   Calendar, 
   FileText, 
   TrendingUp,
-  UserPlus,
-  Settings,
-  Shield,
+  Sliders,
   BarChart3
 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ProductivityTab, ContributionTab, SettingsTab } from '@/components/admin';
 
 export default function AdminPage() {
-  const { users, projects, events } = useAppStore();
+  const { users, projects, events, peerFeedback, projectContributions } = useAppStore();
 
   const stats = [
     { 
@@ -35,26 +31,20 @@ export default function AdminPage() {
       color: 'text-emerald-500'
     },
     { 
-      label: 'Events This Week', 
-      value: events.length, 
-      icon: Calendar,
-      change: '5 deadlines',
+      label: 'Feedback Records', 
+      value: peerFeedback.length, 
+      icon: TrendingUp,
+      change: 'This period',
       color: 'text-violet-500'
     },
     { 
-      label: 'Files Uploaded', 
-      value: '127',
+      label: 'Contribution Records', 
+      value: projectContributions.length,
       icon: FileText,
-      change: '+12 today',
+      change: 'Tracked',
       color: 'text-orange-500'
     },
   ];
-
-  const roleColors = {
-    ADMIN: 'bg-destructive/10 text-destructive',
-    MANAGER: 'bg-primary/10 text-primary',
-    MEMBER: 'bg-muted text-muted-foreground',
-  };
 
   return (
     <div className="page-container animate-fade-in">
@@ -63,13 +53,9 @@ export default function AdminPage() {
         <div>
           <h1 className="page-title">Admin Dashboard</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Manage users, settings, and system configuration
+            Productivity evaluation, contributions, and settings
           </p>
         </div>
-        <Button size="sm" className="gap-2">
-          <UserPlus className="w-4 h-4" />
-          Add User
-        </Button>
       </div>
 
       {/* Stats Grid */}
@@ -91,103 +77,32 @@ export default function AdminPage() {
       </div>
 
       {/* Tabs */}
-      <Tabs defaultValue="users" className="space-y-4">
+      <Tabs defaultValue="productivity" className="space-y-4">
         <TabsList>
-          <TabsTrigger value="users" className="gap-2">
-            <Users className="w-4 h-4" />
-            Users
-          </TabsTrigger>
-          <TabsTrigger value="permissions" className="gap-2">
-            <Shield className="w-4 h-4" />
-            Permissions
-          </TabsTrigger>
-          <TabsTrigger value="analytics" className="gap-2">
+          <TabsTrigger value="productivity" className="gap-2">
             <BarChart3 className="w-4 h-4" />
-            Analytics
+            Productivity
+          </TabsTrigger>
+          <TabsTrigger value="contribution" className="gap-2">
+            <TrendingUp className="w-4 h-4" />
+            Contribution
           </TabsTrigger>
           <TabsTrigger value="settings" className="gap-2">
-            <Settings className="w-4 h-4" />
+            <Sliders className="w-4 h-4" />
             Settings
           </TabsTrigger>
         </TabsList>
 
-        {/* Users Tab */}
-        <TabsContent value="users">
-          <Card className="shadow-card overflow-hidden">
-            <div className="p-4 border-b border-border">
-              <h3 className="font-medium text-foreground">Team Members</h3>
-              <p className="text-sm text-muted-foreground">{users.length} users total</p>
-            </div>
-            <div className="divide-y divide-border">
-              {users.map((user) => (
-                <div key={user.id} className="flex items-center gap-4 p-4 hover:bg-muted/50 transition-colors">
-                  <Avatar className="w-10 h-10">
-                    <AvatarFallback className="bg-primary text-primary-foreground">
-                      {user.name.split(' ').map(n => n[0]).join('')}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-foreground">{user.name}</p>
-                    <p className="text-sm text-muted-foreground">user@paulus.ai</p>
-                  </div>
-                  <Badge variant="secondary" className={roleColors[user.role]}>
-                    {user.role}
-                  </Badge>
-                  <Button variant="ghost" size="sm">
-                    Edit
-                  </Button>
-                </div>
-              ))}
-            </div>
-          </Card>
+        <TabsContent value="productivity">
+          <ProductivityTab />
         </TabsContent>
 
-        {/* Permissions Tab */}
-        <TabsContent value="permissions">
-          <Card className="p-6 shadow-card">
-            <div className="text-center py-8">
-              <Shield className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
-              <h3 className="font-medium text-foreground mb-1">Role Management</h3>
-              <p className="text-sm text-muted-foreground">
-                Configure user permissions and access levels
-              </p>
-              <p className="text-xs text-muted-foreground mt-4 italic">
-                (Placeholder - Backend integration required)
-              </p>
-            </div>
-          </Card>
+        <TabsContent value="contribution">
+          <ContributionTab />
         </TabsContent>
 
-        {/* Analytics Tab */}
-        <TabsContent value="analytics">
-          <Card className="p-6 shadow-card">
-            <div className="text-center py-8">
-              <TrendingUp className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
-              <h3 className="font-medium text-foreground mb-1">Usage Analytics</h3>
-              <p className="text-sm text-muted-foreground">
-                View detailed usage statistics and reports
-              </p>
-              <p className="text-xs text-muted-foreground mt-4 italic">
-                (Placeholder - Backend integration required)
-              </p>
-            </div>
-          </Card>
-        </TabsContent>
-
-        {/* Settings Tab */}
         <TabsContent value="settings">
-          <Card className="p-6 shadow-card">
-            <div className="text-center py-8">
-              <Settings className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
-              <h3 className="font-medium text-foreground mb-1">System Settings</h3>
-              <p className="text-sm text-muted-foreground">
-                Configure application settings and preferences
-              </p>
-              <p className="text-xs text-muted-foreground mt-4 italic">
-                (Placeholder - Backend integration required)
-              </p>
-            </div>
-          </Card>
+          <SettingsTab />
         </TabsContent>
       </Tabs>
     </div>

@@ -1,4 +1,4 @@
-import { User, Project, CalendarEvent, ChatMessage, FileGroup, FileItem } from '@/types/core';
+import { User, Project, CalendarEvent, ChatMessage, FileGroup, FileItem, PerformanceSnapshot, PortfolioItem, PeerFeedback, ProjectContribution } from '@/types/core';
 
 // Helper to generate dates relative to today
 const today = new Date();
@@ -254,6 +254,111 @@ export const mockFiles: FileItem[] = [
     size: '8.7 MB',
     type: 'pdf',
   },
+];
+
+// Performance Snapshots (mock data for last 3 months)
+export const mockPerformanceSnapshots: PerformanceSnapshot[] = [
+  {
+    id: 'ps1',
+    userId: 'u1',
+    period: '2025-05',
+    totalScore: 87,
+    financialScore: 62,
+    peerScore: 25,
+    rank: 1,
+    calculatedAt: addDays(-60),
+  },
+  {
+    id: 'ps2',
+    userId: 'u1',
+    period: '2025-06',
+    totalScore: 82,
+    financialScore: 58,
+    peerScore: 24,
+    rank: 2,
+    calculatedAt: addDays(-30),
+  },
+  {
+    id: 'ps3',
+    userId: 'u1',
+    period: '2025-07',
+    totalScore: 91,
+    financialScore: 65,
+    peerScore: 26,
+    rank: 1,
+    calculatedAt: addDays(0),
+  },
+  {
+    id: 'ps4',
+    userId: 'u2',
+    period: '2025-07',
+    totalScore: 85,
+    financialScore: 60,
+    peerScore: 25,
+    rank: 2,
+    calculatedAt: addDays(0),
+  },
+  {
+    id: 'ps5',
+    userId: 'u3',
+    period: '2025-07',
+    totalScore: 78,
+    financialScore: 52,
+    peerScore: 26,
+    rank: 3,
+    calculatedAt: addDays(0),
+  },
+];
+
+// Portfolio Items
+export const mockPortfolioItems: PortfolioItem[] = [
+  {
+    id: 'pf1',
+    userId: 'u1',
+    projectId: 'p4',
+    projectTitle: 'SK Telecom 5G Launch',
+    client: 'SK Telecom',
+    role: 'Creative Director',
+    completedAt: addDays(-30),
+  },
+  {
+    id: 'pf2',
+    userId: 'u1',
+    projectId: 'p1',
+    projectTitle: 'Samsung Galaxy Campaign',
+    client: 'Samsung Electronics',
+    role: 'Project Lead',
+    completedAt: addDays(-60),
+  },
+  {
+    id: 'pf3',
+    userId: 'u1',
+    projectId: 'p5',
+    projectTitle: 'Kakao Pay Rebrand',
+    client: 'Kakao',
+    role: 'Brand Strategist',
+    completedAt: addDays(-90),
+  },
+];
+
+// Peer Feedback
+export const mockPeerFeedback: PeerFeedback[] = [
+  { id: 'fb1', projectId: 'p4', fromUserId: 'u2', toUserId: 'u1', rating: 5, comment: 'Excellent leadership', createdAt: addDays(-30) },
+  { id: 'fb2', projectId: 'p4', fromUserId: 'u3', toUserId: 'u1', rating: 4, comment: 'Great collaboration', createdAt: addDays(-30) },
+  { id: 'fb3', projectId: 'p4', fromUserId: 'u4', toUserId: 'u2', rating: 5, comment: 'Very helpful', createdAt: addDays(-30) },
+  { id: 'fb4', projectId: 'p4', fromUserId: 'u1', toUserId: 'u3', rating: 4, comment: 'Good work ethic', createdAt: addDays(-30) },
+  { id: 'fb5', projectId: 'p1', fromUserId: 'u2', toUserId: 'u1', rating: 5, comment: 'Exceptional direction', createdAt: addDays(-15) },
+];
+
+// Project Contributions
+export const mockProjectContributions: ProjectContribution[] = [
+  { id: 'pc1', projectId: 'p1', userId: 'u1', contributionRate: 0.35, contributionValue: 17500000, calculatedAt: addDays(-1) },
+  { id: 'pc2', projectId: 'p1', userId: 'u2', contributionRate: 0.25, contributionValue: 12500000, calculatedAt: addDays(-1) },
+  { id: 'pc3', projectId: 'p1', userId: 'u3', contributionRate: 0.20, contributionValue: 10000000, calculatedAt: addDays(-1) },
+  { id: 'pc4', projectId: 'p1', userId: 'u4', contributionRate: 0.20, contributionValue: 10000000, calculatedAt: addDays(-1) },
+  { id: 'pc5', projectId: 'p2', userId: 'u2', contributionRate: 0.40, contributionValue: 32000000, calculatedAt: addDays(-1) },
+  { id: 'pc6', projectId: 'p2', userId: 'u3', contributionRate: 0.30, contributionValue: 24000000, calculatedAt: addDays(-1) },
+  { id: 'pc7', projectId: 'p2', userId: 'u5', contributionRate: 0.30, contributionValue: 24000000, calculatedAt: addDays(-1) },
 ];
 
 // Current logged in user (for demo)
