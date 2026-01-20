@@ -7,11 +7,29 @@ import {
   MessageSquare, 
   FolderOpen, 
   DollarSign,
-  Settings,
+  Plus,
+  CalendarPlus,
+  FileUp,
+  MoreHorizontal,
+  Clock,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from '@/components/ui/dropdown-menu';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import {
   OverviewTab,
   ProjectCalendarTab,
@@ -22,7 +40,7 @@ import {
 
 export default function ProjectDetailPage() {
   const { projectId } = useParams<{ projectId: string }>();
-  const { getProjectById, updateProject, currentUser } = useAppStore();
+  const { getProjectById, updateProject, currentUser, getUserById } = useAppStore();
 
   const project = getProjectById(projectId || '');
 
@@ -49,11 +67,39 @@ export default function ProjectDetailPage() {
     });
   };
 
+  const formatRelativeTime = (dateString?: string) => {
+    if (!dateString) return 'No activity';
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60));
+    if (diffHours < 1) return 'Updated just now';
+    if (diffHours < 24) return `Updated ${diffHours}h ago`;
+    const diffDays = Math.floor(diffHours / 24);
+    return `Updated ${diffDays}d ago`;
+  };
+
   const handleCompleteProject = () => {
     updateProject(project.id, { status: 'COMPLETED', progress: 100 });
   };
 
+  const getInitials = (name: string) => {
+    return name.split(' ').map(n => n[0]).join('').toUpperCase();
+  };
+
+  const priorityColors = {
+    HIGH: 'bg-red-100 text-red-700 border-red-200',
+    MEDIUM: 'bg-amber-100 text-amber-700 border-amber-200',
+    LOW: 'bg-emerald-100 text-emerald-700 border-emerald-200',
+  };
+
+  const typeColors = {
+    BIDDING: 'bg-violet-100 text-violet-700 border-violet-200',
+    EXECUTION: 'bg-blue-100 text-blue-700 border-blue-200',
+  };
+
   const isAdmin = currentUser.role === 'ADMIN';
+  const pm = project.pmId ? getUserById(project.pmId) : null;
+  const teamCount = project.teamMemberIds?.length || 0;
 
   return (
     <div className="page-container animate-fade-in">
@@ -65,7 +111,8 @@ export default function ProjectDetailPage() {
           </Button>
         </Link>
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-3 flex-wrap">
+          {/* Title Row with Badges */}
+          <div className="flex items-center gap-2 flex-wrap">
             <h1 className="page-title truncate">{project.title}</h1>
             <Badge 
               variant="secondary"
@@ -73,15 +120,120 @@ export default function ProjectDetailPage() {
             >
               {project.status}
             </Badge>
+            {project.priority && (
+              <Badge variant="outline" className={priorityColors[project.priority]}>
+                {project.priority}
+              </Badge>
+            )}
+            {project.type && (
+              <Badge variant="outline" className={typeColors[project.type]}>
+                {project.type}
+              </Badge>
+            )}
           </div>
+
+          {/* Client and Date */}
           <p className="text-sm text-muted-foreground mt-1">
             {project.client} · {formatDate(project.startDate)} - {formatDate(project.endDate)}
           </p>
+
+          {/* Quick Meta Row */}
+          <div className="flex items-center gap-4 mt-3 flex-wrap">
+            {/* PM Avatar */}
+            {pm && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="flex items-center gap-2">
+                      <Avatar className="w-6 h-6 border-2 border-primary">
+                        <AvatarFallback className="text-[10px] bg-primary text-primary-foreground">
+                          {getInitials(pm.name)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span className="text-xs text-muted-foreground">PM</span>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>{pm.name} (Project Manager)</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
+
+            {/* Team Count */}
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <div className="flex -space-x-1.5">
+                {project.teamMemberIds?.slice(0, 3).map((memberId) => {
+                  const member = getUserById(memberId);
+                  if (!member) return null;
+                  return (
+                    <Avatar key={memberId} className="w-5 h-5 border border-background">
+                      <AvatarFallback className="text-[8px]">{getInitials(member.name)}</AvatarFallback>
+                    </Avatar>
+                  );
+                })}
+              </div>
+              <span>{teamCount} members</span>
+            </div>
+
+            {/* Last Activity */}
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <Clock className="w-3.5 h-3.5" />
+              <span>{formatRelativeTime(project.lastActivityAt)}</span>
+            </div>
+          </div>
         </div>
-        <Button variant="outline" size="sm" className="gap-2 shrink-0">
-          <Settings className="w-4 h-4" />
-          Settings
-        </Button>
+
+        {/* Action Group */}
+        <div className="flex items-center gap-2 shrink-0">
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="outline" size="icon" className="h-9 w-9">
+                  <Plus className="w-4 h-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Add Task</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="outline" size="icon" className="h-9 w-9">
+                  <CalendarPlus className="w-4 h-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Add Event</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="outline" size="icon" className="h-9 w-9">
+                  <FileUp className="w-4 h-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Add File</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="icon" className="h-9 w-9">
+                <MoreHorizontal className="w-4 h-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem>Edit Project</DropdownMenuItem>
+              <DropdownMenuItem>Duplicate</DropdownMenuItem>
+              <DropdownMenuItem>Export</DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem className="text-destructive">Archive Project</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
 
       {/* Tabs */}
