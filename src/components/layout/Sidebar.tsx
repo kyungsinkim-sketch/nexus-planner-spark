@@ -2,38 +2,38 @@ import { NavLink, useLocation } from 'react-router-dom';
 import { 
   Calendar, 
   FolderKanban, 
-  Settings, 
   User, 
   ChevronLeft, 
   ChevronRight,
   Sparkles,
-  LayoutDashboard
+  Settings
 } from 'lucide-react';
 import { useAppStore } from '@/stores/appStore';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 
-const navItems = [
-  { path: '/', icon: Calendar, label: 'Calendar' },
-  { path: '/projects', icon: FolderKanban, label: 'Projects' },
-  { path: '/admin', icon: LayoutDashboard, label: 'Admin' },
-  { path: '/profile', icon: User, label: 'Profile' },
-];
-
 export function Sidebar() {
   const { currentUser, sidebarCollapsed, toggleSidebar } = useAppStore();
   const location = useLocation();
+
+  // Menu items - Admin only visible to ADMIN role
+  const navItems = [
+    { path: '/', icon: Calendar, label: 'Calendar', visible: true },
+    { path: '/projects', icon: FolderKanban, label: 'Projects', visible: true },
+    { path: '/profile', icon: User, label: 'My Profile', visible: true },
+    { path: '/admin', icon: Settings, label: 'Admin', visible: currentUser.role === 'ADMIN' },
+  ].filter(item => item.visible);
 
   return (
     <aside
       className={cn(
         'fixed left-0 top-0 z-40 h-screen bg-sidebar transition-all duration-300 flex flex-col',
-        sidebarCollapsed ? 'w-16' : 'w-64'
+        sidebarCollapsed ? 'w-16' : 'w-60'
       )}
     >
       {/* Logo */}
       <div className="flex items-center gap-3 px-4 py-5 border-b border-sidebar-border">
-        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-sidebar-primary to-primary flex items-center justify-center">
+        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-sidebar-primary to-primary flex items-center justify-center shrink-0">
           <Sparkles className="w-4 h-4 text-white" />
         </div>
         {!sidebarCollapsed && (
@@ -74,7 +74,7 @@ export function Sidebar() {
           'flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-sidebar-accent transition-colors cursor-pointer',
           sidebarCollapsed && 'justify-center px-0'
         )}>
-          <Avatar className="w-8 h-8">
+          <Avatar className="w-8 h-8 shrink-0">
             <AvatarFallback className="bg-sidebar-primary text-sidebar-primary-foreground text-xs">
               {currentUser.name.split(' ').map(n => n[0]).join('')}
             </AvatarFallback>
