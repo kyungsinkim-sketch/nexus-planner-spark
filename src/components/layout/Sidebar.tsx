@@ -6,7 +6,8 @@ import {
   ChevronLeft, 
   ChevronRight,
   Sparkles,
-  Settings
+  Settings,
+  Inbox
 } from 'lucide-react';
 import { useAppStore } from '@/stores/appStore';
 import { cn } from '@/lib/utils';
@@ -20,6 +21,7 @@ export function Sidebar() {
   const navItems = [
     { path: '/', icon: Calendar, label: 'Calendar', visible: true },
     { path: '/projects', icon: FolderKanban, label: 'Projects', visible: true },
+    { path: '/inbox', icon: Inbox, label: 'Inbox', visible: true },
     { path: '/profile', icon: User, label: 'My Profile', visible: true },
     { path: '/admin', icon: Settings, label: 'Admin', visible: currentUser.role === 'ADMIN' },
   ].filter(item => item.visible);
