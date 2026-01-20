@@ -2,6 +2,7 @@ import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
+import listPlugin from '@fullcalendar/list';
 import { useAppStore } from '@/stores/appStore';
 import { CalendarEvent, EventType } from '@/types/core';
 import { Plus, Filter, ChevronDown } from 'lucide-react';
@@ -15,6 +16,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useState } from 'react';
+import { EventSidePanel } from '@/components/calendar/EventSidePanel';
 
 const eventTypeColors: Record<EventType, string> = {
   TASK: 'fc-event-task',
@@ -33,24 +35,31 @@ const eventTypeBadges: Record<EventType, { label: string; className: string }> =
 };
 
 export default function CalendarPage() {
-  const { events, projects, getProjectById } = useAppStore();
+  const { events, getProjectById } = useAppStore();
   const [selectedTypes, setSelectedTypes] = useState<EventType[]>([
     'TASK', 'DEADLINE', 'MEETING', 'PT', 'DELIVERY'
   ]);
+  const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
+  const [isPanelOpen, setIsPanelOpen] = useState(false);
 
   const filteredEvents = events.filter((e) => selectedTypes.includes(e.type));
 
-  const calendarEvents = filteredEvents.map((event) => ({
-    id: event.id,
-    title: event.title,
-    start: event.startAt,
-    end: event.endAt,
-    className: eventTypeColors[event.type],
-    extendedProps: {
-      type: event.type,
-      projectId: event.projectId,
-    },
-  }));
+  const calendarEvents = filteredEvents.map((event) => {
+    const project = event.projectId ? getProjectById(event.projectId) : null;
+    return {
+      id: event.id,
+      title: event.title,
+      start: event.startAt,
+      end: event.endAt,
+      className: eventTypeColors[event.type],
+      extendedProps: {
+        type: event.type,
+        projectId: event.projectId,
+        projectTitle: project?.title,
+        ownerId: event.ownerId,
+      },
+    };
+  });
 
   const toggleEventType = (type: EventType) => {
     setSelectedTypes((prev) =>
@@ -58,6 +67,15 @@ export default function CalendarPage() {
         ? prev.filter((t) => t !== type)
         : [...prev, type]
     );
+  };
+
+  const handleEventClick = (info: any) => {
+    const eventId = info.event.id;
+    const event = events.find((e) => e.id === eventId);
+    if (event) {
+      setSelectedEvent(event);
+      setIsPanelOpen(true);
+    }
   };
 
   const todayEvents = events.filter((e) => {
@@ -124,12 +142,19 @@ export default function CalendarPage() {
         {/* Calendar */}
         <Card className="p-4 shadow-card">
           <FullCalendar
-            plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
+            plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin, listPlugin]}
             initialView="dayGridMonth"
             headerToolbar={{
               left: 'prev,next today',
               center: 'title',
-              right: 'dayGridMonth,timeGridWeek,timeGridDay',
+              right: 'dayGridMonth,timeGridWeek,timeGridDay,listWeek',
+            }}
+            buttonText={{
+              today: 'Today',
+              month: 'Month',
+              week: 'Week',
+              day: 'Day',
+              list: 'Agenda',
             }}
             events={calendarEvents}
             editable={true}
@@ -137,9 +162,17 @@ export default function CalendarPage() {
             selectMirror={true}
             dayMaxEvents={3}
             height="auto"
-            eventClick={(info) => {
-              // Placeholder for event click handler
-              console.log('Event clicked:', info.event);
+            eventClick={handleEventClick}
+            eventContent={(eventInfo) => {
+              const projectTitle = eventInfo.event.extendedProps.projectTitle;
+              return (
+                <div className="px-1.5 py-0.5 overflow-hidden">
+                  <div className="text-xs font-medium truncate">{eventInfo.event.title}</div>
+                  {projectTitle && (
+                    <div className="text-[10px] opacity-80 truncate">{projectTitle}</div>
+                  )}
+                </div>
+              );
             }}
             select={(info) => {
               // Placeholder for date selection handler
@@ -161,6 +194,10 @@ export default function CalendarPage() {
                   return (
                     <div
                       key={event.id}
+                      onClick={() => {
+                        setSelectedEvent(event);
+                        setIsPanelOpen(true);
+                      }}
                       className="p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors cursor-pointer"
                     >
                       <div className="flex items-start justify-between gap-2">
@@ -200,6 +237,10 @@ export default function CalendarPage() {
                   return (
                     <div
                       key={event.id}
+                      onClick={() => {
+                        setSelectedEvent(event);
+                        setIsPanelOpen(true);
+                      }}
                       className="p-3 rounded-lg bg-destructive/5 border border-destructive/10 hover:bg-destructive/10 transition-colors cursor-pointer"
                     >
                       <p className="text-sm font-medium text-foreground truncate">
@@ -220,6 +261,16 @@ export default function CalendarPage() {
           </Card>
         </div>
       </div>
+
+      {/* Event Side Panel */}
+      <EventSidePanel
+        event={selectedEvent}
+        isOpen={isPanelOpen}
+        onClose={() => {
+          setIsPanelOpen(false);
+          setSelectedEvent(null);
+        }}
+      />
     </div>
   );
 }
