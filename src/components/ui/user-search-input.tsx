@@ -9,7 +9,9 @@ interface UserSearchInputProps {
   users: User[];
   selectedUser?: User | null;
   selectedUsers?: User[];
-  onSelect: (user: User) => void;
+  selectedUserId?: string;
+  onSelect?: (user: User) => void;
+  onSelectById?: (userId: string | undefined) => void;
   onRemove?: (userId: string) => void;
   placeholder?: string;
   multiple?: boolean;
@@ -19,7 +21,9 @@ export function UserSearchInput({
   users,
   selectedUser,
   selectedUsers = [],
+  selectedUserId,
   onSelect,
+  onSelectById,
   onRemove,
   placeholder = 'Search by name...',
   multiple = false,
@@ -28,6 +32,9 @@ export function UserSearchInput({
   const [isOpen, setIsOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  // Support for selectedUserId prop
+  const resolvedSelectedUser = selectedUser || (selectedUserId ? users.find(u => u.id === selectedUserId) : null);
 
   const getInitials = (name: string) => {
     return name.split(' ').map(n => n[0]).join('').toUpperCase();
@@ -42,12 +49,23 @@ export function UserSearchInput({
   });
 
   const handleSelect = (user: User) => {
-    onSelect(user);
+    if (onSelectById) {
+      onSelectById(user.id);
+    } else if (onSelect) {
+      onSelect(user);
+    }
     setSearchValue('');
     setIsOpen(false);
     if (!multiple) {
       inputRef.current?.blur();
     }
+  };
+
+  const handleRemove = (userId: string) => {
+    if (onSelectById) {
+      onSelectById(undefined);
+    }
+    onRemove?.(userId);
   };
 
   useEffect(() => {
@@ -61,16 +79,16 @@ export function UserSearchInput({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  if (!multiple && selectedUser) {
+  if (!multiple && resolvedSelectedUser) {
     return (
       <div className="flex items-center gap-2 p-2 border border-border rounded-md bg-background">
         <Avatar className="w-6 h-6">
-          <AvatarFallback className="text-[10px]">{getInitials(selectedUser.name)}</AvatarFallback>
+          <AvatarFallback className="text-[10px]">{getInitials(resolvedSelectedUser.name)}</AvatarFallback>
         </Avatar>
-        <span className="flex-1 text-sm">{selectedUser.name}</span>
+        <span className="flex-1 text-sm">{resolvedSelectedUser.name}</span>
         <button
           type="button"
-          onClick={() => onRemove?.(selectedUser.id)}
+          onClick={() => handleRemove(resolvedSelectedUser.id)}
           className="p-1 hover:bg-muted rounded-full transition-colors"
         >
           <X className="w-3 h-3" />

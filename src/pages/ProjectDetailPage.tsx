@@ -36,11 +36,21 @@ import {
   ProjectChatTab,
   FilesTab,
   BudgetTab,
+  TodosTab,
+  NewEventModal,
+  NewTaskModal,
+  FileUploadModal,
 } from '@/components/project';
+import { useState } from 'react';
 
 export default function ProjectDetailPage() {
   const { projectId } = useParams<{ projectId: string }>();
   const { getProjectById, updateProject, currentUser, getUserById } = useAppStore();
+  
+  // Modal states
+  const [showNewTaskModal, setShowNewTaskModal] = useState(false);
+  const [showNewEventModal, setShowNewEventModal] = useState(false);
+  const [showFileUploadModal, setShowFileUploadModal] = useState(false);
 
   const project = getProjectById(projectId || '');
 
@@ -189,7 +199,7 @@ export default function ProjectDetailPage() {
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant="outline" size="icon" className="h-9 w-9">
+                <Button variant="outline" size="icon" className="h-9 w-9" onClick={() => setShowNewTaskModal(true)}>
                   <Plus className="w-4 h-4" />
                 </Button>
               </TooltipTrigger>
@@ -200,7 +210,7 @@ export default function ProjectDetailPage() {
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant="outline" size="icon" className="h-9 w-9">
+                <Button variant="outline" size="icon" className="h-9 w-9" onClick={() => setShowNewEventModal(true)}>
                   <CalendarPlus className="w-4 h-4" />
                 </Button>
               </TooltipTrigger>
@@ -211,7 +221,7 @@ export default function ProjectDetailPage() {
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant="outline" size="icon" className="h-9 w-9">
+                <Button variant="outline" size="icon" className="h-9 w-9" onClick={() => setShowFileUploadModal(true)}>
                   <FileUp className="w-4 h-4" />
                 </Button>
               </TooltipTrigger>
@@ -255,6 +265,10 @@ export default function ProjectDetailPage() {
             <FolderOpen className="w-4 h-4" />
             Files
           </TabsTrigger>
+          <TabsTrigger value="todos" className="gap-2">
+            <LayoutGrid className="w-4 h-4" />
+            To-dos
+          </TabsTrigger>
           {isAdmin && (
             <TabsTrigger value="budget" className="gap-2">
               <DollarSign className="w-4 h-4" />
@@ -282,12 +296,34 @@ export default function ProjectDetailPage() {
           <FilesTab projectId={project.id} />
         </TabsContent>
 
+        <TabsContent value="todos">
+          <TodosTab projectId={project.id} />
+        </TabsContent>
+
         {isAdmin && (
           <TabsContent value="budget">
             <BudgetTab projectId={project.id} />
           </TabsContent>
         )}
       </Tabs>
+
+      {/* Modals */}
+      <NewTaskModal
+        open={showNewTaskModal}
+        onClose={() => setShowNewTaskModal(false)}
+        projectId={project.id}
+      />
+      <NewEventModal
+        open={showNewEventModal}
+        onClose={() => setShowNewEventModal(false)}
+        projectId={project.id}
+      />
+      <FileUploadModal
+        open={showFileUploadModal}
+        onClose={() => setShowFileUploadModal(false)}
+        projectId={project.id}
+        onUpload={() => setShowFileUploadModal(false)}
+      />
     </div>
   );
 }
