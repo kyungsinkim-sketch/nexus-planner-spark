@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { FileCategory } from '@/types/core';
 import { useAppStore } from '@/stores/appStore';
 import { Card } from '@/components/ui/card';
@@ -16,6 +16,7 @@ import {
   Star,
   MoreHorizontal,
   FolderOpen,
+  MessageSquare,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -23,6 +24,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { FileUploadModal } from './FileUploadModal';
+import { toast } from 'sonner';
 
 interface FilesTabProps {
   projectId: string;
@@ -53,15 +56,31 @@ const categoryColors: Record<FileCategory, string> = {
 };
 
 export function FilesTab({ projectId }: FilesTabProps) {
-  const { getFileGroupsByProject, getFilesByGroup, getUserById } = useAppStore();
+  const { getFileGroupsByProject, getFilesByGroup, getUserById, files, addFile, addFileGroup, currentUser } = useAppStore();
   const fileGroups = getFileGroupsByProject(projectId);
-  const [selectedCategory, setSelectedCategory] = useState<FileCategory | 'ALL'>('ALL');
+  const [selectedCategory, setSelectedCategory] = useState<FileCategory | 'ALL' | 'IMPORTANT'>('ALL');
+  const [showUploadModal, setShowUploadModal] = useState(false);
 
   const allCategories: FileCategory[] = ['DECK', 'FINAL', 'REFERENCE', 'CONTRACT', 'ETC'];
 
+  // Get all files for this project
+  const allProjectFiles = useMemo(() => {
+    return fileGroups.flatMap((group) => {
+      const groupFiles = getFilesByGroup(group.id);
+      return groupFiles.map((file) => ({ ...file, category: group.category }));
+    });
+  }, [fileGroups, files]);
+
+  // Important files
+  const importantFiles = useMemo(() => {
+    return allProjectFiles.filter((f) => f.isImportant);
+  }, [allProjectFiles]);
+
   const filteredGroups = selectedCategory === 'ALL' 
     ? fileGroups 
-    : fileGroups.filter(g => g.category === selectedCategory);
+    : selectedCategory === 'IMPORTANT'
+      ? []
+      : fileGroups.filter(g => g.category === selectedCategory);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -70,14 +89,47 @@ export function FilesTab({ projectId }: FilesTabProps) {
     });
   };
 
-  const handleAddToImportant = (fileId: string) => {
-    // Mock add to important
-    console.log('Add to important:', fileId);
+  const handleToggleImportant = (fileId: string) => {
+    // Mock toggle important - would update file in store
+    toast.success('File updated');
   };
 
-  const handleUpload = () => {
-    // Mock upload
-    console.log('Upload clicked');
+  const handleUploadConfirm = (category: FileCategory, isImportant: boolean) => {
+    const categoryTitles: Record<FileCategory, string> = {
+      DECK: 'Presentations',
+      FINAL: 'Final Deliverables',
+      REFERENCE: 'References',
+      CONTRACT: 'Contracts',
+      ETC: 'Others',
+    };
+
+    let fileGroup = fileGroups.find(fg => fg.category === category);
+    
+    if (!fileGroup) {
+      const newGroupId = `fg${Date.now()}`;
+      addFileGroup({
+        id: newGroupId,
+        projectId,
+        category,
+        title: categoryTitles[category],
+      });
+      fileGroup = { id: newGroupId, projectId, category, title: categoryTitles[category] };
+    }
+
+    const fileName = `Uploaded_File_${Date.now().toString().slice(-6)}.pdf`;
+    addFile({
+      id: `f${Date.now()}`,
+      fileGroupId: fileGroup.id,
+      name: fileName,
+      uploadedBy: currentUser.id,
+      createdAt: new Date().toISOString(),
+      size: '3.1 MB',
+      type: 'pdf',
+      isImportant,
+      source: 'UPLOAD',
+    });
+
+    toast.success('File uploaded successfully');
   };
 
   return (
@@ -86,6 +138,23 @@ export function FilesTab({ projectId }: FilesTabProps) {
       <Card className="w-64 shrink-0 p-4 shadow-card">
         <h3 className="font-semibold text-foreground mb-4">Categories</h3>
         <div className="space-y-1">
+          {/* Important Files */}
+          <button
+            onClick={() => setSelectedCategory('IMPORTANT')}
+            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
+              selectedCategory === 'IMPORTANT'
+                ? 'bg-amber-500/20 text-amber-700'
+                : 'text-foreground hover:bg-muted'
+            }`}
+          >
+            <Star className="w-4 h-4" />
+            Important Files
+            <Badge variant="secondary" className="ml-auto text-xs bg-amber-500/20 text-amber-700">
+              {importantFiles.length}
+            </Badge>
+          </button>
+
+          {/* All Files */}
           <button
             onClick={() => setSelectedCategory('ALL')}
             className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
@@ -97,7 +166,7 @@ export function FilesTab({ projectId }: FilesTabProps) {
             <FolderOpen className="w-4 h-4" />
             All Files
             <Badge variant="secondary" className="ml-auto text-xs">
-              {fileGroups.reduce((acc, g) => acc + getFilesByGroup(g.id).length, 0)}
+              {allProjectFiles.length}
             </Badge>
           </button>
           
@@ -134,9 +203,13 @@ export function FilesTab({ projectId }: FilesTabProps) {
       <div className="flex-1 flex flex-col">
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-semibold text-foreground">
-            {selectedCategory === 'ALL' ? 'All Files' : categoryLabels[selectedCategory]}
+            {selectedCategory === 'ALL' 
+              ? 'All Files' 
+              : selectedCategory === 'IMPORTANT'
+                ? 'Important Files'
+                : categoryLabels[selectedCategory]}
           </h3>
-          <Button size="sm" className="gap-2" onClick={handleUpload}>
+          <Button size="sm" className="gap-2" onClick={() => setShowUploadModal(true)}>
             <Upload className="w-4 h-4" />
             Upload Files
           </Button>
@@ -144,7 +217,62 @@ export function FilesTab({ projectId }: FilesTabProps) {
 
         <Card className="flex-1 shadow-card overflow-hidden">
           <ScrollArea className="h-full">
-            {filteredGroups.length === 0 ? (
+            {/* Important Files Section (when viewing All or Important) */}
+            {(selectedCategory === 'ALL' || selectedCategory === 'IMPORTANT') && importantFiles.length > 0 && (
+              <div className="p-4 border-b border-border bg-amber-500/5">
+                <div className="flex items-center gap-2 mb-3">
+                  <Star className="w-4 h-4 text-amber-600" />
+                  <h4 className="text-sm font-medium text-foreground">Important Files</h4>
+                </div>
+                <div className="space-y-2">
+                  {importantFiles.map((file) => {
+                    const uploader = getUserById(file.uploadedBy);
+                    
+                    return (
+                      <div
+                        key={file.id}
+                        className="flex items-center gap-3 p-3 rounded-lg bg-background border border-amber-500/20 hover:border-amber-500/40 transition-colors group"
+                      >
+                        <Star className="w-5 h-5 text-amber-500 shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-foreground truncate">
+                            {file.name}
+                          </p>
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <span>{uploader?.name}</span>
+                            <span>·</span>
+                            <span>{formatDate(file.createdAt)}</span>
+                            {file.source === 'CHAT' && (
+                              <>
+                                <span>·</span>
+                                <span className="flex items-center gap-1">
+                                  <MessageSquare className="w-3 h-3" />
+                                  From Chat
+                                </span>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                          <Download className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Regular Files by Category */}
+            {selectedCategory === 'IMPORTANT' ? (
+              importantFiles.length === 0 && (
+                <div className="flex flex-col items-center justify-center h-full py-12">
+                  <Star className="w-12 h-12 text-muted-foreground mb-3" />
+                  <p className="text-muted-foreground">No important files yet</p>
+                  <p className="text-xs text-muted-foreground mt-1">Mark files as important to pin them here</p>
+                </div>
+              )
+            ) : filteredGroups.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full py-12">
                 <FolderOpen className="w-12 h-12 text-muted-foreground mb-3" />
                 <p className="text-muted-foreground">No files in this category</p>
@@ -152,8 +280,12 @@ export function FilesTab({ projectId }: FilesTabProps) {
             ) : (
               <div className="p-4 space-y-6">
                 {filteredGroups.map((group) => {
-                  const files = getFilesByGroup(group.id);
+                  const groupFiles = getFilesByGroup(group.id).filter(f => 
+                    selectedCategory === 'ALL' ? !f.isImportant : true
+                  );
                   const Icon = categoryIcons[group.category];
+
+                  if (groupFiles.length === 0) return null;
 
                   return (
                     <div key={group.id}>
@@ -163,12 +295,12 @@ export function FilesTab({ projectId }: FilesTabProps) {
                         </div>
                         <div>
                           <h4 className="text-sm font-medium text-foreground">{group.title}</h4>
-                          <p className="text-xs text-muted-foreground">{files.length} files</p>
+                          <p className="text-xs text-muted-foreground">{groupFiles.length} files</p>
                         </div>
                       </div>
 
                       <div className="space-y-2 ml-11">
-                        {files.map((file) => {
+                        {groupFiles.map((file) => {
                           const uploader = getUserById(file.uploadedBy);
                           
                           return (
@@ -181,18 +313,31 @@ export function FilesTab({ projectId }: FilesTabProps) {
                                 <p className="text-sm font-medium text-foreground truncate">
                                   {file.name}
                                 </p>
-                                <p className="text-xs text-muted-foreground">
-                                  {uploader?.name} · {formatDate(file.createdAt)} · {file.size}
-                                </p>
+                                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                  <span>{uploader?.name}</span>
+                                  <span>·</span>
+                                  <span>{formatDate(file.createdAt)}</span>
+                                  <span>·</span>
+                                  <span>{file.size}</span>
+                                  {file.source === 'CHAT' && (
+                                    <>
+                                      <span>·</span>
+                                      <span className="flex items-center gap-1 text-primary">
+                                        <MessageSquare className="w-3 h-3" />
+                                        From Chat
+                                      </span>
+                                    </>
+                                  )}
+                                </div>
                               </div>
                               <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                 <Button
                                   variant="ghost"
                                   size="icon"
                                   className="h-8 w-8"
-                                  onClick={() => handleAddToImportant(file.id)}
+                                  onClick={() => handleToggleImportant(file.id)}
                                 >
-                                  <Star className="w-4 h-4" />
+                                  <Star className={`w-4 h-4 ${file.isImportant ? 'text-amber-500 fill-amber-500' : ''}`} />
                                 </Button>
                                 <Button
                                   variant="ghost"
@@ -208,8 +353,8 @@ export function FilesTab({ projectId }: FilesTabProps) {
                                     </Button>
                                   </DropdownMenuTrigger>
                                   <DropdownMenuContent align="end">
-                                    <DropdownMenuItem onClick={() => handleAddToImportant(file.id)}>
-                                      Add to Important Files
+                                    <DropdownMenuItem onClick={() => handleToggleImportant(file.id)}>
+                                      {file.isImportant ? 'Remove from Important' : 'Add to Important Files'}
                                     </DropdownMenuItem>
                                     <DropdownMenuItem>Rename</DropdownMenuItem>
                                     <DropdownMenuItem>Move to...</DropdownMenuItem>
@@ -231,6 +376,14 @@ export function FilesTab({ projectId }: FilesTabProps) {
           </ScrollArea>
         </Card>
       </div>
+
+      <FileUploadModal
+        open={showUploadModal}
+        onClose={() => setShowUploadModal(false)}
+        projectId={projectId}
+        fileName="New_Upload.pdf"
+        onUpload={handleUploadConfirm}
+      />
     </div>
   );
 }

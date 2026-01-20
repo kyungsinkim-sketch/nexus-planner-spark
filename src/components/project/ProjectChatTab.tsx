@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { FileCategory } from '@/types/core';
 import { useAppStore } from '@/stores/appStore';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -7,15 +8,19 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Send, Paperclip, Smile } from 'lucide-react';
+import { FileUploadModal } from './FileUploadModal';
+import { toast } from 'sonner';
 
 interface ProjectChatTabProps {
   projectId: string;
 }
 
 export function ProjectChatTab({ projectId }: ProjectChatTabProps) {
-  const { getMessagesByProject, getUserById, currentUser, addMessage } = useAppStore();
+  const { getMessagesByProject, getUserById, currentUser, addMessage, addFile, addFileGroup, getFileGroupsByProject } = useAppStore();
   const messages = getMessagesByProject(projectId);
   const [newMessage, setNewMessage] = useState('');
+  const [showUploadModal, setShowUploadModal] = useState(false);
+  const [pendingFileName, setPendingFileName] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -66,8 +71,65 @@ export function ProjectChatTab({ projectId }: ProjectChatTabProps) {
   };
 
   const handleFileUpload = () => {
-    // Mock file upload
-    console.log('File upload clicked');
+    // Mock file selection - in real app would use file input
+    const mockFileName = `Document_${Date.now().toString().slice(-6)}.pdf`;
+    setPendingFileName(mockFileName);
+    setShowUploadModal(true);
+  };
+
+  const handleConfirmUpload = (category: FileCategory, isImportant: boolean) => {
+    const fileGroups = getFileGroupsByProject(projectId);
+    
+    // Find or create file group for the category
+    let fileGroup = fileGroups.find(fg => fg.category === category);
+    
+    if (!fileGroup) {
+      const newGroupId = `fg${Date.now()}`;
+      const categoryTitles: Record<FileCategory, string> = {
+        DECK: 'Presentations',
+        FINAL: 'Final Deliverables',
+        REFERENCE: 'References',
+        CONTRACT: 'Contracts',
+        ETC: 'Others',
+      };
+      
+      addFileGroup({
+        id: newGroupId,
+        projectId,
+        category,
+        title: categoryTitles[category],
+      });
+      
+      fileGroup = { id: newGroupId, projectId, category, title: categoryTitles[category] };
+    }
+
+    // Add the file
+    const newFileId = `f${Date.now()}`;
+    addFile({
+      id: newFileId,
+      fileGroupId: fileGroup.id,
+      name: pendingFileName,
+      uploadedBy: currentUser.id,
+      createdAt: new Date().toISOString(),
+      size: '2.3 MB',
+      type: 'pdf',
+      isImportant,
+      source: 'CHAT',
+    });
+
+    // Add message about file upload
+    addMessage({
+      id: `m${Date.now()}`,
+      projectId,
+      userId: currentUser.id,
+      content: `📎 Uploaded file: ${pendingFileName}`,
+      createdAt: new Date().toISOString(),
+      attachmentId: newFileId,
+    });
+
+    toast.success('File uploaded', {
+      description: `${pendingFileName} added to ${category} files${isImportant ? ' (marked as important)' : ''}`,
+    });
   };
 
   // Group messages by date
@@ -81,119 +143,137 @@ export function ProjectChatTab({ projectId }: ProjectChatTabProps) {
   }, {} as Record<string, typeof messages>);
 
   return (
-    <Card className="shadow-card overflow-hidden flex flex-col h-[600px]">
-      <ScrollArea className="flex-1 p-4">
-        {messages.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full text-center py-12">
-            <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
-              <Send className="w-8 h-8 text-muted-foreground" />
+    <>
+      <Card className="shadow-card overflow-hidden flex flex-col h-[600px]">
+        <ScrollArea className="flex-1 p-4">
+          {messages.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-full text-center py-12">
+              <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
+                <Send className="w-8 h-8 text-muted-foreground" />
+              </div>
+              <h3 className="font-medium text-foreground mb-1">No messages yet</h3>
+              <p className="text-sm text-muted-foreground">
+                Start the conversation with your team!
+              </p>
             </div>
-            <h3 className="font-medium text-foreground mb-1">No messages yet</h3>
-            <p className="text-sm text-muted-foreground">
-              Start the conversation with your team!
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-6">
-            {Object.entries(groupedMessages).map(([date, dateMessages]) => (
-              <div key={date}>
-                <div className="flex items-center gap-3 mb-4">
-                  <Separator className="flex-1" />
-                  <span className="text-xs font-medium text-muted-foreground">{date}</span>
-                  <Separator className="flex-1" />
-                </div>
-                <div className="space-y-4">
-                  {dateMessages.map((message, index) => {
-                    const user = getUserById(message.userId);
-                    const isCurrentUser = message.userId === currentUser.id;
-                    const showAvatar = index === 0 || dateMessages[index - 1].userId !== message.userId;
-                    
-                    return (
-                      <div 
-                        key={message.id} 
-                        className={`flex gap-3 ${isCurrentUser ? 'flex-row-reverse' : ''}`}
-                      >
-                        {showAvatar ? (
-                          <Avatar className="w-8 h-8 shrink-0">
-                            <AvatarFallback className={`text-xs ${
-                              isCurrentUser 
-                                ? 'bg-primary text-primary-foreground' 
-                                : 'bg-muted text-muted-foreground'
-                            }`}>
-                              {user?.name.split(' ').map(n => n[0]).join('')}
-                            </AvatarFallback>
-                          </Avatar>
-                        ) : (
-                          <div className="w-8" />
-                        )}
-                        <div className={`flex-1 min-w-0 max-w-[75%] ${isCurrentUser ? 'text-right' : ''}`}>
-                          {showAvatar && (
-                            <div className={`flex items-center gap-2 mb-1 ${isCurrentUser ? 'flex-row-reverse' : ''}`}>
-                              <span className="text-sm font-medium text-foreground">
-                                {isCurrentUser ? 'You' : user?.name}
-                              </span>
-                              <span className="text-xs text-muted-foreground">
-                                {formatTime(message.createdAt)}
-                              </span>
-                            </div>
+          ) : (
+            <div className="space-y-6">
+              {Object.entries(groupedMessages).map(([date, dateMessages]) => (
+                <div key={date}>
+                  <div className="flex items-center gap-3 mb-4">
+                    <Separator className="flex-1" />
+                    <span className="text-xs font-medium text-muted-foreground">{date}</span>
+                    <Separator className="flex-1" />
+                  </div>
+                  <div className="space-y-4">
+                    {dateMessages.map((message, index) => {
+                      const user = getUserById(message.userId);
+                      const isCurrentUser = message.userId === currentUser.id;
+                      const showAvatar = index === 0 || dateMessages[index - 1].userId !== message.userId;
+                      const isFileMessage = message.content.startsWith('📎');
+                      
+                      return (
+                        <div 
+                          key={message.id} 
+                          className={`flex gap-3 ${isCurrentUser ? 'flex-row-reverse' : ''}`}
+                        >
+                          {showAvatar ? (
+                            <Avatar className="w-8 h-8 shrink-0">
+                              <AvatarFallback className={`text-xs ${
+                                isCurrentUser 
+                                  ? 'bg-primary text-primary-foreground' 
+                                  : 'bg-muted text-muted-foreground'
+                              }`}>
+                                {user?.name.split(' ').map(n => n[0]).join('')}
+                              </AvatarFallback>
+                            </Avatar>
+                          ) : (
+                            <div className="w-8" />
                           )}
-                          <div 
-                            className={`inline-block rounded-2xl px-4 py-2 text-sm ${
-                              isCurrentUser 
-                                ? 'bg-primary text-primary-foreground' 
-                                : 'bg-muted text-foreground'
-                            }`}
-                          >
-                            {message.content}
+                          <div className={`flex-1 min-w-0 max-w-[75%] ${isCurrentUser ? 'text-right' : ''}`}>
+                            {showAvatar && (
+                              <div className={`flex items-center gap-2 mb-1 ${isCurrentUser ? 'flex-row-reverse' : ''}`}>
+                                <span className="text-sm font-medium text-foreground">
+                                  {isCurrentUser ? 'You' : user?.name}
+                                </span>
+                                <span className="text-xs text-muted-foreground">
+                                  {formatTime(message.createdAt)}
+                                </span>
+                              </div>
+                            )}
+                            <div 
+                              className={`inline-block rounded-2xl px-4 py-2 text-sm ${
+                                isFileMessage
+                                  ? 'bg-muted/80 text-foreground border border-border'
+                                  : isCurrentUser 
+                                    ? 'bg-primary text-primary-foreground' 
+                                    : 'bg-muted text-foreground'
+                              }`}
+                            >
+                              {message.content}
+                              {isFileMessage && message.attachmentId && (
+                                <span className="text-xs text-muted-foreground block mt-1">
+                                  From Chat
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
-            ))}
-            <div ref={messagesEndRef} />
+              ))}
+              <div ref={messagesEndRef} />
+            </div>
+          )}
+        </ScrollArea>
+
+        <Separator />
+
+        {/* Message Input */}
+        <div className="p-4 bg-background">
+          <div className="flex items-center gap-2">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="shrink-0"
+              onClick={handleFileUpload}
+            >
+              <Paperclip className="w-5 h-5" />
+            </Button>
+            <Input
+              placeholder="Type a message..."
+              value={newMessage}
+              onChange={(e) => setNewMessage(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSendMessage()}
+              className="flex-1"
+            />
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="shrink-0"
+            >
+              <Smile className="w-5 h-5" />
+            </Button>
+            <Button 
+              size="icon" 
+              onClick={handleSendMessage}
+              disabled={!newMessage.trim()}
+            >
+              <Send className="w-4 h-4" />
+            </Button>
           </div>
-        )}
-      </ScrollArea>
-
-      <Separator />
-
-      {/* Message Input */}
-      <div className="p-4 bg-background">
-        <div className="flex items-center gap-2">
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            className="shrink-0"
-            onClick={handleFileUpload}
-          >
-            <Paperclip className="w-5 h-5" />
-          </Button>
-          <Input
-            placeholder="Type a message..."
-            value={newMessage}
-            onChange={(e) => setNewMessage(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSendMessage()}
-            className="flex-1"
-          />
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            className="shrink-0"
-          >
-            <Smile className="w-5 h-5" />
-          </Button>
-          <Button 
-            size="icon" 
-            onClick={handleSendMessage}
-            disabled={!newMessage.trim()}
-          >
-            <Send className="w-4 h-4" />
-          </Button>
         </div>
-      </div>
-    </Card>
+      </Card>
+
+      <FileUploadModal
+        open={showUploadModal}
+        onClose={() => setShowUploadModal(false)}
+        projectId={projectId}
+        fileName={pendingFileName}
+        onUpload={handleConfirmUpload}
+      />
+    </>
   );
 }

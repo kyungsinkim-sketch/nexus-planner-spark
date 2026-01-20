@@ -10,6 +10,7 @@ export interface User {
 export type ProjectType = 'BIDDING' | 'EXECUTION';
 export type ProjectPriority = 'HIGH' | 'MEDIUM' | 'LOW';
 export type HealthStatus = 'ON_TRACK' | 'AT_RISK' | 'DELAYED' | 'HEALTHY' | 'TIGHT' | 'BALANCED' | 'OVERLOADED';
+export type FeedbackStatus = 'PENDING' | 'IN_PROGRESS' | 'COMPLETED';
 
 export interface ProjectHealth {
   schedule: 'ON_TRACK' | 'AT_RISK' | 'DELAYED';
@@ -42,6 +43,8 @@ export interface Project {
   tasksCompleted?: number;
   tasksTotal?: number;
   budget?: number;
+  isLocked?: boolean;
+  feedbackStatus?: FeedbackStatus;
 }
 
 export interface CalendarEvent {
@@ -52,6 +55,7 @@ export interface CalendarEvent {
   endAt: string;
   projectId?: string;
   ownerId: string;
+  dueDate?: string; // For auto-calendar sync
 }
 
 export interface ChatMessage {
@@ -60,6 +64,7 @@ export interface ChatMessage {
   userId: string;
   content: string;
   createdAt: string;
+  attachmentId?: string; // Reference to uploaded file
 }
 
 export interface FileGroup {
@@ -77,6 +82,8 @@ export interface FileItem {
   createdAt: string;
   size?: string;
   type?: string;
+  isImportant?: boolean;
+  source?: 'UPLOAD' | 'CHAT';
 }
 
 // Performance & Evaluation Types
