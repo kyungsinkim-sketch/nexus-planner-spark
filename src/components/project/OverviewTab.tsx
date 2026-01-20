@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Calendar, Building2, Clock, CheckCircle2, Lock, Mail } from 'lucide-react';
 import { ProjectHealthBlock } from './ProjectHealthBlock';
-import { ProgressSection } from './ProgressSection';
 import { NextActionsSection } from './NextActionsSection';
 import { TeamLoadSnapshot } from './TeamLoadSnapshot';
 import { ProjectCompleteModal } from './ProjectCompleteModal';
@@ -124,9 +123,6 @@ export function OverviewTab({ project, onCompleteProject, onNavigateToTab }: Ove
           </div>
         )}
       </Card>
-
-      {/* Enhanced Progress Section */}
-      <ProgressSection project={project} />
 
       {/* Next Actions Section */}
       <NextActionsSection project={project} onNavigateToTab={handleNavigateToTab} />

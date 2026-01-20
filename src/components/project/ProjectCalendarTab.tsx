@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
@@ -10,6 +10,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { EventSidePanel } from '@/components/calendar/EventSidePanel';
 import { CalendarEventFilter } from './CalendarEventFilter';
+import { NewEventModal } from './NewEventModal';
 import { Plus } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -30,9 +31,17 @@ const eventTypeColors: Record<EventType, string> = {
 export function ProjectCalendarTab({ projectId }: ProjectCalendarTabProps) {
   const { getEventsByProject, updateEvent } = useAppStore();
   const projectEvents = getEventsByProject(projectId);
+  const calendarRef = useRef<FullCalendar>(null);
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [isPanelOpen, setIsPanelOpen] = useState(false);
   const [selectedTypes, setSelectedTypes] = useState<EventType[]>(['TASK', 'DEADLINE', 'MEETING', 'PT', 'DELIVERY', 'TODO', 'DELIVERABLE']);
+  const [currentView, setCurrentView] = useState<string>('dayGridMonth');
+  
+  // New event modal state
+  const [showNewEventModal, setShowNewEventModal] = useState(false);
+  const [newEventDate, setNewEventDate] = useState<string | undefined>();
+  const [newEventStartTime, setNewEventStartTime] = useState<string | undefined>();
+  const [newEventEndTime, setNewEventEndTime] = useState<string | undefined>();
 
   // Calculate event counts by type
   const eventCounts = useMemo(() => {
@@ -113,6 +122,46 @@ export function ProjectCalendarTab({ projectId }: ProjectCalendarTabProps) {
     }
   };
 
+  // Handle double-click on date (month view)
+  const handleDateClick = (info: any) => {
+    // Only trigger on double-click-like behavior by using select
+  };
+
+  // Handle date selection (for creating events)
+  const handleSelect = (info: any) => {
+    const startDate = info.start;
+    const endDate = info.end;
+    
+    const dateStr = startDate.toISOString().split('T')[0];
+    const startTimeStr = startDate.toTimeString().slice(0, 5);
+    const endTimeStr = endDate.toTimeString().slice(0, 5);
+    
+    setNewEventDate(dateStr);
+    setNewEventStartTime(startTimeStr);
+    setNewEventEndTime(endTimeStr);
+    setShowNewEventModal(true);
+  };
+
+  // Handle view change to track current view
+  const handleViewChange = (viewInfo: any) => {
+    setCurrentView(viewInfo.view.type);
+  };
+
+  // Handle Today button click
+  const handleTodayClick = () => {
+    if (calendarRef.current) {
+      calendarRef.current.getApi().today();
+    }
+  };
+
+  // Open new event modal with default date
+  const handleAddEventClick = () => {
+    setNewEventDate(undefined);
+    setNewEventStartTime(undefined);
+    setNewEventEndTime(undefined);
+    setShowNewEventModal(true);
+  };
+
   return (
     <div className="space-y-4">
       {/* Header with filters */}
@@ -126,15 +175,16 @@ export function ProjectCalendarTab({ projectId }: ProjectCalendarTabProps) {
           <p className="text-sm text-muted-foreground">
             {filteredEvents.length} of {projectEvents.length} events
           </p>
-          <Button size="sm" className="gap-2">
+          <Button size="sm" className="gap-2" onClick={handleAddEventClick}>
             <Plus className="w-4 h-4" />
             Add Event
           </Button>
         </div>
       </div>
 
-      <Card className="p-4 shadow-card">
+      <Card className="p-4 shadow-card project-calendar">
         <FullCalendar
+          ref={calendarRef}
           plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin, listPlugin]}
           initialView="dayGridMonth"
           headerToolbar={{
@@ -159,6 +209,8 @@ export function ProjectCalendarTab({ projectId }: ProjectCalendarTabProps) {
           eventClick={handleEventClick}
           eventDrop={handleEventDrop}
           eventResize={handleEventResize}
+          select={handleSelect}
+          datesSet={handleViewChange}
           eventContent={(eventInfo) => (
             <div className="px-1.5 py-0.5 overflow-hidden cursor-pointer">
               <div className="text-xs font-medium truncate">{eventInfo.event.title}</div>
@@ -174,6 +226,15 @@ export function ProjectCalendarTab({ projectId }: ProjectCalendarTabProps) {
           setIsPanelOpen(false);
           setSelectedEvent(null);
         }}
+      />
+
+      <NewEventModal
+        open={showNewEventModal}
+        onClose={() => setShowNewEventModal(false)}
+        projectId={projectId}
+        defaultDate={newEventDate}
+        defaultStartTime={newEventStartTime}
+        defaultEndTime={newEventEndTime}
       />
     </div>
   );
