@@ -138,16 +138,16 @@ export default function CalendarPage() {
         ))}
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
+      <div className="grid gap-6 xl:grid-cols-[1fr_320px]">
         {/* Calendar */}
-        <Card className="p-4 shadow-card">
+        <Card className="p-2 sm:p-4 shadow-card overflow-hidden">
           <FullCalendar
             plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin, listPlugin]}
             initialView="dayGridMonth"
             headerToolbar={{
               left: 'prev,next today',
               center: 'title',
-              right: 'dayGridMonth,timeGridWeek,timeGridDay,listWeek',
+              right: 'dayGridMonth,timeGridWeek,listWeek',
             }}
             buttonText={{
               today: 'Today',
@@ -160,16 +160,16 @@ export default function CalendarPage() {
             editable={true}
             selectable={true}
             selectMirror={true}
-            dayMaxEvents={3}
+            dayMaxEvents={2}
             height="auto"
             eventClick={handleEventClick}
             eventContent={(eventInfo) => {
               const projectTitle = eventInfo.event.extendedProps.projectTitle;
               return (
-                <div className="px-1.5 py-0.5 overflow-hidden">
-                  <div className="text-xs font-medium truncate">{eventInfo.event.title}</div>
+                <div className="px-1 sm:px-1.5 py-0.5 overflow-hidden">
+                  <div className="text-[10px] sm:text-xs font-medium truncate">{eventInfo.event.title}</div>
                   {projectTitle && (
-                    <div className="text-[10px] opacity-80 truncate">{projectTitle}</div>
+                    <div className="text-[8px] sm:text-[10px] opacity-80 truncate hidden sm:block">{projectTitle}</div>
                   )}
                 </div>
               );
