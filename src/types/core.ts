@@ -11,6 +11,7 @@ export type ProjectType = 'BIDDING' | 'EXECUTION';
 export type ProjectPriority = 'HIGH' | 'MEDIUM' | 'LOW';
 export type HealthStatus = 'ON_TRACK' | 'AT_RISK' | 'DELAYED' | 'HEALTHY' | 'TIGHT' | 'BALANCED' | 'OVERLOADED';
 export type FeedbackStatus = 'PENDING' | 'IN_PROGRESS' | 'COMPLETED';
+export type Currency = 'KRW' | 'USD';
 
 export interface ProjectHealth {
   schedule: 'ON_TRACK' | 'AT_RISK' | 'DELAYED';
@@ -22,6 +23,50 @@ export interface ProjectMilestone {
   id: string;
   title: string;
   completed: boolean;
+}
+
+// Project Task (simple checklist item)
+export interface ProjectTask {
+  id: string;
+  projectId: string;
+  title: string;
+  ownerId: string;
+  assigneeId?: string;
+  dueDate?: string;
+  completed: boolean;
+  createdAt: string;
+}
+
+// Deliverable
+export type DeliverableStatus = 'DRAFT' | 'REVIEW' | 'APPROVED';
+
+export interface Deliverable {
+  id: string;
+  projectId: string;
+  name: string;
+  ownerId: string;
+  dueDate: string;
+  status: DeliverableStatus;
+  fileIds: string[];
+  createdAt: string;
+}
+
+// Personal To-do
+export type TodoPriority = 'LOW' | 'NORMAL' | 'HIGH';
+export type TodoStatus = 'PENDING' | 'COMPLETED';
+
+export interface PersonalTodo {
+  id: string;
+  title: string;
+  assigneeId: string;
+  requestedById: string;
+  projectId?: string;
+  dueDate: string;
+  priority: TodoPriority;
+  status: TodoStatus;
+  createdAt: string;
+  completedAt?: string;
+  sourceTaskId?: string; // Link to ProjectTask if auto-created
 }
 
 export interface Project {
@@ -43,8 +88,10 @@ export interface Project {
   tasksCompleted?: number;
   tasksTotal?: number;
   budget?: number;
+  currency?: Currency;
   isLocked?: boolean;
   feedbackStatus?: FeedbackStatus;
+  thumbnail?: string;
 }
 
 export type EventSource = 'PAULUS' | 'GOOGLE';
@@ -52,7 +99,7 @@ export type EventSource = 'PAULUS' | 'GOOGLE';
 export interface CalendarEvent {
   id: string;
   title: string;
-  type: 'TASK' | 'DEADLINE' | 'MEETING' | 'PT' | 'DELIVERY';
+  type: 'TASK' | 'DEADLINE' | 'MEETING' | 'PT' | 'DELIVERY' | 'TODO' | 'DELIVERABLE';
   startAt: string;
   endAt: string;
   projectId?: string;
@@ -60,6 +107,8 @@ export interface CalendarEvent {
   dueDate?: string; // For auto-calendar sync
   source: EventSource;
   googleEventId?: string;
+  todoId?: string; // Link to PersonalTodo
+  deliverableId?: string; // Link to Deliverable
 }
 
 export interface ChatMessage {

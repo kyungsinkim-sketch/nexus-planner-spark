@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useAppStore } from '@/stores/appStore';
 import { Project } from '@/types/core';
 import { Link } from 'react-router-dom';
-import { Plus, Search, Filter, ChevronDown, Calendar, MoreHorizontal } from 'lucide-react';
+import { Plus, Search, Filter, ChevronDown, Calendar, MoreHorizontal, Image } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
@@ -15,6 +15,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { NewProjectModal } from '@/components/project';
+import { formatCurrency } from '@/lib/format';
 
 export default function ProjectsPage() {
   const { projects } = useAppStore();
@@ -114,63 +115,90 @@ function ProjectCard({ project }: { project: Project }) {
 
   return (
     <Link to={`/projects/${project.id}`}>
-      <Card className="p-5 shadow-card hover:shadow-md transition-all duration-200 cursor-pointer group h-full flex flex-col">
-        <div className="flex items-start justify-between mb-3">
-          <div className="min-w-0 flex-1">
-            <h3 className="font-semibold text-foreground group-hover:text-primary transition-colors truncate">
-              {project.title}
-            </h3>
-            <p className="text-sm text-muted-foreground truncate mt-0.5">
-              {project.client}
-            </p>
+      <Card className="shadow-card hover:shadow-md transition-all duration-200 cursor-pointer group h-full flex flex-col overflow-hidden">
+        {/* Thumbnail */}
+        {project.thumbnail ? (
+          <div className="w-full h-28 overflow-hidden">
+            <img 
+              src={project.thumbnail} 
+              alt={project.title} 
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+            />
           </div>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild onClick={(e) => e.preventDefault()}>
-              <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-                <MoreHorizontal className="w-4 h-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem>Edit Project</DropdownMenuItem>
-              <DropdownMenuItem>Archive</DropdownMenuItem>
-              <DropdownMenuItem className="text-destructive">Delete</DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-
-        {project.description && (
-          <p className="text-sm text-muted-foreground line-clamp-2 mb-4 flex-1">
-            {project.description}
-          </p>
+        ) : (
+          <div className="w-full h-28 bg-gradient-to-br from-muted to-muted/50 flex items-center justify-center">
+            <Image className="w-8 h-8 text-muted-foreground/30" />
+          </div>
         )}
 
-        {/* Progress */}
-        <div className="mb-4">
-          <div className="flex items-center justify-between text-xs mb-1.5">
-            <span className="text-muted-foreground">Progress</span>
-            <span className="font-medium text-foreground">{project.progress || 0}%</span>
-          </div>
-          <Progress value={project.progress || 0} className="h-1.5" />
-        </div>
-
-        {/* Footer */}
-        <div className="flex items-center justify-between pt-3 border-t border-border">
-          <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1 text-xs text-muted-foreground">
-              <Calendar className="w-3.5 h-3.5" />
-              <span>{formatDate(project.startDate)} - {formatDate(project.endDate)}</span>
+        <div className="p-5 flex flex-col flex-1">
+          <div className="flex items-start justify-between mb-3">
+            <div className="min-w-0 flex-1">
+              <h3 className="font-semibold text-foreground group-hover:text-primary transition-colors truncate">
+                {project.title}
+              </h3>
+              <p className="text-sm text-muted-foreground truncate mt-0.5">
+                {project.client}
+              </p>
             </div>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild onClick={(e) => e.preventDefault()}>
+                <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <MoreHorizontal className="w-4 h-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem>Edit Project</DropdownMenuItem>
+                <DropdownMenuItem>Archive</DropdownMenuItem>
+                <DropdownMenuItem className="text-destructive">Delete</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
-          <div className="flex items-center gap-2">
-            {project.status === 'ACTIVE' && daysRemaining > 0 && (
-              <span className="text-xs text-muted-foreground">{daysRemaining}d left</span>
-            )}
-            <Badge 
-              variant="secondary"
-              className={project.status === 'ACTIVE' ? 'status-active' : 'status-completed'}
-            >
-              {project.status}
-            </Badge>
+
+          {project.description && (
+            <p className="text-sm text-muted-foreground line-clamp-2 mb-4 flex-1">
+              {project.description}
+            </p>
+          )}
+
+          {/* Budget */}
+          {project.budget && project.budget > 0 && (
+            <div className="mb-3">
+              <p className="text-xs text-muted-foreground">Budget</p>
+              <p className="text-sm font-medium text-foreground">
+                {formatCurrency(project.budget, project.currency || 'KRW')}
+              </p>
+            </div>
+          )}
+
+          {/* Progress */}
+          <div className="mb-4">
+            <div className="flex items-center justify-between text-xs mb-1.5">
+              <span className="text-muted-foreground">Progress</span>
+              <span className="font-medium text-foreground">{project.progress || 0}%</span>
+            </div>
+            <Progress value={project.progress || 0} className="h-1.5" />
+          </div>
+
+          {/* Footer */}
+          <div className="flex items-center justify-between pt-3 border-t border-border">
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                <Calendar className="w-3.5 h-3.5" />
+                <span>{formatDate(project.startDate)} - {formatDate(project.endDate)}</span>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              {project.status === 'ACTIVE' && daysRemaining > 0 && (
+                <span className="text-xs text-muted-foreground">{daysRemaining}d left</span>
+              )}
+              <Badge 
+                variant="secondary"
+                className={project.status === 'ACTIVE' ? 'status-active' : 'status-completed'}
+              >
+                {project.status}
+              </Badge>
+            </div>
           </div>
         </div>
       </Card>

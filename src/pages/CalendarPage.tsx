@@ -27,6 +27,8 @@ const eventTypeColors: Record<EventType, string> = {
   MEETING: 'fc-event-meeting',
   PT: 'fc-event-pt',
   DELIVERY: 'fc-event-delivery',
+  TODO: 'fc-event-todo',
+  DELIVERABLE: 'fc-event-delivery',
 };
 
 const eventTypeBadges: Record<EventType, { label: string; className: string }> = {
@@ -35,6 +37,8 @@ const eventTypeBadges: Record<EventType, { label: string; className: string }> =
   MEETING: { label: 'Meeting', className: 'event-badge event-badge-meeting' },
   PT: { label: 'Presentation', className: 'event-badge event-badge-pt' },
   DELIVERY: { label: 'Delivery', className: 'event-badge event-badge-delivery' },
+  TODO: { label: 'To-do', className: 'event-badge event-badge-todo' },
+  DELIVERABLE: { label: 'Deliverable', className: 'event-badge event-badge-delivery' },
 };
 
 function GoogleCalendarIcon({ className }: { className?: string }) {
@@ -50,7 +54,7 @@ function GoogleCalendarIcon({ className }: { className?: string }) {
 
 export default function CalendarPage() {
   const { events, getProjectById } = useAppStore();
-  const [selectedTypes, setSelectedTypes] = useState<EventType[]>(['TASK', 'DEADLINE', 'MEETING', 'PT', 'DELIVERY']);
+  const [selectedTypes, setSelectedTypes] = useState<EventType[]>(['TASK', 'DEADLINE', 'MEETING', 'PT', 'DELIVERY', 'TODO', 'DELIVERABLE']);
   const [showGoogleEvents, setShowGoogleEvents] = useState(true);
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [isPanelOpen, setIsPanelOpen] = useState(false);
