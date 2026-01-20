@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { Project } from '@/types/core';
 import { Card } from '@/components/ui/card';
-import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -13,6 +12,8 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Calendar, Building2, Clock, CheckCircle2 } from 'lucide-react';
+import { ProjectHealthBlock } from './ProjectHealthBlock';
+import { ProgressSection } from './ProgressSection';
 
 interface OverviewTabProps {
   project: Project;
@@ -37,7 +38,6 @@ export function OverviewTab({ project, onCompleteProject }: OverviewTabProps) {
   const totalDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
   const elapsedDays = Math.ceil((today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
   const remainingDays = Math.max(0, totalDays - elapsedDays);
-  const timeProgress = Math.min(100, Math.max(0, (elapsedDays / totalDays) * 100));
 
   const handleCompleteClick = () => {
     setShowCompleteModal(true);
@@ -50,6 +50,9 @@ export function OverviewTab({ project, onCompleteProject }: OverviewTabProps) {
 
   return (
     <div className="space-y-6">
+      {/* Project Health Block */}
+      <ProjectHealthBlock project={project} />
+
       {/* Project Info Card */}
       <Card className="p-6 shadow-card">
         <div className="flex items-start justify-between mb-6">
@@ -101,34 +104,8 @@ export function OverviewTab({ project, onCompleteProject }: OverviewTabProps) {
         )}
       </Card>
 
-      {/* Progress Card */}
-      <Card className="p-6 shadow-card">
-        <div className="flex items-start justify-between mb-4">
-          <div>
-            <h3 className="text-lg font-semibold text-foreground">Project Progress</h3>
-            <p className="text-sm text-muted-foreground mt-1">Track completion status</p>
-          </div>
-          <span className="text-3xl font-bold text-primary">{project.progress || 0}%</span>
-        </div>
-
-        <div className="space-y-4">
-          <div>
-            <div className="flex items-center justify-between text-sm mb-2">
-              <span className="text-muted-foreground">Completion Progress</span>
-              <span className="font-medium text-foreground">{project.progress || 0}%</span>
-            </div>
-            <Progress value={project.progress || 0} className="h-2.5" />
-          </div>
-
-          <div>
-            <div className="flex items-center justify-between text-sm mb-2">
-              <span className="text-muted-foreground">Timeline Progress</span>
-              <span className="font-medium text-foreground">{Math.round(timeProgress)}%</span>
-            </div>
-            <Progress value={timeProgress} className="h-2.5 [&>div]:bg-emerald-500" />
-          </div>
-        </div>
-      </Card>
+      {/* Enhanced Progress Section */}
+      <ProgressSection project={project} />
 
       {/* Complete Project Button */}
       {project.status === 'ACTIVE' && (

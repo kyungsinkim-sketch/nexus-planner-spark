@@ -1,7 +1,8 @@
+import { useState } from 'react';
 import { useAppStore } from '@/stores/appStore';
 import { Project } from '@/types/core';
 import { Link } from 'react-router-dom';
-import { Plus, Search, Filter, ChevronDown, Calendar, Users, MoreHorizontal } from 'lucide-react';
+import { Plus, Search, Filter, ChevronDown, Calendar, MoreHorizontal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
@@ -13,12 +14,13 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { useState } from 'react';
+import { NewProjectModal } from '@/components/project';
 
 export default function ProjectsPage() {
   const { projects } = useAppStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'COMPLETED'>('ALL');
+  const [showNewProjectModal, setShowNewProjectModal] = useState(false);
 
   const filteredProjects = projects.filter((project) => {
     const matchesSearch = project.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -40,11 +42,13 @@ export default function ProjectsPage() {
             {activeProjects.length} active · {completedProjects.length} completed
           </p>
         </div>
-        <Button size="sm" className="gap-2">
+        <Button size="sm" className="gap-2" onClick={() => setShowNewProjectModal(true)}>
           <Plus className="w-4 h-4" />
           New Project
         </Button>
       </div>
+
+      <NewProjectModal open={showNewProjectModal} onOpenChange={setShowNewProjectModal} />
 
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-3">

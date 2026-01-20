@@ -3,3 +3,6 @@ export { ProjectCalendarTab } from './ProjectCalendarTab';
 export { ProjectChatTab } from './ProjectChatTab';
 export { FilesTab } from './FilesTab';
 export { BudgetTab } from './BudgetTab';
+export { ProjectHealthBlock } from './ProjectHealthBlock';
+export { ProgressSection } from './ProgressSection';
+export { NewProjectModal } from './NewProjectModal';

@@ -7,15 +7,41 @@ export interface User {
   role: UserRole;
 }
 
+export type ProjectType = 'BIDDING' | 'EXECUTION';
+export type ProjectPriority = 'HIGH' | 'MEDIUM' | 'LOW';
+export type HealthStatus = 'ON_TRACK' | 'AT_RISK' | 'DELAYED' | 'HEALTHY' | 'TIGHT' | 'BALANCED' | 'OVERLOADED';
+
+export interface ProjectHealth {
+  schedule: 'ON_TRACK' | 'AT_RISK' | 'DELAYED';
+  workload: 'BALANCED' | 'OVERLOADED';
+  budget: 'HEALTHY' | 'TIGHT';
+}
+
+export interface ProjectMilestone {
+  id: string;
+  title: string;
+  completed: boolean;
+}
+
 export interface Project {
   id: string;
   title: string;
   client: string;
   status: 'ACTIVE' | 'COMPLETED';
+  type?: ProjectType;
+  priority?: ProjectPriority;
   startDate: string;
   endDate: string;
   description?: string;
   progress?: number;
+  pmId?: string;
+  teamMemberIds?: string[];
+  lastActivityAt?: string;
+  health?: ProjectHealth;
+  milestones?: ProjectMilestone[];
+  tasksCompleted?: number;
+  tasksTotal?: number;
+  budget?: number;
 }
 
 export interface CalendarEvent {
