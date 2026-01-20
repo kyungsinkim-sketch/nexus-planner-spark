@@ -1,6 +1,6 @@
 import { create } from 'zustand';
-import { User, Project, CalendarEvent, ChatMessage, FileGroup, FileItem } from '@/types/core';
-import { mockUsers, mockProjects, mockEvents, mockMessages, mockFileGroups, mockFiles, currentUser } from '@/mock/data';
+import { User, Project, CalendarEvent, ChatMessage, FileGroup, FileItem, PerformanceSnapshot, PortfolioItem, PeerFeedback, ProjectContribution, ScoreSettings } from '@/types/core';
+import { mockUsers, mockProjects, mockEvents, mockMessages, mockFileGroups, mockFiles, mockPerformanceSnapshots, mockPortfolioItems, mockPeerFeedback, mockProjectContributions, currentUser } from '@/mock/data';
 
 interface AppState {
   // Auth
@@ -13,6 +13,11 @@ interface AppState {
   messages: ChatMessage[];
   fileGroups: FileGroup[];
   files: FileItem[];
+  performanceSnapshots: PerformanceSnapshot[];
+  portfolioItems: PortfolioItem[];
+  peerFeedback: PeerFeedback[];
+  projectContributions: ProjectContribution[];
+  scoreSettings: ScoreSettings;
   
   // UI State
   selectedProjectId: string | null;
@@ -38,6 +43,9 @@ interface AppState {
   addFileGroup: (fileGroup: FileGroup) => void;
   addFile: (file: FileItem) => void;
   
+  // Settings Actions
+  updateScoreSettings: (settings: Partial<ScoreSettings>) => void;
+  
   // Getters
   getProjectById: (id: string) => Project | undefined;
   getEventsByProject: (projectId: string) => CalendarEvent[];
@@ -45,6 +53,10 @@ interface AppState {
   getFileGroupsByProject: (projectId: string) => FileGroup[];
   getFilesByGroup: (groupId: string) => FileItem[];
   getUserById: (id: string) => User | undefined;
+  getPerformanceByUser: (userId: string) => PerformanceSnapshot[];
+  getPortfolioByUser: (userId: string) => PortfolioItem[];
+  getFeedbackByProject: (projectId: string) => PeerFeedback[];
+  getContributionsByProject: (projectId: string) => ProjectContribution[];
 }
 
 export const useAppStore = create<AppState>((set, get) => ({
@@ -56,6 +68,11 @@ export const useAppStore = create<AppState>((set, get) => ({
   messages: mockMessages,
   fileGroups: mockFileGroups,
   files: mockFiles,
+  performanceSnapshots: mockPerformanceSnapshots,
+  portfolioItems: mockPortfolioItems,
+  peerFeedback: mockPeerFeedback,
+  projectContributions: mockProjectContributions,
+  scoreSettings: { financialWeight: 70, peerWeight: 30 },
   
   // UI State
   selectedProjectId: null,
@@ -91,6 +108,11 @@ export const useAppStore = create<AppState>((set, get) => ({
   addFileGroup: (fileGroup) => set((state) => ({ fileGroups: [...state.fileGroups, fileGroup] })),
   addFile: (file) => set((state) => ({ files: [...state.files, file] })),
   
+  // Settings Actions
+  updateScoreSettings: (settings) => set((state) => ({ 
+    scoreSettings: { ...state.scoreSettings, ...settings } 
+  })),
+  
   // Getters
   getProjectById: (id) => get().projects.find((p) => p.id === id),
   getEventsByProject: (projectId) => get().events.filter((e) => e.projectId === projectId),
@@ -98,4 +120,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   getFileGroupsByProject: (projectId) => get().fileGroups.filter((fg) => fg.projectId === projectId),
   getFilesByGroup: (groupId) => get().files.filter((f) => f.fileGroupId === groupId),
   getUserById: (id) => get().users.find((u) => u.id === id),
+  getPerformanceByUser: (userId) => get().performanceSnapshots.filter((ps) => ps.userId === userId),
+  getPortfolioByUser: (userId) => get().portfolioItems.filter((pi) => pi.userId === userId),
+  getFeedbackByProject: (projectId) => get().peerFeedback.filter((f) => f.projectId === projectId),
+  getContributionsByProject: (projectId) => get().projectContributions.filter((c) => c.projectId === projectId),
 }));
