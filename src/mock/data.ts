@@ -147,6 +147,7 @@ export const mockEvents: CalendarEvent[] = [
     endAt: addDays(0),
     projectId: 'p1',
     ownerId: 'u1',
+    source: 'PAULUS',
   },
   {
     id: 'e2',
@@ -156,6 +157,7 @@ export const mockEvents: CalendarEvent[] = [
     endAt: addDays(3),
     projectId: 'p1',
     ownerId: 'u2',
+    source: 'PAULUS',
   },
   {
     id: 'e3',
@@ -165,6 +167,7 @@ export const mockEvents: CalendarEvent[] = [
     endAt: addDays(2),
     projectId: 'p2',
     ownerId: 'u3',
+    source: 'PAULUS',
   },
   {
     id: 'e4',
@@ -174,6 +177,7 @@ export const mockEvents: CalendarEvent[] = [
     endAt: addDays(5),
     projectId: 'p3',
     ownerId: 'u1',
+    source: 'PAULUS',
   },
   {
     id: 'e5',
@@ -183,6 +187,7 @@ export const mockEvents: CalendarEvent[] = [
     endAt: addDays(7),
     projectId: 'p1',
     ownerId: 'u4',
+    source: 'PAULUS',
   },
   {
     id: 'e6',
@@ -192,6 +197,8 @@ export const mockEvents: CalendarEvent[] = [
     endAt: addDays(2),
     projectId: 'p5',
     ownerId: 'u5',
+    source: 'GOOGLE',
+    googleEventId: 'goog_abc123',
   },
   {
     id: 'e7',
@@ -201,6 +208,7 @@ export const mockEvents: CalendarEvent[] = [
     endAt: addDays(6),
     projectId: 'p2',
     ownerId: 'u2',
+    source: 'PAULUS',
   },
   {
     id: 'e8',
@@ -209,6 +217,8 @@ export const mockEvents: CalendarEvent[] = [
     startAt: addDays(0),
     endAt: addDays(0),
     ownerId: 'u1',
+    source: 'GOOGLE',
+    googleEventId: 'goog_def456',
   },
   {
     id: 'e9',
@@ -218,6 +228,7 @@ export const mockEvents: CalendarEvent[] = [
     endAt: addDays(8),
     projectId: 'p3',
     ownerId: 'u3',
+    source: 'PAULUS',
   },
   {
     id: 'e10',
@@ -227,6 +238,17 @@ export const mockEvents: CalendarEvent[] = [
     endAt: addDays(14),
     projectId: 'p5',
     ownerId: 'u1',
+    source: 'PAULUS',
+  },
+  {
+    id: 'e11',
+    title: 'External Client Call',
+    type: 'MEETING',
+    startAt: addDays(5),
+    endAt: addDays(5),
+    ownerId: 'u1',
+    source: 'GOOGLE',
+    googleEventId: 'goog_ghi789',
   },
 ];
 

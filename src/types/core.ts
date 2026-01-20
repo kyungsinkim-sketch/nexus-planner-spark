@@ -47,6 +47,8 @@ export interface Project {
   feedbackStatus?: FeedbackStatus;
 }
 
+export type EventSource = 'PAULUS' | 'GOOGLE';
+
 export interface CalendarEvent {
   id: string;
   title: string;
@@ -56,6 +58,8 @@ export interface CalendarEvent {
   projectId?: string;
   ownerId: string;
   dueDate?: string; // For auto-calendar sync
+  source: EventSource;
+  googleEventId?: string;
 }
 
 export interface ChatMessage {
@@ -136,3 +140,14 @@ export interface ScoreSettings {
 export type EventType = CalendarEvent['type'];
 export type ProjectStatus = Project['status'];
 export type FileCategory = FileGroup['category'];
+
+// Google Calendar Integration
+export type GoogleCalendarSyncStatus = 'DISCONNECTED' | 'CONNECTED' | 'SYNCING' | 'ERROR';
+
+export interface GoogleCalendarSettings {
+  isConnected: boolean;
+  syncStatus: GoogleCalendarSyncStatus;
+  lastSyncAt?: string;
+  connectedEmail?: string;
+  autoSync: boolean;
+}

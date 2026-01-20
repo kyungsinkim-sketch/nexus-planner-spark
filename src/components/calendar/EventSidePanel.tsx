@@ -4,6 +4,7 @@ import { X, Calendar, Clock, User, FolderKanban, Edit, Trash2 } from 'lucide-rea
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { format } from 'date-fns';
 
 interface EventSidePanelProps {
@@ -20,6 +21,23 @@ const eventTypeBadges: Record<EventType, { label: string; className: string }> =
   DELIVERY: { label: 'Delivery', className: 'event-badge event-badge-delivery' },
 };
 
+// Google Calendar Icon SVG
+function GoogleCalendarIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className}>
+      <path fill="#4285F4" d="M22 12c0-5.52-4.48-10-10-10S2 6.48 2 12s4.48 10 10 10 10-4.48 10-10z" opacity="0.2"/>
+      <path fill="#4285F4" d="M12 6v6l4 2"/>
+      <path fill="#EA4335" d="M17.5 7.5l-1 1"/>
+      <path fill="#FBBC04" d="M6.5 16.5l1-1"/>
+      <path fill="#34A853" d="M16.5 16.5l-1-1"/>
+      <rect x="7" y="7" width="10" height="10" rx="1" fill="none" stroke="#4285F4" strokeWidth="1.5"/>
+      <line x1="7" y1="10" x2="17" y2="10" stroke="#4285F4" strokeWidth="1"/>
+      <line x1="10" y1="7" x2="10" y2="17" stroke="#4285F4" strokeWidth="0.5" opacity="0.5"/>
+      <line x1="14" y1="7" x2="14" y2="17" stroke="#4285F4" strokeWidth="0.5" opacity="0.5"/>
+    </svg>
+  );
+}
+
 export function EventSidePanel({ event, isOpen, onClose }: EventSidePanelProps) {
   const { getProjectById, getUserById } = useAppStore();
 
@@ -27,6 +45,7 @@ export function EventSidePanel({ event, isOpen, onClose }: EventSidePanelProps) 
 
   const project = event.projectId ? getProjectById(event.projectId) : null;
   const owner = getUserById(event.ownerId);
+  const isGoogleEvent = event.source === 'GOOGLE';
 
   return (
     <>
@@ -40,9 +59,41 @@ export function EventSidePanel({ event, isOpen, onClose }: EventSidePanelProps) 
       <div className="fixed right-0 top-0 h-screen w-96 bg-card border-l border-border shadow-lg z-50 animate-slide-in-right">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-border">
-          <span className={eventTypeBadges[event.type].className}>
-            {eventTypeBadges[event.type].label}
-          </span>
+          <div className="flex items-center gap-2">
+            <span className={eventTypeBadges[event.type].className}>
+              {eventTypeBadges[event.type].label}
+            </span>
+            {/* Source Badge */}
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Badge 
+                    variant="outline" 
+                    className={`gap-1 text-[10px] px-1.5 py-0 ${
+                      isGoogleEvent 
+                        ? 'border-blue-500/30 text-blue-600 bg-blue-500/10' 
+                        : 'border-primary/30 text-primary bg-primary/10'
+                    }`}
+                  >
+                    {isGoogleEvent ? (
+                      <GoogleCalendarIcon className="w-3 h-3" />
+                    ) : (
+                      <Calendar className="w-3 h-3" />
+                    )}
+                    {isGoogleEvent ? 'Google' : 'Paulus'}
+                  </Badge>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Source: {isGoogleEvent ? 'Google Calendar' : 'Paulus.ai'}</p>
+                  {event.googleEventId && (
+                    <p className="text-xs text-muted-foreground">
+                      ID: {event.googleEventId}
+                    </p>
+                  )}
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
           <div className="flex items-center gap-2">
             <Button variant="ghost" size="icon" className="h-8 w-8">
               <Edit className="w-4 h-4" />
@@ -60,7 +111,10 @@ export function EventSidePanel({ event, isOpen, onClose }: EventSidePanelProps) 
         <div className="p-6 space-y-6">
           {/* Title */}
           <div>
-            <h2 className="text-xl font-semibold text-foreground">{event.title}</h2>
+            <h2 className="text-xl font-semibold text-foreground flex items-center gap-2">
+              {isGoogleEvent && <GoogleCalendarIcon className="w-5 h-5 shrink-0" />}
+              {event.title}
+            </h2>
           </div>
 
           <Separator />
@@ -104,6 +158,25 @@ export function EventSidePanel({ event, isOpen, onClose }: EventSidePanelProps) 
           </div>
 
           <Separator />
+
+          {/* Source Info */}
+          <div className="p-3 rounded-lg bg-muted/50">
+            <div className="flex items-center gap-2 mb-1">
+              {isGoogleEvent ? (
+                <GoogleCalendarIcon className="w-4 h-4" />
+              ) : (
+                <Calendar className="w-4 h-4 text-primary" />
+              )}
+              <p className="text-xs font-medium text-foreground">
+                {isGoogleEvent ? 'Synced from Google Calendar' : 'Created in Paulus.ai'}
+              </p>
+            </div>
+            {isGoogleEvent && event.googleEventId && (
+              <p className="text-[10px] text-muted-foreground font-mono">
+                Event ID: {event.googleEventId}
+              </p>
+            )}
+          </div>
 
           {/* Quick Actions */}
           <div className="space-y-2">
