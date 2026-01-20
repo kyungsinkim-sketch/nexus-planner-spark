@@ -6,3 +6,8 @@ export { BudgetTab } from './BudgetTab';
 export { ProjectHealthBlock } from './ProjectHealthBlock';
 export { ProgressSection } from './ProgressSection';
 export { NewProjectModal } from './NewProjectModal';
+export { NextActionsSection } from './NextActionsSection';
+export { TeamLoadSnapshot } from './TeamLoadSnapshot';
+export { FileUploadModal } from './FileUploadModal';
+export { ProjectCompleteModal } from './ProjectCompleteModal';
+export { CalendarEventFilter } from './CalendarEventFilter';

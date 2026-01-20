@@ -3,24 +3,20 @@ import { Project } from '@/types/core';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import { Calendar, Building2, Clock, CheckCircle2 } from 'lucide-react';
+import { Calendar, Building2, Clock, CheckCircle2, Lock, Mail } from 'lucide-react';
 import { ProjectHealthBlock } from './ProjectHealthBlock';
 import { ProgressSection } from './ProgressSection';
+import { NextActionsSection } from './NextActionsSection';
+import { TeamLoadSnapshot } from './TeamLoadSnapshot';
+import { ProjectCompleteModal } from './ProjectCompleteModal';
 
 interface OverviewTabProps {
   project: Project;
   onCompleteProject?: () => void;
+  onNavigateToTab?: (tab: string) => void;
 }
 
-export function OverviewTab({ project, onCompleteProject }: OverviewTabProps) {
+export function OverviewTab({ project, onCompleteProject, onNavigateToTab }: OverviewTabProps) {
   const [showCompleteModal, setShowCompleteModal] = useState(false);
 
   const formatDate = (dateString: string) => {
@@ -48,6 +44,10 @@ export function OverviewTab({ project, onCompleteProject }: OverviewTabProps) {
     setShowCompleteModal(false);
   };
 
+  const handleNavigateToTab = (tab: string) => {
+    onNavigateToTab?.(tab);
+  };
+
   return (
     <div className="space-y-6">
       {/* Project Health Block */}
@@ -60,12 +60,33 @@ export function OverviewTab({ project, onCompleteProject }: OverviewTabProps) {
             <h3 className="text-lg font-semibold text-foreground">Project Information</h3>
             <p className="text-sm text-muted-foreground mt-1">Overview and key details</p>
           </div>
-          <Badge 
-            variant="secondary"
-            className={project.status === 'ACTIVE' ? 'status-active' : 'status-completed'}
-          >
-            {project.status}
-          </Badge>
+          <div className="flex items-center gap-2">
+            {project.isLocked && (
+              <Badge variant="secondary" className="gap-1">
+                <Lock className="w-3 h-3" />
+                Locked
+              </Badge>
+            )}
+            {project.feedbackStatus && (
+              <Badge 
+                variant="outline"
+                className={`gap-1 ${
+                  project.feedbackStatus === 'COMPLETED' 
+                    ? 'border-emerald-500 text-emerald-600' 
+                    : 'border-amber-500 text-amber-600'
+                }`}
+              >
+                <Mail className="w-3 h-3" />
+                Feedback: {project.feedbackStatus}
+              </Badge>
+            )}
+            <Badge 
+              variant="secondary"
+              className={project.status === 'ACTIVE' ? 'status-active' : 'status-completed'}
+            >
+              {project.status}
+            </Badge>
+          </div>
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -107,8 +128,14 @@ export function OverviewTab({ project, onCompleteProject }: OverviewTabProps) {
       {/* Enhanced Progress Section */}
       <ProgressSection project={project} />
 
+      {/* Next Actions Section */}
+      <NextActionsSection project={project} onNavigateToTab={handleNavigateToTab} />
+
+      {/* Team Load Snapshot (Admin Only) */}
+      <TeamLoadSnapshot project={project} />
+
       {/* Complete Project Button */}
-      {project.status === 'ACTIVE' && (
+      {project.status === 'ACTIVE' && !project.isLocked && (
         <Card className="p-6 shadow-card">
           <div className="flex items-center justify-between">
             <div>
@@ -125,32 +152,13 @@ export function OverviewTab({ project, onCompleteProject }: OverviewTabProps) {
         </Card>
       )}
 
-      {/* Complete Project Modal */}
-      <Dialog open={showCompleteModal} onOpenChange={setShowCompleteModal}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Complete Project</DialogTitle>
-            <DialogDescription>
-              This will mark the project as complete and request feedback from all participants.
-              Are you sure you want to proceed?
-            </DialogDescription>
-          </DialogHeader>
-          <div className="py-4">
-            <div className="rounded-lg bg-muted/50 p-4">
-              <p className="text-sm text-foreground font-medium">{project.title}</p>
-              <p className="text-xs text-muted-foreground mt-1">{project.client}</p>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowCompleteModal(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleConfirmComplete}>
-              Confirm Complete
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Project Complete Modal */}
+      <ProjectCompleteModal
+        open={showCompleteModal}
+        onClose={() => setShowCompleteModal(false)}
+        project={project}
+        onConfirm={handleConfirmComplete}
+      />
     </div>
   );
 }
