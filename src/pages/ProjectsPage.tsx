@@ -103,9 +103,14 @@ function ProjectCard({ project }: { project: Project }) {
     });
   };
 
+  // Calculate days remaining
+  const today = new Date();
+  const endDate = new Date(project.endDate);
+  const daysRemaining = Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+
   return (
     <Link to={`/projects/${project.id}`}>
-      <Card className="p-5 shadow-card hover:shadow-md transition-all duration-200 cursor-pointer group">
+      <Card className="p-5 shadow-card hover:shadow-md transition-all duration-200 cursor-pointer group h-full flex flex-col">
         <div className="flex items-start justify-between mb-3">
           <div className="min-w-0 flex-1">
             <h3 className="font-semibold text-foreground group-hover:text-primary transition-colors truncate">
@@ -116,7 +121,7 @@ function ProjectCard({ project }: { project: Project }) {
             </p>
           </div>
           <DropdownMenu>
-            <DropdownMenuTrigger asChild>
+            <DropdownMenuTrigger asChild onClick={(e) => e.preventDefault()}>
               <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
                 <MoreHorizontal className="w-4 h-4" />
               </Button>
@@ -130,7 +135,7 @@ function ProjectCard({ project }: { project: Project }) {
         </div>
 
         {project.description && (
-          <p className="text-sm text-muted-foreground line-clamp-2 mb-4">
+          <p className="text-sm text-muted-foreground line-clamp-2 mb-4 flex-1">
             {project.description}
           </p>
         )}
@@ -146,16 +151,23 @@ function ProjectCard({ project }: { project: Project }) {
 
         {/* Footer */}
         <div className="flex items-center justify-between pt-3 border-t border-border">
-          <div className="flex items-center gap-1 text-xs text-muted-foreground">
-            <Calendar className="w-3.5 h-3.5" />
-            <span>{formatDate(project.startDate)} - {formatDate(project.endDate)}</span>
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+              <Calendar className="w-3.5 h-3.5" />
+              <span>{formatDate(project.startDate)} - {formatDate(project.endDate)}</span>
+            </div>
           </div>
-          <Badge 
-            variant="secondary"
-            className={project.status === 'ACTIVE' ? 'status-active' : 'status-completed'}
-          >
-            {project.status}
-          </Badge>
+          <div className="flex items-center gap-2">
+            {project.status === 'ACTIVE' && daysRemaining > 0 && (
+              <span className="text-xs text-muted-foreground">{daysRemaining}d left</span>
+            )}
+            <Badge 
+              variant="secondary"
+              className={project.status === 'ACTIVE' ? 'status-active' : 'status-completed'}
+            >
+              {project.status}
+            </Badge>
+          </div>
         </div>
       </Card>
     </Link>
