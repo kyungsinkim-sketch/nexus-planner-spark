@@ -1,3 +1,4 @@
+import { forwardRef } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { 
   Calendar, 
@@ -35,7 +36,7 @@ const workStatusConfig: Record<UserWorkStatus, { label: string; labelKo: string;
   TRAINING: { label: 'Training', labelKo: '운동', icon: Dumbbell, colorClass: 'text-pink-500' },
 };
 
-export function Sidebar() {
+export const Sidebar = forwardRef<HTMLElement, React.HTMLAttributes<HTMLElement>>(function Sidebar(props, ref) {
   const { currentUser, sidebarCollapsed, toggleSidebar, userWorkStatus, setUserWorkStatus } = useAppStore();
   const location = useLocation();
 
@@ -54,9 +55,12 @@ export function Sidebar() {
 
   return (
     <aside
+      ref={ref}
+      {...props}
       className={cn(
         'fixed left-0 top-0 z-40 h-screen bg-sidebar transition-all duration-300 flex flex-col',
-        sidebarCollapsed ? 'w-16' : 'w-60'
+        sidebarCollapsed ? 'w-16' : 'w-60',
+        props.className
       )}
     >
       {/* Logo */}
@@ -168,4 +172,6 @@ export function Sidebar() {
       </button>
     </aside>
   );
-}
+});
+
+Sidebar.displayName = 'Sidebar';
