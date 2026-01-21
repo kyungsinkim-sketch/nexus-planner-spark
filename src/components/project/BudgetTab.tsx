@@ -117,10 +117,15 @@ const mockBudgetData: ProjectBudget = {
 
 export function BudgetTab({ projectId }: BudgetTabProps) {
   const { t, language } = useTranslation();
-  const [budget] = useState<ProjectBudget>(mockBudgetData);
-  const [activeTab, setActiveTab] = useState('overview');
+  const [budget, setBudget] = useState<ProjectBudget>(mockBudgetData);
+  const [activeTab, setActiveTab] = useState<'budget_plan' | 'actual_expense'>('budget_plan');
+  const [expenseTab, setExpenseTab] = useState<'tax_invoice' | 'withholding' | 'corporate_card' | 'corporate_cash' | 'personal'>('tax_invoice');
   const [showAddExpenseModal, setShowAddExpenseModal] = useState(false);
   const [expenseType, setExpenseType] = useState<'tax_invoice' | 'withholding' | 'corporate_card' | 'corporate_cash' | 'personal'>('corporate_card');
+  
+  // Editable contract amount states
+  const [isEditingContract, setIsEditingContract] = useState(false);
+  const [editContractAmount, setEditContractAmount] = useState(budget.summary.totalContractAmount);
 
   // Form state for expense modal
   const [formData, setFormData] = useState({
@@ -217,22 +222,81 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
     <div className="space-y-6">
       {/* Summary Cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {/* Total Contract Amount - Editable */}
         <Card className="p-5 shadow-card">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
               <Banknote className="w-5 h-5 text-primary" />
             </div>
-            <div>
+            <div className="flex-1 min-w-0">
               <p className="text-sm text-muted-foreground">총 계약금액</p>
-              <p className="text-xl font-semibold text-foreground">
-                {formatCurrency(summary.totalWithVat)}
-              </p>
-              <p className="text-xs text-muted-foreground">VAT 포함</p>
+              {isEditingContract ? (
+                <div className="flex items-center gap-2 mt-1">
+                  <Input
+                    type="text"
+                    value={editContractAmount.toLocaleString('ko-KR')}
+                    onChange={(e) => {
+                      const value = e.target.value.replace(/[^0-9]/g, '');
+                      setEditContractAmount(Number(value) || 0);
+                    }}
+                    className="h-8 text-lg font-semibold w-full"
+                    autoFocus
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        const vatAmount = editContractAmount * 0.1;
+                        setBudget(prev => ({
+                          ...prev,
+                          summary: {
+                            ...prev.summary,
+                            totalContractAmount: editContractAmount,
+                            vatAmount: vatAmount,
+                            totalWithVat: editContractAmount + vatAmount,
+                          }
+                        }));
+                        setIsEditingContract(false);
+                        toast.success('계약금액이 수정되었습니다.');
+                      }
+                      if (e.key === 'Escape') {
+                        setEditContractAmount(budget.summary.totalContractAmount);
+                        setIsEditingContract(false);
+                      }
+                    }}
+                    onBlur={() => {
+                      const vatAmount = editContractAmount * 0.1;
+                      setBudget(prev => ({
+                        ...prev,
+                        summary: {
+                          ...prev.summary,
+                          totalContractAmount: editContractAmount,
+                          vatAmount: vatAmount,
+                          totalWithVat: editContractAmount + vatAmount,
+                        }
+                      }));
+                      setIsEditingContract(false);
+                      toast.success('계약금액이 수정되었습니다.');
+                    }}
+                  />
+                </div>
+              ) : (
+                <button 
+                  onClick={() => setIsEditingContract(true)}
+                  className="text-left hover:bg-muted/50 rounded px-1 -mx-1 transition-colors w-full"
+                >
+                  <p className="text-xl font-semibold text-foreground">
+                    {formatCurrency(summary.totalWithVat)}
+                  </p>
+                  <p className="text-xs text-muted-foreground">VAT 포함 (클릭하여 수정)</p>
+                </button>
+              )}
             </div>
           </div>
         </Card>
 
-        <Card className="p-5 shadow-card">
+        {/* Target Expense - Clickable to Budget Plan */}
+        <Card 
+          className="p-5 shadow-card cursor-pointer hover:shadow-md transition-shadow hover:border-blue-300"
+          onClick={() => setActiveTab('budget_plan')}
+        >
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
               <TrendingDown className="w-5 h-5 text-blue-600" />
@@ -242,14 +306,18 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
               <p className="text-xl font-semibold text-foreground">
                 {formatCurrency(summary.targetExpenseWithVat)}
               </p>
-              <p className="text-xs text-muted-foreground">
-                {((summary.targetExpenseWithVat / summary.totalWithVat) * 100).toFixed(1)}%
+              <p className="text-xs text-blue-600">
+                {((summary.targetExpenseWithVat / summary.totalWithVat) * 100).toFixed(1)}% → 예산계획 보기
               </p>
             </div>
           </div>
         </Card>
 
-        <Card className="p-5 shadow-card">
+        {/* Actual Expense - Clickable to Actual Expense tabs */}
+        <Card 
+          className="p-5 shadow-card cursor-pointer hover:shadow-md transition-shadow hover:border-orange-300"
+          onClick={() => setActiveTab('actual_expense')}
+        >
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-lg bg-orange-500/10 flex items-center justify-center">
               <Receipt className="w-5 h-5 text-orange-600" />
@@ -259,8 +327,8 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
               <p className="text-xl font-semibold text-foreground">
                 {formatCurrency(summary.actualExpenseWithVat)}
               </p>
-              <p className="text-xs text-muted-foreground">
-                {((summary.actualExpenseWithVat / summary.totalWithVat) * 100).toFixed(2)}%
+              <p className="text-xs text-orange-600">
+                {((summary.actualExpenseWithVat / summary.totalWithVat) * 100).toFixed(2)}% → 지출내역 보기
               </p>
             </div>
           </div>
@@ -307,243 +375,305 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
         </div>
       </Card>
 
-      {/* Tabs for different sections */}
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <div className="flex items-center justify-between">
-          <TabsList>
-            <TabsTrigger value="overview">예산계획</TabsTrigger>
-            <TabsTrigger value="tax_invoice">세금계산서</TabsTrigger>
-            <TabsTrigger value="withholding">원천징수</TabsTrigger>
-            <TabsTrigger value="corporate_card">법인카드</TabsTrigger>
-            <TabsTrigger value="corporate_cash">법인현금</TabsTrigger>
-            <TabsTrigger value="personal">개인지출</TabsTrigger>
-          </TabsList>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" className="gap-2">
-              <Download className="w-4 h-4" />
-              내보내기
-            </Button>
-            <Button size="sm" className="gap-2" onClick={() => setShowAddExpenseModal(true)}>
-              <Plus className="w-4 h-4" />
-              지출 추가
-            </Button>
+      {/* Main Section Toggle */}
+      <div className="flex items-center gap-4 border-b">
+        <button
+          className={`pb-3 px-1 text-sm font-medium border-b-2 transition-colors ${
+            activeTab === 'budget_plan' 
+              ? 'border-primary text-primary' 
+              : 'border-transparent text-muted-foreground hover:text-foreground'
+          }`}
+          onClick={() => setActiveTab('budget_plan')}
+        >
+          예산 계획
+        </button>
+        <button
+          className={`pb-3 px-1 text-sm font-medium border-b-2 transition-colors ${
+            activeTab === 'actual_expense' 
+              ? 'border-primary text-primary' 
+              : 'border-transparent text-muted-foreground hover:text-foreground'
+          }`}
+          onClick={() => setActiveTab('actual_expense')}
+        >
+          실제 지출
+        </button>
+      </div>
+
+      {/* Budget Plan Section */}
+      {activeTab === 'budget_plan' && (
+        <Card className="shadow-card">
+          <div className="p-4 border-b flex items-center justify-between">
+            <div>
+              <h3 className="font-semibold">예산 계획표</h3>
+              <p className="text-sm text-muted-foreground">프로젝트 지출 계획을 수립하고 실지출과 비교합니다</p>
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" className="gap-2">
+                <Download className="w-4 h-4" />
+                내보내기
+              </Button>
+              <Button size="sm" className="gap-2">
+                <Plus className="w-4 h-4" />
+                항목 추가
+              </Button>
+            </div>
           </div>
-        </div>
-
-        {/* Overview - Budget Plan */}
-        <TabsContent value="overview" className="mt-4">
-          <Card className="shadow-card">
-            <ScrollArea className="max-h-[500px]">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-10">완료</TableHead>
-                    <TableHead>No.</TableHead>
-                    <TableHead>대분류</TableHead>
-                    <TableHead>소분류</TableHead>
-                    <TableHead className="text-right">목표단가</TableHead>
-                    <TableHead className="text-center">수량</TableHead>
-                    <TableHead className="text-right">목표지출합계</TableHead>
-                    <TableHead className="text-right">실지출액</TableHead>
-                    <TableHead className="text-right">차액</TableHead>
-                    <TableHead>비고</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {lineItems.map((item) => (
-                    <TableRow key={item.id}>
-                      <TableCell>
-                        <Checkbox checked={item.completed} />
-                      </TableCell>
-                      <TableCell>{item.orderNo}</TableCell>
-                      <TableCell className="font-medium">{item.mainCategory}</TableCell>
-                      <TableCell className="max-w-[200px] truncate">{item.subCategory}</TableCell>
-                      <TableCell className="text-right">{formatCurrency(item.targetUnitPrice)}</TableCell>
-                      <TableCell className="text-center">{item.quantity}</TableCell>
-                      <TableCell className="text-right">{formatCurrency(item.targetExpenseWithVat)}</TableCell>
-                      <TableCell className="text-right font-medium">{formatCurrency(item.actualExpenseWithVat)}</TableCell>
-                      <TableCell className={`text-right ${item.variance > 0 ? 'text-emerald-600' : item.variance < 0 ? 'text-red-600' : ''}`}>
-                        {item.variance > 0 ? '+' : ''}{formatCurrency(item.variance)}
-                      </TableCell>
-                      <TableCell className="max-w-[150px] truncate text-muted-foreground text-sm">{item.note}</TableCell>
-                    </TableRow>
-                  ))}
-                  <TableRow className="bg-muted/50 font-semibold">
-                    <TableCell colSpan={6} className="text-right">합계</TableCell>
-                    <TableCell className="text-right">{formatCurrency(totalTargetExpense)}</TableCell>
-                    <TableCell className="text-right">{formatCurrency(totalActualExpense)}</TableCell>
-                    <TableCell className={`text-right ${totalVariance > 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                      {totalVariance > 0 ? '+' : ''}{formatCurrency(totalVariance)}
+          <ScrollArea className="max-h-[500px]">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-10">완료</TableHead>
+                  <TableHead>No.</TableHead>
+                  <TableHead>대분류</TableHead>
+                  <TableHead>소분류</TableHead>
+                  <TableHead className="text-right">목표단가</TableHead>
+                  <TableHead className="text-center">수량</TableHead>
+                  <TableHead className="text-right">목표지출합계</TableHead>
+                  <TableHead className="text-right">실지출액</TableHead>
+                  <TableHead className="text-right">차액</TableHead>
+                  <TableHead>비고</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {lineItems.map((item) => (
+                  <TableRow key={item.id}>
+                    <TableCell>
+                      <Checkbox checked={item.completed} />
                     </TableCell>
-                    <TableCell></TableCell>
+                    <TableCell>{item.orderNo}</TableCell>
+                    <TableCell className="font-medium">{item.mainCategory}</TableCell>
+                    <TableCell className="max-w-[200px] truncate">{item.subCategory}</TableCell>
+                    <TableCell className="text-right">{formatCurrency(item.targetUnitPrice)}</TableCell>
+                    <TableCell className="text-center">{item.quantity}</TableCell>
+                    <TableCell className="text-right">{formatCurrency(item.targetExpenseWithVat)}</TableCell>
+                    <TableCell className="text-right font-medium">{formatCurrency(item.actualExpenseWithVat)}</TableCell>
+                    <TableCell className={`text-right ${item.variance > 0 ? 'text-emerald-600' : item.variance < 0 ? 'text-red-600' : ''}`}>
+                      {item.variance > 0 ? '+' : ''}{formatCurrency(item.variance)}
+                    </TableCell>
+                    <TableCell className="max-w-[150px] truncate text-muted-foreground text-sm">{item.note}</TableCell>
                   </TableRow>
-                </TableBody>
-              </Table>
-            </ScrollArea>
-          </Card>
-        </TabsContent>
+                ))}
+                <TableRow className="bg-muted/50 font-semibold">
+                  <TableCell colSpan={6} className="text-right">합계</TableCell>
+                  <TableCell className="text-right">{formatCurrency(totalTargetExpense)}</TableCell>
+                  <TableCell className="text-right">{formatCurrency(totalActualExpense)}</TableCell>
+                  <TableCell className={`text-right ${totalVariance > 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                    {totalVariance > 0 ? '+' : ''}{formatCurrency(totalVariance)}
+                  </TableCell>
+                  <TableCell></TableCell>
+                </TableRow>
+              </TableBody>
+            </Table>
+          </ScrollArea>
+        </Card>
+      )}
 
-        {/* Tax Invoice */}
-        <TabsContent value="tax_invoice" className="mt-4">
-          <Card className="shadow-card">
-            <ScrollArea className="max-h-[500px]">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>No.</TableHead>
-                    <TableHead>입금약일</TableHead>
-                    <TableHead>내용</TableHead>
-                    <TableHead className="text-right">공급가</TableHead>
-                    <TableHead className="text-right">세액</TableHead>
-                    <TableHead className="text-right">총액</TableHead>
-                    <TableHead>회사명/대표자</TableHead>
-                    <TableHead>사업자번호</TableHead>
-                    <TableHead>진행단계</TableHead>
-                    <TableHead>입금일자</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {taxInvoices.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
-                        등록된 세금계산서가 없습니다
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    taxInvoices.map((invoice) => (
-                      <TableRow key={invoice.id}>
-                        <TableCell>{invoice.orderNo}</TableCell>
-                        <TableCell>{invoice.paymentDueDate}</TableCell>
-                        <TableCell className="max-w-[200px] truncate font-medium">{invoice.description}</TableCell>
-                        <TableCell className="text-right">{formatCurrency(invoice.supplyAmount)}</TableCell>
-                        <TableCell className="text-right">{formatCurrency(invoice.taxAmount)}</TableCell>
-                        <TableCell className="text-right font-medium">{formatCurrency(invoice.totalAmount)}</TableCell>
-                        <TableCell className="max-w-[150px] truncate">{invoice.companyName}</TableCell>
-                        <TableCell>{invoice.businessNumber}</TableCell>
-                        <TableCell>{getStatusBadge(invoice.status)}</TableCell>
-                        <TableCell>{formatDate(invoice.paymentDate)}</TableCell>
+      {/* Actual Expense Section */}
+      {activeTab === 'actual_expense' && (
+        <div className="space-y-4">
+          {/* Expense Type Tabs */}
+          <Tabs value={expenseTab} onValueChange={(val) => setExpenseTab(val as typeof expenseTab)}>
+            <div className="flex items-center justify-between">
+              <TabsList>
+                <TabsTrigger value="tax_invoice" className="gap-2">
+                  <FileText className="w-4 h-4" />
+                  세금계산서
+                </TabsTrigger>
+                <TabsTrigger value="withholding" className="gap-2">
+                  <User className="w-4 h-4" />
+                  원천징수
+                </TabsTrigger>
+                <TabsTrigger value="corporate_card" className="gap-2">
+                  <CreditCard className="w-4 h-4" />
+                  법인카드
+                </TabsTrigger>
+                <TabsTrigger value="corporate_cash" className="gap-2">
+                  <Building2 className="w-4 h-4" />
+                  법인현금
+                </TabsTrigger>
+                <TabsTrigger value="personal" className="gap-2">
+                  <Wallet className="w-4 h-4" />
+                  개인지출
+                </TabsTrigger>
+              </TabsList>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" className="gap-2">
+                  <Download className="w-4 h-4" />
+                  내보내기
+                </Button>
+                <Button size="sm" className="gap-2" onClick={() => {
+                  setExpenseType(expenseTab);
+                  setShowAddExpenseModal(true);
+                }}>
+                  <Plus className="w-4 h-4" />
+                  지출 추가
+                </Button>
+              </div>
+            </div>
+
+            {/* Tax Invoice */}
+            <TabsContent value="tax_invoice" className="mt-4">
+              <Card className="shadow-card">
+                <ScrollArea className="max-h-[500px]">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>No.</TableHead>
+                        <TableHead>입금약일</TableHead>
+                        <TableHead>내용</TableHead>
+                        <TableHead className="text-right">공급가</TableHead>
+                        <TableHead className="text-right">세액</TableHead>
+                        <TableHead className="text-right">총액</TableHead>
+                        <TableHead>회사명/대표자</TableHead>
+                        <TableHead>사업자번호</TableHead>
+                        <TableHead>진행단계</TableHead>
+                        <TableHead>입금일자</TableHead>
                       </TableRow>
-                    ))
-                  )}
-                  {taxInvoices.length > 0 && (
-                    <TableRow className="bg-muted/50 font-semibold">
-                      <TableCell colSpan={3} className="text-right">합계</TableCell>
-                      <TableCell className="text-right">{formatCurrency(taxInvoices.reduce((sum, i) => sum + i.supplyAmount, 0))}</TableCell>
-                      <TableCell className="text-right">{formatCurrency(taxInvoices.reduce((sum, i) => sum + i.taxAmount, 0))}</TableCell>
-                      <TableCell className="text-right">{formatCurrency(taxInvoices.reduce((sum, i) => sum + i.totalAmount, 0))}</TableCell>
-                      <TableCell colSpan={4}></TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </ScrollArea>
-          </Card>
-        </TabsContent>
+                    </TableHeader>
+                    <TableBody>
+                      {taxInvoices.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
+                            등록된 세금계산서가 없습니다
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        taxInvoices.map((invoice) => (
+                          <TableRow key={invoice.id}>
+                            <TableCell>{invoice.orderNo}</TableCell>
+                            <TableCell>{invoice.paymentDueDate}</TableCell>
+                            <TableCell className="max-w-[200px] truncate font-medium">{invoice.description}</TableCell>
+                            <TableCell className="text-right">{formatCurrency(invoice.supplyAmount)}</TableCell>
+                            <TableCell className="text-right">{formatCurrency(invoice.taxAmount)}</TableCell>
+                            <TableCell className="text-right font-medium">{formatCurrency(invoice.totalAmount)}</TableCell>
+                            <TableCell className="max-w-[150px] truncate">{invoice.companyName}</TableCell>
+                            <TableCell>{invoice.businessNumber}</TableCell>
+                            <TableCell>{getStatusBadge(invoice.status)}</TableCell>
+                            <TableCell>{formatDate(invoice.paymentDate)}</TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                      {taxInvoices.length > 0 && (
+                        <TableRow className="bg-muted/50 font-semibold">
+                          <TableCell colSpan={3} className="text-right">합계</TableCell>
+                          <TableCell className="text-right">{formatCurrency(taxInvoices.reduce((sum, i) => sum + i.supplyAmount, 0))}</TableCell>
+                          <TableCell className="text-right">{formatCurrency(taxInvoices.reduce((sum, i) => sum + i.taxAmount, 0))}</TableCell>
+                          <TableCell className="text-right">{formatCurrency(taxInvoices.reduce((sum, i) => sum + i.totalAmount, 0))}</TableCell>
+                          <TableCell colSpan={4}></TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </ScrollArea>
+              </Card>
+            </TabsContent>
 
-        {/* Withholding */}
-        <TabsContent value="withholding" className="mt-4">
-          <Card className="p-8 text-center text-muted-foreground">
-            <User className="w-12 h-12 mx-auto mb-4 opacity-50" />
-            <p>등록된 용역비(원천징수) 내역이 없습니다</p>
-            <Button variant="outline" className="mt-4 gap-2" onClick={() => {
-              setExpenseType('withholding');
-              setShowAddExpenseModal(true);
-            }}>
-              <Plus className="w-4 h-4" />
-              용역비 추가
-            </Button>
-          </Card>
-        </TabsContent>
+            {/* Withholding */}
+            <TabsContent value="withholding" className="mt-4">
+              <Card className="p-8 text-center text-muted-foreground">
+                <User className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                <p>등록된 용역비(원천징수) 내역이 없습니다</p>
+                <Button variant="outline" className="mt-4 gap-2" onClick={() => {
+                  setExpenseType('withholding');
+                  setShowAddExpenseModal(true);
+                }}>
+                  <Plus className="w-4 h-4" />
+                  용역비 추가
+                </Button>
+              </Card>
+            </TabsContent>
 
-        {/* Corporate Card */}
-        <TabsContent value="corporate_card" className="mt-4">
-          <Card className="shadow-card">
-            <ScrollArea className="max-h-[500px]">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>No.</TableHead>
-                    <TableHead>카드</TableHead>
-                    <TableHead className="text-center">영수증</TableHead>
-                    <TableHead>사용날짜</TableHead>
-                    <TableHead>사용내용</TableHead>
-                    <TableHead>사용자</TableHead>
-                    <TableHead className="text-right">사용액(VAT포함)</TableHead>
-                    <TableHead className="text-right">USD</TableHead>
-                    <TableHead>거래처명</TableHead>
-                    <TableHead>비고</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {corporateCardExpenses.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
-                        등록된 법인카드 내역이 없습니다
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    corporateCardExpenses.map((expense) => (
-                      <TableRow key={expense.id}>
-                        <TableCell>{expense.orderNo}</TableCell>
-                        <TableCell>{expense.cardHolder}</TableCell>
-                        <TableCell className="text-center">
-                          {expense.receiptSubmitted && <CheckCircle2 className="w-4 h-4 text-emerald-600 mx-auto" />}
-                        </TableCell>
-                        <TableCell>{formatDate(expense.usageDate)}</TableCell>
-                        <TableCell className="max-w-[150px] truncate font-medium">{expense.description}</TableCell>
-                        <TableCell>{expense.usedBy}</TableCell>
-                        <TableCell className="text-right font-medium">{formatCurrency(expense.amountWithVat)}</TableCell>
-                        <TableCell className="text-right text-muted-foreground">
-                          {expense.amountUsd ? `$${expense.amountUsd.toFixed(2)}` : '-'}
-                        </TableCell>
-                        <TableCell className="max-w-[120px] truncate">{expense.vendor}</TableCell>
-                        <TableCell className="max-w-[100px] truncate text-muted-foreground text-sm">{expense.note}</TableCell>
+            {/* Corporate Card */}
+            <TabsContent value="corporate_card" className="mt-4">
+              <Card className="shadow-card">
+                <ScrollArea className="max-h-[500px]">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>No.</TableHead>
+                        <TableHead>카드</TableHead>
+                        <TableHead className="text-center">영수증</TableHead>
+                        <TableHead>사용날짜</TableHead>
+                        <TableHead>사용내용</TableHead>
+                        <TableHead>사용자</TableHead>
+                        <TableHead className="text-right">사용액(VAT포함)</TableHead>
+                        <TableHead className="text-right">USD</TableHead>
+                        <TableHead>거래처명</TableHead>
+                        <TableHead>비고</TableHead>
                       </TableRow>
-                    ))
-                  )}
-                  {corporateCardExpenses.length > 0 && (
-                    <TableRow className="bg-muted/50 font-semibold">
-                      <TableCell colSpan={6} className="text-right">합계 (VAT 포함)</TableCell>
-                      <TableCell className="text-right">{formatCurrency(corporateCardExpenses.reduce((sum, e) => sum + e.amountWithVat, 0))}</TableCell>
-                      <TableCell colSpan={3}></TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </ScrollArea>
-          </Card>
-        </TabsContent>
+                    </TableHeader>
+                    <TableBody>
+                      {corporateCardExpenses.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
+                            등록된 법인카드 내역이 없습니다
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        corporateCardExpenses.map((expense) => (
+                          <TableRow key={expense.id}>
+                            <TableCell>{expense.orderNo}</TableCell>
+                            <TableCell>{expense.cardHolder}</TableCell>
+                            <TableCell className="text-center">
+                              {expense.receiptSubmitted && <CheckCircle2 className="w-4 h-4 text-emerald-600 mx-auto" />}
+                            </TableCell>
+                            <TableCell>{formatDate(expense.usageDate)}</TableCell>
+                            <TableCell className="max-w-[150px] truncate font-medium">{expense.description}</TableCell>
+                            <TableCell>{expense.usedBy}</TableCell>
+                            <TableCell className="text-right font-medium">{formatCurrency(expense.amountWithVat)}</TableCell>
+                            <TableCell className="text-right text-muted-foreground">
+                              {expense.amountUsd ? `$${expense.amountUsd.toFixed(2)}` : '-'}
+                            </TableCell>
+                            <TableCell className="max-w-[120px] truncate">{expense.vendor}</TableCell>
+                            <TableCell className="max-w-[100px] truncate text-muted-foreground text-sm">{expense.note}</TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                      {corporateCardExpenses.length > 0 && (
+                        <TableRow className="bg-muted/50 font-semibold">
+                          <TableCell colSpan={6} className="text-right">합계 (VAT 포함)</TableCell>
+                          <TableCell className="text-right">{formatCurrency(corporateCardExpenses.reduce((sum, e) => sum + e.amountWithVat, 0))}</TableCell>
+                          <TableCell colSpan={3}></TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </ScrollArea>
+              </Card>
+            </TabsContent>
 
-        {/* Corporate Cash */}
-        <TabsContent value="corporate_cash" className="mt-4">
-          <Card className="p-8 text-center text-muted-foreground">
-            <Wallet className="w-12 h-12 mx-auto mb-4 opacity-50" />
-            <p>등록된 법인현금 사용 내역이 없습니다</p>
-            <Button variant="outline" className="mt-4 gap-2" onClick={() => {
-              setExpenseType('corporate_cash');
-              setShowAddExpenseModal(true);
-            }}>
-              <Plus className="w-4 h-4" />
-              법인현금 내역 추가
-            </Button>
-          </Card>
-        </TabsContent>
+            {/* Corporate Cash */}
+            <TabsContent value="corporate_cash" className="mt-4">
+              <Card className="p-8 text-center text-muted-foreground">
+                <Wallet className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                <p>등록된 법인현금 사용 내역이 없습니다</p>
+                <Button variant="outline" className="mt-4 gap-2" onClick={() => {
+                  setExpenseType('corporate_cash');
+                  setShowAddExpenseModal(true);
+                }}>
+                  <Plus className="w-4 h-4" />
+                  법인현금 내역 추가
+                </Button>
+              </Card>
+            </TabsContent>
 
-        {/* Personal Expense */}
-        <TabsContent value="personal" className="mt-4">
-          <Card className="p-8 text-center text-muted-foreground">
-            <User className="w-12 h-12 mx-auto mb-4 opacity-50" />
-            <p>등록된 개인지출 내역이 없습니다</p>
-            <Button variant="outline" className="mt-4 gap-2" onClick={() => {
-              setExpenseType('personal');
-              setShowAddExpenseModal(true);
-            }}>
-              <Plus className="w-4 h-4" />
-              개인지출 추가
-            </Button>
-          </Card>
-        </TabsContent>
-      </Tabs>
+            {/* Personal Expense */}
+            <TabsContent value="personal" className="mt-4">
+              <Card className="p-8 text-center text-muted-foreground">
+                <User className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                <p>등록된 개인지출 내역이 없습니다</p>
+                <Button variant="outline" className="mt-4 gap-2" onClick={() => {
+                  setExpenseType('personal');
+                  setShowAddExpenseModal(true);
+                }}>
+                  <Plus className="w-4 h-4" />
+                  개인지출 추가
+                </Button>
+              </Card>
+            </TabsContent>
+          </Tabs>
+        </div>
+      )}
 
       {/* Payment Schedule Summary */}
       <Card className="p-6 shadow-card">
