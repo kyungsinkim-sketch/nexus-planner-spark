@@ -544,7 +544,7 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
           <div className="p-4 border-b flex items-center justify-between">
             <div>
               <h3 className="font-semibold">예산 계획표</h3>
-              <p className="text-sm text-muted-foreground">프로젝트 지출 계획을 수립하고 실지출과 비교합니다</p>
+              <p className="text-sm text-muted-foreground">프로젝트 지출 계획을 수립합니다</p>
             </div>
             <div className="flex gap-2">
               <Button variant="outline" size="sm" className="gap-2">
@@ -557,53 +557,72 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
               </Button>
             </div>
           </div>
-          <ScrollArea className="max-h-[500px]">
+          <div className="overflow-auto">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-10">완료</TableHead>
                   <TableHead>No.</TableHead>
                   <TableHead>대분류</TableHead>
                   <TableHead>소분류</TableHead>
                   <TableHead className="text-right">목표단가</TableHead>
                   <TableHead className="text-center">수량</TableHead>
                   <TableHead className="text-right">목표지출합계</TableHead>
-                  <TableHead className="text-right">실지출액</TableHead>
-                  <TableHead className="text-right">차액</TableHead>
+                  <TableHead>지급 시기</TableHead>
                   <TableHead>비고</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {lineItems.map((item) => (
-                  <TableRow key={item.id}>
-                    <TableCell>
-                      <Checkbox checked={item.completed} />
-                    </TableCell>
-                    <TableCell>{item.orderNo}</TableCell>
-                    <TableCell className="font-medium">{item.mainCategory}</TableCell>
-                    <TableCell className="max-w-[200px] truncate">{item.subCategory}</TableCell>
-                    <TableCell className="text-right">{formatCurrency(item.targetUnitPrice)}</TableCell>
-                    <TableCell className="text-center">{item.quantity}</TableCell>
-                    <TableCell className="text-right">{formatCurrency(item.targetExpenseWithVat)}</TableCell>
-                    <TableCell className="text-right font-medium">{formatCurrency(item.actualExpenseWithVat)}</TableCell>
-                    <TableCell className={`text-right ${item.variance > 0 ? 'text-emerald-600' : item.variance < 0 ? 'text-red-600' : ''}`}>
-                      {item.variance > 0 ? '+' : ''}{formatCurrency(item.variance)}
-                    </TableCell>
-                    <TableCell className="max-w-[150px] truncate text-muted-foreground text-sm">{item.note}</TableCell>
-                  </TableRow>
-                ))}
-                <TableRow className="bg-muted/50 font-semibold">
-                  <TableCell colSpan={6} className="text-right">합계</TableCell>
+                {(() => {
+                  // Group items by mainCategory
+                  const groupedItems = lineItems.reduce((acc, item) => {
+                    const key = item.mainCategory;
+                    if (!acc[key]) {
+                      acc[key] = [];
+                    }
+                    acc[key].push(item);
+                    return acc;
+                  }, {} as Record<string, typeof lineItems>);
+
+                  // Render grouped items
+                  return Object.entries(groupedItems).map(([category, items], groupIndex) => {
+                    const categoryTotal = items.reduce((sum, item) => sum + item.targetExpenseWithVat, 0);
+                    return (
+                      <>
+                        {/* Category Header Row */}
+                        <TableRow key={`header-${category}`} className="bg-muted/30">
+                          <TableCell colSpan={5} className="font-semibold text-foreground">
+                            {category}
+                          </TableCell>
+                          <TableCell className="text-right font-semibold text-foreground">
+                            {formatCurrency(categoryTotal)}
+                          </TableCell>
+                          <TableCell colSpan={2}></TableCell>
+                        </TableRow>
+                        {/* Category Items */}
+                        {items.map((item, itemIndex) => (
+                          <TableRow key={item.id} className="hover:bg-muted/10">
+                            <TableCell className="text-muted-foreground">{groupIndex + 1}-{itemIndex + 1}</TableCell>
+                            <TableCell></TableCell>
+                            <TableCell className="max-w-[200px]">{item.subCategory}</TableCell>
+                            <TableCell className="text-right">{formatCurrency(item.targetUnitPrice)}</TableCell>
+                            <TableCell className="text-center">{item.quantity}</TableCell>
+                            <TableCell className="text-right">{formatCurrency(item.targetExpenseWithVat)}</TableCell>
+                            <TableCell className="text-muted-foreground text-sm">{item.paymentTiming || '-'}</TableCell>
+                            <TableCell className="max-w-[150px] truncate text-muted-foreground text-sm">{item.note}</TableCell>
+                          </TableRow>
+                        ))}
+                      </>
+                    );
+                  });
+                })()}
+                <TableRow className="bg-muted/50 font-semibold border-t-2">
+                  <TableCell colSpan={5} className="text-right">총 합계</TableCell>
                   <TableCell className="text-right">{formatCurrency(totalTargetExpense)}</TableCell>
-                  <TableCell className="text-right">{formatCurrency(totalActualExpense)}</TableCell>
-                  <TableCell className={`text-right ${totalVariance > 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                    {totalVariance > 0 ? '+' : ''}{formatCurrency(totalVariance)}
-                  </TableCell>
-                  <TableCell></TableCell>
+                  <TableCell colSpan={2}></TableCell>
                 </TableRow>
               </TableBody>
             </Table>
-          </ScrollArea>
+          </div>
         </Card>
       )}
 
