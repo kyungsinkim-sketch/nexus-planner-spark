@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { User, Project, CalendarEvent, ChatMessage, FileGroup, FileItem, PerformanceSnapshot, PortfolioItem, PeerFeedback, ProjectContribution, ScoreSettings } from '@/types/core';
+import { User, Project, CalendarEvent, ChatMessage, FileGroup, FileItem, PerformanceSnapshot, PortfolioItem, PeerFeedback, ProjectContribution, ScoreSettings, UserWorkStatus } from '@/types/core';
 import { mockUsers, mockProjects, mockEvents, mockMessages, mockFileGroups, mockFiles, mockPerformanceSnapshots, mockPortfolioItems, mockPeerFeedback, mockProjectContributions, currentUser } from '@/mock/data';
 
 interface AppState {
@@ -19,6 +19,9 @@ interface AppState {
   projectContributions: ProjectContribution[];
   scoreSettings: ScoreSettings;
   
+  // User Work Status
+  userWorkStatus: UserWorkStatus;
+  
   // UI State
   selectedProjectId: string | null;
   sidebarCollapsed: boolean;
@@ -26,6 +29,7 @@ interface AppState {
   // Actions
   setSelectedProject: (projectId: string | null) => void;
   toggleSidebar: () => void;
+  setUserWorkStatus: (status: UserWorkStatus) => void;
   
   // Project Actions (placeholder)
   addProject: (project: Project) => void;
@@ -74,6 +78,9 @@ export const useAppStore = create<AppState>((set, get) => ({
   projectContributions: mockProjectContributions,
   scoreSettings: { financialWeight: 70, peerWeight: 30 },
   
+  // User Work Status
+  userWorkStatus: 'NOT_AT_WORK',
+  
   // UI State
   selectedProjectId: null,
   sidebarCollapsed: false,
@@ -81,6 +88,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   // Actions
   setSelectedProject: (projectId) => set({ selectedProjectId: projectId }),
   toggleSidebar: () => set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
+  setUserWorkStatus: (status) => set({ userWorkStatus: status }),
   
   // Project Actions
   addProject: (project) => set((state) => ({ projects: [...state.projects, project] })),

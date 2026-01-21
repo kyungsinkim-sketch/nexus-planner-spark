@@ -97,10 +97,13 @@ export interface Project {
 
 export type EventSource = 'PAULUS' | 'GOOGLE';
 
+// User work status
+export type UserWorkStatus = 'AT_WORK' | 'NOT_AT_WORK' | 'LUNCH' | 'TRAINING';
+
 export interface CalendarEvent {
   id: string;
   title: string;
-  type: 'TASK' | 'DEADLINE' | 'MEETING' | 'PT' | 'DELIVERY' | 'TODO' | 'DELIVERABLE';
+  type: 'TASK' | 'DEADLINE' | 'MEETING' | 'PT' | 'DELIVERY' | 'TODO' | 'DELIVERABLE' | 'R_TRAINING';
   startAt: string;
   endAt: string;
   projectId?: string;

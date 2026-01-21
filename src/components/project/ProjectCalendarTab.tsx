@@ -26,6 +26,7 @@ const eventTypeColors: Record<EventType, string> = {
   DELIVERY: 'fc-event-delivery',
   TODO: 'fc-event-task',
   DELIVERABLE: 'fc-event-delivery',
+  R_TRAINING: 'fc-event-training',
 };
 
 export function ProjectCalendarTab({ projectId }: ProjectCalendarTabProps) {
@@ -34,7 +35,7 @@ export function ProjectCalendarTab({ projectId }: ProjectCalendarTabProps) {
   const calendarRef = useRef<FullCalendar>(null);
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [isPanelOpen, setIsPanelOpen] = useState(false);
-  const [selectedTypes, setSelectedTypes] = useState<EventType[]>(['TASK', 'DEADLINE', 'MEETING', 'PT', 'DELIVERY', 'TODO', 'DELIVERABLE']);
+  const [selectedTypes, setSelectedTypes] = useState<EventType[]>(['TASK', 'DEADLINE', 'MEETING', 'PT', 'DELIVERY', 'TODO', 'DELIVERABLE', 'R_TRAINING']);
   const [currentView, setCurrentView] = useState<string>('dayGridMonth');
   
   // New event modal state

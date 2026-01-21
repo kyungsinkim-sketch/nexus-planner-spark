@@ -345,6 +345,14 @@
   opacity: 0.5;
 }
 
+.fc-event-training {
+  background-color: hsl(330 81% 60%) !important;
+}
+
+.event-badge-training {
+  @apply bg-pink-500/10 text-pink-600 border-pink-500/30;
+}
+
 /* Scrollbar Styling */
 ::-webkit-scrollbar {
   width: 6px;
