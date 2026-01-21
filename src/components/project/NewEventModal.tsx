@@ -37,6 +37,7 @@ const eventTypeOptions: { value: EventType; label: string }[] = [
   { value: 'DELIVERY', label: 'Delivery' },
   { value: 'PT', label: 'Presentation/PT' },
   { value: 'TASK', label: 'Task' },
+  { value: 'R_TRAINING', label: 'R-Training' },
 ];
 
 export function NewEventModal({ 
