@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { User, Project, CalendarEvent, ChatMessage, FileGroup, FileItem, PerformanceSnapshot, PortfolioItem, PeerFeedback, ProjectContribution, ScoreSettings, UserWorkStatus } from '@/types/core';
 import { mockUsers, mockProjects, mockEvents, mockMessages, mockFileGroups, mockFiles, mockPerformanceSnapshots, mockPortfolioItems, mockPeerFeedback, mockProjectContributions, currentUser } from '@/mock/data';
+import { Language } from '@/lib/i18n';
 
 interface AppState {
   // Auth
@@ -22,6 +23,9 @@ interface AppState {
   // User Work Status
   userWorkStatus: UserWorkStatus;
   
+  // Language
+  language: Language;
+  
   // UI State
   selectedProjectId: string | null;
   sidebarCollapsed: boolean;
@@ -30,6 +34,7 @@ interface AppState {
   setSelectedProject: (projectId: string | null) => void;
   toggleSidebar: () => void;
   setUserWorkStatus: (status: UserWorkStatus) => void;
+  setLanguage: (lang: Language) => void;
   
   // Project Actions (placeholder)
   addProject: (project: Project) => void;
@@ -81,6 +86,9 @@ export const useAppStore = create<AppState>((set, get) => ({
   // User Work Status
   userWorkStatus: 'NOT_AT_WORK',
   
+  // Language
+  language: 'ko',
+  
   // UI State
   selectedProjectId: null,
   sidebarCollapsed: false,
@@ -89,6 +97,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   setSelectedProject: (projectId) => set({ selectedProjectId: projectId }),
   toggleSidebar: () => set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
   setUserWorkStatus: (status) => set({ userWorkStatus: status }),
+  setLanguage: (lang) => set({ language: lang }),
   
   // Project Actions
   addProject: (project) => set((state) => ({ projects: [...state.projects, project] })),

@@ -6,6 +6,8 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { format } from 'date-fns';
+import { useTranslation } from '@/hooks/useTranslation';
+import { TranslationKey } from '@/lib/i18n';
 
 interface EventSidePanelProps {
   event: CalendarEvent | null;
@@ -13,15 +15,15 @@ interface EventSidePanelProps {
   onClose: () => void;
 }
 
-const eventTypeBadges: Record<EventType, { label: string; className: string }> = {
-  TASK: { label: 'Task', className: 'event-badge event-badge-task' },
-  DEADLINE: { label: 'Deadline', className: 'event-badge event-badge-deadline' },
-  MEETING: { label: 'Meeting', className: 'event-badge event-badge-meeting' },
-  PT: { label: 'Presentation', className: 'event-badge event-badge-pt' },
-  DELIVERY: { label: 'Delivery', className: 'event-badge event-badge-delivery' },
-  TODO: { label: 'To-do', className: 'event-badge event-badge-task' },
-  DELIVERABLE: { label: 'Deliverable', className: 'event-badge event-badge-delivery' },
-  R_TRAINING: { label: 'R-Training', className: 'event-badge event-badge-training' },
+const eventTypeBadgeKeys: Record<EventType, { labelKey: TranslationKey; className: string }> = {
+  TASK: { labelKey: 'task', className: 'event-badge event-badge-task' },
+  DEADLINE: { labelKey: 'deadline', className: 'event-badge event-badge-deadline' },
+  MEETING: { labelKey: 'meeting', className: 'event-badge event-badge-meeting' },
+  PT: { labelKey: 'pt', className: 'event-badge event-badge-pt' },
+  DELIVERY: { labelKey: 'delivery', className: 'event-badge event-badge-delivery' },
+  TODO: { labelKey: 'todo', className: 'event-badge event-badge-task' },
+  DELIVERABLE: { labelKey: 'deliverable', className: 'event-badge event-badge-delivery' },
+  R_TRAINING: { labelKey: 'renatus', className: 'event-badge event-badge-training' },
 };
 
 // Google Calendar Icon SVG
@@ -43,6 +45,7 @@ function GoogleCalendarIcon({ className }: { className?: string }) {
 
 export function EventSidePanel({ event, isOpen, onClose }: EventSidePanelProps) {
   const { getProjectById, getUserById } = useAppStore();
+  const { t } = useTranslation();
 
   if (!isOpen || !event) return null;
 
@@ -63,8 +66,8 @@ export function EventSidePanel({ event, isOpen, onClose }: EventSidePanelProps) 
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-border">
           <div className="flex items-center gap-2">
-            <span className={eventTypeBadges[event.type].className}>
-              {eventTypeBadges[event.type].label}
+            <span className={eventTypeBadgeKeys[event.type].className}>
+              {t(eventTypeBadgeKeys[event.type].labelKey)}
             </span>
             {/* Source Badge */}
             <TooltipProvider>

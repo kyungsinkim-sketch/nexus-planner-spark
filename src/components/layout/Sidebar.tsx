@@ -14,6 +14,7 @@ import {
   Dumbbell,
   LogOut,
   Check,
+  Languages,
 } from 'lucide-react';
 import { useAppStore } from '@/stores/appStore';
 import { cn } from '@/lib/utils';
@@ -27,26 +28,30 @@ import {
   DropdownMenuLabel,
 } from '@/components/ui/dropdown-menu';
 import { UserWorkStatus } from '@/types/core';
+import { useTranslation } from '@/hooks/useTranslation';
+import { Button } from '@/components/ui/button';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
-const workStatusConfig: Record<UserWorkStatus, { label: string; labelKo: string; icon: typeof Building2; colorClass: string }> = {
-  AT_WORK: { label: 'At Work', labelKo: '출근', icon: Building2, colorClass: 'text-emerald-500' },
-  NOT_AT_WORK: { label: 'Not at Work', labelKo: '미출근', icon: LogOut, colorClass: 'text-muted-foreground' },
-  LUNCH: { label: 'Lunch', labelKo: '점심식사', icon: Coffee, colorClass: 'text-amber-500' },
-  TRAINING: { label: 'Training', labelKo: '운동', icon: Dumbbell, colorClass: 'text-pink-500' },
+const workStatusConfig: Record<UserWorkStatus, { labelKey: 'atWork' | 'notAtWork' | 'lunch' | 'training'; icon: typeof Building2; colorClass: string }> = {
+  AT_WORK: { labelKey: 'atWork', icon: Building2, colorClass: 'text-emerald-500' },
+  NOT_AT_WORK: { labelKey: 'notAtWork', icon: LogOut, colorClass: 'text-muted-foreground' },
+  LUNCH: { labelKey: 'lunch', icon: Coffee, colorClass: 'text-amber-500' },
+  TRAINING: { labelKey: 'training', icon: Dumbbell, colorClass: 'text-pink-500' },
 };
 
 export function Sidebar() {
   const { currentUser, sidebarCollapsed, toggleSidebar, userWorkStatus, setUserWorkStatus } = useAppStore();
   const location = useLocation();
+  const { t, language, toggleLanguage } = useTranslation();
 
   // Menu items - Admin only visible to ADMIN role
   const navItems = [
-    { path: '/', icon: Calendar, label: 'Calendar', visible: true },
-    { path: '/projects', icon: FolderKanban, label: 'Projects', visible: true },
-    { path: '/chat', icon: MessageSquare, label: 'Chat', visible: true },
-    { path: '/inbox', icon: Inbox, label: 'Inbox', visible: true },
-    { path: '/profile', icon: User, label: 'My Profile', visible: true },
-    { path: '/admin', icon: Settings, label: 'Admin', visible: currentUser.role === 'ADMIN' },
+    { path: '/', icon: Calendar, labelKey: 'calendar' as const, visible: true },
+    { path: '/projects', icon: FolderKanban, labelKey: 'projects' as const, visible: true },
+    { path: '/chat', icon: MessageSquare, labelKey: 'chat' as const, visible: true },
+    { path: '/inbox', icon: Inbox, labelKey: 'inbox' as const, visible: true },
+    { path: '/profile', icon: User, labelKey: 'myProfile' as const, visible: true },
+    { path: '/admin', icon: Settings, labelKey: 'admin' as const, visible: currentUser.role === 'ADMIN' },
   ].filter(item => item.visible);
 
   const currentStatus = workStatusConfig[userWorkStatus];
@@ -89,12 +94,39 @@ export function Sidebar() {
             >
               <item.icon className="w-5 h-5 shrink-0" />
               {!sidebarCollapsed && (
-                <span className="animate-fade-in">{item.label}</span>
+                <span className="animate-fade-in">{t(item.labelKey)}</span>
               )}
             </NavLink>
           );
         })}
       </nav>
+
+      {/* Language Toggle */}
+      <div className="px-3 pb-2">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={toggleLanguage}
+              className={cn(
+                'w-full gap-2 text-sidebar-muted hover:text-sidebar-foreground hover:bg-sidebar-accent',
+                sidebarCollapsed && 'justify-center px-2'
+              )}
+            >
+              <Languages className="w-4 h-4 shrink-0" />
+              {!sidebarCollapsed && (
+                <span className="animate-fade-in text-xs font-medium">
+                  {language === 'ko' ? 'English' : '한국어'}
+                </span>
+              )}
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="right">
+            {language === 'ko' ? 'Switch to English' : '한국어로 변경'}
+          </TooltipContent>
+        </Tooltip>
+      </div>
 
       {/* User Profile with Status Menu */}
       <div className="border-t border-sidebar-border p-3">
@@ -125,14 +157,14 @@ export function Sidebar() {
                     {currentUser.name}
                   </p>
                   <p className={cn('text-xs truncate', currentStatus.colorClass)}>
-                    {currentStatus.labelKo}
+                    {t(currentStatus.labelKey)}
                   </p>
                 </div>
               )}
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent side="top" align="start" className="w-56">
-            <DropdownMenuLabel>근무 상태</DropdownMenuLabel>
+            <DropdownMenuLabel>{t('setStatus')}</DropdownMenuLabel>
             <DropdownMenuSeparator />
             {(Object.keys(workStatusConfig) as UserWorkStatus[]).map((status) => {
               const config = workStatusConfig[status];
@@ -146,7 +178,7 @@ export function Sidebar() {
                   className="gap-3"
                 >
                   <Icon className={cn('w-4 h-4', config.colorClass)} />
-                  <span className="flex-1">{config.labelKo}</span>
+                  <span className="flex-1">{t(config.labelKey)}</span>
                   {isSelected && <Check className="w-4 h-4 text-primary" />}
                 </DropdownMenuItem>
               );

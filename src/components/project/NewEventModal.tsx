@@ -21,6 +21,8 @@ import {
 } from '@/components/ui/select';
 import { CalendarPlus } from 'lucide-react';
 import { toast } from 'sonner';
+import { useTranslation } from '@/hooks/useTranslation';
+import { TranslationKey } from '@/lib/i18n';
 
 interface NewEventModalProps {
   open: boolean;
@@ -31,13 +33,13 @@ interface NewEventModalProps {
   defaultEndTime?: string;
 }
 
-const eventTypeOptions: { value: EventType; label: string }[] = [
-  { value: 'MEETING', label: 'Meeting' },
-  { value: 'DEADLINE', label: 'Deadline' },
-  { value: 'DELIVERY', label: 'Delivery' },
-  { value: 'PT', label: 'Presentation/PT' },
-  { value: 'TASK', label: 'Task' },
-  { value: 'R_TRAINING', label: 'R-Training' },
+const eventTypeOptions: { value: EventType; labelKey: TranslationKey }[] = [
+  { value: 'MEETING', labelKey: 'meeting' },
+  { value: 'DEADLINE', labelKey: 'deadline' },
+  { value: 'DELIVERY', labelKey: 'delivery' },
+  { value: 'PT', labelKey: 'pt' },
+  { value: 'TASK', labelKey: 'task' },
+  { value: 'R_TRAINING', labelKey: 'renatus' },
 ];
 
 export function NewEventModal({ 
@@ -49,6 +51,7 @@ export function NewEventModal({
   defaultEndTime,
 }: NewEventModalProps) {
   const { addEvent, currentUser } = useAppStore();
+  const { t } = useTranslation();
   
   const getDefaultDate = () => {
     if (defaultDate) return defaultDate;
@@ -84,8 +87,8 @@ export function NewEventModal({
     };
 
     addEvent(newEvent);
-    toast.success('Event created', {
-      description: `"${title}" added to calendar`,
+    toast.success(t('eventCreated'), {
+      description: `"${title}" ${t('addedToCalendar')}`,
     });
 
     // Reset form
@@ -119,27 +122,27 @@ export function NewEventModal({
         <form onSubmit={handleSubmit} className="space-y-4 py-4">
           {/* Event Title */}
           <div className="space-y-2">
-            <Label htmlFor="title">Event Title</Label>
+            <Label htmlFor="title">{t('eventTitle')}</Label>
             <Input
               id="title"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="Enter event title"
+              placeholder={t('enterEventTitle')}
               autoFocus
             />
           </div>
 
           {/* Event Type */}
           <div className="space-y-2">
-            <Label htmlFor="type">Event Type</Label>
+            <Label htmlFor="type">{t('eventType')}</Label>
             <Select value={type} onValueChange={(value) => setType(value as EventType)}>
               <SelectTrigger id="type">
-                <SelectValue placeholder="Select type" />
+                <SelectValue placeholder={t('selectType')} />
               </SelectTrigger>
               <SelectContent>
                 {eventTypeOptions.map((option) => (
                   <SelectItem key={option.value} value={option.value}>
-                    {option.label}
+                    {t(option.labelKey)}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -148,7 +151,7 @@ export function NewEventModal({
 
           {/* Date */}
           <div className="space-y-2">
-            <Label htmlFor="date">Date</Label>
+            <Label htmlFor="date">{t('date')}</Label>
             <Input
               id="date"
               type="date"
@@ -160,7 +163,7 @@ export function NewEventModal({
           {/* Time Range */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="startTime">Start Time</Label>
+              <Label htmlFor="startTime">{t('startTime')}</Label>
               <Input
                 id="startTime"
                 type="time"
@@ -169,7 +172,7 @@ export function NewEventModal({
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="endTime">End Time</Label>
+              <Label htmlFor="endTime">{t('endTime')}</Label>
               <Input
                 id="endTime"
                 type="time"
@@ -181,11 +184,11 @@ export function NewEventModal({
 
           <DialogFooter className="pt-4">
             <Button type="button" variant="outline" onClick={onClose}>
-              Cancel
+              {t('cancel')}
             </Button>
             <Button type="submit" className="gap-2">
               <CalendarPlus className="w-4 h-4" />
-              Create Event
+              {t('createEvent')}
             </Button>
           </DialogFooter>
         </form>
