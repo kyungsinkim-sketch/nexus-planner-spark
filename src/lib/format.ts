@@ -19,6 +19,15 @@ export function formatCurrency(amount: number, currency: Currency = 'KRW'): stri
   }).format(amount);
 }
 
+export function formatKRW(amount: number): string {
+  return new Intl.NumberFormat('ko-KR', {
+    style: 'currency',
+    currency: 'KRW',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(amount);
+}
+
 export function formatNumber(num: number): string {
   return new Intl.NumberFormat('en-US').format(num);
 }
