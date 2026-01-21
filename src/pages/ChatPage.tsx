@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { useAppStore } from '@/stores/appStore';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -6,20 +6,31 @@ import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Separator } from '@/components/ui/separator';
 import { 
   FolderKanban, 
   Users, 
   Search, 
   MessageSquare,
-  Plus,
-  ChevronRight,
+  Send,
+  Paperclip,
+  ArrowLeft,
 } from 'lucide-react';
-import { Link } from 'react-router-dom';
+
+type ChatType = 'project' | 'direct';
+
+interface SelectedChat {
+  type: ChatType;
+  id: string;
+}
 
 export default function ChatPage() {
-  const { projects, users, currentUser, messages } = useAppStore();
+  const { projects, users, currentUser, messages, addMessage, getUserById } = useAppStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTab, setSelectedTab] = useState<'projects' | 'direct'>('projects');
+  const [selectedChat, setSelectedChat] = useState<SelectedChat | null>(null);
+  const [newMessage, setNewMessage] = useState('');
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Filter active projects
   const activeProjects = useMemo(() => {
@@ -47,6 +58,22 @@ export default function ChatPage() {
     const q = searchQuery.toLowerCase();
     return otherUsers.filter(u => u.name.toLowerCase().includes(q));
   }, [otherUsers, searchQuery]);
+
+  // Get messages for selected chat
+  const chatMessages = useMemo(() => {
+    if (!selectedChat) return [];
+    
+    if (selectedChat.type === 'project') {
+      return messages.filter(m => m.projectId === selectedChat.id);
+    } else {
+      // Direct messages - filter by both users
+      return messages.filter(m => 
+        m.directChatUserId === selectedChat.id || 
+        (m.userId === currentUser.id && m.directChatUserId === selectedChat.id) ||
+        (m.userId === selectedChat.id && m.directChatUserId === currentUser.id)
+      );
+    }
+  }, [messages, selectedChat, currentUser.id]);
 
   // Get last message for a project
   const getLastMessage = (projectId: string) => {
@@ -78,6 +105,91 @@ export default function ChatPage() {
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   };
 
+  const formatMessageTime = (dateString: string) => {
+    return new Date(dateString).toLocaleTimeString('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+    });
+  };
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    if (date.toDateString() === today.toDateString()) {
+      return 'Today';
+    } else if (date.toDateString() === yesterday.toDateString()) {
+      return 'Yesterday';
+    } else {
+      return date.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+      });
+    }
+  };
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [chatMessages]);
+
+  const handleSendMessage = () => {
+    if (!newMessage.trim() || !selectedChat) return;
+    
+    addMessage({
+      id: `m${Date.now()}`,
+      projectId: selectedChat.type === 'project' ? selectedChat.id : '',
+      userId: currentUser.id,
+      content: newMessage.trim(),
+      createdAt: new Date().toISOString(),
+      directChatUserId: selectedChat.type === 'direct' ? selectedChat.id : undefined,
+    });
+    
+    setNewMessage('');
+  };
+
+  const handleSelectProjectChat = (projectId: string) => {
+    setSelectedChat({ type: 'project', id: projectId });
+  };
+
+  const handleSelectDirectChat = (userId: string) => {
+    setSelectedChat({ type: 'direct', id: userId });
+  };
+
+  const handleBackToList = () => {
+    setSelectedChat(null);
+  };
+
+  // Get selected chat info
+  const selectedChatInfo = useMemo(() => {
+    if (!selectedChat) return null;
+    
+    if (selectedChat.type === 'project') {
+      const project = projects.find(p => p.id === selectedChat.id);
+      return project ? { name: project.title, subtitle: project.client, thumbnail: project.thumbnail } : null;
+    } else {
+      const user = users.find(u => u.id === selectedChat.id);
+      return user ? { name: user.name, subtitle: user.department } : null;
+    }
+  }, [selectedChat, projects, users]);
+
+  // Group messages by date
+  const groupedMessages = useMemo(() => {
+    return chatMessages.reduce((groups, message) => {
+      const date = formatDate(message.createdAt);
+      if (!groups[date]) {
+        groups[date] = [];
+      }
+      groups[date].push(message);
+      return groups;
+    }, {} as Record<string, typeof chatMessages>);
+  }, [chatMessages]);
+
   return (
     <div className="page-container animate-fade-in">
       <div className="page-header">
@@ -91,7 +203,7 @@ export default function ChatPage() {
 
       <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
         {/* Chat List Sidebar */}
-        <Card className="shadow-card overflow-hidden">
+        <Card className={`shadow-card overflow-hidden ${selectedChat ? 'hidden lg:block' : ''}`}>
           <div className="p-4 border-b border-border">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -122,11 +234,11 @@ export default function ChatPage() {
               </TabsTrigger>
             </TabsList>
 
-            <ScrollArea className="h-[500px]">
+            <ScrollArea className="h-[calc(100vh-320px)]">
               <TabsContent value="projects" className="m-0">
                 {filteredProjects.length === 0 ? (
-                  <div className="p-6 text-center">
-                    <FolderKanban className="w-10 h-10 text-muted-foreground mx-auto mb-2" />
+                  <div className="flex flex-col items-center justify-center py-12 text-center">
+                    <FolderKanban className="w-10 h-10 text-muted-foreground mb-3" />
                     <p className="text-sm text-muted-foreground">No projects found</p>
                   </div>
                 ) : (
@@ -134,31 +246,30 @@ export default function ChatPage() {
                     {filteredProjects.map((project) => {
                       const lastMessage = getLastMessage(project.id);
                       const messageCount = getMessageCount(project.id);
+                      const isSelected = selectedChat?.type === 'project' && selectedChat?.id === project.id;
                       
                       return (
-                        <Link
+                        <button
                           key={project.id}
-                          to={`/projects/${project.id}?tab=chat`}
-                          className="flex items-start gap-3 p-4 hover:bg-muted/50 transition-colors group"
+                          onClick={() => handleSelectProjectChat(project.id)}
+                          className={`w-full flex items-start gap-3 p-4 hover:bg-muted/50 transition-colors group text-left ${
+                            isSelected ? 'bg-muted' : ''
+                          }`}
                         >
-                          <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                          <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 overflow-hidden">
                             {project.thumbnail ? (
-                              <img 
-                                src={project.thumbnail} 
-                                alt={project.title}
-                                className="w-full h-full rounded-lg object-cover"
-                              />
+                              <img src={project.thumbnail} alt="" className="w-full h-full object-cover" />
                             ) : (
                               <FolderKanban className="w-5 h-5 text-primary" />
                             )}
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center justify-between gap-2">
-                              <p className="font-medium text-foreground truncate text-sm">
+                              <h3 className="font-medium text-foreground truncate text-sm">
                                 {project.title}
-                              </p>
+                              </h3>
                               {lastMessage && (
-                                <span className="text-[10px] text-muted-foreground shrink-0">
+                                <span className="text-xs text-muted-foreground shrink-0">
                                   {formatTime(lastMessage.createdAt)}
                                 </span>
                               )}
@@ -166,14 +277,23 @@ export default function ChatPage() {
                             <p className="text-xs text-muted-foreground truncate mt-0.5">
                               {project.client}
                             </p>
-                            {lastMessage && (
+                            {lastMessage ? (
                               <p className="text-xs text-muted-foreground truncate mt-1">
                                 {lastMessage.content}
                               </p>
+                            ) : (
+                              <p className="text-xs text-muted-foreground/50 italic mt-1">
+                                No messages yet
+                              </p>
                             )}
                           </div>
-                          <ChevronRight className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0 mt-3" />
-                        </Link>
+                          {messageCount > 0 && (
+                            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                              <MessageSquare className="w-3 h-3" />
+                              {messageCount}
+                            </div>
+                          )}
+                        </button>
                       );
                     })}
                   </div>
@@ -182,43 +302,40 @@ export default function ChatPage() {
 
               <TabsContent value="direct" className="m-0">
                 {filteredUsers.length === 0 ? (
-                  <div className="p-6 text-center">
-                    <Users className="w-10 h-10 text-muted-foreground mx-auto mb-2" />
+                  <div className="flex flex-col items-center justify-center py-12 text-center">
+                    <Users className="w-10 h-10 text-muted-foreground mb-3" />
                     <p className="text-sm text-muted-foreground">No users found</p>
                   </div>
                 ) : (
                   <div className="divide-y divide-border">
-                    {filteredUsers.map((user) => (
-                      <button
-                        key={user.id}
-                        className="w-full flex items-center gap-3 p-4 hover:bg-muted/50 transition-colors group text-left"
-                        onClick={() => {
-                          // TODO: Open direct message
-                        }}
-                      >
-                        <Avatar className="w-10 h-10">
-                          <AvatarFallback className="bg-primary/10 text-primary text-sm">
-                            {getInitials(user.name)}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium text-foreground text-sm">
-                            {user.name}
-                          </p>
-                          <p className="text-xs text-muted-foreground capitalize">
-                            {user.role.toLowerCase()}
-                          </p>
-                        </div>
-                        <Button 
-                          variant="ghost" 
-                          size="sm"
-                          className="opacity-0 group-hover:opacity-100 transition-opacity gap-1"
+                    {filteredUsers.map((user) => {
+                      const isSelected = selectedChat?.type === 'direct' && selectedChat?.id === user.id;
+                      
+                      return (
+                        <button
+                          key={user.id}
+                          onClick={() => handleSelectDirectChat(user.id)}
+                          className={`w-full flex items-center gap-3 p-4 hover:bg-muted/50 transition-colors group text-left ${
+                            isSelected ? 'bg-muted' : ''
+                          }`}
                         >
-                          <MessageSquare className="w-3.5 h-3.5" />
-                          Message
-                        </Button>
-                      </button>
-                    ))}
+                          <Avatar className="w-10 h-10">
+                            <AvatarFallback className="bg-primary/10 text-primary text-sm">
+                              {getInitials(user.name)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1 min-w-0">
+                            <h3 className="font-medium text-foreground text-sm">
+                              {user.name}
+                            </h3>
+                            <p className="text-xs text-muted-foreground">
+                              {user.department}
+                            </p>
+                          </div>
+                          <MessageSquare className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                        </button>
+                      );
+                    })}
                   </div>
                 )}
               </TabsContent>
@@ -226,15 +343,160 @@ export default function ChatPage() {
           </Tabs>
         </Card>
 
-        {/* Placeholder for selected chat */}
-        <Card className="shadow-card flex items-center justify-center min-h-[500px]">
-          <div className="text-center p-8">
-            <MessageSquare className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-            <h3 className="font-semibold text-foreground mb-2">Select a conversation</h3>
-            <p className="text-sm text-muted-foreground max-w-sm">
-              Choose a project chat from the list or start a direct message with a team member.
-            </p>
-          </div>
+        {/* Chat Content Area */}
+        <Card className={`shadow-card overflow-hidden flex flex-col h-[calc(100vh-200px)] ${!selectedChat ? 'hidden lg:flex' : ''}`}>
+          {selectedChat && selectedChatInfo ? (
+            <>
+              {/* Chat Header */}
+              <div className="p-4 border-b border-border flex items-center gap-3">
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="lg:hidden shrink-0"
+                  onClick={handleBackToList}
+                >
+                  <ArrowLeft className="w-5 h-5" />
+                </Button>
+                
+                {selectedChat.type === 'project' ? (
+                  <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 overflow-hidden">
+                    {selectedChatInfo.thumbnail ? (
+                      <img src={selectedChatInfo.thumbnail} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      <FolderKanban className="w-5 h-5 text-primary" />
+                    )}
+                  </div>
+                ) : (
+                  <Avatar className="w-10 h-10">
+                    <AvatarFallback className="bg-primary/10 text-primary">
+                      {getInitials(selectedChatInfo.name)}
+                    </AvatarFallback>
+                  </Avatar>
+                )}
+                
+                <div className="flex-1 min-w-0">
+                  <h2 className="font-semibold text-foreground truncate">
+                    {selectedChatInfo.name}
+                  </h2>
+                  <p className="text-xs text-muted-foreground">
+                    {selectedChatInfo.subtitle}
+                  </p>
+                </div>
+              </div>
+
+              {/* Messages */}
+              <ScrollArea className="flex-1 p-4">
+                {chatMessages.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center h-full text-center py-12">
+                    <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
+                      <Send className="w-8 h-8 text-muted-foreground" />
+                    </div>
+                    <h3 className="font-medium text-foreground mb-1">No messages yet</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Start the conversation!
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-6">
+                    {Object.entries(groupedMessages).map(([date, dateMessages]) => (
+                      <div key={date}>
+                        <div className="flex items-center gap-3 mb-4">
+                          <Separator className="flex-1" />
+                          <span className="text-xs font-medium text-muted-foreground">{date}</span>
+                          <Separator className="flex-1" />
+                        </div>
+                        <div className="space-y-4">
+                          {dateMessages.map((message, index) => {
+                            const user = getUserById(message.userId);
+                            const isCurrentUser = message.userId === currentUser.id;
+                            const showAvatar = index === 0 || dateMessages[index - 1].userId !== message.userId;
+                            
+                            return (
+                              <div 
+                                key={message.id} 
+                                className={`flex gap-3 ${isCurrentUser ? 'flex-row-reverse' : ''}`}
+                              >
+                                {showAvatar ? (
+                                  <Avatar className="w-8 h-8 shrink-0">
+                                    <AvatarFallback className={`text-xs ${
+                                      isCurrentUser 
+                                        ? 'bg-primary text-primary-foreground' 
+                                        : 'bg-muted text-muted-foreground'
+                                    }`}>
+                                      {user?.name.split(' ').map(n => n[0]).join('')}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                ) : (
+                                  <div className="w-8" />
+                                )}
+                                <div className={`flex-1 min-w-0 max-w-[75%] ${isCurrentUser ? 'text-right' : ''}`}>
+                                  {showAvatar && (
+                                    <div className={`flex items-center gap-2 mb-1 ${isCurrentUser ? 'flex-row-reverse' : ''}`}>
+                                      <span className="text-sm font-medium text-foreground">
+                                        {isCurrentUser ? 'You' : user?.name}
+                                      </span>
+                                      <span className="text-xs text-muted-foreground">
+                                        {formatMessageTime(message.createdAt)}
+                                      </span>
+                                    </div>
+                                  )}
+                                  <div 
+                                    className={`inline-block rounded-2xl px-4 py-2 text-sm ${
+                                      isCurrentUser 
+                                        ? 'bg-primary text-primary-foreground' 
+                                        : 'bg-muted text-foreground'
+                                    }`}
+                                  >
+                                    {message.content}
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))}
+                    <div ref={messagesEndRef} />
+                  </div>
+                )}
+              </ScrollArea>
+
+              <Separator />
+
+              {/* Message Input */}
+              <div className="p-4 bg-background">
+                <div className="flex items-center gap-2">
+                  <Button variant="ghost" size="icon" className="shrink-0">
+                    <Paperclip className="w-5 h-5" />
+                  </Button>
+                  <Input
+                    placeholder="Type a message..."
+                    value={newMessage}
+                    onChange={(e) => setNewMessage(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSendMessage()}
+                    className="flex-1"
+                  />
+                  <Button 
+                    size="icon" 
+                    onClick={handleSendMessage}
+                    disabled={!newMessage.trim()}
+                  >
+                    <Send className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="flex flex-col items-center justify-center h-full text-center py-12">
+              <div className="w-20 h-20 rounded-full bg-muted flex items-center justify-center mb-4">
+                <MessageSquare className="w-10 h-10 text-muted-foreground" />
+              </div>
+              <h3 className="font-semibold text-foreground text-lg mb-1">Select a chat</h3>
+              <p className="text-sm text-muted-foreground max-w-[240px]">
+                Choose a project or start a direct message to begin chatting
+              </p>
+            </div>
+          )}
         </Card>
       </div>
     </div>

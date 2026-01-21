@@ -5,6 +5,7 @@ export interface User {
   name: string;
   avatar?: string;
   role: UserRole;
+  department?: string;
 }
 
 export type ProjectType = 'BIDDING' | 'EXECUTION';
@@ -118,6 +119,7 @@ export interface ChatMessage {
   content: string;
   createdAt: string;
   attachmentId?: string; // Reference to uploaded file
+  directChatUserId?: string; // For direct messages between users
 }
 
 export interface FileGroup {
