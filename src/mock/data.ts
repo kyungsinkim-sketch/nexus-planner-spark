@@ -9,11 +9,11 @@ const addDays = (days: number) => {
 };
 
 export const mockUsers: User[] = [
-  { id: 'u1', name: 'Paul Kim', avatar: '', role: 'ADMIN' },
-  { id: 'u2', name: 'Sarah Chen', avatar: '', role: 'MANAGER' },
-  { id: 'u3', name: 'James Lee', avatar: '', role: 'MEMBER' },
-  { id: 'u4', name: 'Emily Park', avatar: '', role: 'MEMBER' },
-  { id: 'u5', name: 'David Song', avatar: '', role: 'MANAGER' },
+  { id: 'u1', name: 'Paul Kim', avatar: '', role: 'ADMIN', department: 'Management' },
+  { id: 'u2', name: 'Sarah Chen', avatar: '', role: 'MANAGER', department: 'Creative' },
+  { id: 'u3', name: 'James Lee', avatar: '', role: 'MEMBER', department: 'Design' },
+  { id: 'u4', name: 'Emily Park', avatar: '', role: 'MEMBER', department: 'Production' },
+  { id: 'u5', name: 'David Song', avatar: '', role: 'MANAGER', department: 'Strategy' },
 ];
 
 export const mockProjects: Project[] = [
