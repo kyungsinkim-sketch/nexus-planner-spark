@@ -2,17 +2,19 @@ import { NavLink, useLocation } from 'react-router-dom';
 import { Calendar, FolderKanban, User, Settings, Inbox, MessageSquare } from 'lucide-react';
 import { useAppStore } from '@/stores/appStore';
 import { cn } from '@/lib/utils';
+import { useTranslation } from '@/hooks/useTranslation';
 
 export function MobileBottomNav() {
   const { currentUser } = useAppStore();
   const location = useLocation();
+  const { t } = useTranslation();
 
   const navItems = [
-    { path: '/', icon: Calendar, label: 'Calendar', visible: true },
-    { path: '/projects', icon: FolderKanban, label: 'Projects', visible: true },
-    { path: '/chat', icon: MessageSquare, label: 'Chat', visible: true },
-    { path: '/inbox', icon: Inbox, label: 'Inbox', visible: true },
-    { path: '/admin', icon: Settings, label: 'Admin', visible: currentUser.role === 'ADMIN' },
+    { path: '/', icon: Calendar, labelKey: 'calendar' as const, visible: true },
+    { path: '/projects', icon: FolderKanban, labelKey: 'projects' as const, visible: true },
+    { path: '/chat', icon: MessageSquare, labelKey: 'chat' as const, visible: true },
+    { path: '/inbox', icon: Inbox, labelKey: 'inbox' as const, visible: true },
+    { path: '/admin', icon: Settings, labelKey: 'admin' as const, visible: currentUser.role === 'ADMIN' },
   ].filter(item => item.visible);
 
   return (
@@ -37,7 +39,7 @@ export function MobileBottomNav() {
                 'w-5 h-5 transition-transform',
                 isActive && 'scale-110'
               )} />
-              <span className="text-[10px] font-medium">{item.label}</span>
+              <span className="text-[10px] font-medium">{t(item.labelKey)}</span>
               {isActive && (
                 <div className="absolute bottom-1 w-1 h-1 rounded-full bg-primary" />
               )}
