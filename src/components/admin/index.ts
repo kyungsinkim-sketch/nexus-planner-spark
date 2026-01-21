@@ -1,3 +1,10 @@
 export { ProductivityTab } from './ProductivityTab';
 export { ContributionTab } from './ContributionTab';
 export { SettingsTab } from './SettingsTab';
+export { HumanResourceTab } from './HumanResourceTab';
+export { FinanceTab } from './FinanceTab';
+export { GeneralAffairsTab } from './GeneralAffairsTab';
+export { OrganizationChart } from './OrganizationChart';
+export { EmployeeList } from './EmployeeList';
+export { SalaryTable } from './SalaryTable';
+export { DiligenceTab } from './DiligenceTab';

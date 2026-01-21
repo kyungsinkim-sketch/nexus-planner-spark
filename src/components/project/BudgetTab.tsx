@@ -108,7 +108,12 @@ const mockBudgetData: ProjectBudget = {
     { id: 'ti-1', projectId: 'p1', orderNo: 1, paymentDueDate: '25. 7. 28.', description: '키링제작 선금', supplyAmount: 20650000, taxAmount: 2065000, totalAmount: 22715000, companyName: '(주)블루베리 / 박정규', businessNumber: '819-86-00960', bank: '기업', accountNumber: '124-108385-01-027', status: 'PAYMENT_COMPLETE', issueDate: '2025-07-25', paymentDate: '2025-07-28' },
     { id: 'ti-2', projectId: 'p1', orderNo: 2, paymentDueDate: '25. 12. 31.', description: '키링제작 잔금', supplyAmount: 8850000, taxAmount: 885000, totalAmount: 9735000, companyName: '(주)블루베리 / 박정규', businessNumber: '819-86-00960', bank: '기업', accountNumber: '124-108385-01-027', status: 'PAYMENT_COMPLETE', issueDate: '2025-12-05', paymentDate: '2025-12-31' },
   ],
-  withholdingPayments: [],
+  withholdingPayments: [
+    { id: 'wh-1', projectId: 'p1', orderNo: 1, paymentDueDate: '25.12.31', personName: '장요한', role: '연출', amount: 3000000, withholdingTax: 99000, totalAmount: 2901000, status: 'PAYMENT_COMPLETE' },
+    { id: 'wh-2', projectId: 'p1', orderNo: 2, paymentDueDate: '25.12.31', personName: '임혁', role: 'AD', amount: 1500000, withholdingTax: 49500, totalAmount: 1450500, status: 'PAYMENT_COMPLETE' },
+    { id: 'wh-3', projectId: 'p1', orderNo: 3, paymentDueDate: '26.01.15', personName: '김현진', role: 'AD', amount: 800000, withholdingTax: 26400, totalAmount: 773600, status: 'PENDING' },
+    { id: 'wh-4', projectId: 'p1', orderNo: 4, paymentDueDate: '26.01.15', personName: '이지우', role: 'AD', amount: 800000, withholdingTax: 26400, totalAmount: 773600, status: 'PENDING' },
+  ],
   corporateCardExpenses: [
     { id: 'cc-1', projectId: 'p1', orderNo: 1, cardHolder: '법인카드', receiptSubmitted: true, usageDate: '2025-09-25', description: 'UWB 모듈 해외직구', usedBy: '담당자', amountWithVat: 6541365, vendor: '알리익스프레스', note: '120개' },
     { id: 'cc-2', projectId: 'p1', orderNo: 2, cardHolder: '법인카드', receiptSubmitted: true, usageDate: '2025-11-05', description: '의상 재료비', usedBy: '의상팀', amountWithVat: 1509780, vendor: '쿠팡', note: '' },
@@ -385,71 +390,21 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
     <div className="space-y-6">
       {/* Summary Cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {/* Total Contract Amount - Editable */}
-        <Card className="p-5 shadow-card">
+        {/* Total Contract Amount - Clickable to navigate to deposits */}
+        <Card 
+          className="p-5 shadow-card cursor-pointer hover:shadow-md transition-shadow hover:border-primary/30"
+          onClick={() => window.location.href = `/projects/${projectId}/deposits`}
+        >
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
               <Banknote className="w-5 h-5 text-primary" />
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm text-muted-foreground">총 계약금액</p>
-              {isEditingContract ? (
-                <div className="flex items-center gap-2 mt-1">
-                  <Input
-                    type="text"
-                    value={editContractAmount.toLocaleString('ko-KR')}
-                    onChange={(e) => {
-                      const value = e.target.value.replace(/[^0-9]/g, '');
-                      setEditContractAmount(Number(value) || 0);
-                    }}
-                    className="h-8 text-lg font-semibold w-full"
-                    autoFocus
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        const vatAmount = editContractAmount * 0.1;
-                        setBudget(prev => ({
-                          ...prev,
-                          summary: {
-                            ...prev.summary,
-                            totalContractAmount: editContractAmount,
-                            vatAmount: vatAmount,
-                            totalWithVat: editContractAmount + vatAmount,
-                          }
-                        }));
-                        setIsEditingContract(false);
-                        toast.success('계약금액이 수정되었습니다.');
-                      }
-                      if (e.key === 'Escape') {
-                        setEditContractAmount(budget.summary.totalContractAmount);
-                        setIsEditingContract(false);
-                      }
-                    }}
-                    onBlur={() => {
-                      const vatAmount = editContractAmount * 0.1;
-                      setBudget(prev => ({
-                        ...prev,
-                        summary: {
-                          ...prev.summary,
-                          totalContractAmount: editContractAmount,
-                          vatAmount: vatAmount,
-                          totalWithVat: editContractAmount + vatAmount,
-                        }
-                      }));
-                      setIsEditingContract(false);
-                    }}
-                  />
-                </div>
-              ) : (
-                <button 
-                  onClick={() => setIsEditingContract(true)}
-                  className="text-left hover:bg-muted/50 rounded px-1 -mx-1 transition-colors w-full"
-                >
-                  <p className="text-xl font-semibold text-foreground">
-                    {formatCurrency(summary.totalWithVat)}
-                  </p>
-                  <p className="text-xs text-muted-foreground">VAT 포함 (클릭하여 수정)</p>
-                </button>
-              )}
+              <p className="text-xl font-semibold text-foreground">
+                {formatCurrency(summary.totalWithVat)}
+              </p>
+              <p className="text-xs text-primary">VAT 포함 • 클릭하여 입금현황 보기</p>
             </div>
           </div>
         </Card>

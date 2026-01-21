@@ -12,6 +12,7 @@ import ProfilePage from "./pages/ProfilePage";
 import SettingsPage from "./pages/SettingsPage";
 import InboxPage from "./pages/InboxPage";
 import ChatPage from "./pages/ChatPage";
+import DepositStatusPage from "./pages/DepositStatusPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -27,6 +28,7 @@ const App = () => (
             <Route path="/" element={<CalendarPage />} />
             <Route path="/projects" element={<ProjectsPage />} />
             <Route path="/projects/:projectId" element={<ProjectDetailPage />} />
+            <Route path="/projects/:projectId/deposits" element={<DepositStatusPage />} />
             <Route path="/chat" element={<ChatPage />} />
             <Route path="/inbox" element={<InboxPage />} />
             <Route path="/admin" element={<AdminPage />} />

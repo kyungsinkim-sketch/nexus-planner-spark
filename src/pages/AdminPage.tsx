@@ -1,64 +1,30 @@
 import { useAppStore } from '@/stores/appStore';
-import { 
-  Users, 
-  FolderKanban, 
-  Calendar, 
-  FileText, 
-  TrendingUp,
-  Sliders,
-  BarChart3
-} from 'lucide-react';
+import { Users, FolderKanban, TrendingUp, FileText } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ProductivityTab, ContributionTab, SettingsTab } from '@/components/admin';
+import { HumanResourceTab } from '@/components/admin/HumanResourceTab';
+import { FinanceTab } from '@/components/admin/FinanceTab';
+import { GeneralAffairsTab } from '@/components/admin/GeneralAffairsTab';
 
 export default function AdminPage() {
-  const { users, projects, events, peerFeedback, projectContributions } = useAppStore();
+  const { users, projects, peerFeedback, projectContributions } = useAppStore();
 
   const stats = [
-    { 
-      label: 'Total Users', 
-      value: users.length, 
-      icon: Users,
-      change: '+2 this month',
-      color: 'text-primary'
-    },
-    { 
-      label: 'Active Projects', 
-      value: projects.filter(p => p.status === 'ACTIVE').length, 
-      icon: FolderKanban,
-      change: '3 starting soon',
-      color: 'text-emerald-500'
-    },
-    { 
-      label: 'Feedback Records', 
-      value: peerFeedback.length, 
-      icon: TrendingUp,
-      change: 'This period',
-      color: 'text-violet-500'
-    },
-    { 
-      label: 'Contribution Records', 
-      value: projectContributions.length,
-      icon: FileText,
-      change: 'Tracked',
-      color: 'text-orange-500'
-    },
+    { label: 'Total Users', value: users.length, icon: Users, change: '+2 this month', color: 'text-primary' },
+    { label: 'Active Projects', value: projects.filter(p => p.status === 'ACTIVE').length, icon: FolderKanban, change: '3 starting soon', color: 'text-emerald-500' },
+    { label: 'Feedback Records', value: peerFeedback.length, icon: TrendingUp, change: 'This period', color: 'text-violet-500' },
+    { label: 'Contribution Records', value: projectContributions.length, icon: FileText, change: 'Tracked', color: 'text-orange-500' },
   ];
 
   return (
     <div className="page-container animate-fade-in">
-      {/* Header */}
       <div className="page-header">
         <div>
           <h1 className="page-title">Admin Dashboard</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Productivity evaluation, contributions, and settings
-          </p>
+          <p className="text-sm text-muted-foreground mt-1">Human Resource, Finance, General Affairs</p>
         </div>
       </div>
 
-      {/* Stats Grid */}
       <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
         {stats.map((stat) => (
           <Card key={stat.label} className="p-5 shadow-card">
@@ -76,34 +42,15 @@ export default function AdminPage() {
         ))}
       </div>
 
-      {/* Tabs */}
-      <Tabs defaultValue="productivity" className="space-y-4">
+      <Tabs defaultValue="hr" className="space-y-4">
         <TabsList>
-          <TabsTrigger value="productivity" className="gap-2">
-            <BarChart3 className="w-4 h-4" />
-            Productivity
-          </TabsTrigger>
-          <TabsTrigger value="contribution" className="gap-2">
-            <TrendingUp className="w-4 h-4" />
-            Contribution
-          </TabsTrigger>
-          <TabsTrigger value="settings" className="gap-2">
-            <Sliders className="w-4 h-4" />
-            Settings
-          </TabsTrigger>
+          <TabsTrigger value="hr" className="gap-2"><Users className="w-4 h-4" />Human Resource</TabsTrigger>
+          <TabsTrigger value="finance" className="gap-2"><TrendingUp className="w-4 h-4" />Finance</TabsTrigger>
+          <TabsTrigger value="ga" className="gap-2"><FolderKanban className="w-4 h-4" />General Affairs</TabsTrigger>
         </TabsList>
-
-        <TabsContent value="productivity">
-          <ProductivityTab />
-        </TabsContent>
-
-        <TabsContent value="contribution">
-          <ContributionTab />
-        </TabsContent>
-
-        <TabsContent value="settings">
-          <SettingsTab />
-        </TabsContent>
+        <TabsContent value="hr"><HumanResourceTab /></TabsContent>
+        <TabsContent value="finance"><FinanceTab /></TabsContent>
+        <TabsContent value="ga"><GeneralAffairsTab /></TabsContent>
       </Tabs>
     </div>
   );
