@@ -530,7 +530,7 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
 
       {/* Add Expense Modal */}
       <Dialog open={showAddExpenseModal} onOpenChange={setShowAddExpenseModal}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>지출 내역 추가</DialogTitle>
             <DialogDescription>
@@ -574,38 +574,314 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
               </Select>
             </div>
 
-            {/* Common fields */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>사용날짜</Label>
-                <Input type="date" />
+            {/* Tax Invoice Fields */}
+            {expenseType === 'tax_invoice' && (
+              <div className="space-y-4 border-t pt-4">
+                <h4 className="font-medium text-sm text-muted-foreground">세금계산서 정보</h4>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>입금약일 <span className="text-destructive">*</span></Label>
+                    <Input placeholder="예: 9월 말" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>내용 <span className="text-destructive">*</span></Label>
+                    <Input placeholder="지출 내용" />
+                  </div>
+                </div>
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label>공급가 (세전) <span className="text-destructive">*</span></Label>
+                    <Input type="text" placeholder="₩0" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>세액 (10%)</Label>
+                    <Input type="text" placeholder="₩0" disabled className="bg-muted" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>총액 (VAT 포함)</Label>
+                    <Input type="text" placeholder="₩0" disabled className="bg-muted" />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>회사명 <span className="text-destructive">*</span></Label>
+                    <Input placeholder="회사명 입력" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>대표자 <span className="text-destructive">*</span></Label>
+                    <Input placeholder="대표자 성함" />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>사업자번호 <span className="text-destructive">*</span></Label>
+                    <Input placeholder="000-00-00000" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>은행</Label>
+                    <Input placeholder="은행명" />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>계좌번호</Label>
+                  <Input placeholder="계좌번호 입력" />
+                </div>
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label>진행단계</Label>
+                    <Select defaultValue="PENDING">
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="PENDING">대기중</SelectItem>
+                        <SelectItem value="INVOICE_ISSUED">계산서발행</SelectItem>
+                        <SelectItem value="PAYMENT_COMPLETE">입금완료</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>발행일자</Label>
+                    <Input type="date" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>입금일자</Label>
+                    <Input type="date" />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>비고</Label>
+                  <Input placeholder="추가 메모" />
+                </div>
               </div>
-              <div className="space-y-2">
-                <Label>금액 (VAT 포함)</Label>
-                <Input type="text" placeholder="₩0" />
-              </div>
-            </div>
+            )}
 
-            <div className="space-y-2">
-              <Label>내용</Label>
-              <Input placeholder="지출 내용을 입력하세요" />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>사용자</Label>
-                <Input placeholder="사용자명" />
+            {/* Withholding (원천징수) Fields */}
+            {expenseType === 'withholding' && (
+              <div className="space-y-4 border-t pt-4">
+                <h4 className="font-medium text-sm text-muted-foreground">원천징수 (용역비) 정보</h4>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>입금약일 <span className="text-destructive">*</span></Label>
+                    <Input placeholder="예: 00.00.00" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>이름 <span className="text-destructive">*</span></Label>
+                    <Input placeholder="용역자 성함" />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>역할 <span className="text-destructive">*</span></Label>
+                  <Input placeholder="예: 2D 모션그래픽, 3D 모델러" />
+                </div>
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label>사용액 <span className="text-destructive">*</span></Label>
+                    <Input type="text" placeholder="₩0" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>세액 (3.3%)</Label>
+                    <Input type="text" placeholder="₩0" disabled className="bg-muted" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>사용총액</Label>
+                    <Input type="text" placeholder="₩0" disabled className="bg-muted" />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>회사명 / 대표자</Label>
+                    <Input placeholder="주식회사 OOO / 홍길동" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>사업자번호</Label>
+                    <Input placeholder="000-00-00000" />
+                  </div>
+                </div>
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label>진행단계</Label>
+                    <Select defaultValue="PENDING">
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="PENDING">대기중</SelectItem>
+                        <SelectItem value="INVOICE_ISSUED">원천징수 발행</SelectItem>
+                        <SelectItem value="PAYMENT_COMPLETE">입금완료</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>발행일자</Label>
+                    <Input type="date" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>입금일자</Label>
+                    <Input type="date" />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>비고</Label>
+                  <Input placeholder="추가 메모" />
+                </div>
               </div>
-              <div className="space-y-2">
-                <Label>거래처명</Label>
-                <Input placeholder="거래처/업체명" />
-              </div>
-            </div>
+            )}
 
-            <div className="space-y-2">
-              <Label>비고</Label>
-              <Input placeholder="추가 메모" />
-            </div>
+            {/* Corporate Card Fields */}
+            {expenseType === 'corporate_card' && (
+              <div className="space-y-4 border-t pt-4">
+                <h4 className="font-medium text-sm text-muted-foreground">법인카드 사용 내역</h4>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>사용 법인카드 <span className="text-destructive">*</span></Label>
+                    <Input placeholder="카드 소유자 또는 카드번호 끝 4자리" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>사용날짜 <span className="text-destructive">*</span></Label>
+                    <Input type="date" />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>사용내용 <span className="text-destructive">*</span></Label>
+                  <Input placeholder="지출 내용을 입력하세요" />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>사용자 <span className="text-destructive">*</span></Label>
+                    <Input placeholder="실사용자 이름" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>거래처명 <span className="text-destructive">*</span></Label>
+                    <Input placeholder="거래처/업체명" />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>사용액 (VAT 포함) <span className="text-destructive">*</span></Label>
+                    <Input type="text" placeholder="₩0" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>USD (해외결제 시)</Label>
+                    <Input type="text" placeholder="$0.00" />
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Checkbox id="receipt-submitted" />
+                  <Label htmlFor="receipt-submitted" className="text-sm font-normal">영수증 제출 완료</Label>
+                </div>
+                <div className="space-y-2">
+                  <Label>비고</Label>
+                  <Input placeholder="추가 메모" />
+                </div>
+              </div>
+            )}
+
+            {/* Corporate Cash Fields */}
+            {expenseType === 'corporate_cash' && (
+              <div className="space-y-4 border-t pt-4">
+                <h4 className="font-medium text-sm text-muted-foreground">법인현금 사용 내역</h4>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>사용날짜 <span className="text-destructive">*</span></Label>
+                    <Input type="date" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>사용자 <span className="text-destructive">*</span></Label>
+                    <Input placeholder="실사용자 이름" />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>사용내용 <span className="text-destructive">*</span></Label>
+                  <Input placeholder="지출 내용을 입력하세요" />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>사용액 (VAT 포함) <span className="text-destructive">*</span></Label>
+                    <Input type="text" placeholder="₩0" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>거래처명 <span className="text-destructive">*</span></Label>
+                    <Input placeholder="거래처/업체명" />
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Checkbox id="cash-receipt-submitted" />
+                  <Label htmlFor="cash-receipt-submitted" className="text-sm font-normal">영수증 제출 완료</Label>
+                </div>
+                <div className="space-y-2">
+                  <Label>비고</Label>
+                  <Input placeholder="추가 메모" />
+                </div>
+              </div>
+            )}
+
+            {/* Personal Expense Fields */}
+            {expenseType === 'personal' && (
+              <div className="space-y-4 border-t pt-4">
+                <h4 className="font-medium text-sm text-muted-foreground">개인지출 내역</h4>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>지출방식 <span className="text-destructive">*</span></Label>
+                    <Select defaultValue="personal_card">
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="personal_card">개인카드</SelectItem>
+                        <SelectItem value="personal_cash">개인현금</SelectItem>
+                        <SelectItem value="transfer">계좌이체</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>사용날짜 <span className="text-destructive">*</span></Label>
+                    <Input type="date" />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>사용자 (지출자) <span className="text-destructive">*</span></Label>
+                    <Input placeholder="지출자 이름" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>지출자 지급 단계</Label>
+                    <Select defaultValue="PENDING">
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="PENDING">지급대기</SelectItem>
+                        <SelectItem value="INVOICE_ISSUED">정산요청</SelectItem>
+                        <SelectItem value="PAYMENT_COMPLETE">지급완료</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>사용내용 <span className="text-destructive">*</span></Label>
+                  <Input placeholder="지출 내용을 입력하세요" />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>사용액 (VAT 포함) <span className="text-destructive">*</span></Label>
+                    <Input type="text" placeholder="₩0" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>거래처명 <span className="text-destructive">*</span></Label>
+                    <Input placeholder="거래처/업체명" />
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Checkbox id="personal-receipt-submitted" />
+                  <Label htmlFor="personal-receipt-submitted" className="text-sm font-normal">영수증 제출 완료</Label>
+                </div>
+                <div className="space-y-2">
+                  <Label>비고</Label>
+                  <Input placeholder="추가 메모 (예: 연장근로식비)" />
+                </div>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowAddExpenseModal(false)}>
