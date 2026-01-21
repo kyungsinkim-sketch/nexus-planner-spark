@@ -3,6 +3,7 @@ import { FileCategory } from '@/types/core';
 import { useAppStore } from '@/stores/appStore';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -17,6 +18,7 @@ import {
   MoreHorizontal,
   FolderOpen,
   MessageSquare,
+  Search,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -94,7 +96,7 @@ export function FilesTab({ projectId }: FilesTabProps) {
     toast.success('File updated');
   };
 
-  const handleUploadConfirm = (category: FileCategory, isImportant: boolean) => {
+  const handleUploadConfirm = (category: FileCategory, isImportant: boolean, comment: string) => {
     const categoryTitles: Record<FileCategory, string> = {
       DECK: 'Presentations',
       FINAL: 'Final Deliverables',
@@ -127,10 +129,14 @@ export function FilesTab({ projectId }: FilesTabProps) {
       type: 'pdf',
       isImportant,
       source: 'UPLOAD',
+      comment,
     });
 
     toast.success('File uploaded successfully');
   };
+
+  // Filter files by search (including comments)
+  const [searchQuery, setSearchQuery] = useState('');
 
   return (
     <div className="flex gap-6 h-[600px]">

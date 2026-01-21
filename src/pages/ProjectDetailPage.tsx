@@ -113,6 +113,17 @@ export default function ProjectDetailPage() {
 
   return (
     <div className="page-container animate-fade-in">
+      {/* Thumbnail Header Background */}
+      {project.thumbnail && (
+        <div className="absolute inset-x-0 top-0 h-48 -z-10 overflow-hidden">
+          <div 
+            className="absolute inset-0 bg-cover bg-center"
+            style={{ backgroundImage: `url(${project.thumbnail})` }}
+          />
+          <div className="absolute inset-0 bg-gradient-to-b from-background/40 via-background/80 to-background" />
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex items-start gap-4">
         <Link to="/projects">

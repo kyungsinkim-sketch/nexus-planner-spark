@@ -1,3 +1,4 @@
+import { useState, useRef } from 'react';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
@@ -5,7 +6,7 @@ import interactionPlugin from '@fullcalendar/interaction';
 import listPlugin from '@fullcalendar/list';
 import { useAppStore } from '@/stores/appStore';
 import { CalendarEvent, EventType } from '@/types/core';
-import { Plus, Filter, ChevronDown, Settings } from 'lucide-react';
+import { Plus, Filter, ChevronDown, Settings, Download, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
@@ -17,9 +18,10 @@ import {
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { EventSidePanel } from '@/components/calendar/EventSidePanel';
+import { NewEventModal } from '@/components/project/NewEventModal';
+import { toast } from 'sonner';
 
 const eventTypeColors: Record<EventType, string> = {
   TASK: 'fc-event-task',
@@ -54,10 +56,18 @@ function GoogleCalendarIcon({ className }: { className?: string }) {
 
 export default function CalendarPage() {
   const { events, getProjectById } = useAppStore();
+  const calendarRef = useRef<FullCalendar>(null);
   const [selectedTypes, setSelectedTypes] = useState<EventType[]>(['TASK', 'DEADLINE', 'MEETING', 'PT', 'DELIVERY', 'TODO', 'DELIVERABLE']);
   const [showGoogleEvents, setShowGoogleEvents] = useState(true);
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [isPanelOpen, setIsPanelOpen] = useState(false);
+  const [currentView, setCurrentView] = useState<string>('dayGridMonth');
+  
+  // New event modal state
+  const [showNewEventModal, setShowNewEventModal] = useState(false);
+  const [newEventDate, setNewEventDate] = useState<string | undefined>();
+  const [newEventStartTime, setNewEventStartTime] = useState<string | undefined>();
+  const [newEventEndTime, setNewEventEndTime] = useState<string | undefined>();
 
   const filteredEvents = events.filter((e) => {
     const typeMatch = selectedTypes.includes(e.type);
@@ -87,6 +97,72 @@ export default function CalendarPage() {
   const handleEventClick = (info: any) => {
     const event = events.find((e) => e.id === info.event.id);
     if (event) { setSelectedEvent(event); setIsPanelOpen(true); }
+  };
+
+  // Handle date selection (for creating events)
+  const handleSelect = (info: any) => {
+    const startDate = info.start;
+    const endDate = info.end;
+    
+    const dateStr = startDate.toISOString().split('T')[0];
+    const startTimeStr = startDate.toTimeString().slice(0, 5);
+    const endTimeStr = endDate.toTimeString().slice(0, 5);
+    
+    setNewEventDate(dateStr);
+    setNewEventStartTime(startTimeStr);
+    setNewEventEndTime(endTimeStr);
+    setShowNewEventModal(true);
+  };
+
+  // Handle view change
+  const handleViewChange = (viewInfo: any) => {
+    setCurrentView(viewInfo.view.type);
+  };
+
+  // Handle New Event button click
+  const handleNewEventClick = () => {
+    setNewEventDate(undefined);
+    setNewEventStartTime(undefined);
+    setNewEventEndTime(undefined);
+    setShowNewEventModal(true);
+  };
+
+  // Export to Google Calendar
+  const handleExportToGoogle = () => {
+    // Generate ICS file content
+    const icsEvents = events
+      .filter(e => e.source === 'PAULUS')
+      .map(event => {
+        const startDate = new Date(event.startAt).toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+        const endDate = new Date(event.endAt).toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+        return `BEGIN:VEVENT
+DTSTART:${startDate}
+DTEND:${endDate}
+SUMMARY:${event.title}
+DESCRIPTION:Event from Paulus.ai
+END:VEVENT`;
+      }).join('\n');
+
+    const icsContent = `BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Paulus.ai//Calendar Export//EN
+${icsEvents}
+END:VCALENDAR`;
+
+    // Download ICS file
+    const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'paulus-calendar-export.ics';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    toast.success('Calendar exported', {
+      description: 'Import the .ics file into Google Calendar to sync your events',
+    });
   };
 
   const todayEvents = events.filter((e) => new Date(e.startAt).toDateString() === new Date().toDateString());
@@ -119,6 +195,25 @@ export default function CalendarPage() {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+          
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="gap-2">
+                <Download className="w-4 h-4" />Export
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={handleExportToGoogle} className="gap-2">
+                <GoogleCalendarIcon className="w-4 h-4" />
+                Export to Google Calendar
+              </DropdownMenuItem>
+              <DropdownMenuItem className="gap-2">
+                <ExternalLink className="w-4 h-4" />
+                Export as ICS file
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -129,7 +224,9 @@ export default function CalendarPage() {
               <TooltipContent>Calendar Settings</TooltipContent>
             </Tooltip>
           </TooltipProvider>
-          <Button size="sm" className="gap-2"><Plus className="w-4 h-4" />New Event</Button>
+          <Button size="sm" className="gap-2" onClick={handleNewEventClick}>
+            <Plus className="w-4 h-4" />New Event
+          </Button>
         </div>
       </div>
 
@@ -147,8 +244,9 @@ export default function CalendarPage() {
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[1fr_320px]">
-        <Card className="p-2 sm:p-4 shadow-card overflow-hidden">
+        <Card className="p-2 sm:p-4 shadow-card overflow-hidden calendar-view-toggle">
           <FullCalendar
+            ref={calendarRef}
             plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin, listPlugin]}
             initialView="dayGridMonth"
             headerToolbar={{ left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek,listWeek' }}
@@ -156,9 +254,12 @@ export default function CalendarPage() {
             events={calendarEvents}
             editable={true}
             selectable={true}
+            selectMirror={true}
             dayMaxEvents={2}
             height="auto"
             eventClick={handleEventClick}
+            select={handleSelect}
+            datesSet={handleViewChange}
             eventContent={(eventInfo) => {
               const isGoogle = eventInfo.event.extendedProps.source === 'GOOGLE';
               return (
@@ -206,6 +307,15 @@ export default function CalendarPage() {
       </div>
 
       <EventSidePanel event={selectedEvent} isOpen={isPanelOpen} onClose={() => { setIsPanelOpen(false); setSelectedEvent(null); }} />
+      
+      <NewEventModal
+        open={showNewEventModal}
+        onClose={() => setShowNewEventModal(false)}
+        projectId=""
+        defaultDate={newEventDate}
+        defaultStartTime={newEventStartTime}
+        defaultEndTime={newEventEndTime}
+      />
     </div>
   );
 }

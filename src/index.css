@@ -4,6 +4,15 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Calendar view toggle - inactive buttons should be dimmed */
+.calendar-view-toggle .fc-button-group .fc-button:not(.fc-button-active) {
+  opacity: 0.4;
+}
+
+.calendar-view-toggle .fc-button-group .fc-button.fc-button-active {
+  opacity: 1;
+}
+
 @layer base {
   :root {
     /* Core Colors - Linear/Asana inspired */

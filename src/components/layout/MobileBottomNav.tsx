@@ -1,5 +1,5 @@
 import { NavLink, useLocation } from 'react-router-dom';
-import { Calendar, FolderKanban, User, Settings, Inbox } from 'lucide-react';
+import { Calendar, FolderKanban, User, Settings, Inbox, MessageSquare } from 'lucide-react';
 import { useAppStore } from '@/stores/appStore';
 import { cn } from '@/lib/utils';
 
@@ -10,8 +10,8 @@ export function MobileBottomNav() {
   const navItems = [
     { path: '/', icon: Calendar, label: 'Calendar', visible: true },
     { path: '/projects', icon: FolderKanban, label: 'Projects', visible: true },
+    { path: '/chat', icon: MessageSquare, label: 'Chat', visible: true },
     { path: '/inbox', icon: Inbox, label: 'Inbox', visible: true },
-    { path: '/profile', icon: User, label: 'Profile', visible: true },
     { path: '/admin', icon: Settings, label: 'Admin', visible: currentUser.role === 'ADMIN' },
   ].filter(item => item.visible);
 
