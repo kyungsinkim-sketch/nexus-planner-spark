@@ -1,13 +1,13 @@
 // Budget System Types
 
 export type ExpenseCategory = 
-  | '3D_INFRASTRUCTURE' 
-  | '3D_LABOR' 
-  | '2D_MOTION' 
-  | 'RECORDING' 
-  | 'VOICE_ACTOR'
-  | 'EQUIPMENT' 
-  | 'MISCELLANEOUS';
+  | 'STAFF_EQUIPMENT'   // 스텝 인건비 / 장비
+  | 'PRODUCTION'        // 제작비
+  | 'TALENT'            // 출연료
+  | 'POST_PRODUCTION'   // 후반
+  | 'EQUIPMENT'         // 장비/비품
+  | 'OUTSOURCING'       // 외주제작
+  | 'MISCELLANEOUS';    // 기타
 
 export type ExpenseStatus = 'PLANNED' | 'IN_PROGRESS' | 'COMPLETED';
 
@@ -64,14 +64,16 @@ export interface BudgetLineItem {
   orderNo: number;
   completed: boolean;
   category: ExpenseCategory;
-  mainCategory: string;    // 대분류
-  subCategory: string;     // 소분류
+  mainCategory: string;    // 대분류 (촬영, 조명, 미술, 의상 등)
+  subCategory: string;     // 소분류 (촬영감독, 촬영팀 인건비 등)
   targetUnitPrice: number; // 목표단가
   quantity: number;        // 회/식/수
   targetExpense: number;   // 목표지출액
   vatRate: number;         // 부가세율 (0.1 = 10%)
   targetExpenseWithVat: number; // 목표지출합계
   actualExpenseWithVat: number; // 실지출액 (VAT 포함)
+  paymentMethod?: string;  // 지급방식 (세금/용역/카드)
+  paymentTiming?: string;  // 지급시기
   note?: string;           // 비고
   variance: number;        // 계획대비차액
 }

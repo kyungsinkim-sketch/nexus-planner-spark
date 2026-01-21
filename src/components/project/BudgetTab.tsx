@@ -60,56 +60,119 @@ import type {
   CorporateCashExpense,
   PersonalExpense,
   PaymentStatus,
+  ExpenseCategory,
 } from '@/types/budget';
 
 interface BudgetTabProps {
   projectId: string;
 }
 
-// Mock budget data based on actual Excel structure
+// Budget category options based on Excel structure
+const BUDGET_CATEGORIES = [
+  { value: 'STAFF_EQUIPMENT', label: '스텝 인건비 / 장비', subCategories: ['촬영', '조명', '미술', '의상', '분장', '동시녹음'] },
+  { value: 'PRODUCTION', label: '제작비', subCategories: ['로케이션', '차량', '교통비', '식사', '진행비'] },
+  { value: 'TALENT', label: '출연료', subCategories: ['주연', '조연', '보조출연', '이미지'] },
+  { value: 'POST_PRODUCTION', label: '후반', subCategories: ['2D', '3D', '녹음', 'CG', '편집'] },
+  { value: 'EQUIPMENT', label: '장비/비품', subCategories: ['촬영장비', '조명장비', '음향장비', '기타비품'] },
+  { value: 'OUTSOURCING', label: '외주제작', subCategories: ['키링제작', '앵커제작', '모듈구매', '디자인/개발'] },
+];
+
+const PAYMENT_METHODS = [
+  { value: 'tax_invoice', label: '세금계산서' },
+  { value: 'withholding', label: '원천징수 (용역)' },
+  { value: 'corporate_card', label: '법인카드' },
+  { value: 'corporate_cash', label: '법인현금' },
+  { value: 'personal', label: '개인지출' },
+];
+
+// Mock budget data based on actual Excel structure (현대 UWB 캠페인 예산안)
 const mockBudgetData: ProjectBudget = {
   summary: {
     id: 'budget-1',
     projectId: 'p1',
-    companyName: 'KPR',
-    contractName: 'HMG 배터리 데이 영상 제작',
-    department: 'NEXT',
-    author: '홍원준',
-    shootingDate: '',
+    companyName: '현대자동차그룹',
+    contractName: '[UWB 정밀 위치추정기술] 어린이집 통학차량 안전 시스템 시범 운영 캠페인',
+    department: '영상제작사업부',
+    author: '박민규',
+    shootingDate: '2025-11-08',
     phase: '후반편집',
-    totalContractAmount: 200000000,
-    vatAmount: 20000000,
-    totalWithVat: 220000000,
-    targetExpenseWithVat: 22110000,
-    targetProfitWithVat: 197890000,
-    actualExpenseWithVat: 15134000,
-    actualProfitWithVat: 204866000,
-    actualExpenseWithoutVat: 6242562,
-    actualProfitWithoutVat: 193757438,
+    totalContractAmount: 283690000,
+    vatAmount: 28369000,
+    totalWithVat: 312059000,
+    targetExpenseWithVat: 97260000,
+    targetProfitWithVat: 186430000,
+    actualExpenseWithVat: 95085351,
+    actualProfitWithVat: 186430000,
+    actualExpenseWithoutVat: 86441228,
+    actualProfitWithoutVat: 186430000,
   },
   paymentSchedules: [
-    { id: 'ps-1', projectId: 'p1', installment: '1차(선금)', expectedAmount: 110000000, expectedDate: '2025-03-10', actualAmount: 110000000, balance: 110000000 },
-    { id: 'ps-2', projectId: 'p1', installment: '2차(중도)', expectedAmount: 0, actualAmount: 0, balance: 110000000 },
-    { id: 'ps-3', projectId: 'p1', installment: '3차(잔액)', expectedAmount: 110000000, expectedDate: '미정', actualAmount: 0, balance: 110000000 },
+    { id: 'ps-1', projectId: 'p1', installment: '1차(선금)', expectedAmount: 0, expectedDate: '', actualAmount: 0, balance: 312059000 },
+    { id: 'ps-2', projectId: 'p1', installment: '2차(중도)', expectedAmount: 0, expectedDate: '', actualAmount: 0, balance: 312059000 },
+    { id: 'ps-3', projectId: 'p1', installment: '3차(잔액)', expectedAmount: 0, expectedDate: '', actualAmount: 0, balance: 312059000 },
   ],
   lineItems: [
-    { id: 'li-1', projectId: 'p1', orderNo: 1, completed: false, category: '3D_INFRASTRUCTURE', mainCategory: '3D', subCategory: '3D 랜더링 컴퓨터 구입 OR 랜더팜', targetUnitPrice: 10000000, quantity: 1, targetExpense: 10000000, vatRate: 0.1, targetExpenseWithVat: 11000000, actualExpenseWithVat: 10000000, note: '대표님 카드로 구매', variance: 1000000 },
-    { id: 'li-2', projectId: 'p1', orderNo: 2, completed: false, category: '3D_INFRASTRUCTURE', mainCategory: '3D', subCategory: '3D 에셋 구매 및 예비비', targetUnitPrice: 3000000, quantity: 1, targetExpense: 3000000, vatRate: 0.1, targetExpenseWithVat: 3300000, actualExpenseWithVat: 550000, note: '법인카드 탭 비고란 링크 참고', variance: 2750000 },
-    { id: 'li-3', projectId: 'p1', orderNo: 3, completed: false, category: '2D_MOTION', mainCategory: '2d', subCategory: '2d 모션그래픽_김희진님', targetUnitPrice: 3000000, quantity: 1, targetExpense: 3000000, vatRate: 0.1, targetExpenseWithVat: 3300000, actualExpenseWithVat: 3300000, note: '프리랜서', variance: 0 },
-    { id: 'li-4', projectId: 'p1', orderNo: 4, completed: false, category: 'RECORDING', mainCategory: '녹음', subCategory: '녹음료', targetUnitPrice: 2000000, quantity: 1, targetExpense: 2000000, vatRate: 0.1, targetExpenseWithVat: 2200000, actualExpenseWithVat: 0, note: '2026년 영상 업데이트 진행 시 사용 예정', variance: 2200000 },
-    { id: 'li-5', projectId: 'p1', orderNo: 5, completed: false, category: 'VOICE_ACTOR', mainCategory: '성우', subCategory: '성우료 (국문/영문)', targetUnitPrice: 500000, quantity: 2, targetExpense: 1000000, vatRate: 0.1, targetExpenseWithVat: 1100000, actualExpenseWithVat: 0, variance: 1100000 },
-    { id: 'li-6', projectId: 'p1', orderNo: 6, completed: false, category: 'EQUIPMENT', mainCategory: '비품', subCategory: '외장하드 20TB', targetUnitPrice: 550000, quantity: 2, targetExpense: 1100000, vatRate: 0.1, targetExpenseWithVat: 1210000, actualExpenseWithVat: 1198000, variance: 12000 },
+    // 스텝 인건비 / 장비 - 촬영
+    { id: 'li-1', projectId: 'p1', orderNo: 1, completed: false, category: 'STAFF_EQUIPMENT', mainCategory: '촬영', subCategory: '촬영감독 (DOP)', targetUnitPrice: 1500000, quantity: 2, targetExpense: 3000000, vatRate: 0.1, targetExpenseWithVat: 3000000, actualExpenseWithVat: 4500000, paymentMethod: 'tax_invoice', paymentTiming: '2월말', note: '', variance: -1500000 },
+    { id: 'li-2', projectId: 'p1', orderNo: 2, completed: false, category: 'STAFF_EQUIPMENT', mainCategory: '촬영', subCategory: '헌팅차지', targetUnitPrice: 750000, quantity: 1, targetExpense: 750000, vatRate: 0.1, targetExpenseWithVat: 750000, actualExpenseWithVat: 0, paymentMethod: 'tax_invoice', paymentTiming: '2월말', note: '', variance: 750000 },
+    { id: 'li-3', projectId: 'p1', orderNo: 3, completed: false, category: 'STAFF_EQUIPMENT', mainCategory: '촬영', subCategory: '촬영팀 인건비', targetUnitPrice: 1600000, quantity: 2, targetExpense: 3200000, vatRate: 0.1, targetExpenseWithVat: 3200000, actualExpenseWithVat: 4996400, paymentMethod: 'withholding', paymentTiming: '2월말', note: '', variance: -1796400 },
+    { id: 'li-4', projectId: 'p1', orderNo: 4, completed: false, category: 'STAFF_EQUIPMENT', mainCategory: '촬영', subCategory: '카메라봉고', targetUnitPrice: 400000, quantity: 2, targetExpense: 800000, vatRate: 0.1, targetExpenseWithVat: 800000, actualExpenseWithVat: 0, paymentMethod: 'withholding', paymentTiming: '2월말', note: '', variance: 800000 },
+    { id: 'li-5', projectId: 'p1', orderNo: 5, completed: false, category: 'STAFF_EQUIPMENT', mainCategory: '촬영', subCategory: '촬영 장비', targetUnitPrice: 1200000, quantity: 2, targetExpense: 2400000, vatRate: 0.1, targetExpenseWithVat: 2400000, actualExpenseWithVat: 2123000, paymentMethod: 'corporate_card', paymentTiming: '2월말', note: '', variance: 277000 },
+    // 스텝 인건비 / 장비 - 조명
+    { id: 'li-6', projectId: 'p1', orderNo: 6, completed: false, category: 'STAFF_EQUIPMENT', mainCategory: '조명', subCategory: '조명팀 인건비', targetUnitPrice: 1600000, quantity: 2, targetExpense: 3200000, vatRate: 0.1, targetExpenseWithVat: 3200000, actualExpenseWithVat: 3250000, paymentMethod: 'withholding', paymentTiming: '2월말', note: '', variance: -50000 },
+    { id: 'li-7', projectId: 'p1', orderNo: 7, completed: false, category: 'STAFF_EQUIPMENT', mainCategory: '조명', subCategory: '조명탑차', targetUnitPrice: 400000, quantity: 2, targetExpense: 800000, vatRate: 0.1, targetExpenseWithVat: 800000, actualExpenseWithVat: 4250000, paymentMethod: 'withholding', paymentTiming: '2월말', note: '', variance: -3450000 },
+    { id: 'li-8', projectId: 'p1', orderNo: 8, completed: false, category: 'STAFF_EQUIPMENT', mainCategory: '조명', subCategory: '조명장비', targetUnitPrice: 1200000, quantity: 2, targetExpense: 2400000, vatRate: 0.1, targetExpenseWithVat: 2400000, actualExpenseWithVat: 0, paymentMethod: 'withholding', paymentTiming: '2월말', note: '', variance: 2400000 },
+    // 스텝 인건비 / 장비 - 미술
+    { id: 'li-9', projectId: 'p1', orderNo: 9, completed: false, category: 'STAFF_EQUIPMENT', mainCategory: '미술', subCategory: '미술 인건비', targetUnitPrice: 4700000, quantity: 1, targetExpense: 4700000, vatRate: 0.1, targetExpenseWithVat: 4700000, actualExpenseWithVat: 8200000, paymentMethod: 'tax_invoice', paymentTiming: '2월말', note: '', variance: -3500000 },
+    { id: 'li-10', projectId: 'p1', orderNo: 10, completed: false, category: 'STAFF_EQUIPMENT', mainCategory: '미술', subCategory: '미술 재료비', targetUnitPrice: 3500000, quantity: 1, targetExpense: 3500000, vatRate: 0.1, targetExpenseWithVat: 3500000, actualExpenseWithVat: 3300000, paymentMethod: 'tax_invoice', paymentTiming: '11월초', note: '', variance: 200000 },
+    // 스텝 인건비 / 장비 - 의상
+    { id: 'li-11', projectId: 'p1', orderNo: 11, completed: false, category: 'STAFF_EQUIPMENT', mainCategory: '의상', subCategory: '의상 인건비', targetUnitPrice: 2000000, quantity: 1, targetExpense: 2000000, vatRate: 0.1, targetExpenseWithVat: 2000000, actualExpenseWithVat: 2000000, paymentMethod: 'tax_invoice', paymentTiming: '2월말', note: '', variance: 0 },
+    { id: 'li-12', projectId: 'p1', orderNo: 12, completed: false, category: 'STAFF_EQUIPMENT', mainCategory: '의상', subCategory: '의상 재료비 (카드)', targetUnitPrice: 1500000, quantity: 1, targetExpense: 1500000, vatRate: 0.1, targetExpenseWithVat: 1500000, actualExpenseWithVat: 1509780, paymentMethod: 'corporate_card', paymentTiming: '11월초', note: '쿠팡 - 법카로 결제', variance: -9780 },
+    { id: 'li-13', projectId: 'p1', orderNo: 13, completed: false, category: 'STAFF_EQUIPMENT', mainCategory: '의상', subCategory: '의상 재료비 (현금)', targetUnitPrice: 500000, quantity: 1, targetExpense: 500000, vatRate: 0.1, targetExpenseWithVat: 500000, actualExpenseWithVat: 550000, paymentMethod: 'tax_invoice', paymentTiming: '11월 5일', note: '', variance: -50000 },
+    // 스텝 인건비 / 장비 - 분장, 동시녹음
+    { id: 'li-14', projectId: 'p1', orderNo: 14, completed: false, category: 'STAFF_EQUIPMENT', mainCategory: '분장', subCategory: '분장 인건비', targetUnitPrice: 800000, quantity: 2, targetExpense: 1600000, vatRate: 0.1, targetExpenseWithVat: 1600000, actualExpenseWithVat: 1600000, paymentMethod: 'tax_invoice', paymentTiming: '2월말', note: '', variance: 0 },
+    { id: 'li-15', projectId: 'p1', orderNo: 15, completed: false, category: 'STAFF_EQUIPMENT', mainCategory: '동시녹음', subCategory: '인건비(장비 포함)', targetUnitPrice: 1200000, quantity: 2, targetExpense: 2400000, vatRate: 0.1, targetExpenseWithVat: 2400000, actualExpenseWithVat: 2400000, paymentMethod: 'tax_invoice', paymentTiming: '2월말', note: '', variance: 0 },
+    // 제작비
+    { id: 'li-16', projectId: 'p1', orderNo: 16, completed: false, category: 'PRODUCTION', mainCategory: '로케이션', subCategory: '유치원 섭외비', targetUnitPrice: 2000000, quantity: 1, targetExpense: 2000000, vatRate: 0.1, targetExpenseWithVat: 2000000, actualExpenseWithVat: 2000000, paymentMethod: 'tax_invoice', paymentTiming: '11월 10일', note: '', variance: 0 },
+    { id: 'li-17', projectId: 'p1', orderNo: 17, completed: false, category: 'PRODUCTION', mainCategory: '로케이션', subCategory: '집', targetUnitPrice: 2500000, quantity: 1, targetExpense: 2500000, vatRate: 0.1, targetExpenseWithVat: 2500000, actualExpenseWithVat: 2872728, paymentMethod: 'tax_invoice', paymentTiming: '11월 7일', note: '세발 2건', variance: -372728 },
+    { id: 'li-18', projectId: 'p1', orderNo: 18, completed: false, category: 'PRODUCTION', mainCategory: '차량', subCategory: '차량 렌탈', targetUnitPrice: 800000, quantity: 1, targetExpense: 800000, vatRate: 0.1, targetExpenseWithVat: 800000, actualExpenseWithVat: 800000, paymentMethod: 'tax_invoice', paymentTiming: '11월 10일', note: '', variance: 0 },
+    { id: 'li-19', projectId: 'p1', orderNo: 19, completed: false, category: 'PRODUCTION', mainCategory: '차량', subCategory: '차량 앵커 시공', targetUnitPrice: 250000, quantity: 2, targetExpense: 500000, vatRate: 0.1, targetExpenseWithVat: 500000, actualExpenseWithVat: 250000, paymentMethod: 'tax_invoice', paymentTiming: '11월 5일', note: '세발 2건', variance: 250000 },
+    { id: 'li-20', projectId: 'p1', orderNo: 20, completed: false, category: 'PRODUCTION', mainCategory: '교통비', subCategory: '유대 / 택시비 / 주차비 등', targetUnitPrice: 200000, quantity: 1, targetExpense: 200000, vatRate: 0.1, targetExpenseWithVat: 200000, actualExpenseWithVat: 353198, paymentMethod: 'corporate_card', paymentTiming: '11월초', note: '', variance: -153198 },
+    { id: 'li-21', projectId: 'p1', orderNo: 21, completed: false, category: 'PRODUCTION', mainCategory: '식사', subCategory: '3끼 * 2회차 * 35명', targetUnitPrice: 30000, quantity: 70, targetExpense: 2100000, vatRate: 0.1, targetExpenseWithVat: 2100000, actualExpenseWithVat: 3197470, paymentMethod: 'corporate_card', paymentTiming: '11월초', note: '', variance: -1097470 },
+    { id: 'li-22', projectId: 'p1', orderNo: 22, completed: false, category: 'PRODUCTION', mainCategory: '식사', subCategory: '야식 & 부식', targetUnitPrice: 10000, quantity: 70, targetExpense: 700000, vatRate: 0.1, targetExpenseWithVat: 700000, actualExpenseWithVat: 0, paymentMethod: 'corporate_card', paymentTiming: '11월초', note: '', variance: 700000 },
+    { id: 'li-23', projectId: 'p1', orderNo: 23, completed: false, category: 'PRODUCTION', mainCategory: '진행비', subCategory: '연출비품', targetUnitPrice: 200000, quantity: 1, targetExpense: 200000, vatRate: 0.1, targetExpenseWithVat: 200000, actualExpenseWithVat: 931410, paymentMethod: 'corporate_card', paymentTiming: '11월초', note: '', variance: -731410 },
+    // 출연료
+    { id: 'li-24', projectId: 'p1', orderNo: 24, completed: false, category: 'TALENT', mainCategory: '출연료', subCategory: '주연 (운전기사 / 어린이)', targetUnitPrice: 2000000, quantity: 2, targetExpense: 4000000, vatRate: 0.1, targetExpenseWithVat: 4000000, actualExpenseWithVat: 4000000, paymentMethod: 'tax_invoice', paymentTiming: '2월말', note: '', variance: 0 },
+    { id: 'li-25', projectId: 'p1', orderNo: 25, completed: false, category: 'TALENT', mainCategory: '출연료', subCategory: '조연 (엄마)', targetUnitPrice: 1500000, quantity: 1, targetExpense: 1500000, vatRate: 0.1, targetExpenseWithVat: 1500000, actualExpenseWithVat: 1500000, paymentMethod: 'withholding', paymentTiming: '2월말', note: '', variance: 0 },
+    { id: 'li-26', projectId: 'p1', orderNo: 26, completed: false, category: 'TALENT', mainCategory: '출연료', subCategory: '이미지 (어린이) * 2회차', targetUnitPrice: 500000, quantity: 6, targetExpense: 3000000, vatRate: 0.1, targetExpenseWithVat: 3000000, actualExpenseWithVat: 3260000, paymentMethod: 'tax_invoice', paymentTiming: '2월말', note: '', variance: -260000 },
+    { id: 'li-27', projectId: 'p1', orderNo: 27, completed: false, category: 'TALENT', mainCategory: '출연료', subCategory: '보조출연 (어린이) * 2회차', targetUnitPrice: 200000, quantity: 14, targetExpense: 2800000, vatRate: 0.1, targetExpenseWithVat: 2800000, actualExpenseWithVat: 0, paymentMethod: 'tax_invoice', paymentTiming: '2월말', note: '', variance: 2800000 },
+    // 후반
+    { id: 'li-28', projectId: 'p1', orderNo: 28, completed: false, category: 'POST_PRODUCTION', mainCategory: '2D', subCategory: '자막 / 2D컷 제작', targetUnitPrice: 5000000, quantity: 1, targetExpense: 5000000, vatRate: 0.1, targetExpenseWithVat: 5000000, actualExpenseWithVat: 4500000, paymentMethod: 'tax_invoice', paymentTiming: '2월말', note: '', variance: 500000 },
+    { id: 'li-29', projectId: 'p1', orderNo: 29, completed: false, category: 'POST_PRODUCTION', mainCategory: '녹음', subCategory: '녹음비', targetUnitPrice: 1200000, quantity: 1, targetExpense: 1200000, vatRate: 0.1, targetExpenseWithVat: 1200000, actualExpenseWithVat: 0, paymentMethod: 'tax_invoice', paymentTiming: '2월말', note: '', variance: 1200000 },
+    { id: 'li-30', projectId: 'p1', orderNo: 30, completed: false, category: 'POST_PRODUCTION', mainCategory: '녹음', subCategory: '성우', targetUnitPrice: 400000, quantity: 1, targetExpense: 400000, vatRate: 0.1, targetExpenseWithVat: 400000, actualExpenseWithVat: 0, paymentMethod: 'tax_invoice', paymentTiming: '2월말', note: '', variance: 400000 },
+    // 외주제작 - 키링/앵커
+    { id: 'li-31', projectId: 'p1', orderNo: 31, completed: false, category: 'OUTSOURCING', mainCategory: '키링/앵커제작비', subCategory: 'UWB 모듈 구매', targetUnitPrice: 42000, quantity: 120, targetExpense: 5040000, vatRate: 0.1, targetExpenseWithVat: 5040000, actualExpenseWithVat: 6541365, paymentMethod: 'corporate_card', paymentTiming: '9월말', note: '', variance: -1501365 },
+    { id: 'li-32', projectId: 'p1', orderNo: 32, completed: false, category: 'OUTSOURCING', mainCategory: '키링/앵커제작비', subCategory: '디자인, 개발, 샘플', targetUnitPrice: 12900000, quantity: 1, targetExpense: 12900000, vatRate: 0.1, targetExpenseWithVat: 12900000, actualExpenseWithVat: 12900000, paymentMethod: 'tax_invoice', paymentTiming: '12월말', note: '', variance: 0 },
+    { id: 'li-33', projectId: 'p1', orderNo: 33, completed: false, category: 'OUTSOURCING', mainCategory: '키링/앵커제작비', subCategory: '키링', targetUnitPrice: 120000, quantity: 120, targetExpense: 14400000, vatRate: 0.1, targetExpenseWithVat: 14400000, actualExpenseWithVat: 14400000, paymentMethod: 'tax_invoice', paymentTiming: '11월말', note: '선금 지급 완료', variance: 0 },
+    { id: 'li-34', projectId: 'p1', orderNo: 34, completed: false, category: 'OUTSOURCING', mainCategory: '키링/앵커제작비', subCategory: '앵커', targetUnitPrice: 220000, quantity: 10, targetExpense: 2200000, vatRate: 0.1, targetExpenseWithVat: 2200000, actualExpenseWithVat: 2200000, paymentMethod: 'tax_invoice', paymentTiming: '', note: '', variance: 0 },
   ],
   taxInvoices: [
-    { id: 'ti-1', projectId: 'p1', orderNo: 1, paymentDueDate: '9월 말', description: '김희진 2D 모션 디자이너 선금', supplyAmount: 300000, taxAmount: 30000, totalAmount: 330000, companyName: '젠디자인랩(Jen Design Lab)/김희진', businessNumber: '876-13-02410', bank: '하나', accountNumber: '571-910550-14407', status: 'PAYMENT_COMPLETE', issueDate: '2025-09-18', paymentDate: '2025-09-30' },
-    { id: 'ti-2', projectId: 'p1', orderNo: 2, paymentDueDate: '11월 말', description: '김희진 2D 모션 디자이너 잔금', supplyAmount: 2700000, taxAmount: 270000, totalAmount: 2970000, companyName: '젠디자인랩(Jen Design Lab)/김희진', businessNumber: '876-13-02410', bank: '하나', accountNumber: '571-910550-14407', status: 'PAYMENT_COMPLETE', issueDate: '2025-11-25', paymentDate: '2025-12-31' },
+    { id: 'ti-1', projectId: 'p1', orderNo: 1, paymentDueDate: '25. 7. 28.', description: '키링제작 선금', supplyAmount: 20650000, taxAmount: 2065000, totalAmount: 22715000, companyName: '(주)블루베리 / 박정규', businessNumber: '819-86-00960', bank: '기업', accountNumber: '124-108385-01-027', status: 'PAYMENT_COMPLETE', issueDate: '2025-07-25', paymentDate: '2025-07-28' },
+    { id: 'ti-2', projectId: 'p1', orderNo: 2, paymentDueDate: '25. 12. 31.', description: '키링제작 잔금', supplyAmount: 8850000, taxAmount: 885000, totalAmount: 9735000, companyName: '(주)블루베리 / 박정규', businessNumber: '819-86-00960', bank: '기업', accountNumber: '124-108385-01-027', status: 'PAYMENT_COMPLETE', issueDate: '2025-12-05', paymentDate: '2025-12-31' },
+    { id: 'ti-3', projectId: 'p1', orderNo: 3, paymentDueDate: '25. 10. 20.', description: '키링 모듈 해외직구 관세', supplyAmount: 205120, taxAmount: 276920, totalAmount: 482040, companyName: '인천공항세관', businessNumber: '109-83-02763', bank: '-', accountNumber: '-', status: 'PAYMENT_COMPLETE', issueDate: '2025-10-17', paymentDate: '2025-10-20', note: '은행대납' },
+    { id: 'ti-4', projectId: 'p1', orderNo: 4, paymentDueDate: '25.11.5', description: '앵커 시공비', supplyAmount: 227273, taxAmount: 22727, totalAmount: 250000, companyName: '포이보스/오영훈', businessNumber: '124-52-14959', bank: '우리', accountNumber: '1002-543-116314', status: 'PAYMENT_COMPLETE', issueDate: '2025-11-05', paymentDate: '2025-11-05' },
+    { id: 'ti-5', projectId: 'p1', orderNo: 5, paymentDueDate: '25.11.10', description: '소품카 렌탈', supplyAmount: 800000, taxAmount: 80000, totalAmount: 880000, companyName: '(주)상일투어/김상귀', businessNumber: '141-81-11753', bank: '기업', accountNumber: '355-0006-4724-73', status: 'PAYMENT_COMPLETE', issueDate: '2025-11-05', paymentDate: '2025-11-10' },
   ],
-  withholdingPayments: [],
+  withholdingPayments: [
+    { id: 'wp-1', projectId: 'p1', orderNo: 1, paymentDueDate: '26.2.27', personName: '한혜지', role: '배우(엄마)', amount: 1500000, withholdingTax: 49500, totalAmount: 1450500, status: 'PENDING' },
+    { id: 'wp-2', projectId: 'p1', orderNo: 2, paymentDueDate: '26.2.27', personName: '한승희', role: '촬영팀', amount: 1816400, withholdingTax: 59941, totalAmount: 1756459, status: 'PENDING' },
+    { id: 'wp-3', projectId: 'p1', orderNo: 3, paymentDueDate: '26.2.27', personName: '이은석', role: '촬영팀', amount: 1030000, withholdingTax: 33990, totalAmount: 996010, status: 'PENDING' },
+    { id: 'wp-4', projectId: 'p1', orderNo: 4, paymentDueDate: '26.2.27', personName: '김용구', role: '조명감독', amount: 2250000, withholdingTax: 74250, totalAmount: 2175750, status: 'PENDING' },
+  ],
   corporateCardExpenses: [
-    { id: 'cc-1', projectId: 'p1', orderNo: 1, cardHolder: '홍원준', receiptSubmitted: true, usageDate: '2025-04-08', description: '외장하드', usedBy: '홍원준', amountWithVat: 1198000, vendor: '다나와', note: '20TB X 2개' },
-    { id: 'cc-2', projectId: 'p1', orderNo: 2, cardHolder: '7974', receiptSubmitted: true, usageDate: '2025-03-25', description: '3D 이미지 구매', usedBy: '티아고', amountWithVat: 91389, amountUsd: 61.60, vendor: 'FS *3dsky' },
-    { id: 'cc-3', projectId: 'p1', orderNo: 3, cardHolder: '7974', receiptSubmitted: true, usageDate: '2025-03-25', description: '3D 이미지 구매', usedBy: '티아고', amountWithVat: 141008, amountUsd: 95.00, vendor: 'Hum 3D' },
-    { id: 'cc-4', projectId: 'p1', orderNo: 4, cardHolder: '7974', receiptSubmitted: true, usageDate: '2025-03-25', description: '3D 이미지 구매', usedBy: '티아고', amountWithVat: 513117, amountUsd: 345.79, vendor: 'CGTrader' },
+    { id: 'cc-1', projectId: 'p1', orderNo: 1, cardHolder: '법인카드', receiptSubmitted: true, usageDate: '2025-09-25', description: 'UWB 모듈 해외직구', usedBy: '담당자', amountWithVat: 6541365, vendor: '알리익스프레스', note: '120개' },
+    { id: 'cc-2', projectId: 'p1', orderNo: 2, cardHolder: '법인카드', receiptSubmitted: true, usageDate: '2025-11-05', description: '의상 재료비', usedBy: '의상팀', amountWithVat: 1509780, vendor: '쿠팡', note: '' },
+    { id: 'cc-3', projectId: 'p1', orderNo: 3, cardHolder: '법인카드', receiptSubmitted: true, usageDate: '2025-11-08', description: '촬영 장비 렌탈', usedBy: '촬영팀', amountWithVat: 2123000, vendor: '장비대여업체', note: '' },
   ],
   corporateCashExpenses: [],
   personalExpenses: [],
@@ -121,11 +184,24 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
   const [activeTab, setActiveTab] = useState<'budget_plan' | 'actual_expense'>('budget_plan');
   const [expenseTab, setExpenseTab] = useState<'tax_invoice' | 'withholding' | 'corporate_card' | 'corporate_cash' | 'personal'>('tax_invoice');
   const [showAddExpenseModal, setShowAddExpenseModal] = useState(false);
+  const [showAddLineItemModal, setShowAddLineItemModal] = useState(false);
   const [expenseType, setExpenseType] = useState<'tax_invoice' | 'withholding' | 'corporate_card' | 'corporate_cash' | 'personal'>('corporate_card');
   
   // Editable contract amount states
   const [isEditingContract, setIsEditingContract] = useState(false);
   const [editContractAmount, setEditContractAmount] = useState(budget.summary.totalContractAmount);
+
+  // Line item form state
+  const [lineItemForm, setLineItemForm] = useState({
+    category: 'STAFF_EQUIPMENT' as ExpenseCategory,
+    mainCategory: '',
+    subCategory: '',
+    targetUnitPrice: 0,
+    quantity: 1,
+    paymentMethod: 'tax_invoice',
+    paymentTiming: '',
+    note: '',
+  });
 
   // Form state for expense modal
   const [formData, setFormData] = useState({
@@ -162,6 +238,55 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
     });
   };
 
+  // Add new line item to budget plan
+  const handleAddLineItem = () => {
+    const targetExpense = lineItemForm.targetUnitPrice * lineItemForm.quantity;
+    const targetExpenseWithVat = targetExpense; // VAT 별도 계산 시 수정
+    
+    const newItem: BudgetLineItem = {
+      id: `li-${Date.now()}`,
+      projectId,
+      orderNo: budget.lineItems.length + 1,
+      completed: false,
+      category: lineItemForm.category,
+      mainCategory: lineItemForm.mainCategory,
+      subCategory: lineItemForm.subCategory,
+      targetUnitPrice: lineItemForm.targetUnitPrice,
+      quantity: lineItemForm.quantity,
+      targetExpense,
+      vatRate: 0.1,
+      targetExpenseWithVat,
+      actualExpenseWithVat: 0,
+      paymentMethod: lineItemForm.paymentMethod,
+      paymentTiming: lineItemForm.paymentTiming,
+      note: lineItemForm.note,
+      variance: targetExpenseWithVat,
+    };
+
+    setBudget(prev => ({
+      ...prev,
+      lineItems: [...prev.lineItems, newItem],
+      summary: {
+        ...prev.summary,
+        targetExpenseWithVat: prev.summary.targetExpenseWithVat + targetExpenseWithVat,
+      }
+    }));
+
+    setShowAddLineItemModal(false);
+    setLineItemForm({
+      category: 'STAFF_EQUIPMENT',
+      mainCategory: '',
+      subCategory: '',
+      targetUnitPrice: 0,
+      quantity: 1,
+      paymentMethod: 'tax_invoice',
+      paymentTiming: '',
+      note: '',
+    });
+    
+    toast.success('예산 항목이 추가되었습니다.');
+  };
+
   // Reset form when modal closes
   useEffect(() => {
     if (!showAddExpenseModal) {
@@ -178,7 +303,21 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
     }
   }, [showAddExpenseModal]);
 
-  const { summary, paymentSchedules, lineItems, taxInvoices, corporateCardExpenses } = budget;
+  const { summary, paymentSchedules, lineItems, taxInvoices, withholdingPayments, corporateCardExpenses } = budget;
+
+  // Group line items by category for display
+  const groupedLineItems = lineItems.reduce((acc, item) => {
+    const key = `${item.category}-${item.mainCategory}`;
+    if (!acc[key]) {
+      acc[key] = {
+        category: item.category,
+        mainCategory: item.mainCategory,
+        items: [],
+      };
+    }
+    acc[key].items.push(item);
+    return acc;
+  }, {} as Record<string, { category: ExpenseCategory; mainCategory: string; items: BudgetLineItem[] }>);
 
   // Calculate totals
   const totalTargetExpense = lineItems.reduce((sum, item) => sum + item.targetExpenseWithVat, 0);
@@ -412,7 +551,7 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
                 <Download className="w-4 h-4" />
                 내보내기
               </Button>
-              <Button size="sm" className="gap-2">
+              <Button size="sm" className="gap-2" onClick={() => setShowAddLineItemModal(true)}>
                 <Plus className="w-4 h-4" />
                 항목 추가
               </Button>
@@ -1160,6 +1299,128 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
               취소
             </Button>
             <Button onClick={() => setShowAddExpenseModal(false)}>
+              추가
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Line Item Modal */}
+      <Dialog open={showAddLineItemModal} onOpenChange={setShowAddLineItemModal}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>예산 항목 추가</DialogTitle>
+            <DialogDescription>
+              새로운 예산 계획 항목을 추가합니다.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>구분 <span className="text-destructive">*</span></Label>
+              <Select 
+                value={lineItemForm.category} 
+                onValueChange={(val) => setLineItemForm(prev => ({ ...prev, category: val as ExpenseCategory }))}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {BUDGET_CATEGORIES.map((cat) => (
+                    <SelectItem key={cat.value} value={cat.value}>{cat.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>대분류 <span className="text-destructive">*</span></Label>
+                <Input 
+                  placeholder="예: 촬영, 조명, 미술"
+                  value={lineItemForm.mainCategory}
+                  onChange={(e) => setLineItemForm(prev => ({ ...prev, mainCategory: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>소분류 <span className="text-destructive">*</span></Label>
+                <Input 
+                  placeholder="예: 촬영감독, 촬영팀 인건비"
+                  value={lineItemForm.subCategory}
+                  onChange={(e) => setLineItemForm(prev => ({ ...prev, subCategory: e.target.value }))}
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>목표단가 <span className="text-destructive">*</span></Label>
+                <Input 
+                  type="text"
+                  placeholder="₩0"
+                  value={lineItemForm.targetUnitPrice > 0 ? lineItemForm.targetUnitPrice.toLocaleString('ko-KR') : ''}
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/[^0-9]/g, '');
+                    setLineItemForm(prev => ({ ...prev, targetUnitPrice: Number(value) || 0 }));
+                  }}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>수량 (회/식/수) <span className="text-destructive">*</span></Label>
+                <Input 
+                  type="number"
+                  min="1"
+                  value={lineItemForm.quantity}
+                  onChange={(e) => setLineItemForm(prev => ({ ...prev, quantity: Number(e.target.value) || 1 }))}
+                />
+              </div>
+            </div>
+            <div className="p-3 bg-muted rounded-lg">
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">목표지출액</span>
+                <span className="font-semibold">{formatCurrency(lineItemForm.targetUnitPrice * lineItemForm.quantity)}</span>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>지급방식</Label>
+                <Select 
+                  value={lineItemForm.paymentMethod} 
+                  onValueChange={(val) => setLineItemForm(prev => ({ ...prev, paymentMethod: val }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PAYMENT_METHODS.map((method) => (
+                      <SelectItem key={method.value} value={method.value}>{method.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>지급시기</Label>
+                <Input 
+                  placeholder="예: 2월말, 11월초"
+                  value={lineItemForm.paymentTiming}
+                  onChange={(e) => setLineItemForm(prev => ({ ...prev, paymentTiming: e.target.value }))}
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>비고</Label>
+              <Input 
+                placeholder="추가 메모"
+                value={lineItemForm.note}
+                onChange={(e) => setLineItemForm(prev => ({ ...prev, note: e.target.value }))}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowAddLineItemModal(false)}>
+              취소
+            </Button>
+            <Button 
+              onClick={handleAddLineItem}
+              disabled={!lineItemForm.mainCategory || !lineItemForm.subCategory || lineItemForm.targetUnitPrice <= 0}
+            >
               추가
             </Button>
           </DialogFooter>
