@@ -1,13 +1,17 @@
 import { Card } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
-  DollarSign, 
   TrendingUp, 
   TrendingDown, 
   PiggyBank,
   BarChart3,
+  FileCheck,
+  Calendar,
   FileText
 } from 'lucide-react';
+import { ContractStatusSection } from './finance/ContractStatusSection';
+import { ExpenseScheduleSection } from './finance/ExpenseScheduleSection';
+import { ExpenseDetailSection } from './finance/ExpenseDetailSection';
 
 export function FinanceTab() {
   const stats = [
@@ -39,18 +43,35 @@ export function FinanceTab() {
         ))}
       </div>
 
-      {/* Placeholder Content */}
-      <Card className="p-12 text-center shadow-card">
-        <DollarSign className="w-16 h-16 mx-auto mb-4 text-muted-foreground/30" />
-        <h3 className="text-lg font-semibold text-foreground mb-2">재무 관리 모듈</h3>
-        <p className="text-muted-foreground max-w-md mx-auto">
-          매출/지출 분석, 프로젝트별 수익성 분석, 현금흐름 관리, 예산 대비 실적 추적 등 
-          재무 관련 기능이 이 섹션에서 제공될 예정입니다.
-        </p>
-        <div className="flex items-center justify-center gap-2 mt-6">
-          <Badge variant="secondary">Coming Soon</Badge>
-        </div>
-      </Card>
+      {/* Finance Sub-tabs */}
+      <Tabs defaultValue="contract" className="space-y-4">
+        <TabsList className="grid grid-cols-3 w-full max-w-xl">
+          <TabsTrigger value="contract" className="gap-2">
+            <FileCheck className="w-4 h-4" />
+            계약현황
+          </TabsTrigger>
+          <TabsTrigger value="schedule" className="gap-2">
+            <Calendar className="w-4 h-4" />
+            지출 예정
+          </TabsTrigger>
+          <TabsTrigger value="detail" className="gap-2">
+            <FileText className="w-4 h-4" />
+            지출 세부
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="contract">
+          <ContractStatusSection />
+        </TabsContent>
+        
+        <TabsContent value="schedule">
+          <ExpenseScheduleSection />
+        </TabsContent>
+        
+        <TabsContent value="detail">
+          <ExpenseDetailSection />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
