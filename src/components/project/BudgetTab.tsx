@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
@@ -46,8 +46,11 @@ import {
   CheckCircle2,
   Clock,
   AlertCircle,
+  Sparkles,
 } from 'lucide-react';
 import { useTranslation } from '@/hooks/useTranslation';
+import { VendorAutocomplete, VendorInfo } from '@/components/ui/vendor-autocomplete';
+import { toast } from 'sonner';
 import type {
   ProjectBudget,
   BudgetLineItem,
@@ -118,6 +121,57 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
   const [activeTab, setActiveTab] = useState('overview');
   const [showAddExpenseModal, setShowAddExpenseModal] = useState(false);
   const [expenseType, setExpenseType] = useState<'tax_invoice' | 'withholding' | 'corporate_card' | 'corporate_cash' | 'personal'>('corporate_card');
+
+  // Form state for expense modal
+  const [formData, setFormData] = useState({
+    // Tax Invoice / Withholding common
+    companyName: '',
+    representative: '',
+    businessNumber: '',
+    bank: '',
+    accountNumber: '',
+    role: '',
+    // Freelancer name
+    personName: '',
+    // Vendor for card/cash
+    vendorName: '',
+  });
+
+  // Handle vendor selection and auto-fill
+  const handleVendorSelect = (vendor: VendorInfo) => {
+    setFormData(prev => ({
+      ...prev,
+      companyName: vendor.name,
+      representative: vendor.representative || '',
+      businessNumber: vendor.businessNumber || '',
+      bank: vendor.bank || '',
+      accountNumber: vendor.accountNumber || '',
+      role: vendor.role || '',
+      personName: vendor.name,
+      vendorName: vendor.name,
+    }));
+    
+    toast.success('거래처 정보 자동입력 완료', {
+      description: `${vendor.name}의 정보가 자동으로 입력되었습니다.`,
+      icon: <Sparkles className="w-4 h-4" />,
+    });
+  };
+
+  // Reset form when modal closes
+  useEffect(() => {
+    if (!showAddExpenseModal) {
+      setFormData({
+        companyName: '',
+        representative: '',
+        businessNumber: '',
+        bank: '',
+        accountNumber: '',
+        role: '',
+        personName: '',
+        vendorName: '',
+      });
+    }
+  }, [showAddExpenseModal]);
 
   const { summary, paymentSchedules, lineItems, taxInvoices, corporateCardExpenses } = budget;
 
@@ -577,7 +631,13 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
             {/* Tax Invoice Fields */}
             {expenseType === 'tax_invoice' && (
               <div className="space-y-4 border-t pt-4">
-                <h4 className="font-medium text-sm text-muted-foreground">세금계산서 정보</h4>
+                <div className="flex items-center justify-between">
+                  <h4 className="font-medium text-sm text-muted-foreground">세금계산서 정보</h4>
+                  <Badge variant="outline" className="text-xs gap-1">
+                    <Sparkles className="w-3 h-3" />
+                    회사명 입력 시 자동완성
+                  </Badge>
+                </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>입금약일 <span className="text-destructive">*</span></Label>
@@ -605,26 +665,48 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>회사명 <span className="text-destructive">*</span></Label>
-                    <Input placeholder="회사명 입력" />
+                    <VendorAutocomplete
+                      value={formData.companyName}
+                      onChange={(val) => setFormData(prev => ({ ...prev, companyName: val }))}
+                      onSelect={handleVendorSelect}
+                      placeholder="회사명 검색 또는 입력..."
+                      vendorType="company"
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label>대표자 <span className="text-destructive">*</span></Label>
-                    <Input placeholder="대표자 성함" />
+                    <Input 
+                      placeholder="대표자 성함" 
+                      value={formData.representative}
+                      onChange={(e) => setFormData(prev => ({ ...prev, representative: e.target.value }))}
+                    />
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>사업자번호 <span className="text-destructive">*</span></Label>
-                    <Input placeholder="000-00-00000" />
+                    <Input 
+                      placeholder="000-00-00000" 
+                      value={formData.businessNumber}
+                      onChange={(e) => setFormData(prev => ({ ...prev, businessNumber: e.target.value }))}
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label>은행</Label>
-                    <Input placeholder="은행명" />
+                    <Input 
+                      placeholder="은행명" 
+                      value={formData.bank}
+                      onChange={(e) => setFormData(prev => ({ ...prev, bank: e.target.value }))}
+                    />
                   </div>
                 </div>
                 <div className="space-y-2">
                   <Label>계좌번호</Label>
-                  <Input placeholder="계좌번호 입력" />
+                  <Input 
+                    placeholder="계좌번호 입력" 
+                    value={formData.accountNumber}
+                    onChange={(e) => setFormData(prev => ({ ...prev, accountNumber: e.target.value }))}
+                  />
                 </div>
                 <div className="grid grid-cols-3 gap-4">
                   <div className="space-y-2">
@@ -659,7 +741,13 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
             {/* Withholding (원천징수) Fields */}
             {expenseType === 'withholding' && (
               <div className="space-y-4 border-t pt-4">
-                <h4 className="font-medium text-sm text-muted-foreground">원천징수 (용역비) 정보</h4>
+                <div className="flex items-center justify-between">
+                  <h4 className="font-medium text-sm text-muted-foreground">원천징수 (용역비) 정보</h4>
+                  <Badge variant="outline" className="text-xs gap-1">
+                    <Sparkles className="w-3 h-3" />
+                    이름 입력 시 자동완성
+                  </Badge>
+                </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>입금약일 <span className="text-destructive">*</span></Label>
@@ -667,12 +755,22 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
                   </div>
                   <div className="space-y-2">
                     <Label>이름 <span className="text-destructive">*</span></Label>
-                    <Input placeholder="용역자 성함" />
+                    <VendorAutocomplete
+                      value={formData.personName}
+                      onChange={(val) => setFormData(prev => ({ ...prev, personName: val }))}
+                      onSelect={handleVendorSelect}
+                      placeholder="용역자 성함 검색..."
+                      vendorType="all"
+                    />
                   </div>
                 </div>
                 <div className="space-y-2">
                   <Label>역할 <span className="text-destructive">*</span></Label>
-                  <Input placeholder="예: 2D 모션그래픽, 3D 모델러" />
+                  <Input 
+                    placeholder="예: 2D 모션그래픽, 3D 모델러" 
+                    value={formData.role}
+                    onChange={(e) => setFormData(prev => ({ ...prev, role: e.target.value }))}
+                  />
                 </div>
                 <div className="grid grid-cols-3 gap-4">
                   <div className="space-y-2">
@@ -691,11 +789,19 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>회사명 / 대표자</Label>
-                    <Input placeholder="주식회사 OOO / 홍길동" />
+                    <Input 
+                      placeholder="주식회사 OOO / 홍길동" 
+                      value={formData.companyName ? `${formData.companyName}${formData.representative ? ' / ' + formData.representative : ''}` : ''}
+                      onChange={(e) => setFormData(prev => ({ ...prev, companyName: e.target.value }))}
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label>사업자번호</Label>
-                    <Input placeholder="000-00-00000" />
+                    <Input 
+                      placeholder="000-00-00000" 
+                      value={formData.businessNumber}
+                      onChange={(e) => setFormData(prev => ({ ...prev, businessNumber: e.target.value }))}
+                    />
                   </div>
                 </div>
                 <div className="grid grid-cols-3 gap-4">
@@ -731,7 +837,13 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
             {/* Corporate Card Fields */}
             {expenseType === 'corporate_card' && (
               <div className="space-y-4 border-t pt-4">
-                <h4 className="font-medium text-sm text-muted-foreground">법인카드 사용 내역</h4>
+                <div className="flex items-center justify-between">
+                  <h4 className="font-medium text-sm text-muted-foreground">법인카드 사용 내역</h4>
+                  <Badge variant="outline" className="text-xs gap-1">
+                    <Sparkles className="w-3 h-3" />
+                    거래처 입력 시 자동완성
+                  </Badge>
+                </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>사용 법인카드 <span className="text-destructive">*</span></Label>
@@ -753,7 +865,13 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
                   </div>
                   <div className="space-y-2">
                     <Label>거래처명 <span className="text-destructive">*</span></Label>
-                    <Input placeholder="거래처/업체명" />
+                    <VendorAutocomplete
+                      value={formData.vendorName}
+                      onChange={(val) => setFormData(prev => ({ ...prev, vendorName: val }))}
+                      onSelect={handleVendorSelect}
+                      placeholder="거래처 검색..."
+                      vendorType="all"
+                    />
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
@@ -780,7 +898,13 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
             {/* Corporate Cash Fields */}
             {expenseType === 'corporate_cash' && (
               <div className="space-y-4 border-t pt-4">
-                <h4 className="font-medium text-sm text-muted-foreground">법인현금 사용 내역</h4>
+                <div className="flex items-center justify-between">
+                  <h4 className="font-medium text-sm text-muted-foreground">법인현금 사용 내역</h4>
+                  <Badge variant="outline" className="text-xs gap-1">
+                    <Sparkles className="w-3 h-3" />
+                    거래처 입력 시 자동완성
+                  </Badge>
+                </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>사용날짜 <span className="text-destructive">*</span></Label>
@@ -802,7 +926,13 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
                   </div>
                   <div className="space-y-2">
                     <Label>거래처명 <span className="text-destructive">*</span></Label>
-                    <Input placeholder="거래처/업체명" />
+                    <VendorAutocomplete
+                      value={formData.vendorName}
+                      onChange={(val) => setFormData(prev => ({ ...prev, vendorName: val }))}
+                      onSelect={handleVendorSelect}
+                      placeholder="거래처 검색..."
+                      vendorType="all"
+                    />
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
@@ -819,7 +949,13 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
             {/* Personal Expense Fields */}
             {expenseType === 'personal' && (
               <div className="space-y-4 border-t pt-4">
-                <h4 className="font-medium text-sm text-muted-foreground">개인지출 내역</h4>
+                <div className="flex items-center justify-between">
+                  <h4 className="font-medium text-sm text-muted-foreground">개인지출 내역</h4>
+                  <Badge variant="outline" className="text-xs gap-1">
+                    <Sparkles className="w-3 h-3" />
+                    거래처 입력 시 자동완성
+                  </Badge>
+                </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>지출방식 <span className="text-destructive">*</span></Label>
@@ -869,7 +1005,13 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
                   </div>
                   <div className="space-y-2">
                     <Label>거래처명 <span className="text-destructive">*</span></Label>
-                    <Input placeholder="거래처/업체명" />
+                    <VendorAutocomplete
+                      value={formData.vendorName}
+                      onChange={(val) => setFormData(prev => ({ ...prev, vendorName: val }))}
+                      onSelect={handleVendorSelect}
+                      placeholder="거래처 검색..."
+                      vendorType="all"
+                    />
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
