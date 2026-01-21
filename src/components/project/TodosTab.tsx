@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { PersonalTodo, TodoPriority } from '@/types/core';
+import { PersonalTodo, TodoPriority, User } from '@/types/core';
 import { useAppStore } from '@/stores/appStore';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { UserSearchInput } from '@/components/ui/user-search-input';
 import {
   Select,
@@ -23,8 +24,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Plus, Calendar, User, Flag } from 'lucide-react';
+import { Plus, Calendar, Users, Flag } from 'lucide-react';
 import { toast } from 'sonner';
+import { useTranslation } from '@/hooks/useTranslation';
 
 interface TodosTabProps {
   projectId: string;
@@ -41,7 +43,7 @@ const mockTodos: PersonalTodo[] = [
   {
     id: 'todo-1',
     title: 'Review design mockups',
-    assigneeId: 'user-1',
+    assigneeIds: ['user-1', 'user-2'],
     requestedById: 'user-2',
     projectId: 'project-1',
     dueDate: '2025-02-01T10:00:00',
@@ -52,7 +54,7 @@ const mockTodos: PersonalTodo[] = [
   {
     id: 'todo-2',
     title: 'Prepare presentation slides',
-    assigneeId: 'user-1',
+    assigneeIds: ['user-1'],
     requestedById: 'user-1',
     projectId: 'project-1',
     dueDate: '2025-01-25T14:00:00',
@@ -63,7 +65,7 @@ const mockTodos: PersonalTodo[] = [
   {
     id: 'todo-3',
     title: 'Send client update email',
-    assigneeId: 'user-1',
+    assigneeIds: ['user-1', 'user-3', 'user-4'],
     requestedById: 'user-3',
     projectId: 'project-1',
     dueDate: '2025-01-20T09:00:00',
@@ -75,11 +77,12 @@ const mockTodos: PersonalTodo[] = [
 ];
 
 export function TodosTab({ projectId }: TodosTabProps) {
+  const { t } = useTranslation();
   const { users, currentUser, getUserById, addEvent } = useAppStore();
   const [todos, setTodos] = useState<PersonalTodo[]>(mockTodos);
   const [showNewModal, setShowNewModal] = useState(false);
   const [newTitle, setNewTitle] = useState('');
-  const [newAssigneeId, setNewAssigneeId] = useState<string | undefined>();
+  const [newAssignees, setNewAssignees] = useState<User[]>([]);
   const [newDueDate, setNewDueDate] = useState('');
   const [newDueTime, setNewDueTime] = useState('09:00');
   const [newPriority, setNewPriority] = useState<TodoPriority>('NORMAL');
@@ -108,6 +111,16 @@ export function TodosTab({ projectId }: TodosTabProps) {
     toast.success('To-do updated');
   };
 
+  const handleAddAssignee = (user: User) => {
+    if (!newAssignees.find(u => u.id === user.id)) {
+      setNewAssignees([...newAssignees, user]);
+    }
+  };
+
+  const handleRemoveAssignee = (userId: string) => {
+    setNewAssignees(newAssignees.filter(u => u.id !== userId));
+  };
+
   const handleCreateTodo = (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -116,7 +129,10 @@ export function TodosTab({ projectId }: TodosTabProps) {
       return;
     }
 
-    const assigneeId = newAssigneeId || currentUser.id;
+    const assigneeIds = newAssignees.length > 0 
+      ? newAssignees.map(u => u.id) 
+      : [currentUser.id];
+    
     const dueDateTime = newDueDate 
       ? `${newDueDate}T${newDueTime}:00` 
       : new Date().toISOString();
@@ -124,7 +140,7 @@ export function TodosTab({ projectId }: TodosTabProps) {
     const newTodo: PersonalTodo = {
       id: `todo-${Date.now()}`,
       title: newTitle.trim(),
-      assigneeId,
+      assigneeIds,
       requestedById: currentUser.id,
       projectId,
       dueDate: dueDateTime,
@@ -135,30 +151,33 @@ export function TodosTab({ projectId }: TodosTabProps) {
 
     setTodos((prev) => [newTodo, ...prev]);
 
-    // If due date is set, create a calendar event
+    // If due date is set, create calendar events for each assignee
     if (newDueDate) {
-      addEvent({
-        id: `event-todo-${Date.now()}`,
-        title: newTitle.trim(),
-        type: 'TODO',
-        startAt: dueDateTime,
-        endAt: dueDateTime,
-        projectId,
-        ownerId: assigneeId,
-        source: 'PAULUS',
-        todoId: newTodo.id,
+      assigneeIds.forEach(assigneeId => {
+        addEvent({
+          id: `event-todo-${Date.now()}-${assigneeId}`,
+          title: newTitle.trim(),
+          type: 'TODO',
+          startAt: dueDateTime,
+          endAt: dueDateTime,
+          projectId,
+          ownerId: assigneeId,
+          source: 'PAULUS',
+          todoId: newTodo.id,
+        });
       });
     }
 
+    const assigneeNames = newAssignees.map(u => u.name).join(', ');
     toast.success('To-do created', {
-      description: assigneeId !== currentUser.id 
-        ? 'Notification sent to assignee' 
+      description: newAssignees.length > 0 
+        ? `Assigned to: ${assigneeNames}` 
         : undefined,
     });
 
     // Reset form
     setNewTitle('');
-    setNewAssigneeId(undefined);
+    setNewAssignees([]);
     setNewDueDate('');
     setNewDueTime('09:00');
     setNewPriority('NORMAL');
@@ -174,6 +193,10 @@ export function TodosTab({ projectId }: TodosTabProps) {
     });
   };
 
+  const getInitials = (name: string) => {
+    return name.split(' ').map(n => n[0]).join('').toUpperCase();
+  };
+
   return (
     <div className="space-y-4">
       {/* Header */}
@@ -184,26 +207,26 @@ export function TodosTab({ projectId }: TodosTabProps) {
             size="sm"
             onClick={() => setFilter('all')}
           >
-            All ({todos.length})
+            {t('all')} ({todos.length})
           </Button>
           <Button
             variant={filter === 'pending' ? 'default' : 'ghost'}
             size="sm"
             onClick={() => setFilter('pending')}
           >
-            Pending ({todos.filter((t) => t.status === 'PENDING').length})
+            {t('pending')} ({todos.filter((t) => t.status === 'PENDING').length})
           </Button>
           <Button
             variant={filter === 'completed' ? 'default' : 'ghost'}
             size="sm"
             onClick={() => setFilter('completed')}
           >
-            Completed ({todos.filter((t) => t.status === 'COMPLETED').length})
+            {t('completed')} ({todos.filter((t) => t.status === 'COMPLETED').length})
           </Button>
         </div>
         <Button onClick={() => setShowNewModal(true)} className="gap-2">
           <Plus className="w-4 h-4" />
-          New To-do
+          {t('newTodo')}
         </Button>
       </div>
 
@@ -211,11 +234,11 @@ export function TodosTab({ projectId }: TodosTabProps) {
       <Card className="divide-y divide-border">
         {filteredTodos.length === 0 ? (
           <div className="p-8 text-center text-muted-foreground">
-            <p>No to-dos found</p>
+            <p>{t('noTodosFound')}</p>
           </div>
         ) : (
           filteredTodos.map((todo) => {
-            const assignee = getUserById(todo.assigneeId);
+            const assignees = todo.assigneeIds.map(id => getUserById(id)).filter(Boolean) as User[];
             const requester = getUserById(todo.requestedById);
             const isOverdue = new Date(todo.dueDate) < new Date() && todo.status === 'PENDING';
 
@@ -244,7 +267,7 @@ export function TodosTab({ projectId }: TodosTabProps) {
                       {todo.priority}
                     </Badge>
                     {isOverdue && (
-                      <Badge variant="destructive">Overdue</Badge>
+                      <Badge variant="destructive">{t('overdue')}</Badge>
                     )}
                   </div>
                   <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
@@ -252,15 +275,31 @@ export function TodosTab({ projectId }: TodosTabProps) {
                       <Calendar className="w-3.5 h-3.5" />
                       {formatDate(todo.dueDate)}
                     </span>
-                    {assignee && (
+                    {assignees.length > 0 && (
                       <span className="flex items-center gap-1">
-                        <User className="w-3.5 h-3.5" />
-                        {assignee.name}
+                        <Users className="w-3.5 h-3.5" />
+                        <div className="flex items-center -space-x-2">
+                          {assignees.slice(0, 3).map((assignee) => (
+                            <Avatar key={assignee.id} className="w-5 h-5 border-2 border-background">
+                              <AvatarFallback className="text-[8px]">
+                                {getInitials(assignee.name)}
+                              </AvatarFallback>
+                            </Avatar>
+                          ))}
+                          {assignees.length > 3 && (
+                            <span className="ml-2 text-xs">+{assignees.length - 3}</span>
+                          )}
+                        </div>
+                        <span className="ml-1">
+                          {assignees.length === 1 
+                            ? assignees[0].name 
+                            : `${assignees[0].name} 외 ${assignees.length - 1}명`}
+                        </span>
                       </span>
                     )}
-                    {requester && requester.id !== todo.assigneeId && (
+                    {requester && !todo.assigneeIds.includes(requester.id) && (
                       <span className="text-xs">
-                        Requested by {requester.name}
+                        {t('requestedBy')} {requester.name}
                       </span>
                     )}
                   </div>
@@ -275,43 +314,45 @@ export function TodosTab({ projectId }: TodosTabProps) {
       <Dialog open={showNewModal} onOpenChange={setShowNewModal}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>New To-do</DialogTitle>
+            <DialogTitle>{t('newTodo')}</DialogTitle>
             <DialogDescription>
-              Create a to-do for yourself or request work from a team member.
+              {t('createTodoDescription')}
             </DialogDescription>
           </DialogHeader>
 
           <form onSubmit={handleCreateTodo} className="space-y-4 py-4">
             {/* Title */}
             <div className="space-y-2">
-              <Label htmlFor="todo-title">Title</Label>
+              <Label htmlFor="todo-title">{t('title')}</Label>
               <Input
                 id="todo-title"
                 value={newTitle}
                 onChange={(e) => setNewTitle(e.target.value)}
-                placeholder="What needs to be done?"
+                placeholder={t('whatNeedsToBeDone')}
                 autoFocus
               />
             </div>
 
-            {/* Assignee */}
+            {/* Assignees (Multiple) */}
             <div className="space-y-2">
-              <Label>Assign to</Label>
+              <Label>{t('assignTo')}</Label>
               <UserSearchInput
                 users={users}
-                selectedUserId={newAssigneeId}
-                onSelectById={setNewAssigneeId}
-                placeholder="Yourself (or search team member)"
+                selectedUsers={newAssignees}
+                onSelect={handleAddAssignee}
+                onRemove={handleRemoveAssignee}
+                placeholder={t('searchTeamMembers')}
+                multiple={true}
               />
               <p className="text-xs text-muted-foreground">
-                Leave empty to assign to yourself
+                {t('leaveEmptyToAssignToYourself')}
               </p>
             </div>
 
             {/* Due Date & Time */}
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="todo-date">Due Date</Label>
+                <Label htmlFor="todo-date">{t('dueDate')}</Label>
                 <Input
                   id="todo-date"
                   type="date"
@@ -320,7 +361,7 @@ export function TodosTab({ projectId }: TodosTabProps) {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="todo-time">Time</Label>
+                <Label htmlFor="todo-time">{t('time')}</Label>
                 <Input
                   id="todo-time"
                   type="time"
@@ -332,26 +373,26 @@ export function TodosTab({ projectId }: TodosTabProps) {
 
             {/* Priority */}
             <div className="space-y-2">
-              <Label>Priority</Label>
+              <Label>{t('priority')}</Label>
               <Select value={newPriority} onValueChange={(value) => setNewPriority(value as TodoPriority)}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="LOW">Low</SelectItem>
-                  <SelectItem value="NORMAL">Normal</SelectItem>
-                  <SelectItem value="HIGH">High</SelectItem>
+                  <SelectItem value="LOW">{t('low')}</SelectItem>
+                  <SelectItem value="NORMAL">{t('normal')}</SelectItem>
+                  <SelectItem value="HIGH">{t('high')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             <DialogFooter className="pt-4">
               <Button type="button" variant="outline" onClick={() => setShowNewModal(false)}>
-                Cancel
+                {t('cancel')}
               </Button>
               <Button type="submit" className="gap-2">
                 <Plus className="w-4 h-4" />
-                Create To-do
+                {t('createTodo')}
               </Button>
             </DialogFooter>
           </form>
