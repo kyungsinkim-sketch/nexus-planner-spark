@@ -12,6 +12,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Textarea } from '@/components/ui/textarea';
 import {
   Select,
   SelectContent,
@@ -26,7 +27,7 @@ interface FileUploadModalProps {
   onClose: () => void;
   projectId: string;
   fileName?: string;
-  onUpload: (category: FileCategory, isImportant: boolean) => void;
+  onUpload: (category: FileCategory, isImportant: boolean, comment: string) => void;
 }
 
 const categoryOptions: { value: FileCategory; label: string }[] = [
@@ -46,11 +47,13 @@ export function FileUploadModal({
 }: FileUploadModalProps) {
   const [category, setCategory] = useState<FileCategory>('ETC');
   const [isImportant, setIsImportant] = useState(false);
+  const [comment, setComment] = useState('');
 
   const handleUpload = () => {
-    onUpload(category, isImportant);
+    onUpload(category, isImportant, comment);
     setCategory('ETC');
     setIsImportant(false);
+    setComment('');
     onClose();
   };
 
@@ -91,6 +94,22 @@ export function FileUploadModal({
                 ))}
               </SelectContent>
             </Select>
+          </div>
+
+          {/* Comment */}
+          <div className="space-y-2">
+            <Label htmlFor="comment">Comment (for search)</Label>
+            <Textarea
+              id="comment"
+              value={comment}
+              onChange={(e) => setComment(e.target.value)}
+              placeholder="Add a description to help find this file later..."
+              className="resize-none"
+              rows={2}
+            />
+            <p className="text-xs text-muted-foreground">
+              This description will be searchable in the Files tab
+            </p>
           </div>
 
           {/* Mark as Important */}

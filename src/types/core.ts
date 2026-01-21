@@ -137,6 +137,7 @@ export interface FileItem {
   type?: string;
   isImportant?: boolean;
   source?: 'UPLOAD' | 'CHAT';
+  comment?: string; // Comment for searchability
 }
 
 // Performance & Evaluation Types
