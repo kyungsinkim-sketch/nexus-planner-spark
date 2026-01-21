@@ -59,7 +59,7 @@ export type TodoStatus = 'PENDING' | 'COMPLETED';
 export interface PersonalTodo {
   id: string;
   title: string;
-  assigneeId: string;
+  assigneeIds: string[]; // Changed to support multiple assignees
   requestedById: string;
   projectId?: string;
   dueDate: string;
