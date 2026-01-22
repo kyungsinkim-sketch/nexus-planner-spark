@@ -49,6 +49,7 @@ import type {
   PaymentStatus,
   ExpenseCategory,
   PaymentSchedule,
+  WithholdingPayment,
 } from '@/types/budget';
 
 interface BudgetTabProps {
@@ -140,15 +141,19 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
 
   // New row states
   const [isAddingLineItem, setIsAddingLineItem] = useState(false);
+  const [addingForCategory, setAddingForCategory] = useState<string | null>(null);
   const [isAddingPayment, setIsAddingPayment] = useState(false);
   const [isAddingTaxInvoice, setIsAddingTaxInvoice] = useState(false);
   const [isAddingCardExpense, setIsAddingCardExpense] = useState(false);
+  const [isAddingWithholding, setIsAddingWithholding] = useState(false);
+  const [editingWithholdingId, setEditingWithholdingId] = useState<string | null>(null);
 
   // Temp data for new/editing rows
   const [tempLineItem, setTempLineItem] = useState<Partial<BudgetLineItem>>({});
   const [tempPayment, setTempPayment] = useState<Partial<PaymentSchedule>>({});
   const [tempTaxInvoice, setTempTaxInvoice] = useState<Partial<TaxInvoice>>({});
   const [tempCardExpense, setTempCardExpense] = useState<Partial<CorporateCardExpense>>({});
+  const [tempWithholding, setTempWithholding] = useState<Partial<WithholdingPayment>>({});
 
   const { summary, paymentSchedules, lineItems, taxInvoices, corporateCardExpenses } = budget;
 
@@ -207,7 +212,7 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
     toast.success('항목이 수정되었습니다.');
   };
 
-  const handleAddLineItem = () => {
+  const handleAddLineItem = (forCategory?: string) => {
     const targetExpense = (tempLineItem.targetUnitPrice || 0) * (tempLineItem.quantity || 1);
     const newItem: BudgetLineItem = {
       id: `li-${Date.now()}`,
@@ -215,7 +220,7 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
       orderNo: lineItems.length + 1,
       completed: false,
       category: (tempLineItem.category as ExpenseCategory) || 'STAFF_EQUIPMENT',
-      mainCategory: tempLineItem.mainCategory || '',
+      mainCategory: forCategory || tempLineItem.mainCategory || '',
       subCategory: tempLineItem.subCategory || '',
       targetUnitPrice: tempLineItem.targetUnitPrice || 0,
       quantity: tempLineItem.quantity || 1,
@@ -234,8 +239,56 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
       lineItems: [...prev.lineItems, newItem],
     }));
     setIsAddingLineItem(false);
+    setAddingForCategory(null);
     setTempLineItem({});
     toast.success('항목이 추가되었습니다.');
+  };
+
+  // ========== Withholding CRUD ==========
+  const handleSaveWithholding = (wh: WithholdingPayment) => {
+    const withholdingTax = wh.amount * 0.033;
+    const updatedWh = { ...wh, withholdingTax, totalAmount: wh.amount - withholdingTax };
+    
+    setBudget(prev => ({
+      ...prev,
+      withholdingPayments: prev.withholdingPayments.map(w => w.id === wh.id ? updatedWh : w),
+    }));
+    setEditingWithholdingId(null);
+    toast.success('용역비가 수정되었습니다.');
+  };
+
+  const handleAddWithholding = () => {
+    const amount = tempWithholding.amount || 0;
+    const withholdingTax = amount * 0.033;
+    
+    const newWh: WithholdingPayment = {
+      id: `wh-${Date.now()}`,
+      projectId,
+      orderNo: (budget.withholdingPayments?.length || 0) + 1,
+      paymentDueDate: tempWithholding.paymentDueDate || '',
+      personName: tempWithholding.personName || '',
+      role: tempWithholding.role || '',
+      amount,
+      withholdingTax,
+      totalAmount: amount - withholdingTax,
+      status: 'PENDING',
+    };
+
+    setBudget(prev => ({
+      ...prev,
+      withholdingPayments: [...(prev.withholdingPayments || []), newWh],
+    }));
+    setIsAddingWithholding(false);
+    setTempWithholding({});
+    toast.success('용역비가 추가되었습니다.');
+  };
+
+  const handleDeleteWithholding = (id: string) => {
+    setBudget(prev => ({
+      ...prev,
+      withholdingPayments: prev.withholdingPayments.filter(w => w.id !== id),
+    }));
+    toast.success('용역비가 삭제되었습니다.');
   };
 
   const handleDeleteLineItem = (id: string) => {
@@ -741,7 +794,7 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
                     </TableCell>
                     <TableCell>
                       <div className="flex gap-1">
-                        <Button size="icon" variant="ghost" className="h-7 w-7 text-emerald-600" onClick={handleAddLineItem}>
+                        <Button size="icon" variant="ghost" className="h-7 w-7 text-emerald-600" onClick={() => handleAddLineItem()}>
                           <Check className="w-4 h-4" />
                         </Button>
                         <Button size="icon" variant="ghost" className="h-7 w-7 text-muted-foreground" onClick={() => { setIsAddingLineItem(false); setTempLineItem({}); }}>
@@ -1051,10 +1104,222 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
 
             {/* Withholding Tab */}
             <TabsContent value="withholding" className="mt-4">
-              <Card className="p-8 text-center text-muted-foreground">
-                <User className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                <p>등록된 용역비(원천징수) 내역이 없습니다</p>
-                <p className="text-sm mt-2">테이블에서 직접 추가할 수 있습니다</p>
+              <Card className="shadow-card">
+                <div className="overflow-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-[50px]">No.</TableHead>
+                        <TableHead className="w-[100px]">입금약일</TableHead>
+                        <TableHead>성명</TableHead>
+                        <TableHead className="w-[100px]">역할</TableHead>
+                        <TableHead className="text-right w-[120px]">금액</TableHead>
+                        <TableHead className="text-right w-[100px]">세액(3.3%)</TableHead>
+                        <TableHead className="text-right w-[120px]">실지급액</TableHead>
+                        <TableHead className="w-[100px]">진행단계</TableHead>
+                        <TableHead className="w-[50px]"></TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {(budget.withholdingPayments || []).map((wh, index) => (
+                        editingWithholdingId === wh.id ? (
+                          <TableRow key={wh.id} className="bg-blue-50/50">
+                            <TableCell>{index + 1}</TableCell>
+                            <TableCell>
+                              <Input
+                                value={wh.paymentDueDate || ''}
+                                onChange={(e) => {
+                                  setBudget(prev => ({
+                                    ...prev,
+                                    withholdingPayments: prev.withholdingPayments.map(w => w.id === wh.id ? { ...w, paymentDueDate: e.target.value } : w),
+                                  }));
+                                }}
+                                className="h-8"
+                                placeholder="예: 26.01.15"
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <Input
+                                value={wh.personName}
+                                onChange={(e) => {
+                                  setBudget(prev => ({
+                                    ...prev,
+                                    withholdingPayments: prev.withholdingPayments.map(w => w.id === wh.id ? { ...w, personName: e.target.value } : w),
+                                  }));
+                                }}
+                                className="h-8"
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <Input
+                                value={wh.role}
+                                onChange={(e) => {
+                                  setBudget(prev => ({
+                                    ...prev,
+                                    withholdingPayments: prev.withholdingPayments.map(w => w.id === wh.id ? { ...w, role: e.target.value } : w),
+                                  }));
+                                }}
+                                className="h-8"
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <Input
+                                value={wh.amount.toLocaleString('ko-KR')}
+                                onChange={(e) => {
+                                  const value = parseCurrency(e.target.value);
+                                  setBudget(prev => ({
+                                    ...prev,
+                                    withholdingPayments: prev.withholdingPayments.map(w => w.id === wh.id ? { ...w, amount: value } : w),
+                                  }));
+                                }}
+                                className="h-8 text-right"
+                              />
+                            </TableCell>
+                            <TableCell className="text-right text-muted-foreground">
+                              {formatCurrency(wh.amount * 0.033)}
+                            </TableCell>
+                            <TableCell className="text-right font-medium">
+                              {formatCurrency(wh.amount - wh.amount * 0.033)}
+                            </TableCell>
+                            <TableCell>
+                              <Select
+                                value={wh.status}
+                                onValueChange={(val) => {
+                                  setBudget(prev => ({
+                                    ...prev,
+                                    withholdingPayments: prev.withholdingPayments.map(w => w.id === wh.id ? { ...w, status: val as PaymentStatus } : w),
+                                  }));
+                                }}
+                              >
+                                <SelectTrigger className="h-8">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="PENDING">대기중</SelectItem>
+                                  <SelectItem value="INVOICE_ISSUED">계산서발행</SelectItem>
+                                  <SelectItem value="PAYMENT_COMPLETE">입금완료</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex gap-1">
+                                <Button size="icon" variant="ghost" className="h-7 w-7 text-emerald-600" onClick={() => handleSaveWithholding(wh)}>
+                                  <Check className="w-4 h-4" />
+                                </Button>
+                                <Button size="icon" variant="ghost" className="h-7 w-7 text-muted-foreground" onClick={() => setEditingWithholdingId(null)}>
+                                  <X className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ) : (
+                          <TableRow 
+                            key={wh.id} 
+                            className="hover:bg-muted/10 cursor-pointer"
+                            onClick={() => setEditingWithholdingId(wh.id)}
+                          >
+                            <TableCell>{index + 1}</TableCell>
+                            <TableCell>{wh.paymentDueDate}</TableCell>
+                            <TableCell className="font-medium">{wh.personName}</TableCell>
+                            <TableCell>{wh.role}</TableCell>
+                            <TableCell className="text-right">{formatCurrency(wh.amount)}</TableCell>
+                            <TableCell className="text-right">{formatCurrency(wh.withholdingTax)}</TableCell>
+                            <TableCell className="text-right font-medium">{formatCurrency(wh.totalAmount)}</TableCell>
+                            <TableCell>{getStatusBadge(wh.status)}</TableCell>
+                            <TableCell>
+                              <Button 
+                                size="icon" 
+                                variant="ghost" 
+                                className="h-7 w-7 text-destructive"
+                                onClick={(e) => { e.stopPropagation(); handleDeleteWithholding(wh.id); }}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        )
+                      ))}
+
+                      {/* Add New Row */}
+                      {isAddingWithholding ? (
+                        <TableRow className="bg-emerald-50/50">
+                          <TableCell>새 항목</TableCell>
+                          <TableCell>
+                            <Input
+                              value={tempWithholding.paymentDueDate || ''}
+                              onChange={(e) => setTempWithholding(prev => ({ ...prev, paymentDueDate: e.target.value }))}
+                              className="h-8"
+                              placeholder="예: 26.01.15"
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <Input
+                              value={tempWithholding.personName || ''}
+                              onChange={(e) => setTempWithholding(prev => ({ ...prev, personName: e.target.value }))}
+                              className="h-8"
+                              placeholder="이름"
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <Input
+                              value={tempWithholding.role || ''}
+                              onChange={(e) => setTempWithholding(prev => ({ ...prev, role: e.target.value }))}
+                              className="h-8"
+                              placeholder="역할"
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <Input
+                              value={(tempWithholding.amount || 0).toLocaleString('ko-KR')}
+                              onChange={(e) => setTempWithholding(prev => ({ ...prev, amount: parseCurrency(e.target.value) }))}
+                              className="h-8 text-right"
+                              placeholder="0"
+                            />
+                          </TableCell>
+                          <TableCell className="text-right text-muted-foreground">
+                            {formatCurrency((tempWithholding.amount || 0) * 0.033)}
+                          </TableCell>
+                          <TableCell className="text-right font-medium">
+                            {formatCurrency((tempWithholding.amount || 0) * 0.967)}
+                          </TableCell>
+                          <TableCell>
+                            <Badge className="bg-yellow-100 text-yellow-700">대기중</Badge>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex gap-1">
+                              <Button size="icon" variant="ghost" className="h-7 w-7 text-emerald-600" onClick={handleAddWithholding}>
+                                <Check className="w-4 h-4" />
+                              </Button>
+                              <Button size="icon" variant="ghost" className="h-7 w-7 text-muted-foreground" onClick={() => { setIsAddingWithholding(false); setTempWithholding({}); }}>
+                                <X className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        <TableRow 
+                          className="hover:bg-emerald-50/50 cursor-pointer border-dashed"
+                          onClick={() => setIsAddingWithholding(true)}
+                        >
+                          <TableCell colSpan={9} className="text-center text-muted-foreground py-3">
+                            <Plus className="w-4 h-4 inline mr-2" />
+                            새 용역비 추가
+                          </TableCell>
+                        </TableRow>
+                      )}
+
+                      {(budget.withholdingPayments?.length || 0) > 0 && (
+                        <TableRow className="bg-muted/50 font-semibold">
+                          <TableCell colSpan={4} className="text-right">합계</TableCell>
+                          <TableCell className="text-right">{formatCurrency((budget.withholdingPayments || []).reduce((sum, w) => sum + w.amount, 0))}</TableCell>
+                          <TableCell className="text-right">{formatCurrency((budget.withholdingPayments || []).reduce((sum, w) => sum + w.withholdingTax, 0))}</TableCell>
+                          <TableCell className="text-right">{formatCurrency((budget.withholdingPayments || []).reduce((sum, w) => sum + w.totalAmount, 0))}</TableCell>
+                          <TableCell colSpan={2}></TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
               </Card>
             </TabsContent>
 

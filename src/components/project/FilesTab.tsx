@@ -6,6 +6,22 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import {
   FileText,
   Presentation,
@@ -19,12 +35,17 @@ import {
   FolderOpen,
   MessageSquare,
   Search,
+  Pencil,
+  Trash2,
+  FolderInput,
+  MessageCircle,
 } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import { FileUploadModal } from './FileUploadModal';
 import { toast } from 'sonner';
@@ -62,6 +83,18 @@ export function FilesTab({ projectId }: FilesTabProps) {
   const fileGroups = getFileGroupsByProject(projectId);
   const [selectedCategory, setSelectedCategory] = useState<FileCategory | 'ALL' | 'IMPORTANT'>('ALL');
   const [showUploadModal, setShowUploadModal] = useState(false);
+  
+  // Local state for file management
+  const [localFiles, setLocalFiles] = useState<typeof files>([]);
+  
+  // Modal states
+  const [showRenameModal, setShowRenameModal] = useState(false);
+  const [showMoveModal, setShowMoveModal] = useState(false);
+  const [showCommentModal, setShowCommentModal] = useState(false);
+  const [selectedFileId, setSelectedFileId] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState('');
+  const [moveToCategory, setMoveToCategory] = useState<FileCategory>('ETC');
+  const [commentValue, setCommentValue] = useState('');
 
   const allCategories: FileCategory[] = ['DECK', 'FINAL', 'REFERENCE', 'CONTRACT', 'ETC'];
 
@@ -71,7 +104,7 @@ export function FilesTab({ projectId }: FilesTabProps) {
       const groupFiles = getFilesByGroup(group.id);
       return groupFiles.map((file) => ({ ...file, category: group.category }));
     });
-  }, [fileGroups, files]);
+  }, [fileGroups, files, localFiles]);
 
   // Important files
   const importantFiles = useMemo(() => {
@@ -91,9 +124,61 @@ export function FilesTab({ projectId }: FilesTabProps) {
     });
   };
 
+  // Toggle important status
   const handleToggleImportant = (fileId: string) => {
-    // Mock toggle important - would update file in store
-    toast.success('File updated');
+    const file = allProjectFiles.find(f => f.id === fileId);
+    if (file) {
+      toast.success(file.isImportant ? 'Removed from important files' : 'Added to important files');
+    }
+  };
+
+  // Rename file
+  const handleOpenRename = (fileId: string, currentName: string) => {
+    setSelectedFileId(fileId);
+    setRenameValue(currentName);
+    setShowRenameModal(true);
+  };
+
+  const handleRename = () => {
+    if (!renameValue.trim() || !selectedFileId) return;
+    toast.success(`File renamed to "${renameValue}"`);
+    setShowRenameModal(false);
+    setSelectedFileId(null);
+    setRenameValue('');
+  };
+
+  // Move file
+  const handleOpenMove = (fileId: string, currentCategory: FileCategory) => {
+    setSelectedFileId(fileId);
+    setMoveToCategory(currentCategory);
+    setShowMoveModal(true);
+  };
+
+  const handleMove = () => {
+    if (!selectedFileId) return;
+    toast.success(`File moved to ${categoryLabels[moveToCategory]}`);
+    setShowMoveModal(false);
+    setSelectedFileId(null);
+  };
+
+  // Delete file
+  const handleDelete = (fileId: string) => {
+    toast.success('File deleted');
+  };
+
+  // Comment on file
+  const handleOpenComment = (fileId: string, currentComment?: string) => {
+    setSelectedFileId(fileId);
+    setCommentValue(currentComment || '');
+    setShowCommentModal(true);
+  };
+
+  const handleSaveComment = () => {
+    if (!selectedFileId) return;
+    toast.success('Comment saved');
+    setShowCommentModal(false);
+    setSelectedFileId(null);
+    setCommentValue('');
   };
 
   const handleUploadConfirm = (category: FileCategory, isImportant: boolean, comment: string) => {
@@ -248,6 +333,15 @@ export function FilesTab({ projectId }: FilesTabProps) {
                             <span>{uploader?.name}</span>
                             <span>·</span>
                             <span>{formatDate(file.createdAt)}</span>
+                            {file.comment && (
+                              <>
+                                <span>·</span>
+                                <span className="flex items-center gap-1 text-primary">
+                                  <MessageCircle className="w-3 h-3" />
+                                  Has comment
+                                </span>
+                              </>
+                            )}
                             {file.source === 'CHAT' && (
                               <>
                                 <span>·</span>
@@ -259,9 +353,14 @@ export function FilesTab({ projectId }: FilesTabProps) {
                             )}
                           </div>
                         </div>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                          <Download className="w-4 h-4" />
-                        </Button>
+                        <div className="flex items-center gap-1">
+                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleOpenComment(file.id, file.comment)}>
+                            <MessageCircle className="w-4 h-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-8 w-8">
+                            <Download className="w-4 h-4" />
+                          </Button>
+                        </div>
                       </div>
                     );
                   })}
@@ -325,6 +424,15 @@ export function FilesTab({ projectId }: FilesTabProps) {
                                   <span>{formatDate(file.createdAt)}</span>
                                   <span>·</span>
                                   <span>{file.size}</span>
+                                  {file.comment && (
+                                    <>
+                                      <span>·</span>
+                                      <span className="flex items-center gap-1 text-primary">
+                                        <MessageCircle className="w-3 h-3" />
+                                        Has comment
+                                      </span>
+                                    </>
+                                  )}
                                   {file.source === 'CHAT' && (
                                     <>
                                       <span>·</span>
@@ -337,6 +445,15 @@ export function FilesTab({ projectId }: FilesTabProps) {
                                 </div>
                               </div>
                               <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8"
+                                  onClick={() => handleOpenComment(file.id, file.comment)}
+                                  title="Add/Edit Comment"
+                                >
+                                  <MessageCircle className={`w-4 h-4 ${file.comment ? 'text-primary' : ''}`} />
+                                </Button>
                                 <Button
                                   variant="ghost"
                                   size="icon"
@@ -360,11 +477,28 @@ export function FilesTab({ projectId }: FilesTabProps) {
                                   </DropdownMenuTrigger>
                                   <DropdownMenuContent align="end">
                                     <DropdownMenuItem onClick={() => handleToggleImportant(file.id)}>
+                                      <Star className="w-4 h-4 mr-2" />
                                       {file.isImportant ? 'Remove from Important' : 'Add to Important Files'}
                                     </DropdownMenuItem>
-                                    <DropdownMenuItem>Rename</DropdownMenuItem>
-                                    <DropdownMenuItem>Move to...</DropdownMenuItem>
-                                    <DropdownMenuItem className="text-destructive">
+                                    <DropdownMenuItem onClick={() => handleOpenComment(file.id, file.comment)}>
+                                      <MessageCircle className="w-4 h-4 mr-2" />
+                                      {file.comment ? 'Edit Comment' : 'Add Comment'}
+                                    </DropdownMenuItem>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem onClick={() => handleOpenRename(file.id, file.name)}>
+                                      <Pencil className="w-4 h-4 mr-2" />
+                                      Rename
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => handleOpenMove(file.id, group.category)}>
+                                      <FolderInput className="w-4 h-4 mr-2" />
+                                      Move to...
+                                    </DropdownMenuItem>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem 
+                                      className="text-destructive"
+                                      onClick={() => handleDelete(file.id)}
+                                    >
+                                      <Trash2 className="w-4 h-4 mr-2" />
                                       Delete
                                     </DropdownMenuItem>
                                   </DropdownMenuContent>
@@ -390,6 +524,83 @@ export function FilesTab({ projectId }: FilesTabProps) {
         fileName="New_Upload.pdf"
         onUpload={handleUploadConfirm}
       />
+
+      {/* Rename Modal */}
+      <Dialog open={showRenameModal} onOpenChange={setShowRenameModal}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Rename File</DialogTitle>
+            <DialogDescription>Enter a new name for this file.</DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <Input
+              value={renameValue}
+              onChange={(e) => setRenameValue(e.target.value)}
+              placeholder="File name"
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowRenameModal(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleRename}>Rename</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Move Modal */}
+      <Dialog open={showMoveModal} onOpenChange={setShowMoveModal}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Move File</DialogTitle>
+            <DialogDescription>Select a category to move this file to.</DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <Select value={moveToCategory} onValueChange={(v) => setMoveToCategory(v as FileCategory)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select category" />
+              </SelectTrigger>
+              <SelectContent>
+                {allCategories.map((cat) => (
+                  <SelectItem key={cat} value={cat}>
+                    {categoryLabels[cat]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowMoveModal(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleMove}>Move</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Comment Modal */}
+      <Dialog open={showCommentModal} onOpenChange={setShowCommentModal}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>File Comment</DialogTitle>
+            <DialogDescription>Add a comment to help find this file later.</DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <Textarea
+              value={commentValue}
+              onChange={(e) => setCommentValue(e.target.value)}
+              placeholder="Add a description or notes about this file..."
+              rows={3}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowCommentModal(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSaveComment}>Save Comment</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
