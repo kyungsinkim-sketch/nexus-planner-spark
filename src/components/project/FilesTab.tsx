@@ -411,99 +411,102 @@ export function FilesTab({ projectId }: FilesTabProps) {
                           return (
                             <div
                               key={file.id}
-                              className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors group"
+                              className="flex flex-col p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors group"
                             >
-                              <FileText className="w-5 h-5 text-muted-foreground shrink-0" />
-                              <div className="flex-1 min-w-0">
-                                <p className="text-sm font-medium text-foreground truncate">
-                                  {file.name}
-                                </p>
-                                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                  <span>{uploader?.name}</span>
-                                  <span>·</span>
-                                  <span>{formatDate(file.createdAt)}</span>
-                                  <span>·</span>
-                                  <span>{file.size}</span>
-                                  {file.comment && (
-                                    <>
-                                      <span>·</span>
-                                      <span className="flex items-center gap-1 text-primary">
-                                        <MessageCircle className="w-3 h-3" />
-                                        Has comment
-                                      </span>
-                                    </>
-                                  )}
-                                  {file.source === 'CHAT' && (
-                                    <>
-                                      <span>·</span>
-                                      <span className="flex items-center gap-1 text-primary">
-                                        <MessageSquare className="w-3 h-3" />
-                                        From Chat
-                                      </span>
-                                    </>
-                                  )}
+                              <div className="flex items-center gap-3">
+                                <FileText className="w-5 h-5 text-muted-foreground shrink-0" />
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm font-medium text-foreground truncate">
+                                    {file.name}
+                                  </p>
+                                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                    <span>{uploader?.name}</span>
+                                    <span>·</span>
+                                    <span>{formatDate(file.createdAt)}</span>
+                                    <span>·</span>
+                                    <span>{file.size}</span>
+                                    {file.source === 'CHAT' && (
+                                      <>
+                                        <span>·</span>
+                                        <span className="flex items-center gap-1 text-primary">
+                                          <MessageSquare className="w-3 h-3" />
+                                          From Chat
+                                        </span>
+                                      </>
+                                    )}
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8"
+                                    onClick={() => handleOpenComment(file.id, file.comment)}
+                                    title="Add/Edit Comment"
+                                  >
+                                    <MessageCircle className={`w-4 h-4 ${file.comment ? 'text-primary' : ''}`} />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8"
+                                    onClick={() => handleToggleImportant(file.id)}
+                                  >
+                                    <Star className={`w-4 h-4 ${file.isImportant ? 'text-amber-500 fill-amber-500' : ''}`} />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8"
+                                  >
+                                    <Download className="w-4 h-4" />
+                                  </Button>
+                                  <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                      <Button variant="ghost" size="icon" className="h-8 w-8">
+                                        <MoreHorizontal className="w-4 h-4" />
+                                      </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                      <DropdownMenuItem onClick={() => handleToggleImportant(file.id)}>
+                                        <Star className="w-4 h-4 mr-2" />
+                                        {file.isImportant ? 'Remove from Important' : 'Add to Important Files'}
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem onClick={() => handleOpenComment(file.id, file.comment)}>
+                                        <MessageCircle className="w-4 h-4 mr-2" />
+                                        {file.comment ? 'Edit Comment' : 'Add Comment'}
+                                      </DropdownMenuItem>
+                                      <DropdownMenuSeparator />
+                                      <DropdownMenuItem onClick={() => handleOpenRename(file.id, file.name)}>
+                                        <Pencil className="w-4 h-4 mr-2" />
+                                        Rename
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem onClick={() => handleOpenMove(file.id, group.category)}>
+                                        <FolderInput className="w-4 h-4 mr-2" />
+                                        Move to...
+                                      </DropdownMenuItem>
+                                      <DropdownMenuSeparator />
+                                      <DropdownMenuItem 
+                                        className="text-destructive"
+                                        onClick={() => handleDelete(file.id)}
+                                      >
+                                        <Trash2 className="w-4 h-4 mr-2" />
+                                        Delete
+                                      </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                  </DropdownMenu>
                                 </div>
                               </div>
-                              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-8 w-8"
-                                  onClick={() => handleOpenComment(file.id, file.comment)}
-                                  title="Add/Edit Comment"
-                                >
-                                  <MessageCircle className={`w-4 h-4 ${file.comment ? 'text-primary' : ''}`} />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-8 w-8"
-                                  onClick={() => handleToggleImportant(file.id)}
-                                >
-                                  <Star className={`w-4 h-4 ${file.isImportant ? 'text-amber-500 fill-amber-500' : ''}`} />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-8 w-8"
-                                >
-                                  <Download className="w-4 h-4" />
-                                </Button>
-                                <DropdownMenu>
-                                  <DropdownMenuTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="h-8 w-8">
-                                      <MoreHorizontal className="w-4 h-4" />
-                                    </Button>
-                                  </DropdownMenuTrigger>
-                                  <DropdownMenuContent align="end">
-                                    <DropdownMenuItem onClick={() => handleToggleImportant(file.id)}>
-                                      <Star className="w-4 h-4 mr-2" />
-                                      {file.isImportant ? 'Remove from Important' : 'Add to Important Files'}
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem onClick={() => handleOpenComment(file.id, file.comment)}>
-                                      <MessageCircle className="w-4 h-4 mr-2" />
-                                      {file.comment ? 'Edit Comment' : 'Add Comment'}
-                                    </DropdownMenuItem>
-                                    <DropdownMenuSeparator />
-                                    <DropdownMenuItem onClick={() => handleOpenRename(file.id, file.name)}>
-                                      <Pencil className="w-4 h-4 mr-2" />
-                                      Rename
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem onClick={() => handleOpenMove(file.id, group.category)}>
-                                      <FolderInput className="w-4 h-4 mr-2" />
-                                      Move to...
-                                    </DropdownMenuItem>
-                                    <DropdownMenuSeparator />
-                                    <DropdownMenuItem 
-                                      className="text-destructive"
-                                      onClick={() => handleDelete(file.id)}
-                                    >
-                                      <Trash2 className="w-4 h-4 mr-2" />
-                                      Delete
-                                    </DropdownMenuItem>
-                                  </DropdownMenuContent>
-                                </DropdownMenu>
-                              </div>
+                              {/* Comment displayed below */}
+                              {file.comment && (
+                                <div className="mt-2 ml-8 px-3 py-2 bg-background/60 rounded text-xs text-muted-foreground border-l-2 border-primary/30">
+                                  <span className="flex items-center gap-1 mb-1 text-primary font-medium">
+                                    <MessageCircle className="w-3 h-3" />
+                                    Comment
+                                  </span>
+                                  {file.comment}
+                                </div>
+                              )}
                             </div>
                           );
                         })}

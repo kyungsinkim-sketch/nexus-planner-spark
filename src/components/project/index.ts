@@ -4,6 +4,7 @@ export { ProjectChatTab } from './ProjectChatTab';
 export { FilesTab } from './FilesTab';
 export { BudgetTab } from './BudgetTab';
 export { TodosTab } from './TodosTab';
+export { EditProjectModal } from './EditProjectModal';
 export { ProjectHealthBlock } from './ProjectHealthBlock';
 export { NewProjectModal } from './NewProjectModal';
 export { NextActionsSection } from './NextActionsSection';

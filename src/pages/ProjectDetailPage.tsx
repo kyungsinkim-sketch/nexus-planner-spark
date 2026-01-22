@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useAppStore } from '@/stores/appStore';
 import { 
@@ -10,7 +11,6 @@ import {
   MoreHorizontal,
   Clock,
 } from 'lucide-react';
-import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -36,10 +36,12 @@ import {
   BudgetTab,
   TodosTab,
 } from '@/components/project';
+import { EditProjectModal } from '@/components/project/EditProjectModal';
 
 export default function ProjectDetailPage() {
   const { projectId } = useParams<{ projectId: string }>();
   const { getProjectById, updateProject, currentUser, getUserById } = useAppStore();
+  const [showEditModal, setShowEditModal] = useState(false);
 
   const project = getProjectById(projectId || '');
 
@@ -203,11 +205,8 @@ export default function ProjectDetailPage() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => toast.success('Edit project dialog would open here')}>
+              <DropdownMenuItem onClick={() => setShowEditModal(true)}>
                 Edit Project
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => toast.success('Project duplicated')}>
-                Duplicate
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem className="text-destructive">Archive Project</DropdownMenuItem>
@@ -276,6 +275,13 @@ export default function ProjectDetailPage() {
           </TabsContent>
         )}
       </Tabs>
+
+      {/* Edit Project Modal */}
+      <EditProjectModal
+        open={showEditModal}
+        onOpenChange={setShowEditModal}
+        project={project}
+      />
     </div>
   );
 }

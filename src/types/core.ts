@@ -74,7 +74,7 @@ export interface Project {
   id: string;
   title: string;
   client: string;
-  status: 'ACTIVE' | 'COMPLETED';
+  status: 'ACTIVE' | 'COMPLETED' | 'ARCHIVED';
   type?: ProjectType;
   priority?: ProjectPriority;
   startDate: string;
@@ -93,6 +93,7 @@ export interface Project {
   isLocked?: boolean;
   feedbackStatus?: FeedbackStatus;
   thumbnail?: string;
+  keyColor?: string; // Project key color for calendar display
 }
 
 export type EventSource = 'PAULUS' | 'GOOGLE';
