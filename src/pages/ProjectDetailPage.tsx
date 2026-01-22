@@ -7,12 +7,10 @@ import {
   MessageSquare, 
   FolderOpen, 
   DollarSign,
-  Plus,
-  CalendarPlus,
-  FileUp,
   MoreHorizontal,
   Clock,
 } from 'lucide-react';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -37,20 +35,11 @@ import {
   FilesTab,
   BudgetTab,
   TodosTab,
-  NewEventModal,
-  NewTaskModal,
-  FileUploadModal,
 } from '@/components/project';
-import { useState } from 'react';
 
 export default function ProjectDetailPage() {
   const { projectId } = useParams<{ projectId: string }>();
   const { getProjectById, updateProject, currentUser, getUserById } = useAppStore();
-  
-  // Modal states
-  const [showNewTaskModal, setShowNewTaskModal] = useState(false);
-  const [showNewEventModal, setShowNewEventModal] = useState(false);
-  const [showFileUploadModal, setShowFileUploadModal] = useState(false);
 
   const project = getProjectById(projectId || '');
 
@@ -207,39 +196,6 @@ export default function ProjectDetailPage() {
 
         {/* Action Group */}
         <div className="flex items-center gap-2 shrink-0">
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="outline" size="icon" className="h-9 w-9" onClick={() => setShowNewTaskModal(true)}>
-                  <Plus className="w-4 h-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Add Task</TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="outline" size="icon" className="h-9 w-9" onClick={() => setShowNewEventModal(true)}>
-                  <CalendarPlus className="w-4 h-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Add Event</TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="outline" size="icon" className="h-9 w-9" onClick={() => setShowFileUploadModal(true)}>
-                  <FileUp className="w-4 h-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Add File</TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="icon" className="h-9 w-9">
@@ -247,9 +203,12 @@ export default function ProjectDetailPage() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem>Edit Project</DropdownMenuItem>
-              <DropdownMenuItem>Duplicate</DropdownMenuItem>
-              <DropdownMenuItem>Export</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => toast.success('Edit project dialog would open here')}>
+                Edit Project
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => toast.success('Project duplicated')}>
+                Duplicate
+              </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem className="text-destructive">Archive Project</DropdownMenuItem>
             </DropdownMenuContent>
@@ -317,24 +276,6 @@ export default function ProjectDetailPage() {
           </TabsContent>
         )}
       </Tabs>
-
-      {/* Modals */}
-      <NewTaskModal
-        open={showNewTaskModal}
-        onClose={() => setShowNewTaskModal(false)}
-        projectId={project.id}
-      />
-      <NewEventModal
-        open={showNewEventModal}
-        onClose={() => setShowNewEventModal(false)}
-        projectId={project.id}
-      />
-      <FileUploadModal
-        open={showFileUploadModal}
-        onClose={() => setShowFileUploadModal(false)}
-        projectId={project.id}
-        onUpload={() => setShowFileUploadModal(false)}
-      />
     </div>
   );
 }

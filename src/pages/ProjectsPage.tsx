@@ -20,18 +20,21 @@ import { formatCurrency } from '@/lib/format';
 export default function ProjectsPage() {
   const { projects } = useAppStore();
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'COMPLETED'>('ALL');
+  const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'COMPLETED' | 'ARCHIVED'>('ALL');
   const [showNewProjectModal, setShowNewProjectModal] = useState(false);
 
   const filteredProjects = projects.filter((project) => {
     const matchesSearch = project.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       project.client.toLowerCase().includes(searchQuery.toLowerCase());
+    // For now, treat ARCHIVED as a special filter - projects don't have ARCHIVED status yet
+    if (statusFilter === 'ARCHIVED') return false;
     const matchesStatus = statusFilter === 'ALL' || project.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
 
   const activeProjects = projects.filter((p) => p.status === 'ACTIVE');
   const completedProjects = projects.filter((p) => p.status === 'COMPLETED');
+  const archivedProjects = 0; // Placeholder - would need to add ARCHIVED status to Project type
 
   return (
     <div className="page-container animate-fade-in">
@@ -40,7 +43,7 @@ export default function ProjectsPage() {
         <div>
           <h1 className="page-title">Projects</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            {activeProjects.length} active · {completedProjects.length} completed
+            {activeProjects.length} active · {completedProjects.length} completed · {archivedProjects} archived
           </p>
         </div>
         <Button size="sm" className="gap-2" onClick={() => setShowNewProjectModal(true)}>
@@ -75,10 +78,16 @@ export default function ProjectsPage() {
               All Status
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => setStatusFilter('ACTIVE')}>
+              <span className="w-2 h-2 rounded-full bg-emerald-500 mr-2"></span>
               Active
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => setStatusFilter('COMPLETED')}>
+              <span className="w-2 h-2 rounded-full bg-amber-500 mr-2"></span>
               Completed
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setStatusFilter('ARCHIVED')}>
+              <span className="w-2 h-2 rounded-full bg-red-500 mr-2"></span>
+              Archived
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -194,7 +203,11 @@ function ProjectCard({ project }: { project: Project }) {
               )}
               <Badge 
                 variant="secondary"
-                className={project.status === 'ACTIVE' ? 'status-active' : 'status-completed'}
+                className={
+                  project.status === 'ACTIVE' 
+                    ? 'bg-emerald-100 text-emerald-700 border-emerald-200' 
+                    : 'bg-amber-100 text-amber-700 border-amber-200'
+                }
               >
                 {project.status}
               </Badge>
