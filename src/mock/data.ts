@@ -39,7 +39,7 @@ export const mockProjects: Project[] = [
     health: { schedule: 'ON_TRACK', workload: 'BALANCED', budget: 'HEALTHY' },
     tasksCompleted: 12,
     tasksTotal: 12,
-    budget: 500900000,
+    budget: 250450000,
     keyColor: '#002E6E',
   },
   {
@@ -420,7 +420,7 @@ export const mockProjects: Project[] = [
     health: { schedule: 'ON_TRACK', workload: 'OVERLOADED', budget: 'HEALTHY' },
     tasksCompleted: 20,
     tasksTotal: 20,
-    budget: 1354551238,
+    budget: 1340764798,
     keyColor: '#002C5F',
   },
   {
@@ -463,26 +463,7 @@ export const mockProjects: Project[] = [
     budget: 47407820,
     keyColor: '#37474F',
   },
-  {
-    id: 'p23',
-    title: '현대자동차그룹 UWB 프로덕트 개발 잔금',
-    client: '현대자동차그룹',
-    status: 'COMPLETED',
-    type: 'EXECUTION',
-    priority: 'MEDIUM',
-    startDate: dateFrom(2025, 12),
-    endDate: dateFrom(2025, 12, 31),
-    description: 'UWB 프로덕트 개발 잔금',
-    progress: 100,
-    pmId: 'u3',
-    teamMemberIds: ['u3'],
-    lastActivityAt: dateFrom(2025, 12, 31),
-    health: { schedule: 'ON_TRACK', workload: 'BALANCED', budget: 'HEALTHY' },
-    tasksCompleted: 3,
-    tasksTotal: 3,
-    budget: 52000000,
-    keyColor: '#1565C0',
-  },
+  // p23 removed - UWB 잔금은 p15에 이미 포함
   {
     id: 'p24',
     title: 'POSM Creative Fee',
@@ -655,7 +636,7 @@ export interface ProjectFinancial {
 }
 
 export const projectFinancials: ProjectFinancial[] = [
-  { projectId: 'p1', contractAmount: 500900000, actualExpense: 362370925, profitRate: 31.45, netProfit: 138529075 },
+  { projectId: 'p1', contractAmount: 250450000, actualExpense: 362370925, profitRate: 0, netProfit: -111920925 },
   { projectId: 'p2', contractAmount: 27700000, actualExpense: 0, profitRate: 100, netProfit: 27700000 },
   { projectId: 'p3', contractAmount: 80000000, actualExpense: 29265109, profitRate: 63.42, netProfit: 50734891 },
   { projectId: 'p4', contractAmount: 45454545, actualExpense: 12874160, profitRate: 71.68, netProfit: 32580385 },
@@ -675,10 +656,10 @@ export const projectFinancials: ProjectFinancial[] = [
   { projectId: 'p18', contractAmount: 186900000, actualExpense: 0, profitRate: 100, netProfit: 186900000 },
   { projectId: 'p19', contractAmount: 15100000, actualExpense: 0, profitRate: 100, netProfit: 15100000 },
   // 하단 섹션 추가 항목 (실지출 데이터 없음)
-  { projectId: 'p20', contractAmount: 1354551238, actualExpense: 0, profitRate: 100, netProfit: 1354551238 },
+  { projectId: 'p20', contractAmount: 1340764798, actualExpense: 0, profitRate: 100, netProfit: 1340764798 },
   { projectId: 'p21', contractAmount: 324300000, actualExpense: 0, profitRate: 100, netProfit: 324300000 },
   { projectId: 'p22', contractAmount: 47407820, actualExpense: 0, profitRate: 100, netProfit: 47407820 },
-  { projectId: 'p23', contractAmount: 52000000, actualExpense: 0, profitRate: 100, netProfit: 52000000 },
+  // p23 removed - duplicate of p15
   { projectId: 'p24', contractAmount: 21829500, actualExpense: 0, profitRate: 100, netProfit: 21829500 },
   { projectId: 'p25', contractAmount: 20000000, actualExpense: 0, profitRate: 100, netProfit: 20000000 },
   { projectId: 'p26', contractAmount: 15500000, actualExpense: 0, profitRate: 100, netProfit: 15500000 },
@@ -689,13 +670,150 @@ export const projectFinancials: ProjectFinancial[] = [
   { projectId: 'p31', contractAmount: 6000000, actualExpense: 0, profitRate: 100, netProfit: 6000000 },
 ];
 
-// Finance summary helpers
+// ============================================================
+// CONFIDENTIAL - 연도별 재무 데이터 (경상비_운영비 엑셀 기반)
+// ============================================================
+export interface AnnualFinancial {
+  year: number;
+  isTarget: boolean;
+  revenue: number;
+  overhead: {
+    total: number;
+    managementPayroll: number;
+    officeRent: number;
+    vehicleLease: number;
+    utilities: number;
+    insurance: number;
+    fees: number;
+    loanInterest: number;
+    taxes: number;
+    supplies: number;
+    welfare: number;
+    salesActivity: number;
+  };
+  productionPayroll: {
+    total: number;
+    leaders: number;
+    seniors: number;
+    juniors: number;
+    interns: number;
+    contractors: number;
+    severance: number;
+  };
+  productionCost: {
+    total: number;
+    projectProduction: number;
+    eventProduction: number;
+    overseas: number;
+  };
+  netProfit: number;
+  investment: number;
+  profitDistribution: {
+    performanceBonus: number; // 20%
+    newBusinessInvestment: number; // 30%
+    shareholderDividend: number; // 20%
+    retained: number; // 30%
+  };
+}
+
+export const annualFinancials: AnnualFinancial[] = [
+  {
+    year: 2025,
+    isTarget: false,
+    revenue: 4367593508,
+    overhead: {
+      total: 1100167210,
+      managementPayroll: 297751368,
+      officeRent: 180000000,
+      vehicleLease: 11660660,
+      utilities: 11223960,
+      insurance: 1049690,
+      fees: 69932189,
+      loanInterest: 106841355,
+      taxes: 297551624,
+      supplies: 17591740,
+      welfare: 70996323,
+      salesActivity: 54209731,
+    },
+    productionPayroll: {
+      total: 1163474086,
+      leaders: 388704025,
+      seniors: 332547707,
+      juniors: 299241665,
+      interns: 18908756,
+      contractors: 23002010,
+      severance: 101069924,
+    },
+    productionCost: {
+      total: 2064158633,
+      projectProduction: 1359636480,
+      eventProduction: 689094951,
+      overseas: 15427202,
+    },
+    netProfit: 39793579, // revenue - overhead - payroll - productionCost
+    investment: 615029240,
+    profitDistribution: {
+      performanceBonus: 0,
+      newBusinessInvestment: 0,
+      shareholderDividend: 0,
+      retained: 0,
+    },
+  },
+  {
+    year: 2026,
+    isTarget: true,
+    revenue: 5022732534,
+    overhead: {
+      total: 1023033474,
+      managementPayroll: 280000000,
+      officeRent: 180000000,
+      vehicleLease: 11660660,
+      utilities: 12000000,
+      insurance: 1100000,
+      fees: 65000000,
+      loanInterest: 90000000,
+      taxes: 260000000,
+      supplies: 18000000,
+      welfare: 72000000,
+      salesActivity: 33272814,
+    },
+    productionPayroll: {
+      total: 879080270,
+      leaders: 300000000,
+      seniors: 260000000,
+      juniors: 200000000,
+      interns: 15000000,
+      contractors: 20000000,
+      severance: 84080270,
+    },
+    productionCost: {
+      total: 2136404185,
+      projectProduction: 1450000000,
+      eventProduction: 670000000,
+      overseas: 16404185,
+    },
+    netProfit: 984214605,
+    investment: 0,
+    profitDistribution: {
+      performanceBonus: Math.round(984214605 * 0.2),
+      newBusinessInvestment: Math.round(984214605 * 0.3),
+      shareholderDividend: Math.round(984214605 * 0.2),
+      retained: Math.round(984214605 * 0.3),
+    },
+  },
+];
+
+// Finance summary helpers (based on annualFinancials 2025)
+const fy2025 = annualFinancials[0];
 export const financeSummary = {
-  totalRevenue: projectFinancials.reduce((sum, p) => sum + p.contractAmount, 0), // ₩5,005,006,622
-  totalExpense: projectFinancials.reduce((sum, p) => sum + p.actualExpense, 0),   // ₩1,367,084,853
+  totalRevenue: fy2025.revenue,
+  totalExpense: fy2025.overhead.total + fy2025.productionPayroll.total + fy2025.productionCost.total,
   get netProfit() { return this.totalRevenue - this.totalExpense; },
   get profitRate() { return ((this.netProfit / this.totalRevenue) * 100).toFixed(1); },
-  totalProjects: projectFinancials.length,
+  totalProjects: projectFinancials.filter(p => !p.projectId.startsWith('// ')).length,
+  overhead: fy2025.overhead.total,
+  productionPayroll: fy2025.productionPayroll.total,
+  productionCost: fy2025.productionCost.total,
 };
 
 export const mockEvents: CalendarEvent[] = [
