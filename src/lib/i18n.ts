@@ -390,6 +390,50 @@ export const translations = {
     selectChat: 'Select a chat',
     startConversation: 'Start a conversation',
 
+    // Chat (extended)
+    projectConversations: 'Project conversations and direct messages',
+    searchChats: 'Search chats...',
+    direct: 'Direct',
+    noUsersFound: 'No users found',
+    noMessagesYet: 'No messages yet',
+    chooseProjectOrDM: 'Choose a project or start a direct message to begin chatting',
+    you: 'You',
+    justNow: 'Just now',
+
+    // Inbox (extended)
+    allNotifications: 'All Notifications',
+    noNotifications: 'No notifications',
+    allCaughtUpNotifications: 'All caught up with notifications',
+    notificationsWillAppearHere: 'Notifications will appear here',
+    new: 'New',
+    unread: 'Unread',
+    tasks: 'Tasks',
+    messages: 'Messages',
+    deadlines: 'Deadlines',
+
+    // Profile (extended)
+    yourPerformanceAndPortfolio: 'Your performance and portfolio',
+    memberSince: 'Member Since',
+    completedProjects: 'Completed Projects',
+    currentScore: 'Current Score',
+    personalInformation: 'Personal Information',
+    editProfile: 'Edit Profile',
+    phoneNumber: 'Phone Number',
+    birthDate: 'Birth Date',
+    address: 'Address',
+    bio: 'Bio',
+    education: 'Education',
+    addEducation: 'Add Education',
+    degree: 'Degree',
+    major: 'Major',
+    university: 'University',
+    graduationYear: 'Graduation Year',
+    careerHistory: 'Career History',
+    certifications: 'Certifications',
+
+    // Welfare (extended)
+    totalSessions: 'Total Sessions',
+
     // Common
     cancel: 'Cancel',
     save: 'Save',

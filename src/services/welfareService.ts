@@ -516,7 +516,7 @@ export const getAvailableLockers = async (): Promise<number[]> => {
         throw new Error(handleSupabaseError(error));
     }
 
-    return data.map((row: any) => row.locker_number);
+    return (data || []).map((row: any) => row.locker_number);
 };
 
 // ============================================

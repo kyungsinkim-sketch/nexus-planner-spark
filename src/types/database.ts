@@ -524,6 +524,121 @@ export interface Database {
                     updated_at?: string
                 }
             }
+            nexus_employees: {
+                Row: {
+                    id: string
+                    employee_no: number
+                    name: string
+                    email: string | null
+                    phone: string | null
+                    status: string
+                    join_date: string
+                    department: string
+                    team: string | null
+                    position: string
+                    category: string
+                    level: string
+                    class_level: string
+                    annual_salary: number
+                    monthly_salary: number
+                    created_at: string
+                    updated_at: string
+                }
+                Insert: {
+                    id?: string
+                    employee_no: number
+                    name: string
+                    email?: string | null
+                    phone?: string | null
+                    status?: string
+                    join_date: string
+                    department: string
+                    team?: string | null
+                    position: string
+                    category: string
+                    level: string
+                    class_level: string
+                    annual_salary: number
+                    monthly_salary: number
+                    created_at?: string
+                    updated_at?: string
+                }
+                Update: {
+                    id?: string
+                    employee_no?: number
+                    name?: string
+                    email?: string | null
+                    phone?: string | null
+                    status?: string
+                    join_date?: string
+                    department?: string
+                    team?: string | null
+                    position?: string
+                    category?: string
+                    level?: string
+                    class_level?: string
+                    annual_salary?: number
+                    monthly_salary?: number
+                    created_at?: string
+                    updated_at?: string
+                }
+            }
+            nexus_salary_grades: {
+                Row: {
+                    id: string
+                    category: string
+                    level: string
+                    class_level: string
+                    annual_salary: number
+                    monthly_salary: number
+                    hourly_wage: number | null
+                    base_salary: number | null
+                    fixed_overtime: number | null
+                    meal_allowance: number | null
+                    probation_salary: number | null
+                    promotion_condition: string | null
+                    tenure_requirement: string | null
+                    experience_requirement: string | null
+                    created_at: string
+                    updated_at: string
+                }
+                Insert: {
+                    id?: string
+                    category: string
+                    level: string
+                    class_level: string
+                    annual_salary: number
+                    monthly_salary: number
+                    hourly_wage?: number | null
+                    base_salary?: number | null
+                    fixed_overtime?: number | null
+                    meal_allowance?: number | null
+                    probation_salary?: number | null
+                    promotion_condition?: string | null
+                    tenure_requirement?: string | null
+                    experience_requirement?: string | null
+                    created_at?: string
+                    updated_at?: string
+                }
+                Update: {
+                    id?: string
+                    category?: string
+                    level?: string
+                    class_level?: string
+                    annual_salary?: number
+                    monthly_salary?: number
+                    hourly_wage?: number | null
+                    base_salary?: number | null
+                    fixed_overtime?: number | null
+                    meal_allowance?: number | null
+                    probation_salary?: number | null
+                    promotion_condition?: string | null
+                    tenure_requirement?: string | null
+                    experience_requirement?: string | null
+                    created_at?: string
+                    updated_at?: string
+                }
+            }
         }
         Views: {
             [_ in never]: never
@@ -549,6 +664,9 @@ export interface Database {
             }
         }
         Enums: {
+            [_ in never]: never
+        }
+        CompositeTypes: {
             [_ in never]: never
         }
     }

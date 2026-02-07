@@ -79,7 +79,7 @@ export const sendProjectMessage = async (
 
     const { data, error } = await supabase
         .from('chat_messages')
-        .insert(insertData)
+        .insert(insertData as any)
         .select()
         .single();
 
@@ -110,7 +110,7 @@ export const sendDirectMessage = async (
 
     const { data, error } = await supabase
         .from('chat_messages')
-        .insert(insertData)
+        .insert(insertData as any)
         .select()
         .single();
 
@@ -246,7 +246,7 @@ export const getRecentConversations = async (userId: string): Promise<{
 
     // Group by project
     const projectChatsMap = new Map<string, ChatMessage>();
-    projectData.forEach((msg) => {
+    (projectData as any[]).forEach((msg: any) => {
         if (msg.project_id && !projectChatsMap.has(msg.project_id)) {
             projectChatsMap.set(msg.project_id, transformMessage(msg));
         }
@@ -254,7 +254,7 @@ export const getRecentConversations = async (userId: string): Promise<{
 
     // Group by user
     const directChatsMap = new Map<string, ChatMessage>();
-    directData.forEach((msg) => {
+    (directData as any[]).forEach((msg: any) => {
         const otherUserId = msg.user_id === userId ? msg.direct_chat_user_id : msg.user_id;
         if (otherUserId && !directChatsMap.has(otherUserId)) {
             directChatsMap.set(otherUserId, transformMessage(msg));
