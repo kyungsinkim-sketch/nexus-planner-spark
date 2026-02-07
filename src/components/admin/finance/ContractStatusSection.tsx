@@ -3,6 +3,7 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { AutoFitText } from '@/components/ui/auto-fit-text';
 import {
   Table,
   TableBody,
@@ -130,20 +131,20 @@ export function ContractStatusSection({ year }: ContractStatusSectionProps) {
       <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
         <Card className="p-3 sm:p-4 shadow-card overflow-hidden">
           <p className="text-xs sm:text-sm text-muted-foreground truncate">총 계약금액</p>
-          <p className="text-lg sm:text-2xl font-bold text-foreground truncate">{formatKRW(totalContract)}</p>
+          <AutoFitText className="text-lg sm:text-2xl font-bold text-foreground">{formatKRW(totalContract)}</AutoFitText>
           <p className="text-[10px] sm:text-xs text-muted-foreground">{contractData.length}건</p>
         </Card>
         <Card className="p-3 sm:p-4 shadow-card overflow-hidden">
           <p className="text-xs sm:text-sm text-muted-foreground">입금완료</p>
-          <p className="text-lg sm:text-2xl font-bold text-emerald-600 truncate">{formatKRW(totalReceived)}</p>
+          <AutoFitText className="text-lg sm:text-2xl font-bold text-emerald-600">{formatKRW(totalReceived)}</AutoFitText>
         </Card>
         <Card className="p-3 sm:p-4 shadow-card overflow-hidden">
           <p className="text-xs sm:text-sm text-muted-foreground">총 실지출</p>
-          <p className="text-lg sm:text-2xl font-bold text-amber-600 truncate">{formatKRW(totalExpenses)}</p>
+          <AutoFitText className="text-lg sm:text-2xl font-bold text-amber-600">{formatKRW(totalExpenses)}</AutoFitText>
         </Card>
         <Card className="p-3 sm:p-4 shadow-card overflow-hidden">
           <p className="text-xs sm:text-sm text-muted-foreground">순이익</p>
-          <p className="text-lg sm:text-2xl font-bold text-primary truncate">{formatKRW(netProfit)}</p>
+          <AutoFitText className="text-lg sm:text-2xl font-bold text-primary">{formatKRW(netProfit)}</AutoFitText>
           <p className="text-[10px] sm:text-xs text-emerald-600">{((netProfit / totalContract) * 100).toFixed(1)}% 수익률</p>
         </Card>
       </div>

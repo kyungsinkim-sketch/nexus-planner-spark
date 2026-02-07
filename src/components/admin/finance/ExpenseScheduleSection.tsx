@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { AutoFitText } from '@/components/ui/auto-fit-text';
 import {
   Table,
   TableBody,
@@ -161,22 +162,22 @@ export function ExpenseScheduleSection({ year }: ExpenseScheduleSectionProps) {
       <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
         <Card className="p-3 sm:p-4 shadow-card overflow-hidden">
           <p className="text-xs sm:text-sm text-muted-foreground truncate">주거래계좌 출금가능금액</p>
-          <p className="text-lg sm:text-2xl font-bold text-foreground truncate">{formatKRW(165434699)}</p>
+          <AutoFitText className="text-lg sm:text-2xl font-bold text-foreground">{formatKRW(165434699)}</AutoFitText>
         </Card>
         <Card className="p-3 sm:p-4 shadow-card overflow-hidden">
           <p className="text-xs sm:text-sm text-muted-foreground truncate">그 외 출금가능금액</p>
-          <p className="text-lg sm:text-2xl font-bold text-foreground truncate">{formatKRW(280000497)}</p>
+          <AutoFitText className="text-lg sm:text-2xl font-bold text-foreground">{formatKRW(280000497)}</AutoFitText>
         </Card>
         <Card className="p-3 sm:p-4 shadow-card bg-yellow-50 border-yellow-200 overflow-hidden">
           <p className="text-xs sm:text-sm text-muted-foreground">총 가용자금</p>
-          <p className="text-lg sm:text-2xl font-bold text-yellow-700 truncate">{formatKRW(startingBalance)}</p>
+          <AutoFitText className="text-lg sm:text-2xl font-bold text-yellow-700">{formatKRW(startingBalance)}</AutoFitText>
         </Card>
         <Card className="p-3 sm:p-4 shadow-card overflow-hidden">
           <div className="flex items-center gap-1.5">
             <TrendingDown className="w-4 h-4 sm:w-5 sm:h-5 text-red-500 shrink-0" />
             <p className="text-xs sm:text-sm text-muted-foreground truncate">이번 달 예상 지출</p>
           </div>
-          <p className="text-lg sm:text-2xl font-bold text-red-600 truncate">{formatKRW(totalExpenses)}</p>
+          <AutoFitText className="text-lg sm:text-2xl font-bold text-red-600">{formatKRW(totalExpenses)}</AutoFitText>
         </Card>
       </div>
 
