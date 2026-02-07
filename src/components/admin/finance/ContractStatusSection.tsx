@@ -127,165 +127,168 @@ export function ContractStatusSection({ year }: ContractStatusSectionProps) {
   return (
     <div className="space-y-6">
       {/* Summary Cards */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Card className="p-4 shadow-card">
-          <p className="text-sm text-muted-foreground">총 계약금액</p>
-          <p className="text-2xl font-bold text-foreground">{formatKRW(totalContract)}</p>
-          <p className="text-xs text-muted-foreground">{contractData.length}건</p>
+      <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
+        <Card className="p-3 sm:p-4 shadow-card overflow-hidden">
+          <p className="text-xs sm:text-sm text-muted-foreground truncate">총 계약금액</p>
+          <p className="text-lg sm:text-2xl font-bold text-foreground truncate">{formatKRW(totalContract)}</p>
+          <p className="text-[10px] sm:text-xs text-muted-foreground">{contractData.length}건</p>
         </Card>
-        <Card className="p-4 shadow-card">
-          <p className="text-sm text-muted-foreground">입금완료</p>
-          <p className="text-2xl font-bold text-emerald-600">{formatKRW(totalReceived)}</p>
+        <Card className="p-3 sm:p-4 shadow-card overflow-hidden">
+          <p className="text-xs sm:text-sm text-muted-foreground">입금완료</p>
+          <p className="text-lg sm:text-2xl font-bold text-emerald-600 truncate">{formatKRW(totalReceived)}</p>
         </Card>
-        <Card className="p-4 shadow-card">
-          <p className="text-sm text-muted-foreground">총 실지출</p>
-          <p className="text-2xl font-bold text-amber-600">{formatKRW(totalExpenses)}</p>
+        <Card className="p-3 sm:p-4 shadow-card overflow-hidden">
+          <p className="text-xs sm:text-sm text-muted-foreground">총 실지출</p>
+          <p className="text-lg sm:text-2xl font-bold text-amber-600 truncate">{formatKRW(totalExpenses)}</p>
         </Card>
-        <Card className="p-4 shadow-card">
-          <p className="text-sm text-muted-foreground">순이익</p>
-          <p className="text-2xl font-bold text-primary">{formatKRW(netProfit)}</p>
-          <p className="text-xs text-emerald-600">{((netProfit / totalContract) * 100).toFixed(1)}% 수익률</p>
+        <Card className="p-3 sm:p-4 shadow-card overflow-hidden">
+          <p className="text-xs sm:text-sm text-muted-foreground">순이익</p>
+          <p className="text-lg sm:text-2xl font-bold text-primary truncate">{formatKRW(netProfit)}</p>
+          <p className="text-[10px] sm:text-xs text-emerald-600">{((netProfit / totalContract) * 100).toFixed(1)}% 수익률</p>
         </Card>
       </div>
 
       {/* Top Projects by Revenue */}
-      <Card className="p-6 shadow-card">
+      <Card className="p-4 sm:p-6 shadow-card">
         <div className="flex items-center gap-2 mb-4">
           <Calendar className="w-5 h-5 text-primary" />
-          <h3 className="font-semibold text-foreground">주요 프로젝트 (계약금액 상위)</h3>
+          <h3 className="font-semibold text-foreground text-sm sm:text-base">주요 프로젝트 (계약금액 상위)</h3>
         </div>
-        <div className="space-y-3">
+        <div className="space-y-2 sm:space-y-3">
           {contractData
             .sort((a, b) => b.totalAmount - a.totalAmount)
             .slice(0, 5)
             .map((contract, idx) => (
-            <div key={idx} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <Building2 className="w-5 h-5 text-primary" />
-                </div>
-                <div>
-                  <p className="font-medium text-foreground text-sm">{contract.projectName.length > 30 ? contract.projectName.substring(0, 30) + '...' : contract.projectName}</p>
-                  <p className="text-xs text-muted-foreground">{contract.client}</p>
-                </div>
+            <div key={idx} className="flex items-center gap-2 sm:gap-3 p-2 sm:p-3 rounded-lg bg-muted/50">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                <Building2 className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
               </div>
-              <div className="text-right">
-                <p className="font-semibold text-foreground">{formatKRW(contract.totalAmount)}</p>
-                <p className="text-xs text-emerald-600">수익률 {contract.profitRate}%</p>
+              <div className="flex-1 min-w-0">
+                <p className="font-medium text-foreground text-xs sm:text-sm truncate">{contract.projectName}</p>
+                <p className="text-[10px] sm:text-xs text-muted-foreground">{contract.client}</p>
               </div>
-              {getStatusBadge('RECEIVED')}
+              <div className="text-right shrink-0">
+                <p className="font-semibold text-foreground text-xs sm:text-sm font-mono tabular-nums">{formatKRW(contract.totalAmount)}</p>
+                <p className="text-[10px] sm:text-xs text-emerald-600">수익률 {contract.profitRate}%</p>
+              </div>
+              <div className="shrink-0 hidden sm:block">
+                {getStatusBadge('RECEIVED')}
+              </div>
             </div>
           ))}
         </div>
       </Card>
 
       {/* Contract Table */}
-      <Card className="shadow-card">
-        <div className="p-4 border-b flex items-center justify-between gap-4">
+      <Card className="shadow-card overflow-hidden">
+        <div className="p-3 sm:p-4 border-b flex items-center justify-between gap-3">
           <div className="relative flex-1 max-w-sm">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
               placeholder="프로젝트 또는 클라이언트 검색..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-9"
+              className="pl-9 text-sm"
             />
           </div>
           <Button variant="outline" size="sm" onClick={() => setSortBy(sortBy === 'date' ? 'amount' : 'date')}>
             <ArrowUpDown className="w-4 h-4 mr-1" />
-            {sortBy === 'date' ? '날짜순' : '금액순'}
+            <span className="hidden sm:inline">{sortBy === 'date' ? '날짜순' : '금액순'}</span>
           </Button>
         </div>
 
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-8"></TableHead>
-              <TableHead>프로젝트</TableHead>
-              <TableHead>클라이언트</TableHead>
-              <TableHead className="text-right">계약금액</TableHead>
-              <TableHead className="text-right">실지출</TableHead>
-              <TableHead className="text-right">순이익</TableHead>
-              <TableHead className="text-center">수익률</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filteredData.map((contract) => {
-              const profit = contract.totalAmount - contract.actualExpense;
-              const isExpanded = expandedProjects.includes(contract.id);
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-8"></TableHead>
+                <TableHead className="min-w-[120px]">프로젝트</TableHead>
+                <TableHead className="hidden sm:table-cell">클라이언트</TableHead>
+                <TableHead className="text-right min-w-[100px]">계약금액</TableHead>
+                <TableHead className="text-right min-w-[100px] hidden md:table-cell">실지출</TableHead>
+                <TableHead className="text-right min-w-[100px] hidden md:table-cell">순이익</TableHead>
+                <TableHead className="text-center w-20">수익률</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredData.map((contract) => {
+                const profit = contract.totalAmount - contract.actualExpense;
+                const isExpanded = expandedProjects.includes(contract.id);
 
-              return (
-                <>
-                  <TableRow 
-                    key={contract.id} 
-                    className="cursor-pointer hover:bg-muted/50"
-                    onClick={() => toggleExpand(contract.id)}
-                  >
-                    <TableCell>
-                      {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                    </TableCell>
-                    <TableCell className="font-medium text-sm">
-                      {contract.projectName.length > 25 ? contract.projectName.substring(0, 25) + '...' : contract.projectName}
-                    </TableCell>
-                    <TableCell>{contract.client}</TableCell>
-                    <TableCell className="text-right font-mono">{formatKRW(contract.totalAmount)}</TableCell>
-                    <TableCell className="text-right font-mono text-amber-600">
-                      {contract.actualExpense > 0 ? formatKRW(contract.actualExpense) : '-'}
-                    </TableCell>
-                    <TableCell className="text-right font-mono text-emerald-600">
-                      {formatKRW(profit)}
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <Badge 
-                        className={
-                          contract.profitRate >= 70 ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-100' :
-                          contract.profitRate >= 40 ? 'bg-blue-100 text-blue-700 hover:bg-blue-100' :
-                          'bg-amber-100 text-amber-700 hover:bg-amber-100'
-                        }
-                      >
-                        {contract.profitRate.toFixed(1)}%
-                      </Badge>
-                    </TableCell>
-                  </TableRow>
-                  {isExpanded && (
-                    <TableRow key={`${contract.id}-details`} className="bg-muted/30">
-                      <TableCell colSpan={7} className="p-0">
-                        <div className="p-4">
-                          <Table>
-                            <TableHeader>
-                              <TableRow className="hover:bg-transparent">
-                                <TableHead>회차</TableHead>
-                                <TableHead>예정일</TableHead>
-                                <TableHead className="text-right">예정금액</TableHead>
-                                <TableHead>입금일</TableHead>
-                                <TableHead className="text-right">입금금액</TableHead>
-                                <TableHead className="text-center">상태</TableHead>
-                              </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                              {contract.deposits.map((deposit, idx) => (
-                                <TableRow key={idx} className="hover:bg-transparent">
-                                  <TableCell className="font-medium">{deposit.installment}</TableCell>
-                                  <TableCell>{deposit.expectedDate}</TableCell>
-                                  <TableCell className="text-right font-mono">{formatKRW(deposit.expectedAmount)}</TableCell>
-                                  <TableCell>{deposit.actualDate || '-'}</TableCell>
-                                  <TableCell className="text-right font-mono">
-                                    {deposit.actualAmount > 0 ? formatKRW(deposit.actualAmount) : '-'}
-                                  </TableCell>
-                                  <TableCell className="text-center">{getStatusBadge(deposit.status)}</TableCell>
-                                </TableRow>
-                              ))}
-                            </TableBody>
-                          </Table>
-                        </div>
+                return (
+                  <>
+                    <TableRow 
+                      key={contract.id} 
+                      className="cursor-pointer hover:bg-muted/50"
+                      onClick={() => toggleExpand(contract.id)}
+                    >
+                      <TableCell className="px-2">
+                        {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                      </TableCell>
+                      <TableCell className="font-medium text-xs sm:text-sm">
+                        <span className="line-clamp-1">{contract.projectName}</span>
+                        <span className="sm:hidden text-[10px] text-muted-foreground block">{contract.client}</span>
+                      </TableCell>
+                      <TableCell className="hidden sm:table-cell text-sm">{contract.client}</TableCell>
+                      <TableCell className="text-right font-mono text-xs sm:text-sm tabular-nums">{formatKRW(contract.totalAmount)}</TableCell>
+                      <TableCell className="text-right font-mono text-xs sm:text-sm text-amber-600 tabular-nums hidden md:table-cell">
+                        {contract.actualExpense > 0 ? formatKRW(contract.actualExpense) : '-'}
+                      </TableCell>
+                      <TableCell className="text-right font-mono text-xs sm:text-sm text-emerald-600 tabular-nums hidden md:table-cell">
+                        {formatKRW(profit)}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <Badge 
+                          className={`text-[10px] sm:text-xs ${
+                            contract.profitRate >= 70 ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-100' :
+                            contract.profitRate >= 40 ? 'bg-blue-100 text-blue-700 hover:bg-blue-100' :
+                            'bg-amber-100 text-amber-700 hover:bg-amber-100'
+                          }`}
+                        >
+                          {contract.profitRate.toFixed(1)}%
+                        </Badge>
                       </TableCell>
                     </TableRow>
-                  )}
-                </>
-              );
-            })}
-          </TableBody>
-        </Table>
+                    {isExpanded && (
+                      <TableRow key={`${contract.id}-details`} className="bg-muted/30">
+                        <TableCell colSpan={7} className="p-0">
+                          <div className="p-2 sm:p-4 overflow-x-auto">
+                            <Table>
+                              <TableHeader>
+                                <TableRow className="hover:bg-transparent">
+                                  <TableHead className="text-xs">회차</TableHead>
+                                  <TableHead className="text-xs hidden sm:table-cell">예정일</TableHead>
+                                  <TableHead className="text-right text-xs">예정금액</TableHead>
+                                  <TableHead className="text-xs hidden sm:table-cell">입금일</TableHead>
+                                  <TableHead className="text-right text-xs">입금금액</TableHead>
+                                  <TableHead className="text-center text-xs">상태</TableHead>
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {contract.deposits.map((deposit, idx) => (
+                                  <TableRow key={idx} className="hover:bg-transparent">
+                                    <TableCell className="font-medium text-xs sm:text-sm">{deposit.installment}</TableCell>
+                                    <TableCell className="text-xs hidden sm:table-cell">{deposit.expectedDate}</TableCell>
+                                    <TableCell className="text-right font-mono text-xs sm:text-sm tabular-nums">{formatKRW(deposit.expectedAmount)}</TableCell>
+                                    <TableCell className="text-xs hidden sm:table-cell">{deposit.actualDate || '-'}</TableCell>
+                                    <TableCell className="text-right font-mono text-xs sm:text-sm tabular-nums">
+                                      {deposit.actualAmount > 0 ? formatKRW(deposit.actualAmount) : '-'}
+                                    </TableCell>
+                                    <TableCell className="text-center">{getStatusBadge(deposit.status)}</TableCell>
+                                  </TableRow>
+                                ))}
+                              </TableBody>
+                            </Table>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </div>
       </Card>
     </div>
   );

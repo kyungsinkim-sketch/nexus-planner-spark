@@ -122,17 +122,17 @@ export function FinanceTab() {
       </div>
 
       {/* Summary Stats - 6 cards */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+      <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 xl:grid-cols-6">
         {stats.map((stat) => (
-          <Card key={stat.label} className="p-4 shadow-card">
-            <div className="flex items-center gap-3">
-              <div className={`w-10 h-10 rounded-lg ${stat.bgColor} flex items-center justify-center shrink-0`}>
-                <stat.icon className={`w-5 h-5 ${stat.color}`} />
+          <Card key={stat.label} className="p-3 sm:p-4 shadow-card overflow-hidden">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-lg ${stat.bgColor} flex items-center justify-center shrink-0`}>
+                <stat.icon className={`w-4 h-4 sm:w-5 sm:h-5 ${stat.color}`} />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-xs text-muted-foreground truncate">{stat.label}</p>
-                <p className="text-lg font-bold text-foreground">{stat.value}</p>
-                <p className="text-xs text-muted-foreground truncate">{stat.sub}</p>
+                <p className="text-[10px] sm:text-xs text-muted-foreground truncate">{stat.label}</p>
+                <p className="text-sm sm:text-lg font-bold text-foreground truncate">{stat.value}</p>
+                <p className="text-[10px] sm:text-xs text-muted-foreground truncate">{stat.sub}</p>
               </div>
             </div>
           </Card>
