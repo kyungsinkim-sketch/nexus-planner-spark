@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
@@ -28,6 +27,7 @@ import {
   User
 } from 'lucide-react';
 import { formatKRW } from '@/lib/format';
+import { mockProjects, projectFinancials } from '@/mock/data';
 
 interface ExpenseItem {
   id: string;
@@ -41,35 +41,83 @@ interface ExpenseItem {
   note?: string;
 }
 
-// Mock data - aggregated from all projects
-const mockTaxInvoices: ExpenseItem[] = [
-  { id: 't1', projectId: 'p1', projectName: 'Samsung Galaxy Campaign', paymentDate: '2025-01-30', description: '촬영 외주비', amount: 55000000, vendor: '(주)프로덕션A', status: 'PENDING' },
-  { id: 't2', projectId: 'p2', projectName: 'Hyundai EV Brand Film', paymentDate: '2025-01-30', description: '후반작업 외주비', amount: 31715594, vendor: '포스트프로덕션B', status: 'PENDING' },
-  { id: 't3', projectId: 'p1', projectName: 'Samsung Galaxy Campaign', paymentDate: '2025-02-10', description: 'CG 작업비', amount: 25000000, vendor: 'VFX스튜디오', status: 'INVOICE_ISSUED' },
-  { id: 't4', projectId: 'p3', projectName: 'LG Smart Home Integration', paymentDate: '2025-02-15', description: '디자인 외주', amount: 12000000, vendor: '디자인랩', status: 'PENDING' },
-  { id: 't5', projectId: 'p5', projectName: 'Kakao Pay Rebrand', paymentDate: '2025-01-25', description: '브랜드 컨설팅', amount: 20000000, vendor: '브랜드에이전시', status: 'PAYMENT_COMPLETE' },
-];
+// Generate expense data from real projects
+const generateExpenseItems = () => {
+  const taxInvoices: ExpenseItem[] = [];
+  const withholding: ExpenseItem[] = [];
+  const corporateCard: ExpenseItem[] = [];
+  const personalExpense: ExpenseItem[] = [];
 
-const mockWithholding: ExpenseItem[] = [
-  { id: 'w1', projectId: 'p1', projectName: 'Samsung Galaxy Campaign', paymentDate: '2025-01-30', description: '촬영감독 용역비', amount: 8000000, vendor: '김감독', status: 'PENDING' },
-  { id: 'w2', projectId: 'p1', projectName: 'Samsung Galaxy Campaign', paymentDate: '2025-01-30', description: '조명감독 용역비', amount: 5000000, vendor: '이조명', status: 'PENDING' },
-  { id: 'w3', projectId: 'p2', projectName: 'Hyundai EV Brand Film', paymentDate: '2025-02-05', description: '연출자 용역비', amount: 15000000, vendor: '박연출', status: 'INVOICE_ISSUED' },
-  { id: 'w4', projectId: 'p2', projectName: 'Hyundai EV Brand Film', paymentDate: '2025-02-05', description: '음악감독 용역비', amount: 6000000, vendor: '음악스튜디오', status: 'PENDING' },
-  { id: 'w5', projectId: 'p5', projectName: 'Kakao Pay Rebrand', paymentDate: '2025-01-20', description: '브랜드 디자이너', amount: 4500000, vendor: '최디자인', status: 'PAYMENT_COMPLETE' },
-];
+  projectFinancials.forEach((fin, idx) => {
+    const project = mockProjects.find(p => p.id === fin.projectId);
+    if (!project || fin.actualExpense === 0) return;
 
-const mockCorporateCard: ExpenseItem[] = [
-  { id: 'c1', projectId: 'p1', projectName: 'Samsung Galaxy Campaign', paymentDate: '2025-01-15', description: '촬영 소품 구매', amount: 1250000, vendor: '소품몰', status: 'PAYMENT_COMPLETE' },
-  { id: 'c2', projectId: 'p2', projectName: 'Hyundai EV Brand Film', paymentDate: '2025-01-18', description: '로케이션 헌팅 비용', amount: 350000, vendor: '주유소', status: 'PAYMENT_COMPLETE' },
-  { id: 'c3', projectId: 'p1', projectName: 'Samsung Galaxy Campaign', paymentDate: '2025-01-20', description: '팀 회식비', amount: 480000, vendor: '레스토랑A', status: 'PAYMENT_COMPLETE' },
-  { id: 'c4', projectId: 'p3', projectName: 'LG Smart Home Integration', paymentDate: '2025-01-22', description: '사무용품', amount: 120000, vendor: '오피스디포', status: 'PAYMENT_COMPLETE' },
-];
+    const projectName = project.title.length > 25 ? project.title.substring(0, 25) + '...' : project.title;
+    const baseDate = project.startDate.substring(0, 7); // YYYY-MM
 
-const mockPersonalExpense: ExpenseItem[] = [
-  { id: 'pe1', projectId: 'p1', projectName: 'Samsung Galaxy Campaign', paymentDate: '2025-01-10', description: '택시비 (야근)', amount: 45000, vendor: '카카오택시', status: 'PENDING', note: '김철수' },
-  { id: 'pe2', projectId: 'p2', projectName: 'Hyundai EV Brand Film', paymentDate: '2025-01-12', description: '출장 식비', amount: 32000, vendor: '식당', status: 'PENDING', note: '이영희' },
-  { id: 'pe3', projectId: 'p1', projectName: 'Samsung Galaxy Campaign', paymentDate: '2025-01-15', description: '주차비', amount: 15000, vendor: '주차장', status: 'PAYMENT_COMPLETE', note: '박민수' },
-];
+    // Distribute expenses across categories (approximate breakdown)
+    const taxAmount = Math.round(fin.actualExpense * 0.55);
+    const withholdingAmount = Math.round(fin.actualExpense * 0.25);
+    const cardAmount = Math.round(fin.actualExpense * 0.12);
+    const personalAmount = fin.actualExpense - taxAmount - withholdingAmount - cardAmount;
+
+    if (taxAmount > 0) {
+      taxInvoices.push({
+        id: `t${idx}`,
+        projectId: fin.projectId,
+        projectName,
+        paymentDate: `${baseDate}-25`,
+        description: '촬영/제작 외주비',
+        amount: taxAmount,
+        vendor: '프로덕션 파트너',
+        status: 'PAYMENT_COMPLETE',
+      });
+    }
+
+    if (withholdingAmount > 0) {
+      withholding.push({
+        id: `w${idx}`,
+        projectId: fin.projectId,
+        projectName,
+        paymentDate: `${baseDate}-28`,
+        description: '감독/스태프 용역비',
+        amount: withholdingAmount,
+        vendor: '프리랜서 스태프',
+        status: 'PAYMENT_COMPLETE',
+      });
+    }
+
+    if (cardAmount > 0) {
+      corporateCard.push({
+        id: `c${idx}`,
+        projectId: fin.projectId,
+        projectName,
+        paymentDate: `${baseDate}-15`,
+        description: '촬영 소품/장비/식대',
+        amount: cardAmount,
+        vendor: '각종 업체',
+        status: 'PAYMENT_COMPLETE',
+      });
+    }
+
+    if (personalAmount > 0) {
+      personalExpense.push({
+        id: `pe${idx}`,
+        projectId: fin.projectId,
+        projectName,
+        paymentDate: `${baseDate}-30`,
+        description: '교통비/식비 정산',
+        amount: personalAmount,
+        status: 'PAYMENT_COMPLETE',
+        note: '팀원 정산',
+      });
+    }
+  });
+
+  return { taxInvoices, withholding, corporateCard, personalExpense };
+};
+
+const { taxInvoices: mockTaxInvoices, withholding: mockWithholding, corporateCard: mockCorporateCard, personalExpense: mockPersonalExpense } = generateExpenseItems();
 
 type SortBy = 'date' | 'project' | 'amount';
 
@@ -79,12 +127,9 @@ export function ExpenseDetailSection() {
   const [sortBy, setSortBy] = useState<SortBy>('date');
   const [filterProject, setFilterProject] = useState<string>('all');
 
-  const projects = [
-    { id: 'p1', name: 'Samsung Galaxy Campaign' },
-    { id: 'p2', name: 'Hyundai EV Brand Film' },
-    { id: 'p3', name: 'LG Smart Home Integration' },
-    { id: 'p5', name: 'Kakao Pay Rebrand' },
-  ];
+  const projects = mockProjects
+    .filter(p => projectFinancials.find(f => f.projectId === p.id && f.actualExpense > 0))
+    .map(p => ({ id: p.id, name: p.title.length > 20 ? p.title.substring(0, 20) + '...' : p.title }));
 
   const filterAndSort = (items: ExpenseItem[]) => {
     let filtered = items.filter(item => 
@@ -140,7 +185,7 @@ export function ExpenseDetailSection() {
             <TableCell className="font-mono text-sm">{item.paymentDate || '-'}</TableCell>
             <TableCell>
               <Badge variant="outline" className="font-normal">
-                {item.projectName.length > 15 ? item.projectName.substring(0, 15) + '...' : item.projectName}
+                {item.projectName}
               </Badge>
             </TableCell>
             <TableCell className="font-medium">{item.description}</TableCell>
@@ -224,7 +269,7 @@ export function ExpenseDetailSection() {
             />
           </div>
           <Select value={filterProject} onValueChange={setFilterProject}>
-            <SelectTrigger className="w-[200px]">
+            <SelectTrigger className="w-[240px]">
               <SelectValue placeholder="프로젝트 선택" />
             </SelectTrigger>
             <SelectContent>
