@@ -37,8 +37,9 @@ export function FinanceTab() {
   const currentData = annualFinancials.find(f => f.year === yearNum) || annualFinancials[0];
   
   const totalExpense = currentData.overhead.total + currentData.productionPayroll.total + currentData.productionCost.total;
-  const netProfit = currentData.revenue - totalExpense;
-  const profitRate = ((netProfit / currentData.revenue) * 100).toFixed(1);
+  const netProfit = currentData.netProfit;
+  const totalIncome = currentData.revenue + currentData.investment;
+  const profitRate = ((netProfit / totalIncome) * 100).toFixed(1);
 
   const stats = [
     { 

@@ -677,6 +677,7 @@ export interface AnnualFinancial {
   year: number;
   isTarget: boolean;
   revenue: number;
+  investment: number; // 투자금 (외부 유입)
   overhead: {
     total: number;
     managementPayroll: number;
@@ -706,8 +707,8 @@ export interface AnnualFinancial {
     eventProduction: number;
     overseas: number;
   };
-  netProfit: number;
-  investment: number;
+  netProfit: number; // (revenue + investment) - overhead - payroll - productionCost
+  arkworksExpense: number; // Ark.works 신규사업 투자비용
   profitDistribution: {
     performanceBonus: number; // 20%
     newBusinessInvestment: number; // 30%
@@ -721,6 +722,7 @@ export const annualFinancials: AnnualFinancial[] = [
     year: 2025,
     isTarget: false,
     revenue: 4367593508,
+    investment: 615029240,
     overhead: {
       total: 1100167210,
       managementPayroll: 297751368,
@@ -750,11 +752,12 @@ export const annualFinancials: AnnualFinancial[] = [
       eventProduction: 689094951,
       overseas: 15427202,
     },
-    netProfit: 39793579, // revenue - overhead - payroll - productionCost
-    investment: 615029240,
+    // (revenue + investment) - overhead - payroll - productionCost = 654,822,819
+    netProfit: 654822819,
+    arkworksExpense: 271850922,
     profitDistribution: {
       performanceBonus: 0,
-      newBusinessInvestment: 0,
+      newBusinessInvestment: 271850922, // Ark.works 비용
       shareholderDividend: 0,
       retained: 0,
     },
@@ -763,6 +766,7 @@ export const annualFinancials: AnnualFinancial[] = [
     year: 2026,
     isTarget: true,
     revenue: 5022732534,
+    investment: 0,
     overhead: {
       total: 1023033474,
       managementPayroll: 280000000,
@@ -793,7 +797,7 @@ export const annualFinancials: AnnualFinancial[] = [
       overseas: 16404185,
     },
     netProfit: 984214605,
-    investment: 0,
+    arkworksExpense: 0,
     profitDistribution: {
       performanceBonus: Math.round(984214605 * 0.2),
       newBusinessInvestment: Math.round(984214605 * 0.3),
@@ -807,9 +811,10 @@ export const annualFinancials: AnnualFinancial[] = [
 const fy2025 = annualFinancials[0];
 export const financeSummary = {
   totalRevenue: fy2025.revenue,
+  totalInvestment: fy2025.investment,
   totalExpense: fy2025.overhead.total + fy2025.productionPayroll.total + fy2025.productionCost.total,
-  get netProfit() { return this.totalRevenue - this.totalExpense; },
-  get profitRate() { return ((this.netProfit / this.totalRevenue) * 100).toFixed(1); },
+  get netProfit() { return fy2025.netProfit; },
+  get profitRate() { return ((this.netProfit / (this.totalRevenue + this.totalInvestment)) * 100).toFixed(1); },
   totalProjects: projectFinancials.filter(p => !p.projectId.startsWith('// ')).length,
   overhead: fy2025.overhead.total,
   productionPayroll: fy2025.productionPayroll.total,

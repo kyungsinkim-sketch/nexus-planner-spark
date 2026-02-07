@@ -86,6 +86,11 @@ export function AnnualPLSection({ year }: AnnualPLSectionProps) {
       '2025 실적': annualFinancials[0].revenue / 100000000,
       '2026 목표': annualFinancials[1].revenue / 100000000,
     },
+    ...(annualFinancials[0].investment > 0 ? [{
+      name: '투자금',
+      '2025 실적': annualFinancials[0].investment / 100000000,
+      '2026 목표': annualFinancials[1].investment / 100000000,
+    }] : []),
     {
       name: '경상비',
       '2025 실적': annualFinancials[0].overhead.total / 100000000,
@@ -109,7 +114,8 @@ export function AnnualPLSection({ year }: AnnualPLSectionProps) {
   ];
 
   const totalExpense = currentData.overhead.total + currentData.productionPayroll.total + currentData.productionCost.total;
-  const profitRate = ((currentData.netProfit / currentData.revenue) * 100).toFixed(1);
+  const totalIncome = currentData.revenue + currentData.investment;
+  const profitRate = ((currentData.netProfit / totalIncome) * 100).toFixed(1);
 
   return (
     <div className="space-y-6">
@@ -137,6 +143,14 @@ export function AnnualPLSection({ year }: AnnualPLSectionProps) {
               <span className="font-semibold text-foreground text-sm sm:text-base">매출액 (공급가)</span>
               <span className="text-base sm:text-xl font-bold text-foreground font-mono tabular-nums">{formatKRW(currentData.revenue)}</span>
             </div>
+
+            {/* 투자금 */}
+            {currentData.investment > 0 && (
+              <div className="flex items-center justify-between py-2 sm:py-3 border-b border-emerald-200">
+                <span className="font-medium text-emerald-600 text-sm sm:text-base">(+) 투자금</span>
+                <span className="text-sm sm:text-lg font-semibold text-emerald-600 font-mono tabular-nums">{formatKRW(currentData.investment)}</span>
+              </div>
+            )}
 
             {/* 경상비 Accordion */}
             <Accordion type="single" collapsible className="border-none">
@@ -249,6 +263,19 @@ export function AnnualPLSection({ year }: AnnualPLSectionProps) {
                 {formatKRW(currentData.netProfit)}
               </span>
             </div>
+
+            {/* Ark.works 비용 */}
+            {currentData.arkworksExpense > 0 && (
+              <div className="flex items-center justify-between py-2 sm:py-3 border-t border-dashed border-blue-300 bg-blue-50/50 rounded-lg px-2 sm:px-3 -mx-2 sm:-mx-3 mt-2">
+                <div>
+                  <span className="font-medium text-sm text-blue-700">*Ark.works 비용</span>
+                  <span className="ml-2 text-[10px] sm:text-xs text-blue-500">(신규사업 투자)</span>
+                </div>
+                <span className="text-sm sm:text-base font-semibold text-blue-700 font-mono tabular-nums">
+                  {formatKRW(currentData.arkworksExpense)}
+                </span>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
