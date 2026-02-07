@@ -156,7 +156,7 @@ export const updateUserProfile = async (
         throw new Error('Supabase not configured');
     }
 
-    const updateData: any = {};
+    const updateData: Record<string, unknown> = {};
 
     if (updates.name !== undefined) updateData.name = updates.name;
     if (updates.avatar !== undefined) updateData.avatar = updates.avatar;
@@ -165,7 +165,7 @@ export const updateUserProfile = async (
 
     const { data, error } = await supabase
         .from('profiles')
-        .update(updateData)
+        .update(updateData as any)
         .eq('id', userId)
         .select()
         .single();
@@ -188,7 +188,7 @@ export const updateWorkStatus = async (
 
     const { error } = await supabase
         .from('profiles')
-        .update({ work_status: status })
+        .update({ work_status: status } as any)
         .eq('id', userId);
 
     if (error) {
@@ -212,7 +212,7 @@ export const getUserWorkStatus = async (userId: string): Promise<UserWorkStatus>
         throw new Error(handleSupabaseError(error));
     }
 
-    return data.work_status as UserWorkStatus;
+    return (data as any)?.work_status as UserWorkStatus;
 };
 
 // Subscribe to auth state changes
