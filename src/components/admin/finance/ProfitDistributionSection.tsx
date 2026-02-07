@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { AutoFitText } from '@/components/ui/auto-fit-text';
 import { Slider } from '@/components/ui/slider';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
@@ -85,17 +86,19 @@ export function ProfitDistributionSection({ year }: ProfitDistributionSectionPro
       </h3>
 
       {/* Net Profit Banner */}
-      <Card className="p-6 shadow-card bg-gradient-to-r from-primary/5 to-primary/10 border-primary/20">
-        <div className="flex items-center justify-between">
-          <div>
+      <Card className="p-4 sm:p-6 shadow-card bg-gradient-to-r from-primary/5 to-primary/10 border-primary/20">
+        <div className="flex items-center justify-between gap-3">
+          <div className="shrink-0">
             <p className="text-sm text-muted-foreground">{currentData.year}년 {currentData.isTarget ? '목표' : '실적'} 순이익</p>
-            <p className={`text-3xl font-bold ${netProfit >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-              {formatKRW(netProfit)}
-            </p>
           </div>
-          <Badge variant={currentData.isTarget ? 'outline' : 'default'} className="text-base px-4 py-1">
-            {currentData.isTarget ? '목표' : '확정'}
-          </Badge>
+          <div className="flex items-center gap-3 min-w-0 flex-1">
+            <AutoFitText className={`text-2xl sm:text-3xl font-bold ${netProfit >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+              {formatKRW(netProfit)}
+            </AutoFitText>
+            <Badge variant={currentData.isTarget ? 'outline' : 'default'} className="text-sm sm:text-base px-3 sm:px-4 py-1 shrink-0">
+              {currentData.isTarget ? '목표' : '확정'}
+            </Badge>
+          </div>
         </div>
       </Card>
 
@@ -120,7 +123,7 @@ export function ProfitDistributionSection({ year }: ProfitDistributionSectionPro
                       <p className="text-sm font-medium text-foreground">{dist.label}</p>
                       <Badge variant="outline" className="text-xs">{dist.ratio}%</Badge>
                     </div>
-                    <p className="text-lg font-bold text-foreground mt-1">{formatKRW(amount)}</p>
+                    <AutoFitText className="text-lg font-bold text-foreground mt-1">{formatKRW(amount)}</AutoFitText>
                     <p className="text-xs text-muted-foreground mt-1">{dist.description}</p>
                   </div>
                 </div>
@@ -178,11 +181,11 @@ export function ProfitDistributionSection({ year }: ProfitDistributionSectionPro
             <div key={idx} className="space-y-2">
               <div className="flex items-center justify-between">
                 <Label className="text-sm font-medium">{dist.label}</Label>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 min-w-0">
                   <Badge variant="outline">{ratios[idx]}%</Badge>
-                  <span className="text-sm font-mono text-muted-foreground">
+                  <AutoFitText className="text-sm font-mono text-muted-foreground">
                     {formatKRW(Math.round(netProfit * ratios[idx] / 100))}
-                  </span>
+                  </AutoFitText>
                 </div>
               </div>
               <Slider
@@ -199,11 +202,11 @@ export function ProfitDistributionSection({ year }: ProfitDistributionSectionPro
           <div className="pt-4 border-t">
             <div className="flex items-center justify-between">
               <Label className="text-sm font-medium">사내유보 (자동 계산)</Label>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 min-w-0">
                 <Badge variant="secondary">{ratios[3]}%</Badge>
-                <span className="text-sm font-mono text-muted-foreground">
+                <AutoFitText className="text-sm font-mono text-muted-foreground">
                   {formatKRW(Math.round(netProfit * ratios[3] / 100))}
-                </span>
+                </AutoFitText>
               </div>
             </div>
           </div>
