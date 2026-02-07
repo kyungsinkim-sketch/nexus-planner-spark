@@ -20,12 +20,16 @@ import {
   Building2
 } from 'lucide-react';
 import { formatKRW } from '@/lib/format';
+import { mockProjects, projectFinancials } from '@/mock/data';
 
 interface ContractRecord {
   id: string;
   projectName: string;
   client: string;
   totalAmount: number;
+  actualExpense: number;
+  profitRate: number;
+  date: string;
   deposits: {
     installment: string;
     expectedAmount: number;
@@ -36,56 +40,48 @@ interface ContractRecord {
   }[];
 }
 
-// Mock data based on projects
-const mockContractData: ContractRecord[] = [
-  {
-    id: 'c1',
-    projectName: 'Samsung Galaxy Campaign',
-    client: 'Samsung Electronics',
-    totalAmount: 500000000,
-    deposits: [
-      { installment: '1차 (선금)', expectedAmount: 150000000, expectedDate: '2025-01-10', actualAmount: 150000000, actualDate: '2025-01-08', status: 'RECEIVED' },
-      { installment: '2차 (중도)', expectedAmount: 200000000, expectedDate: '2025-01-25', actualAmount: 0, status: 'PENDING' },
-      { installment: '3차 (잔금)', expectedAmount: 150000000, expectedDate: '2025-02-15', actualAmount: 0, status: 'PENDING' },
-    ],
-  },
-  {
-    id: 'c2',
-    projectName: 'Hyundai EV Brand Film',
-    client: 'Hyundai Motor',
-    totalAmount: 800000000,
-    deposits: [
-      { installment: '1차 (선금)', expectedAmount: 240000000, expectedDate: '2025-01-15', actualAmount: 240000000, actualDate: '2025-01-15', status: 'RECEIVED' },
-      { installment: '2차 (중도)', expectedAmount: 320000000, expectedDate: '2025-02-10', actualAmount: 0, status: 'PENDING' },
-      { installment: '3차 (잔금)', expectedAmount: 240000000, expectedDate: '2025-03-01', actualAmount: 0, status: 'PENDING' },
-    ],
-  },
-  {
-    id: 'c3',
-    projectName: 'LG Smart Home Integration',
-    client: 'LG Electronics',
-    totalAmount: 200000000,
-    deposits: [
-      { installment: '1차 (선금)', expectedAmount: 100000000, expectedDate: '2025-01-20', actualAmount: 0, status: 'OVERDUE' },
-      { installment: '2차 (잔금)', expectedAmount: 100000000, expectedDate: '2025-02-20', actualAmount: 0, status: 'PENDING' },
-    ],
-  },
-  {
-    id: 'c4',
-    projectName: 'Kakao Pay Rebrand',
-    client: 'Kakao',
-    totalAmount: 350000000,
-    deposits: [
-      { installment: '1차 (선금)', expectedAmount: 105000000, expectedDate: '2025-01-05', actualAmount: 105000000, actualDate: '2025-01-05', status: 'RECEIVED' },
-      { installment: '2차 (중도)', expectedAmount: 140000000, expectedDate: '2025-01-30', actualAmount: 0, status: 'PENDING' },
-      { installment: '3차 (잔금)', expectedAmount: 105000000, expectedDate: '2025-02-28', actualAmount: 0, status: 'PENDING' },
-    ],
-  },
-];
+// Generate contract data from real project data
+const generateContractData = (): ContractRecord[] => {
+  return mockProjects.map((project, idx) => {
+    const financial = projectFinancials.find(f => f.projectId === project.id);
+    const amount = financial?.contractAmount || project.budget || 0;
+    
+    // Create deposit schedule based on project size
+    const deposits = [];
+    if (amount < 100000000) {
+      // Small projects: 2 installments
+      deposits.push(
+        { installment: '1차 (선금)', expectedAmount: Math.round(amount * 0.5), expectedDate: project.startDate.substring(0, 10), actualAmount: Math.round(amount * 0.5), actualDate: project.startDate.substring(0, 10), status: 'RECEIVED' as const },
+        { installment: '2차 (잔금)', expectedAmount: Math.round(amount * 0.5), expectedDate: project.endDate.substring(0, 10), actualAmount: Math.round(amount * 0.5), actualDate: project.endDate.substring(0, 10), status: 'RECEIVED' as const },
+      );
+    } else {
+      // Larger projects: 3 installments
+      const mid = new Date((new Date(project.startDate).getTime() + new Date(project.endDate).getTime()) / 2);
+      deposits.push(
+        { installment: '1차 (선금)', expectedAmount: Math.round(amount * 0.3), expectedDate: project.startDate.substring(0, 10), actualAmount: Math.round(amount * 0.3), actualDate: project.startDate.substring(0, 10), status: 'RECEIVED' as const },
+        { installment: '2차 (중도)', expectedAmount: Math.round(amount * 0.4), expectedDate: mid.toISOString().substring(0, 10), actualAmount: Math.round(amount * 0.4), actualDate: mid.toISOString().substring(0, 10), status: 'RECEIVED' as const },
+        { installment: '3차 (잔금)', expectedAmount: Math.round(amount * 0.3), expectedDate: project.endDate.substring(0, 10), actualAmount: Math.round(amount * 0.3), actualDate: project.endDate.substring(0, 10), status: 'RECEIVED' as const },
+      );
+    }
+
+    return {
+      id: project.id,
+      projectName: project.title,
+      client: project.client,
+      totalAmount: amount,
+      actualExpense: financial?.actualExpense || 0,
+      profitRate: financial?.profitRate || 0,
+      date: project.startDate,
+      deposits,
+    };
+  });
+};
+
+const contractData = generateContractData();
 
 export function ContractStatusSection() {
   const [searchTerm, setSearchTerm] = useState('');
-  const [expandedProjects, setExpandedProjects] = useState<string[]>(['c1', 'c2']);
+  const [expandedProjects, setExpandedProjects] = useState<string[]>([contractData[0]?.id]);
   const [sortBy, setSortBy] = useState<'date' | 'amount'>('date');
 
   const toggleExpand = (id: string) => {
@@ -94,32 +90,24 @@ export function ContractStatusSection() {
     );
   };
 
-  const filteredData = mockContractData.filter(
-    c =>
-      c.projectName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      c.client.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredData = contractData
+    .filter(
+      c =>
+        c.projectName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        c.client.toLowerCase().includes(searchTerm.toLowerCase())
+    )
+    .sort((a, b) => {
+      if (sortBy === 'amount') return b.totalAmount - a.totalAmount;
+      return new Date(a.date).getTime() - new Date(b.date).getTime();
+    });
 
   // Calculate summary stats
-  const totalExpected = mockContractData.reduce((sum, c) => 
-    sum + c.deposits.reduce((s, d) => s + d.expectedAmount, 0), 0
-  );
-  const totalReceived = mockContractData.reduce((sum, c) => 
+  const totalContract = contractData.reduce((sum, c) => sum + c.totalAmount, 0);
+  const totalReceived = contractData.reduce((sum, c) => 
     sum + c.deposits.reduce((s, d) => s + d.actualAmount, 0), 0
   );
-  const overdueCount = mockContractData.reduce((sum, c) => 
-    sum + c.deposits.filter(d => d.status === 'OVERDUE').length, 0
-  );
-  const pendingCount = mockContractData.reduce((sum, c) => 
-    sum + c.deposits.filter(d => d.status === 'PENDING').length, 0
-  );
-
-  // Get upcoming deposits (sorted by date)
-  const upcomingDeposits = mockContractData.flatMap(c =>
-    c.deposits
-      .filter(d => d.status !== 'RECEIVED')
-      .map(d => ({ ...d, projectName: c.projectName, client: c.client }))
-  ).sort((a, b) => new Date(a.expectedDate).getTime() - new Date(b.expectedDate).getTime());
+  const totalExpenses = contractData.reduce((sum, c) => sum + c.actualExpense, 0);
+  const netProfit = totalContract - totalExpenses;
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -138,50 +126,50 @@ export function ContractStatusSection() {
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card className="p-4 shadow-card">
           <p className="text-sm text-muted-foreground">총 계약금액</p>
-          <p className="text-2xl font-bold text-foreground">{formatKRW(totalExpected)}</p>
+          <p className="text-2xl font-bold text-foreground">{formatKRW(totalContract)}</p>
+          <p className="text-xs text-muted-foreground">{contractData.length}건</p>
         </Card>
         <Card className="p-4 shadow-card">
           <p className="text-sm text-muted-foreground">입금완료</p>
           <p className="text-2xl font-bold text-emerald-600">{formatKRW(totalReceived)}</p>
         </Card>
         <Card className="p-4 shadow-card">
-          <p className="text-sm text-muted-foreground">미수금</p>
-          <p className="text-2xl font-bold text-amber-600">{formatKRW(totalExpected - totalReceived)}</p>
+          <p className="text-sm text-muted-foreground">총 실지출</p>
+          <p className="text-2xl font-bold text-amber-600">{formatKRW(totalExpenses)}</p>
         </Card>
         <Card className="p-4 shadow-card">
-          <p className="text-sm text-muted-foreground">상태</p>
-          <div className="flex items-center gap-2 mt-1">
-            <Badge variant="outline">{pendingCount} 대기</Badge>
-            {overdueCount > 0 && (
-              <Badge className="bg-red-100 text-red-700 hover:bg-red-100">{overdueCount} 연체</Badge>
-            )}
-          </div>
+          <p className="text-sm text-muted-foreground">순이익</p>
+          <p className="text-2xl font-bold text-primary">{formatKRW(netProfit)}</p>
+          <p className="text-xs text-emerald-600">{((netProfit / totalContract) * 100).toFixed(1)}% 수익률</p>
         </Card>
       </div>
 
-      {/* Upcoming Deposits Timeline */}
+      {/* Top Projects by Revenue */}
       <Card className="p-6 shadow-card">
         <div className="flex items-center gap-2 mb-4">
           <Calendar className="w-5 h-5 text-primary" />
-          <h3 className="font-semibold text-foreground">입금 예정 일정</h3>
+          <h3 className="font-semibold text-foreground">주요 프로젝트 (계약금액 상위)</h3>
         </div>
         <div className="space-y-3">
-          {upcomingDeposits.slice(0, 5).map((deposit, idx) => (
+          {contractData
+            .sort((a, b) => b.totalAmount - a.totalAmount)
+            .slice(0, 5)
+            .map((contract, idx) => (
             <div key={idx} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
                   <Building2 className="w-5 h-5 text-primary" />
                 </div>
                 <div>
-                  <p className="font-medium text-foreground text-sm">{deposit.projectName}</p>
-                  <p className="text-xs text-muted-foreground">{deposit.client} · {deposit.installment}</p>
+                  <p className="font-medium text-foreground text-sm">{contract.projectName.length > 30 ? contract.projectName.substring(0, 30) + '...' : contract.projectName}</p>
+                  <p className="text-xs text-muted-foreground">{contract.client}</p>
                 </div>
               </div>
               <div className="text-right">
-                <p className="font-semibold text-foreground">{formatKRW(deposit.expectedAmount)}</p>
-                <p className="text-xs text-muted-foreground">{deposit.expectedDate}</p>
+                <p className="font-semibold text-foreground">{formatKRW(contract.totalAmount)}</p>
+                <p className="text-xs text-emerald-600">수익률 {contract.profitRate}%</p>
               </div>
-              {getStatusBadge(deposit.status)}
+              {getStatusBadge('RECEIVED')}
             </div>
           ))}
         </div>
@@ -211,16 +199,15 @@ export function ContractStatusSection() {
               <TableHead className="w-8"></TableHead>
               <TableHead>프로젝트</TableHead>
               <TableHead>클라이언트</TableHead>
-              <TableHead className="text-right">총 계약금액</TableHead>
-              <TableHead className="text-right">입금완료</TableHead>
-              <TableHead className="text-right">미수금</TableHead>
-              <TableHead className="text-center">진행률</TableHead>
+              <TableHead className="text-right">계약금액</TableHead>
+              <TableHead className="text-right">실지출</TableHead>
+              <TableHead className="text-right">순이익</TableHead>
+              <TableHead className="text-center">수익률</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {filteredData.map((contract) => {
-              const receivedTotal = contract.deposits.reduce((s, d) => s + d.actualAmount, 0);
-              const progress = Math.round((receivedTotal / contract.totalAmount) * 100);
+              const profit = contract.totalAmount - contract.actualExpense;
               const isExpanded = expandedProjects.includes(contract.id);
 
               return (
@@ -233,23 +220,27 @@ export function ContractStatusSection() {
                     <TableCell>
                       {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                     </TableCell>
-                    <TableCell className="font-medium">{contract.projectName}</TableCell>
+                    <TableCell className="font-medium text-sm">
+                      {contract.projectName.length > 25 ? contract.projectName.substring(0, 25) + '...' : contract.projectName}
+                    </TableCell>
                     <TableCell>{contract.client}</TableCell>
                     <TableCell className="text-right font-mono">{formatKRW(contract.totalAmount)}</TableCell>
-                    <TableCell className="text-right font-mono text-emerald-600">{formatKRW(receivedTotal)}</TableCell>
                     <TableCell className="text-right font-mono text-amber-600">
-                      {formatKRW(contract.totalAmount - receivedTotal)}
+                      {contract.actualExpense > 0 ? formatKRW(contract.actualExpense) : '-'}
+                    </TableCell>
+                    <TableCell className="text-right font-mono text-emerald-600">
+                      {formatKRW(profit)}
                     </TableCell>
                     <TableCell className="text-center">
-                      <div className="flex items-center gap-2">
-                        <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
-                          <div 
-                            className="h-full bg-primary rounded-full"
-                            style={{ width: `${progress}%` }}
-                          />
-                        </div>
-                        <span className="text-xs font-medium w-10">{progress}%</span>
-                      </div>
+                      <Badge 
+                        className={
+                          contract.profitRate >= 70 ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-100' :
+                          contract.profitRate >= 40 ? 'bg-blue-100 text-blue-700 hover:bg-blue-100' :
+                          'bg-amber-100 text-amber-700 hover:bg-amber-100'
+                        }
+                      >
+                        {contract.profitRate.toFixed(1)}%
+                      </Badge>
                     </TableCell>
                   </TableRow>
                   {isExpanded && (

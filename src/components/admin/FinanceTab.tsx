@@ -12,13 +12,15 @@ import {
 import { ContractStatusSection } from './finance/ContractStatusSection';
 import { ExpenseScheduleSection } from './finance/ExpenseScheduleSection';
 import { ExpenseDetailSection } from './finance/ExpenseDetailSection';
+import { financeSummary } from '@/mock/data';
+import { formatKRW } from '@/lib/format';
 
 export function FinanceTab() {
   const stats = [
-    { label: '월 매출', value: '₩480,000,000', change: '+12.5%', trend: 'up', icon: TrendingUp, color: 'text-emerald-500', bgColor: 'bg-emerald-100' },
-    { label: '월 지출', value: '₩320,000,000', change: '+8.2%', trend: 'up', icon: TrendingDown, color: 'text-orange-500', bgColor: 'bg-orange-100' },
-    { label: '순이익', value: '₩160,000,000', change: '+18.3%', trend: 'up', icon: PiggyBank, color: 'text-blue-500', bgColor: 'bg-blue-100' },
-    { label: '수익률', value: '33.3%', change: '+2.1%p', trend: 'up', icon: BarChart3, color: 'text-violet-500', bgColor: 'bg-violet-100' },
+    { label: '연 매출', value: formatKRW(financeSummary.totalRevenue), change: `${financeSummary.totalProjects}건`, trend: 'up' as const, icon: TrendingUp, color: 'text-emerald-500', bgColor: 'bg-emerald-100' },
+    { label: '연 지출', value: formatKRW(financeSummary.totalExpense), change: '실지출 합계', trend: 'up' as const, icon: TrendingDown, color: 'text-orange-500', bgColor: 'bg-orange-100' },
+    { label: '순이익', value: formatKRW(financeSummary.netProfit), change: `+${financeSummary.profitRate}%`, trend: 'up' as const, icon: PiggyBank, color: 'text-blue-500', bgColor: 'bg-blue-100' },
+    { label: '수익률', value: `${financeSummary.profitRate}%`, change: '2025년 기준', trend: 'up' as const, icon: BarChart3, color: 'text-violet-500', bgColor: 'bg-violet-100' },
   ];
 
   return (
@@ -34,8 +36,8 @@ export function FinanceTab() {
               <div className="flex-1">
                 <p className="text-sm text-muted-foreground">{stat.label}</p>
                 <p className="text-xl font-semibold text-foreground">{stat.value}</p>
-                <p className={`text-xs ${stat.trend === 'up' ? 'text-emerald-600' : 'text-red-600'}`}>
-                  {stat.change} vs 전월
+                <p className="text-xs text-emerald-600">
+                  {stat.change}
                 </p>
               </div>
             </div>
