@@ -19,6 +19,10 @@ interface NavigationButton {
   descriptionKey: string;
   color: string;
   bgGradient: string;
+  activeRing: string;
+  activeBg: string;
+  activeIconBg: string;
+  activeText: string;
 }
 
 export default function AdminPage() {
@@ -33,6 +37,10 @@ export default function AdminPage() {
       descriptionKey: 'employeeManagement',
       color: 'text-blue-500',
       bgGradient: 'from-blue-500/10 to-blue-600/5',
+      activeRing: 'ring-blue-500',
+      activeBg: 'from-blue-500/20 to-blue-600/10',
+      activeIconBg: 'bg-blue-500',
+      activeText: 'text-blue-600',
     },
     {
       id: 'finance',
@@ -41,6 +49,10 @@ export default function AdminPage() {
       descriptionKey: 'projectBudgets',
       color: 'text-emerald-500',
       bgGradient: 'from-emerald-500/10 to-emerald-600/5',
+      activeRing: 'ring-emerald-500',
+      activeBg: 'from-emerald-500/20 to-emerald-600/10',
+      activeIconBg: 'bg-emerald-500',
+      activeText: 'text-emerald-600',
     },
     {
       id: 'ga',
@@ -49,6 +61,10 @@ export default function AdminPage() {
       descriptionKey: 'companyResources',
       color: 'text-violet-500',
       bgGradient: 'from-violet-500/10 to-violet-600/5',
+      activeRing: 'ring-violet-500',
+      activeBg: 'from-violet-500/20 to-violet-600/10',
+      activeIconBg: 'bg-violet-500',
+      activeText: 'text-violet-600',
     },
     {
       id: 'welfare',
@@ -57,6 +73,10 @@ export default function AdminPage() {
       descriptionKey: 'renatusTraining',
       color: 'text-pink-500',
       bgGradient: 'from-pink-500/10 to-pink-600/5',
+      activeRing: 'ring-pink-500',
+      activeBg: 'from-pink-500/20 to-pink-600/10',
+      activeIconBg: 'bg-pink-500',
+      activeText: 'text-pink-600',
     },
     {
       id: 'settings',
@@ -65,6 +85,10 @@ export default function AdminPage() {
       descriptionKey: 'systemConfiguration',
       color: 'text-orange-500',
       bgGradient: 'from-orange-500/10 to-orange-600/5',
+      activeRing: 'ring-orange-500',
+      activeBg: 'from-orange-500/20 to-orange-600/10',
+      activeIconBg: 'bg-orange-500',
+      activeText: 'text-orange-600',
     },
   ];
 
@@ -106,29 +130,29 @@ export default function AdminPage() {
             <Card
               key={button.id}
               className={cn(
-                "cursor-pointer transition-all duration-200 hover:shadow-lg",
+                "cursor-pointer transition-all duration-200 hover:shadow-lg overflow-hidden",
                 isActive
-                  ? "ring-2 ring-primary shadow-lg"
+                  ? `ring-2 ${button.activeRing} shadow-lg`
                   : "hover:scale-105"
               )}
               onClick={() => setActiveSection(button.id)}
             >
               <div className={cn(
-                "p-6 bg-gradient-to-br",
-                button.bgGradient
+                "p-6 bg-gradient-to-br h-full",
+                isActive ? button.activeBg : button.bgGradient
               )}>
                 <div className="flex items-start gap-4">
                   <div className={cn(
-                    "w-12 h-12 rounded-lg flex items-center justify-center",
-                    isActive ? "bg-primary" : "bg-background",
-                    isActive ? "text-primary-foreground" : button.color
+                    "w-12 h-12 rounded-lg flex items-center justify-center shrink-0",
+                    isActive ? button.activeIconBg : "bg-background",
+                    isActive ? "text-white" : button.color
                   )}>
                     <Icon className="w-6 h-6" />
                   </div>
-                  <div className="flex-1">
+                  <div className="flex-1 min-w-0">
                     <h3 className={cn(
                       "font-semibold text-lg mb-1",
-                      isActive ? "text-primary" : "text-foreground"
+                      isActive ? button.activeText : "text-foreground"
                     )}>
                       {t(button.labelKey as any)}
                     </h3>
