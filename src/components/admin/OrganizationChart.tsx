@@ -37,18 +37,14 @@ const departments = [
   'Management',
   'Creative Solution',
   'Production',
-  'Future Strategy',
-  'Media / A&R'
+  'Renatus',
 ];
 
-// Map old department names to new ones if necessary, or just use new ones.
-// Using english department names as per DB migration
 const teams: Record<string, string[]> = {
-  'Management': ['HR', 'Finance', 'General Affairs'],
+  'Management': ['경영기획실'],
   'Creative Solution': ['Team A', 'Team B'],
-  'Production': ['Directing', 'Production'],
-  'Future Strategy': ['Strategy', 'Planning'],
-  'Media / A&R': ['A&R', 'Media']
+  'Production': ['Directing', 'Production', 'NEXT', 'Post Edit'],
+  'Renatus': [],
 };
 
 export function OrganizationChart() {
@@ -180,8 +176,7 @@ export function OrganizationChart() {
       case 'Management': return 'bg-blue-100 text-blue-700';
       case 'Creative Solution': return 'bg-purple-100 text-purple-700';
       case 'Production': return 'bg-green-100 text-green-700';
-      case 'Future Strategy': return 'bg-orange-100 text-orange-700';
-      case 'Media / A&R': return 'bg-pink-100 text-pink-700';
+      case 'Renatus': return 'bg-pink-100 text-pink-700';
       default: return 'bg-gray-100 text-gray-700';
     }
   };
@@ -195,7 +190,7 @@ export function OrganizationChart() {
       <div className="flex items-center justify-between mb-4">
         <div>
           <h3 className="font-semibold text-foreground">{t('paulusOrgChart')}</h3>
-          <p className="text-sm text-muted-foreground">ver. 2026.02.06 · Drag & drop to reorganize</p>
+          <p className="text-sm text-muted-foreground">ver. 2025.12.18 · Drag & drop to reorganize</p>
         </div>
         <div className="flex items-center gap-2">
           <Select value={filterDept} onValueChange={setFilterDept}>

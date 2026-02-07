@@ -1,5 +1,6 @@
 import { supabase, isSupabaseConfigured, handleSupabaseError } from '@/lib/supabase';
 import type { AdminEmployee, AdminSalaryGrade, CreateEmployeeInput, UpdateEmployeeInput, UpdateSalaryGradeInput } from '@/types/admin';
+import { mockEmployees, mockSalaryGrades } from '@/mock/adminData';
 
 // ============================================
 // EMPLOYEES
@@ -7,8 +8,7 @@ import type { AdminEmployee, AdminSalaryGrade, CreateEmployeeInput, UpdateEmploy
 
 export const getEmployees = async (): Promise<AdminEmployee[]> => {
     if (!isSupabaseConfigured()) {
-        console.warn('Supabase not configured, returning empty list');
-        return [];
+        return mockEmployees;
     }
 
     const { data, error } = await supabase
@@ -17,7 +17,7 @@ export const getEmployees = async (): Promise<AdminEmployee[]> => {
         .order('employee_no', { ascending: true });
 
     if (error) throw new Error(handleSupabaseError(error));
-    return data || [];
+    return (data && data.length > 0) ? data : mockEmployees;
 };
 
 export const createEmployee = async (employee: CreateEmployeeInput): Promise<AdminEmployee> => {
@@ -63,7 +63,9 @@ export const deleteEmployee = async (id: string): Promise<void> => {
 // ============================================
 
 export const getSalaryGrades = async (): Promise<AdminSalaryGrade[]> => {
-    if (!isSupabaseConfigured()) return [];
+    if (!isSupabaseConfigured()) {
+        return mockSalaryGrades;
+    }
 
     const { data, error } = await supabase
         .from('nexus_salary_grades')
@@ -71,7 +73,7 @@ export const getSalaryGrades = async (): Promise<AdminSalaryGrade[]> => {
         .order('annual_salary', { ascending: false });
 
     if (error) throw new Error(handleSupabaseError(error));
-    return data || [];
+    return (data && data.length > 0) ? data : mockSalaryGrades;
 };
 
 export const updateSalaryGrade = async (id: string, updates: UpdateSalaryGradeInput): Promise<AdminSalaryGrade> => {
