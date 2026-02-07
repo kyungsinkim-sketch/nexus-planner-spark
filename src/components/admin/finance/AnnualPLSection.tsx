@@ -1,12 +1,4 @@
-import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import {
   Accordion,
   AccordionContent,
@@ -79,11 +71,13 @@ function ChangeIndicator({ current, previous }: { current: number; previous: num
   );
 }
 
-export function AnnualPLSection() {
-  const [selectedYear, setSelectedYear] = useState('2025');
+interface AnnualPLSectionProps {
+  year: number;
+}
 
-  const currentData = annualFinancials.find(f => f.year === parseInt(selectedYear)) || annualFinancials[0];
-  const compareData = annualFinancials.find(f => f.year !== parseInt(selectedYear));
+export function AnnualPLSection({ year }: AnnualPLSectionProps) {
+  const currentData = annualFinancials.find(f => f.year === year) || annualFinancials[0];
+  const compareData = annualFinancials.find(f => f.year !== year);
 
   // 비교 차트 데이터
   const comparisonChartData = [
@@ -119,19 +113,10 @@ export function AnnualPLSection() {
 
   return (
     <div className="space-y-6">
-      {/* Year Selector */}
-      <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-foreground">연간 손익계산서</h3>
-        <Select value={selectedYear} onValueChange={setSelectedYear}>
-          <SelectTrigger className="w-[180px]">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="2025">2025년 실적</SelectItem>
-            <SelectItem value="2026">2026년 목표</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
+      {/* Section Title */}
+      <h3 className="text-lg font-semibold text-foreground">
+        {currentData.year}년 {currentData.isTarget ? '목표' : '실적'} 손익계산서
+      </h3>
 
       {/* P&L Statement */}
       <Card className="shadow-card">

@@ -79,7 +79,11 @@ const generateContractData = (): ContractRecord[] => {
 
 const contractData = generateContractData();
 
-export function ContractStatusSection() {
+interface ContractStatusSectionProps {
+  year: number;
+}
+
+export function ContractStatusSection({ year }: ContractStatusSectionProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [expandedProjects, setExpandedProjects] = useState<string[]>([contractData[0]?.id]);
   const [sortBy, setSortBy] = useState<'date' | 'amount'>('date');

@@ -107,8 +107,12 @@ const generateMockExpenseSchedule = (): DailyExpense[] => {
   return expenses;
 };
 
-export function ExpenseScheduleSection() {
-  const [currentMonth, setCurrentMonth] = useState(new Date(2025, 0)); // January 2025
+interface ExpenseScheduleSectionProps {
+  year: number;
+}
+
+export function ExpenseScheduleSection({ year }: ExpenseScheduleSectionProps) {
+  const [currentMonth, setCurrentMonth] = useState(new Date(year, 0));
   
   const expenses = generateMockExpenseSchedule();
   
