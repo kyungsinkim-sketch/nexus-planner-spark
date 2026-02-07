@@ -121,7 +121,11 @@ const { taxInvoices: mockTaxInvoices, withholding: mockWithholding, corporateCar
 
 type SortBy = 'date' | 'project' | 'amount';
 
-export function ExpenseDetailSection() {
+interface ExpenseDetailSectionProps {
+  year: number;
+}
+
+export function ExpenseDetailSection({ year }: ExpenseDetailSectionProps) {
   const [activeTab, setActiveTab] = useState('tax');
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState<SortBy>('date');

@@ -1,5 +1,7 @@
+import { useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
 import { 
   TrendingUp, 
   PiggyBank,
@@ -18,58 +20,70 @@ import { ExpenseScheduleSection } from './finance/ExpenseScheduleSection';
 import { ExpenseDetailSection } from './finance/ExpenseDetailSection';
 import { AnnualPLSection } from './finance/AnnualPLSection';
 import { ProfitDistributionSection } from './finance/ProfitDistributionSection';
-import { financeSummary } from '@/mock/data';
+import { annualFinancials } from '@/mock/data';
 import { formatKRW } from '@/lib/format';
 
 // 억 단위 포맷
 const formatBillions = (v: number) => `${(v / 100000000).toFixed(1)}억`;
 
+// Available years from data
+const availableYears = annualFinancials.map(f => f.year);
+
 export function FinanceTab() {
+  const [selectedYear, setSelectedYear] = useState(availableYears[0].toString());
+  
+  const yearNum = parseInt(selectedYear);
+  const currentData = annualFinancials.find(f => f.year === yearNum) || annualFinancials[0];
+  
+  const totalExpense = currentData.overhead.total + currentData.productionPayroll.total + currentData.productionCost.total;
+  const netProfit = currentData.revenue - totalExpense;
+  const profitRate = ((netProfit / currentData.revenue) * 100).toFixed(1);
+
   const stats = [
     { 
       label: '연 매출 (공급가)', 
-      value: formatBillions(financeSummary.totalRevenue), 
-      sub: formatKRW(financeSummary.totalRevenue),
+      value: formatBillions(currentData.revenue), 
+      sub: formatKRW(currentData.revenue),
       icon: TrendingUp, 
       color: 'text-emerald-500', 
       bgColor: 'bg-emerald-100' 
     },
     { 
       label: '경상비', 
-      value: formatBillions(financeSummary.overhead), 
-      sub: `매출 대비 ${((financeSummary.overhead / financeSummary.totalRevenue) * 100).toFixed(1)}%`,
+      value: formatBillions(currentData.overhead.total), 
+      sub: `매출 대비 ${((currentData.overhead.total / currentData.revenue) * 100).toFixed(1)}%`,
       icon: Building2, 
       color: 'text-red-500', 
       bgColor: 'bg-red-100' 
     },
     { 
       label: '인건비', 
-      value: formatBillions(financeSummary.productionPayroll), 
-      sub: `매출 대비 ${((financeSummary.productionPayroll / financeSummary.totalRevenue) * 100).toFixed(1)}%`,
+      value: formatBillions(currentData.productionPayroll.total), 
+      sub: `매출 대비 ${((currentData.productionPayroll.total / currentData.revenue) * 100).toFixed(1)}%`,
       icon: Users, 
       color: 'text-orange-500', 
       bgColor: 'bg-orange-100' 
     },
     { 
       label: '촬영진행비', 
-      value: formatBillions(financeSummary.productionCost), 
-      sub: `매출 대비 ${((financeSummary.productionCost / financeSummary.totalRevenue) * 100).toFixed(1)}%`,
+      value: formatBillions(currentData.productionCost.total), 
+      sub: `매출 대비 ${((currentData.productionCost.total / currentData.revenue) * 100).toFixed(1)}%`,
       icon: Film, 
       color: 'text-amber-500', 
       bgColor: 'bg-amber-100' 
     },
     { 
       label: '순이익', 
-      value: formatBillions(financeSummary.netProfit), 
-      sub: formatKRW(financeSummary.netProfit),
+      value: formatBillions(netProfit), 
+      sub: formatKRW(netProfit),
       icon: PiggyBank, 
       color: 'text-blue-500', 
       bgColor: 'bg-blue-100' 
     },
     { 
       label: '수익률', 
-      value: `${financeSummary.profitRate}%`, 
-      sub: `${financeSummary.totalProjects}개 프로젝트`,
+      value: `${profitRate}%`, 
+      sub: currentData.isTarget ? '목표' : '실적 확정',
       icon: BarChart3, 
       color: 'text-violet-500', 
       bgColor: 'bg-violet-100' 
@@ -78,6 +92,35 @@ export function FinanceTab() {
 
   return (
     <div className="space-y-6">
+      {/* Year Selector */}
+      <div className="flex items-center gap-3">
+        {availableYears.map((year) => {
+          const fy = annualFinancials.find(f => f.year === year)!;
+          const isActive = selectedYear === year.toString();
+          return (
+            <button
+              key={year}
+              onClick={() => setSelectedYear(year.toString())}
+              className={`
+                relative flex items-center gap-2 px-5 py-2.5 rounded-lg border-2 transition-all font-medium
+                ${isActive 
+                  ? 'border-primary bg-primary/5 text-primary shadow-sm' 
+                  : 'border-border bg-card text-muted-foreground hover:border-primary/40 hover:text-foreground'
+                }
+              `}
+            >
+              <span className="text-base font-bold">{year}년</span>
+              <Badge 
+                variant={fy.isTarget ? 'outline' : 'default'}
+                className={`text-xs ${isActive ? '' : 'opacity-70'}`}
+              >
+                {fy.isTarget ? '목표' : '실적'}
+              </Badge>
+            </button>
+          );
+        })}
+      </div>
+
       {/* Summary Stats - 6 cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
         {stats.map((stat) => (
@@ -127,23 +170,23 @@ export function FinanceTab() {
         </TabsList>
 
         <TabsContent value="contract">
-          <ContractStatusSection />
+          <ContractStatusSection year={yearNum} />
         </TabsContent>
         
         <TabsContent value="schedule">
-          <ExpenseScheduleSection />
+          <ExpenseScheduleSection year={yearNum} />
         </TabsContent>
         
         <TabsContent value="detail">
-          <ExpenseDetailSection />
+          <ExpenseDetailSection year={yearNum} />
         </TabsContent>
 
         <TabsContent value="pl">
-          <AnnualPLSection />
+          <AnnualPLSection year={yearNum} />
         </TabsContent>
 
         <TabsContent value="distribution">
-          <ProfitDistributionSection />
+          <ProfitDistributionSection year={yearNum} />
         </TabsContent>
       </Tabs>
     </div>

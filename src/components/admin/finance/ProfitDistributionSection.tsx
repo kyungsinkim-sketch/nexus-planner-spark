@@ -1,12 +1,5 @@
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
@@ -45,11 +38,14 @@ interface DistributionRatio {
   color: string;
 }
 
-export function ProfitDistributionSection() {
-  const [selectedYear, setSelectedYear] = useState('2026');
+interface ProfitDistributionSectionProps {
+  year: number;
+}
+
+export function ProfitDistributionSection({ year }: ProfitDistributionSectionProps) {
   const [ratios, setRatios] = useState([20, 30, 20, 30]);
 
-  const currentData = annualFinancials.find(f => f.year === parseInt(selectedYear)) || annualFinancials[1];
+  const currentData = annualFinancials.find(f => f.year === year) || annualFinancials[1];
   const netProfit = currentData.netProfit;
 
   const distributions: DistributionRatio[] = [
@@ -80,24 +76,13 @@ export function ProfitDistributionSection() {
     }
   };
 
-  const fy2025 = annualFinancials[0];
-  const fy2026 = annualFinancials[1];
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-foreground">순이익 배분 시뮬레이션</h3>
-        <Select value={selectedYear} onValueChange={setSelectedYear}>
-          <SelectTrigger className="w-[180px]">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="2025">2025년 실적</SelectItem>
-            <SelectItem value="2026">2026년 목표</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
+      <h3 className="text-lg font-semibold text-foreground">
+        {currentData.year}년 {currentData.isTarget ? '목표' : '실적'} 순이익 배분 시뮬레이션
+      </h3>
 
       {/* Net Profit Banner */}
       <Card className="p-6 shadow-card bg-gradient-to-r from-primary/5 to-primary/10 border-primary/20">
@@ -225,60 +210,6 @@ export function ProfitDistributionSection() {
         </CardContent>
       </Card>
 
-      {/* Year Comparison */}
-      <Card className="shadow-card">
-        <CardHeader>
-          <CardTitle className="text-base">연도별 배분 비교</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="p-4 rounded-lg bg-muted/50">
-              <p className="text-sm font-medium text-muted-foreground mb-2">2025 실적 기준</p>
-              <p className="text-xl font-bold text-foreground mb-3">순이익 {formatKRW(fy2025.netProfit)}</p>
-              <div className="space-y-1 text-sm">
-                <div className="flex justify-between">
-                  <span>성과상여금 ({ratios[0]}%)</span>
-                  <span className="font-mono">{formatKRW(Math.round(fy2025.netProfit * ratios[0] / 100))}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>신규사업 투자 ({ratios[1]}%)</span>
-                  <span className="font-mono">{formatKRW(Math.round(fy2025.netProfit * ratios[1] / 100))}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>주주배당 ({ratios[2]}%)</span>
-                  <span className="font-mono">{formatKRW(Math.round(fy2025.netProfit * ratios[2] / 100))}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>사내유보 ({ratios[3]}%)</span>
-                  <span className="font-mono">{formatKRW(Math.round(fy2025.netProfit * ratios[3] / 100))}</span>
-                </div>
-              </div>
-            </div>
-            <div className="p-4 rounded-lg bg-primary/5 border border-primary/20">
-              <p className="text-sm font-medium text-muted-foreground mb-2">2026 목표 기준</p>
-              <p className="text-xl font-bold text-foreground mb-3">순이익 {formatKRW(fy2026.netProfit)}</p>
-              <div className="space-y-1 text-sm">
-                <div className="flex justify-between">
-                  <span>성과상여금 ({ratios[0]}%)</span>
-                  <span className="font-mono">{formatKRW(Math.round(fy2026.netProfit * ratios[0] / 100))}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>신규사업 투자 ({ratios[1]}%)</span>
-                  <span className="font-mono">{formatKRW(Math.round(fy2026.netProfit * ratios[1] / 100))}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>주주배당 ({ratios[2]}%)</span>
-                  <span className="font-mono">{formatKRW(Math.round(fy2026.netProfit * ratios[2] / 100))}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>사내유보 ({ratios[3]}%)</span>
-                  <span className="font-mono">{formatKRW(Math.round(fy2026.netProfit * ratios[3] / 100))}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 }
