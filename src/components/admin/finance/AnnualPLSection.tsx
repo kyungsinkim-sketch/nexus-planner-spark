@@ -133,25 +133,25 @@ export function AnnualPLSection({ year }: AnnualPLSectionProps) {
         <CardContent>
           <div className="space-y-1">
             {/* 매출액 */}
-            <div className="flex items-center justify-between py-3 border-b-2 border-primary/20">
-              <span className="font-semibold text-foreground">매출액 (공급가)</span>
-              <span className="text-xl font-bold text-foreground">{formatKRW(currentData.revenue)}</span>
+            <div className="flex items-center justify-between py-2 sm:py-3 border-b-2 border-primary/20">
+              <span className="font-semibold text-foreground text-sm sm:text-base">매출액 (공급가)</span>
+              <span className="text-base sm:text-xl font-bold text-foreground font-mono tabular-nums">{formatKRW(currentData.revenue)}</span>
             </div>
 
             {/* 경상비 Accordion */}
             <Accordion type="single" collapsible className="border-none">
               <AccordionItem value="overhead" className="border-b">
                 <AccordionTrigger className="py-3 hover:no-underline">
-                  <div className="flex items-center justify-between w-full pr-4">
-                    <span className="text-red-600 font-medium">(-) 경상비</span>
-                    <div className="flex items-center gap-3">
+                  <div className="flex items-center justify-between w-full pr-2 sm:pr-4">
+                    <span className="text-red-600 font-medium text-sm sm:text-base">(-) 경상비</span>
+                    <div className="flex items-center gap-2 sm:gap-3">
                       {compareData && (
                         <ChangeIndicator
                           current={currentData.overhead.total}
                           previous={compareData.overhead.total}
                         />
                       )}
-                      <span className="font-semibold text-red-600">{formatKRW(currentData.overhead.total)}</span>
+                      <span className="font-semibold text-red-600 font-mono tabular-nums text-xs sm:text-sm">{formatKRW(currentData.overhead.total)}</span>
                     </div>
                   </div>
                 </AccordionTrigger>
@@ -160,9 +160,9 @@ export function AnnualPLSection({ year }: AnnualPLSectionProps) {
                     {Object.entries(overheadLabels).map(([key, label]) => {
                       const value = currentData.overhead[key as keyof typeof currentData.overhead] as number;
                       return (
-                        <div key={key} className="flex items-center justify-between py-1 text-sm">
+                        <div key={key} className="flex items-center justify-between py-1 text-xs sm:text-sm">
                           <span className="text-muted-foreground">{label}</span>
-                          <span className="font-mono">{formatKRW(value)}</span>
+                          <span className="font-mono tabular-nums">{formatKRW(value)}</span>
                         </div>
                       );
                     })}
@@ -173,16 +173,16 @@ export function AnnualPLSection({ year }: AnnualPLSectionProps) {
               {/* 인건비 */}
               <AccordionItem value="payroll" className="border-b">
                 <AccordionTrigger className="py-3 hover:no-underline">
-                  <div className="flex items-center justify-between w-full pr-4">
-                    <span className="text-orange-600 font-medium">(-) 인건비 (프로덕션)</span>
-                    <div className="flex items-center gap-3">
+                  <div className="flex items-center justify-between w-full pr-2 sm:pr-4">
+                    <span className="text-orange-600 font-medium text-sm sm:text-base">(-) 인건비 (프로덕션)</span>
+                    <div className="flex items-center gap-2 sm:gap-3">
                       {compareData && (
                         <ChangeIndicator
                           current={currentData.productionPayroll.total}
                           previous={compareData.productionPayroll.total}
                         />
                       )}
-                      <span className="font-semibold text-orange-600">{formatKRW(currentData.productionPayroll.total)}</span>
+                      <span className="font-semibold text-orange-600 font-mono tabular-nums text-xs sm:text-sm">{formatKRW(currentData.productionPayroll.total)}</span>
                     </div>
                   </div>
                 </AccordionTrigger>
@@ -191,9 +191,9 @@ export function AnnualPLSection({ year }: AnnualPLSectionProps) {
                     {Object.entries(payrollLabels).map(([key, label]) => {
                       const value = currentData.productionPayroll[key as keyof typeof currentData.productionPayroll] as number;
                       return (
-                        <div key={key} className="flex items-center justify-between py-1 text-sm">
+                        <div key={key} className="flex items-center justify-between py-1 text-xs sm:text-sm">
                           <span className="text-muted-foreground">{label}</span>
-                          <span className="font-mono">{formatKRW(value)}</span>
+                          <span className="font-mono tabular-nums">{formatKRW(value)}</span>
                         </div>
                       );
                     })}
@@ -204,16 +204,16 @@ export function AnnualPLSection({ year }: AnnualPLSectionProps) {
               {/* 촬영진행비 */}
               <AccordionItem value="production" className="border-b">
                 <AccordionTrigger className="py-3 hover:no-underline">
-                  <div className="flex items-center justify-between w-full pr-4">
-                    <span className="text-amber-600 font-medium">(-) 촬영진행비</span>
-                    <div className="flex items-center gap-3">
+                  <div className="flex items-center justify-between w-full pr-2 sm:pr-4">
+                    <span className="text-amber-600 font-medium text-sm sm:text-base">(-) 촬영진행비</span>
+                    <div className="flex items-center gap-2 sm:gap-3">
                       {compareData && (
                         <ChangeIndicator
                           current={currentData.productionCost.total}
                           previous={compareData.productionCost.total}
                         />
                       )}
-                      <span className="font-semibold text-amber-600">{formatKRW(currentData.productionCost.total)}</span>
+                      <span className="font-semibold text-amber-600 font-mono tabular-nums text-xs sm:text-sm">{formatKRW(currentData.productionCost.total)}</span>
                     </div>
                   </div>
                 </AccordionTrigger>
@@ -222,9 +222,9 @@ export function AnnualPLSection({ year }: AnnualPLSectionProps) {
                     {Object.entries(productionCostLabels).map(([key, label]) => {
                       const value = currentData.productionCost[key as keyof typeof currentData.productionCost] as number;
                       return (
-                        <div key={key} className="flex items-center justify-between py-1 text-sm">
+                        <div key={key} className="flex items-center justify-between py-1 text-xs sm:text-sm">
                           <span className="text-muted-foreground">{label}</span>
-                          <span className="font-mono">{formatKRW(value)}</span>
+                          <span className="font-mono tabular-nums">{formatKRW(value)}</span>
                         </div>
                       );
                     })}
@@ -235,17 +235,17 @@ export function AnnualPLSection({ year }: AnnualPLSectionProps) {
 
             {/* 총 비용 */}
             <div className="flex items-center justify-between py-2 border-t">
-              <span className="text-muted-foreground">총 비용</span>
-              <span className="font-semibold text-muted-foreground">{formatKRW(totalExpense)}</span>
+              <span className="text-muted-foreground text-sm">총 비용</span>
+              <span className="font-semibold text-muted-foreground font-mono tabular-nums text-sm">{formatKRW(totalExpense)}</span>
             </div>
 
             {/* 순이익 */}
-            <div className="flex items-center justify-between py-3 border-t-2 border-primary/20 bg-primary/5 rounded-lg px-3 -mx-3">
+            <div className="flex items-center justify-between py-2 sm:py-3 border-t-2 border-primary/20 bg-primary/5 rounded-lg px-2 sm:px-3 -mx-2 sm:-mx-3">
               <div>
-                <span className="font-bold text-lg text-foreground">순이익</span>
-                <span className="ml-2 text-sm text-muted-foreground">수익률 {profitRate}%</span>
+                <span className="font-bold text-sm sm:text-lg text-foreground">순이익</span>
+                <span className="ml-1 sm:ml-2 text-[10px] sm:text-sm text-muted-foreground">수익률 {profitRate}%</span>
               </div>
-              <span className={`text-xl font-bold ${currentData.netProfit >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+              <span className={`text-base sm:text-xl font-bold font-mono tabular-nums ${currentData.netProfit >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
                 {formatKRW(currentData.netProfit)}
               </span>
             </div>
@@ -259,8 +259,8 @@ export function AnnualPLSection({ year }: AnnualPLSectionProps) {
           <CardTitle className="text-base">2025 실적 vs 2026 목표 비교</CardTitle>
         </CardHeader>
         <CardContent>
-          <ResponsiveContainer width="100%" height={350}>
-            <BarChart data={comparisonChartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={comparisonChartData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
               <XAxis dataKey="name" className="text-xs" />
               <YAxis
@@ -284,27 +284,27 @@ export function AnnualPLSection({ year }: AnnualPLSectionProps) {
       </Card>
 
       {/* Cost Structure Breakdown */}
-      <div className="grid gap-4 sm:grid-cols-3">
-        <Card className="p-4 shadow-card">
-          <p className="text-sm text-muted-foreground mb-1">경상비 비중</p>
-          <p className="text-2xl font-bold text-foreground">
+      <div className="grid gap-3 grid-cols-3">
+        <Card className="p-3 sm:p-4 shadow-card overflow-hidden">
+          <p className="text-[10px] sm:text-sm text-muted-foreground mb-1 truncate">경상비 비중</p>
+          <p className="text-lg sm:text-2xl font-bold text-foreground">
             {((currentData.overhead.total / currentData.revenue) * 100).toFixed(1)}%
           </p>
-          <p className="text-xs text-muted-foreground">{formatBillions(currentData.overhead.total)}</p>
+          <p className="text-[10px] sm:text-xs text-muted-foreground truncate">{formatBillions(currentData.overhead.total)}</p>
         </Card>
-        <Card className="p-4 shadow-card">
-          <p className="text-sm text-muted-foreground mb-1">인건비 비중</p>
-          <p className="text-2xl font-bold text-foreground">
+        <Card className="p-3 sm:p-4 shadow-card overflow-hidden">
+          <p className="text-[10px] sm:text-sm text-muted-foreground mb-1 truncate">인건비 비중</p>
+          <p className="text-lg sm:text-2xl font-bold text-foreground">
             {((currentData.productionPayroll.total / currentData.revenue) * 100).toFixed(1)}%
           </p>
-          <p className="text-xs text-muted-foreground">{formatBillions(currentData.productionPayroll.total)}</p>
+          <p className="text-[10px] sm:text-xs text-muted-foreground truncate">{formatBillions(currentData.productionPayroll.total)}</p>
         </Card>
-        <Card className="p-4 shadow-card">
-          <p className="text-sm text-muted-foreground mb-1">제작비 비중</p>
-          <p className="text-2xl font-bold text-foreground">
+        <Card className="p-3 sm:p-4 shadow-card overflow-hidden">
+          <p className="text-[10px] sm:text-sm text-muted-foreground mb-1 truncate">제작비 비중</p>
+          <p className="text-lg sm:text-2xl font-bold text-foreground">
             {((currentData.productionCost.total / currentData.revenue) * 100).toFixed(1)}%
           </p>
-          <p className="text-xs text-muted-foreground">{formatBillions(currentData.productionCost.total)}</p>
+          <p className="text-[10px] sm:text-xs text-muted-foreground truncate">{formatBillions(currentData.productionCost.total)}</p>
         </Card>
       </div>
     </div>

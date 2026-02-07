@@ -158,25 +158,25 @@ export function ExpenseScheduleSection({ year }: ExpenseScheduleSectionProps) {
   return (
     <div className="space-y-6">
       {/* Summary Cards */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Card className="p-4 shadow-card">
-          <p className="text-sm text-muted-foreground">주거래계좌 출금가능금액</p>
-          <p className="text-2xl font-bold text-foreground">{formatKRW(165434699)}</p>
+      <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
+        <Card className="p-3 sm:p-4 shadow-card overflow-hidden">
+          <p className="text-xs sm:text-sm text-muted-foreground truncate">주거래계좌 출금가능금액</p>
+          <p className="text-lg sm:text-2xl font-bold text-foreground truncate">{formatKRW(165434699)}</p>
         </Card>
-        <Card className="p-4 shadow-card">
-          <p className="text-sm text-muted-foreground">그 외 출금가능금액</p>
-          <p className="text-2xl font-bold text-foreground">{formatKRW(280000497)}</p>
+        <Card className="p-3 sm:p-4 shadow-card overflow-hidden">
+          <p className="text-xs sm:text-sm text-muted-foreground truncate">그 외 출금가능금액</p>
+          <p className="text-lg sm:text-2xl font-bold text-foreground truncate">{formatKRW(280000497)}</p>
         </Card>
-        <Card className="p-4 shadow-card bg-yellow-50 border-yellow-200">
-          <p className="text-sm text-muted-foreground">총 가용자금</p>
-          <p className="text-2xl font-bold text-yellow-700">{formatKRW(startingBalance)}</p>
+        <Card className="p-3 sm:p-4 shadow-card bg-yellow-50 border-yellow-200 overflow-hidden">
+          <p className="text-xs sm:text-sm text-muted-foreground">총 가용자금</p>
+          <p className="text-lg sm:text-2xl font-bold text-yellow-700 truncate">{formatKRW(startingBalance)}</p>
         </Card>
-        <Card className="p-4 shadow-card">
-          <div className="flex items-center gap-2">
-            <TrendingDown className="w-5 h-5 text-red-500" />
-            <p className="text-sm text-muted-foreground">이번 달 예상 지출</p>
+        <Card className="p-3 sm:p-4 shadow-card overflow-hidden">
+          <div className="flex items-center gap-1.5">
+            <TrendingDown className="w-4 h-4 sm:w-5 sm:h-5 text-red-500 shrink-0" />
+            <p className="text-xs sm:text-sm text-muted-foreground truncate">이번 달 예상 지출</p>
           </div>
-          <p className="text-2xl font-bold text-red-600">{formatKRW(totalExpenses)}</p>
+          <p className="text-lg sm:text-2xl font-bold text-red-600 truncate">{formatKRW(totalExpenses)}</p>
         </Card>
       </div>
 
@@ -197,66 +197,69 @@ export function ExpenseScheduleSection({ year }: ExpenseScheduleSectionProps) {
 
       {/* Daily Expense Table */}
       <Card className="shadow-card overflow-hidden">
-        <Table>
-          <TableHeader className="bg-muted/50">
-            <TableRow>
-              <TableHead className="w-24">이체일정</TableHead>
-              <TableHead>내용</TableHead>
-              <TableHead className="w-28 text-center">유형</TableHead>
-              <TableHead className="text-right w-32">지출액</TableHead>
-              <TableHead className="text-right w-32">일일 지출금액</TableHead>
-              <TableHead className="text-right w-36">잔액</TableHead>
-              <TableHead className="w-32">비고</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {expenses.map((day, dayIdx) => (
-              <>
-                {day.items.map((item, itemIdx) => (
-                  <TableRow key={item.id} className={itemIdx === 0 ? 'border-t-2' : ''}>
-                    {itemIdx === 0 && (
-                      <TableCell rowSpan={day.items.length} className="font-medium bg-muted/30 align-top pt-3">
-                        {new Date(day.date).toLocaleDateString('ko-KR', { month: 'numeric', day: 'numeric' })}일
-                      </TableCell>
-                    )}
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        {getTypeIcon(item.type)}
-                        <div>
-                          <p className="font-medium text-sm">{item.description}</p>
-                          {item.projectName !== '운영비' && item.projectName !== '금융비용' && item.projectName !== '세금' && item.projectName !== '개인비용' && (
-                            <p className="text-xs text-muted-foreground">{item.projectName}</p>
-                          )}
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader className="bg-muted/50">
+              <TableRow>
+                <TableHead className="w-20 text-xs">이체일정</TableHead>
+                <TableHead className="text-xs min-w-[120px]">내용</TableHead>
+                <TableHead className="w-24 text-center text-xs hidden sm:table-cell">유형</TableHead>
+                <TableHead className="text-right w-28 text-xs">지출액</TableHead>
+                <TableHead className="text-right w-28 text-xs hidden md:table-cell">일일 지출금액</TableHead>
+                <TableHead className="text-right w-32 text-xs hidden md:table-cell">잔액</TableHead>
+                <TableHead className="w-24 text-xs hidden lg:table-cell">비고</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {expenses.map((day, dayIdx) => (
+                <>
+                  {day.items.map((item, itemIdx) => (
+                    <TableRow key={item.id} className={itemIdx === 0 ? 'border-t-2' : ''}>
+                      {itemIdx === 0 && (
+                        <TableCell rowSpan={day.items.length} className="font-medium bg-muted/30 align-top pt-3 text-xs sm:text-sm">
+                          {new Date(day.date).toLocaleDateString('ko-KR', { month: 'numeric', day: 'numeric' })}일
+                        </TableCell>
+                      )}
+                      <TableCell>
+                        <div className="flex items-center gap-1.5">
+                          {getTypeIcon(item.type)}
+                          <div className="min-w-0">
+                            <p className="font-medium text-xs sm:text-sm truncate">{item.description}</p>
+                            {item.projectName !== '운영비' && item.projectName !== '금융비용' && item.projectName !== '세금' && item.projectName !== '개인비용' && (
+                              <p className="text-[10px] sm:text-xs text-muted-foreground truncate">{item.projectName}</p>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-center">{getTypeBadge(item.type)}</TableCell>
-                    <TableCell className="text-right font-mono">{formatKRW(item.amount)}</TableCell>
-                    {itemIdx === 0 && (
-                      <>
-                        <TableCell rowSpan={day.items.length} className="text-right font-mono font-semibold bg-red-50 text-red-700 align-middle">
-                          {formatKRW(day.totalAmount)}
-                        </TableCell>
-                        <TableCell rowSpan={day.items.length} className="text-right font-mono bg-muted/30 align-middle">
-                          {formatKRW(day.runningBalance)}
-                        </TableCell>
-                      </>
-                    )}
-                    <TableCell className="text-xs text-muted-foreground">{item.note || ''}</TableCell>
-                  </TableRow>
-                ))}
-              </>
-            ))}
-            {/* Total Row */}
-            <TableRow className="bg-yellow-50 font-bold border-t-2">
-              <TableCell colSpan={3} className="text-right">총 합계</TableCell>
-              <TableCell className="text-right font-mono">₩</TableCell>
-              <TableCell className="text-right font-mono text-lg">{formatKRW(totalExpenses)}</TableCell>
-              <TableCell className="text-right font-mono text-lg">{formatKRW(endingBalance)}</TableCell>
-              <TableCell></TableCell>
-            </TableRow>
-          </TableBody>
-        </Table>
+                      </TableCell>
+                      <TableCell className="text-center hidden sm:table-cell">{getTypeBadge(item.type)}</TableCell>
+                      <TableCell className="text-right font-mono text-xs sm:text-sm tabular-nums">{formatKRW(item.amount)}</TableCell>
+                      {itemIdx === 0 && (
+                        <>
+                          <TableCell rowSpan={day.items.length} className="text-right font-mono text-xs sm:text-sm font-semibold bg-red-50 text-red-700 align-middle tabular-nums hidden md:table-cell">
+                            {formatKRW(day.totalAmount)}
+                          </TableCell>
+                          <TableCell rowSpan={day.items.length} className="text-right font-mono text-xs sm:text-sm bg-muted/30 align-middle tabular-nums hidden md:table-cell">
+                            {formatKRW(day.runningBalance)}
+                          </TableCell>
+                        </>
+                      )}
+                      <TableCell className="text-[10px] sm:text-xs text-muted-foreground hidden lg:table-cell">{item.note || ''}</TableCell>
+                    </TableRow>
+                  ))}
+                </>
+              ))}
+              {/* Total Row */}
+              <TableRow className="bg-yellow-50 font-bold border-t-2">
+                <TableCell colSpan={2} className="text-right text-xs sm:text-sm">총 합계</TableCell>
+                <TableCell className="hidden sm:table-cell"></TableCell>
+                <TableCell className="text-right font-mono text-xs sm:text-sm tabular-nums">{formatKRW(totalExpenses)}</TableCell>
+                <TableCell className="text-right font-mono text-xs sm:text-sm tabular-nums hidden md:table-cell">{formatKRW(totalExpenses)}</TableCell>
+                <TableCell className="text-right font-mono text-xs sm:text-sm tabular-nums hidden md:table-cell">{formatKRW(endingBalance)}</TableCell>
+                <TableCell className="hidden lg:table-cell"></TableCell>
+              </TableRow>
+            </TableBody>
+          </Table>
+        </div>
       </Card>
     </div>
   );
