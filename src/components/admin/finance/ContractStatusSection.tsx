@@ -168,8 +168,8 @@ export function ContractStatusSection({ year }: ContractStatusSectionProps) {
                 <p className="font-medium text-foreground text-xs sm:text-sm truncate">{contract.projectName}</p>
                 <p className="text-[10px] sm:text-xs text-muted-foreground">{contract.client}</p>
               </div>
-              <div className="text-right shrink-0">
-                <p className="font-semibold text-foreground text-xs sm:text-sm font-mono tabular-nums">{formatKRW(contract.totalAmount)}</p>
+              <div className="text-right shrink-0 min-w-0 max-w-[140px] sm:max-w-[200px]">
+                <AutoFitText className="font-semibold text-foreground text-xs sm:text-sm font-mono tabular-nums">{formatKRW(contract.totalAmount)}</AutoFitText>
                 <p className="text-[10px] sm:text-xs text-emerald-600">수익률 {contract.profitRate}%</p>
               </div>
               <div className="shrink-0 hidden sm:block">

@@ -1,4 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { AutoFitText } from '@/components/ui/auto-fit-text';
 import {
   Accordion,
   AccordionContent,
@@ -139,16 +140,16 @@ export function AnnualPLSection({ year }: AnnualPLSectionProps) {
         <CardContent>
           <div className="space-y-1">
             {/* 매출액 */}
-            <div className="flex items-center justify-between py-2 sm:py-3 border-b-2 border-primary/20">
-              <span className="font-semibold text-foreground text-sm sm:text-base">매출액 (공급가)</span>
-              <span className="text-base sm:text-xl font-bold text-foreground font-mono tabular-nums">{formatKRW(currentData.revenue)}</span>
+            <div className="flex items-center justify-between py-2 sm:py-3 border-b-2 border-primary/20 gap-2">
+              <span className="font-semibold text-foreground text-sm sm:text-base shrink-0">매출액 (공급가)</span>
+              <AutoFitText className="text-base sm:text-xl font-bold text-foreground font-mono tabular-nums">{formatKRW(currentData.revenue)}</AutoFitText>
             </div>
 
             {/* 투자금 */}
             {currentData.investment > 0 && (
-              <div className="flex items-center justify-between py-2 sm:py-3 border-b border-emerald-200">
-                <span className="font-medium text-emerald-600 text-sm sm:text-base">(+) 투자금</span>
-                <span className="text-sm sm:text-lg font-semibold text-emerald-600 font-mono tabular-nums">{formatKRW(currentData.investment)}</span>
+              <div className="flex items-center justify-between py-2 sm:py-3 border-b border-emerald-200 gap-2">
+                <span className="font-medium text-emerald-600 text-sm sm:text-base shrink-0">(+) 투자금</span>
+                <AutoFitText className="text-sm sm:text-lg font-semibold text-emerald-600 font-mono tabular-nums">{formatKRW(currentData.investment)}</AutoFitText>
               </div>
             )}
 
@@ -156,16 +157,16 @@ export function AnnualPLSection({ year }: AnnualPLSectionProps) {
             <Accordion type="single" collapsible className="border-none">
               <AccordionItem value="overhead" className="border-b">
                 <AccordionTrigger className="py-3 hover:no-underline">
-                  <div className="flex items-center justify-between w-full pr-2 sm:pr-4">
-                    <span className="text-red-600 font-medium text-sm sm:text-base">(-) 경상비</span>
-                    <div className="flex items-center gap-2 sm:gap-3">
+                  <div className="flex items-center justify-between w-full pr-2 sm:pr-4 gap-2">
+                    <span className="text-red-600 font-medium text-sm sm:text-base shrink-0">(-) 경상비</span>
+                    <div className="flex items-center gap-2 sm:gap-3 min-w-0">
                       {compareData && (
                         <ChangeIndicator
                           current={currentData.overhead.total}
                           previous={compareData.overhead.total}
                         />
                       )}
-                      <span className="font-semibold text-red-600 font-mono tabular-nums text-xs sm:text-sm">{formatKRW(currentData.overhead.total)}</span>
+                      <AutoFitText className="font-semibold text-red-600 font-mono tabular-nums text-xs sm:text-sm">{formatKRW(currentData.overhead.total)}</AutoFitText>
                     </div>
                   </div>
                 </AccordionTrigger>
@@ -187,16 +188,16 @@ export function AnnualPLSection({ year }: AnnualPLSectionProps) {
               {/* 인건비 */}
               <AccordionItem value="payroll" className="border-b">
                 <AccordionTrigger className="py-3 hover:no-underline">
-                  <div className="flex items-center justify-between w-full pr-2 sm:pr-4">
-                    <span className="text-orange-600 font-medium text-sm sm:text-base">(-) 인건비 (프로덕션)</span>
-                    <div className="flex items-center gap-2 sm:gap-3">
+                  <div className="flex items-center justify-between w-full pr-2 sm:pr-4 gap-2">
+                    <span className="text-orange-600 font-medium text-sm sm:text-base shrink-0">(-) 인건비</span>
+                    <div className="flex items-center gap-2 sm:gap-3 min-w-0">
                       {compareData && (
                         <ChangeIndicator
                           current={currentData.productionPayroll.total}
                           previous={compareData.productionPayroll.total}
                         />
                       )}
-                      <span className="font-semibold text-orange-600 font-mono tabular-nums text-xs sm:text-sm">{formatKRW(currentData.productionPayroll.total)}</span>
+                      <AutoFitText className="font-semibold text-orange-600 font-mono tabular-nums text-xs sm:text-sm">{formatKRW(currentData.productionPayroll.total)}</AutoFitText>
                     </div>
                   </div>
                 </AccordionTrigger>
@@ -218,16 +219,16 @@ export function AnnualPLSection({ year }: AnnualPLSectionProps) {
               {/* 촬영진행비 */}
               <AccordionItem value="production" className="border-b">
                 <AccordionTrigger className="py-3 hover:no-underline">
-                  <div className="flex items-center justify-between w-full pr-2 sm:pr-4">
-                    <span className="text-amber-600 font-medium text-sm sm:text-base">(-) 촬영진행비</span>
-                    <div className="flex items-center gap-2 sm:gap-3">
+                  <div className="flex items-center justify-between w-full pr-2 sm:pr-4 gap-2">
+                    <span className="text-amber-600 font-medium text-sm sm:text-base shrink-0">(-) 촬영진행비</span>
+                    <div className="flex items-center gap-2 sm:gap-3 min-w-0">
                       {compareData && (
                         <ChangeIndicator
                           current={currentData.productionCost.total}
                           previous={compareData.productionCost.total}
                         />
                       )}
-                      <span className="font-semibold text-amber-600 font-mono tabular-nums text-xs sm:text-sm">{formatKRW(currentData.productionCost.total)}</span>
+                      <AutoFitText className="font-semibold text-amber-600 font-mono tabular-nums text-xs sm:text-sm">{formatKRW(currentData.productionCost.total)}</AutoFitText>
                     </div>
                   </div>
                 </AccordionTrigger>
@@ -248,32 +249,32 @@ export function AnnualPLSection({ year }: AnnualPLSectionProps) {
             </Accordion>
 
             {/* 총 비용 */}
-            <div className="flex items-center justify-between py-2 border-t">
-              <span className="text-muted-foreground text-sm">총 비용</span>
-              <span className="font-semibold text-muted-foreground font-mono tabular-nums text-sm">{formatKRW(totalExpense)}</span>
+            <div className="flex items-center justify-between py-2 border-t gap-2">
+              <span className="text-muted-foreground text-sm shrink-0">총 비용</span>
+              <AutoFitText className="font-semibold text-muted-foreground font-mono tabular-nums text-sm">{formatKRW(totalExpense)}</AutoFitText>
             </div>
 
             {/* 순이익 */}
-            <div className="flex items-center justify-between py-2 sm:py-3 border-t-2 border-primary/20 bg-primary/5 rounded-lg px-2 sm:px-3 -mx-2 sm:-mx-3">
-              <div>
+            <div className="flex items-center justify-between py-2 sm:py-3 border-t-2 border-primary/20 bg-primary/5 rounded-lg px-2 sm:px-3 -mx-2 sm:-mx-3 gap-2">
+              <div className="shrink-0">
                 <span className="font-bold text-sm sm:text-lg text-foreground">순이익</span>
                 <span className="ml-1 sm:ml-2 text-[10px] sm:text-sm text-muted-foreground">수익률 {profitRate}%</span>
               </div>
-              <span className={`text-base sm:text-xl font-bold font-mono tabular-nums ${currentData.netProfit >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+              <AutoFitText className={`text-base sm:text-xl font-bold font-mono tabular-nums ${currentData.netProfit >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
                 {formatKRW(currentData.netProfit)}
-              </span>
+              </AutoFitText>
             </div>
 
             {/* Ark.works 비용 */}
             {currentData.arkworksExpense > 0 && (
-              <div className="flex items-center justify-between py-2 sm:py-3 border-t border-dashed border-blue-300 bg-blue-50/50 rounded-lg px-2 sm:px-3 -mx-2 sm:-mx-3 mt-2">
-                <div>
+              <div className="flex items-center justify-between py-2 sm:py-3 border-t border-dashed border-blue-300 bg-blue-50/50 rounded-lg px-2 sm:px-3 -mx-2 sm:-mx-3 mt-2 gap-2">
+                <div className="shrink-0">
                   <span className="font-medium text-sm text-blue-700">*Ark.works 비용</span>
                   <span className="ml-2 text-[10px] sm:text-xs text-blue-500">(신규사업 투자)</span>
                 </div>
-                <span className="text-sm sm:text-base font-semibold text-blue-700 font-mono tabular-nums">
+                <AutoFitText className="text-sm sm:text-base font-semibold text-blue-700 font-mono tabular-nums">
                   {formatKRW(currentData.arkworksExpense)}
-                </span>
+                </AutoFitText>
               </div>
             )}
           </div>
@@ -314,24 +315,24 @@ export function AnnualPLSection({ year }: AnnualPLSectionProps) {
       <div className="grid gap-3 grid-cols-3">
         <Card className="p-3 sm:p-4 shadow-card overflow-hidden">
           <p className="text-[10px] sm:text-sm text-muted-foreground mb-1 truncate">경상비 비중</p>
-          <p className="text-lg sm:text-2xl font-bold text-foreground">
+          <AutoFitText className="text-lg sm:text-2xl font-bold text-foreground">
             {((currentData.overhead.total / currentData.revenue) * 100).toFixed(1)}%
-          </p>
-          <p className="text-[10px] sm:text-xs text-muted-foreground truncate">{formatBillions(currentData.overhead.total)}</p>
+          </AutoFitText>
+          <AutoFitText className="text-[10px] sm:text-xs text-muted-foreground">{formatBillions(currentData.overhead.total)}</AutoFitText>
         </Card>
         <Card className="p-3 sm:p-4 shadow-card overflow-hidden">
           <p className="text-[10px] sm:text-sm text-muted-foreground mb-1 truncate">인건비 비중</p>
-          <p className="text-lg sm:text-2xl font-bold text-foreground">
+          <AutoFitText className="text-lg sm:text-2xl font-bold text-foreground">
             {((currentData.productionPayroll.total / currentData.revenue) * 100).toFixed(1)}%
-          </p>
-          <p className="text-[10px] sm:text-xs text-muted-foreground truncate">{formatBillions(currentData.productionPayroll.total)}</p>
+          </AutoFitText>
+          <AutoFitText className="text-[10px] sm:text-xs text-muted-foreground">{formatBillions(currentData.productionPayroll.total)}</AutoFitText>
         </Card>
         <Card className="p-3 sm:p-4 shadow-card overflow-hidden">
           <p className="text-[10px] sm:text-sm text-muted-foreground mb-1 truncate">제작비 비중</p>
-          <p className="text-lg sm:text-2xl font-bold text-foreground">
+          <AutoFitText className="text-lg sm:text-2xl font-bold text-foreground">
             {((currentData.productionCost.total / currentData.revenue) * 100).toFixed(1)}%
-          </p>
-          <p className="text-[10px] sm:text-xs text-muted-foreground truncate">{formatBillions(currentData.productionCost.total)}</p>
+          </AutoFitText>
+          <AutoFitText className="text-[10px] sm:text-xs text-muted-foreground">{formatBillions(currentData.productionCost.total)}</AutoFitText>
         </Card>
       </div>
     </div>
