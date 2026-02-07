@@ -128,7 +128,12 @@
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
   }
 
-  h1, h2, h3, h4, h5, h6 {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     @apply font-semibold tracking-tight;
   }
 }
@@ -307,16 +312,18 @@
   .fc .fc-toolbar {
     @apply flex-col gap-2;
   }
-  
+
   .fc .fc-toolbar-chunk {
     @apply flex items-center justify-center;
   }
-  
+
   .fc .fc-daygrid-day-frame {
     @apply min-h-[60px];
   }
 }
 
+/* Event Type Colors - Only used in main calendar as fallback when no project key color exists */
+/* Project calendars use project key color for all events */
 .fc-event-task {
   background-color: hsl(var(--event-task)) !important;
 }
@@ -374,47 +381,105 @@
 
 /* Animation utilities */
 @keyframes fade-in {
-  from { opacity: 0; transform: translateY(4px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @keyframes fade-out {
-  from { opacity: 1; transform: translateY(0); }
-  to { opacity: 0; transform: translateY(4px); }
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  to {
+    opacity: 0;
+    transform: translateY(4px);
+  }
 }
 
 @keyframes slide-in-left {
-  from { opacity: 0; transform: translateX(-8px); }
-  to { opacity: 1; transform: translateX(0); }
+  from {
+    opacity: 0;
+    transform: translateX(-8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 
 @keyframes slide-in-right {
-  from { opacity: 0; transform: translateX(100%); }
-  to { opacity: 1; transform: translateX(0); }
+  from {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 
 @keyframes slide-out-right {
-  from { opacity: 1; transform: translateX(0); }
-  to { opacity: 0; transform: translateX(100%); }
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+
+  to {
+    opacity: 0;
+    transform: translateX(100%);
+  }
 }
 
 @keyframes scale-in {
-  from { opacity: 0; transform: scale(0.95); }
-  to { opacity: 1; transform: scale(1); }
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 @keyframes shimmer {
-  100% { transform: translateX(100%); }
+  100% {
+    transform: translateX(100%);
+  }
 }
 
 @keyframes pulse-soft {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.6; }
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.6;
+  }
 }
 
 @keyframes bounce-soft {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-4px); }
+
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-4px);
+  }
 }
 
 .animate-fade-in {
@@ -450,11 +515,25 @@
 }
 
 /* Staggered Animation Delays */
-.stagger-1 { animation-delay: 0.05s; }
-.stagger-2 { animation-delay: 0.1s; }
-.stagger-3 { animation-delay: 0.15s; }
-.stagger-4 { animation-delay: 0.2s; }
-.stagger-5 { animation-delay: 0.25s; }
+.stagger-1 {
+  animation-delay: 0.05s;
+}
+
+.stagger-2 {
+  animation-delay: 0.1s;
+}
+
+.stagger-3 {
+  animation-delay: 0.15s;
+}
+
+.stagger-4 {
+  animation-delay: 0.2s;
+}
+
+.stagger-5 {
+  animation-delay: 0.25s;
+}
 
 /* Transition Utilities */
 .transition-default {
@@ -467,4 +546,151 @@
 
 .transition-fast {
   @apply transition-all duration-150 ease-out;
+}
+
+/* Dark Mode Enhancements */
+.dark {
+  /* Enhanced shadows for dark mode */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -1px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -2px rgba(0, 0, 0, 0.4);
+  --shadow-card: 0 1px 3px 0 rgba(0, 0, 0, 0.4), 0 1px 2px -1px rgba(0, 0, 0, 0.3);
+}
+
+/* Dark mode specific adjustments */
+.dark .card {
+  @apply bg-card/50 backdrop-blur-sm;
+}
+
+.dark .border {
+  @apply border-border/50;
+}
+
+/* Smooth theme transition */
+html {
+  @apply transition-colors duration-300;
+}
+
+html * {
+  @apply transition-colors duration-200;
+}
+
+/* Dark mode chart improvements */
+.dark .recharts-cartesian-grid-horizontal line,
+.dark .recharts-cartesian-grid-vertical line {
+  @apply stroke-border/30;
+}
+
+.dark .recharts-text {
+  @apply fill-muted-foreground;
+}
+
+/* Dark mode scrollbar */
+.dark ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.dark ::-webkit-scrollbar-track {
+  @apply bg-background;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  @apply bg-muted rounded-full;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  @apply bg-muted-foreground/50;
+}
+
+/* Dark mode selection */
+.dark ::selection {
+  @apply bg-primary/30 text-primary-foreground;
+}
+
+/* Dark mode focus rings */
+.dark *:focus-visible {
+  @apply ring-primary/50;
+}
+
+/* Improved contrast for dark mode badges */
+.dark .badge {
+  @apply border-border/50;
+}
+
+/* Dark mode calendar improvements */
+.dark .fc-theme-standard td,
+.dark .fc-theme-standard th {
+  @apply border-border/30;
+}
+
+.dark .fc-theme-standard .fc-scrollgrid {
+  @apply border-border/30;
+}
+
+.dark .fc-col-header-cell {
+  @apply bg-muted/30;
+}
+
+.dark .fc-daygrid-day.fc-day-today {
+  @apply bg-primary/10;
+}
+
+/* Dark mode table improvements */
+.dark table {
+  @apply border-border/30;
+}
+
+.dark th {
+  @apply bg-muted/30 border-border/30;
+}
+
+.dark td {
+  @apply border-border/30;
+}
+
+/* Dark mode input improvements */
+.dark input,
+.dark textarea,
+.dark select {
+  @apply bg-background/50 border-border/50;
+}
+
+.dark input:focus,
+.dark textarea:focus,
+.dark select:focus {
+  @apply border-primary/50 ring-primary/20;
+}
+
+/* Dark mode button improvements */
+.dark button:hover {
+  @apply brightness-110;
+}
+
+/* Dark mode dropdown improvements */
+.dark [role="menu"],
+.dark [role="listbox"] {
+  @apply bg-popover/95 backdrop-blur-md border-border/50;
+}
+
+/* Dark mode tooltip improvements */
+.dark [role="tooltip"] {
+  @apply bg-popover/95 backdrop-blur-md border-border/50;
+}
+
+/* Dark mode modal improvements */
+.dark [role="dialog"] {
+  @apply bg-card/95 backdrop-blur-md border-border/50;
+}
+
+/* Performance: Reduce motion for users who prefer it */
+@media (prefers-reduced-motion: reduce) {
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

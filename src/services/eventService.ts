@@ -1,0 +1,226 @@
+import { supabase, isSupabaseConfigured, handleSupabaseError } from '@/lib/supabase';
+import type { CalendarEvent } from '@/types/core';
+import type { Database } from '@/types/database';
+
+type EventRow = Database['public']['Tables']['calendar_events']['Row'];
+type EventInsert = Database['public']['Tables']['calendar_events']['Insert'];
+type EventUpdate = Database['public']['Tables']['calendar_events']['Update'];
+
+// Transform database row to app CalendarEvent type
+const transformEvent = (row: EventRow): CalendarEvent => {
+    return {
+        id: row.id,
+        title: row.title,
+        type: row.type,
+        startAt: row.start_at,
+        endAt: row.end_at,
+        projectId: row.project_id || undefined,
+        ownerId: row.owner_id,
+        dueDate: row.due_date || undefined,
+        source: row.source,
+        googleEventId: row.google_event_id || undefined,
+        todoId: row.todo_id || undefined,
+        deliverableId: row.deliverable_id || undefined,
+    };
+};
+
+// Transform app CalendarEvent to database insert
+const transformToInsert = (event: Partial<CalendarEvent>): EventInsert => {
+    return {
+        title: event.title!,
+        type: event.type!,
+        start_at: event.startAt!,
+        end_at: event.endAt!,
+        project_id: event.projectId || null,
+        owner_id: event.ownerId!,
+        due_date: event.dueDate || null,
+        source: event.source || 'PAULUS',
+        google_event_id: event.googleEventId || null,
+        todo_id: event.todoId || null,
+        deliverable_id: event.deliverableId || null,
+    };
+};
+
+// Get all events
+export const getEvents = async (): Promise<CalendarEvent[]> => {
+    if (!isSupabaseConfigured()) {
+        throw new Error('Supabase not configured');
+    }
+
+    const { data, error } = await supabase
+        .from('calendar_events')
+        .select('*')
+        .order('start_at', { ascending: true });
+
+    if (error) {
+        throw new Error(handleSupabaseError(error));
+    }
+
+    return data.map(transformEvent);
+};
+
+// Get events by date range
+export const getEventsByDateRange = async (
+    startDate: string,
+    endDate: string
+): Promise<CalendarEvent[]> => {
+    if (!isSupabaseConfigured()) {
+        throw new Error('Supabase not configured');
+    }
+
+    const { data, error } = await supabase
+        .from('calendar_events')
+        .select('*')
+        .gte('start_at', startDate)
+        .lte('end_at', endDate)
+        .order('start_at', { ascending: true });
+
+    if (error) {
+        throw new Error(handleSupabaseError(error));
+    }
+
+    return data.map(transformEvent);
+};
+
+// Get events by project
+export const getEventsByProject = async (projectId: string): Promise<CalendarEvent[]> => {
+    if (!isSupabaseConfigured()) {
+        throw new Error('Supabase not configured');
+    }
+
+    const { data, error } = await supabase
+        .from('calendar_events')
+        .select('*')
+        .eq('project_id', projectId)
+        .order('start_at', { ascending: true });
+
+    if (error) {
+        throw new Error(handleSupabaseError(error));
+    }
+
+    return data.map(transformEvent);
+};
+
+// Get events by owner
+export const getEventsByOwner = async (ownerId: string): Promise<CalendarEvent[]> => {
+    if (!isSupabaseConfigured()) {
+        throw new Error('Supabase not configured');
+    }
+
+    const { data, error } = await supabase
+        .from('calendar_events')
+        .select('*')
+        .eq('owner_id', ownerId)
+        .order('start_at', { ascending: true });
+
+    if (error) {
+        throw new Error(handleSupabaseError(error));
+    }
+
+    return data.map(transformEvent);
+};
+
+// Create event
+export const createEvent = async (event: Partial<CalendarEvent>): Promise<CalendarEvent> => {
+    if (!isSupabaseConfigured()) {
+        throw new Error('Supabase not configured');
+    }
+
+    const insertData = transformToInsert(event);
+
+    const { data, error } = await supabase
+        .from('calendar_events')
+        .insert(insertData)
+        .select()
+        .single();
+
+    if (error) {
+        throw new Error(handleSupabaseError(error));
+    }
+
+    return transformEvent(data);
+};
+
+// Update event
+export const updateEvent = async (
+    id: string,
+    updates: Partial<CalendarEvent>
+): Promise<CalendarEvent> => {
+    if (!isSupabaseConfigured()) {
+        throw new Error('Supabase not configured');
+    }
+
+    const updateData: EventUpdate = {};
+
+    if (updates.title !== undefined) updateData.title = updates.title;
+    if (updates.type !== undefined) updateData.type = updates.type;
+    if (updates.startAt !== undefined) updateData.start_at = updates.startAt;
+    if (updates.endAt !== undefined) updateData.end_at = updates.endAt;
+    if (updates.projectId !== undefined) updateData.project_id = updates.projectId;
+    if (updates.ownerId !== undefined) updateData.owner_id = updates.ownerId;
+    if (updates.dueDate !== undefined) updateData.due_date = updates.dueDate;
+    if (updates.source !== undefined) updateData.source = updates.source;
+    if (updates.googleEventId !== undefined) updateData.google_event_id = updates.googleEventId;
+    if (updates.todoId !== undefined) updateData.todo_id = updates.todoId;
+    if (updates.deliverableId !== undefined) updateData.deliverable_id = updates.deliverableId;
+
+    const { data, error } = await supabase
+        .from('calendar_events')
+        .update(updateData)
+        .eq('id', id)
+        .select()
+        .single();
+
+    if (error) {
+        throw new Error(handleSupabaseError(error));
+    }
+
+    return transformEvent(data);
+};
+
+// Delete event
+export const deleteEvent = async (id: string): Promise<void> => {
+    if (!isSupabaseConfigured()) {
+        throw new Error('Supabase not configured');
+    }
+
+    const { error } = await supabase
+        .from('calendar_events')
+        .delete()
+        .eq('id', id);
+
+    if (error) {
+        throw new Error(handleSupabaseError(error));
+    }
+};
+
+// Subscribe to event changes (realtime)
+export const subscribeToEvents = (
+    callback: (event: CalendarEvent) => void
+) => {
+    if (!isSupabaseConfigured()) {
+        console.warn('Supabase not configured, realtime disabled');
+        return () => { };
+    }
+
+    const channel = supabase
+        .channel('calendar_events_changes')
+        .on(
+            'postgres_changes',
+            {
+                event: '*',
+                schema: 'public',
+                table: 'calendar_events',
+            },
+            (payload) => {
+                if (payload.new) {
+                    callback(transformEvent(payload.new as EventRow));
+                }
+            }
+        )
+        .subscribe();
+
+    return () => {
+        supabase.removeChannel(channel);
+    };
+};

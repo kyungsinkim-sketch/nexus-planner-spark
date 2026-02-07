@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useAppStore } from '@/stores/appStore';
-import { 
-  ArrowLeft, 
-  LayoutGrid, 
-  Calendar, 
-  MessageSquare, 
-  FolderOpen, 
+import {
+  ArrowLeft,
+  LayoutGrid,
+  Calendar,
+  MessageSquare,
+  FolderOpen,
   DollarSign,
   MoreHorizontal,
   Clock,
@@ -103,15 +103,26 @@ export default function ProjectDetailPage() {
   const teamCount = project.teamMemberIds?.length || 0;
 
   return (
-    <div className="page-container animate-fade-in">
-      {/* Thumbnail Header Background */}
+    <div className="page-container animate-fade-in relative min-h-screen">
+      {/* Project Key Color Header Background */}
+      {project.keyColor && (
+        <div className="absolute top-0 left-0 right-0 h-48 -z-10">
+          <div
+            className="absolute inset-0 opacity-10"
+            style={{ backgroundColor: project.keyColor }}
+          />
+          <div className="absolute inset-0 bg-gradient-to-b from-transparent to-background" />
+        </div>
+      )}
+
+      {/* Thumbnail Full-Height Background with Gradient */}
       {project.thumbnail && (
-        <div className="absolute inset-x-0 top-0 h-48 -z-10 overflow-hidden">
-          <div 
-            className="absolute inset-0 bg-cover bg-center"
+        <div className="absolute inset-0 -z-20 overflow-hidden">
+          <div
+            className="absolute inset-0 bg-cover bg-center bg-no-repeat"
             style={{ backgroundImage: `url(${project.thumbnail})` }}
           />
-          <div className="absolute inset-0 bg-gradient-to-b from-background/40 via-background/80 to-background" />
+          <div className="absolute inset-0 bg-gradient-to-b from-background/30 via-background/70 to-background" />
         </div>
       )}
 
@@ -126,7 +137,15 @@ export default function ProjectDetailPage() {
           {/* Title Row with Badges */}
           <div className="flex items-center gap-2 flex-wrap">
             <h1 className="page-title truncate">{project.title}</h1>
-            <Badge 
+            {/* Project Key Color Indicator */}
+            {project.keyColor && (
+              <div
+                className="w-3 h-3 rounded-full border-2 border-background shadow-sm"
+                style={{ backgroundColor: project.keyColor }}
+                title="Project Color"
+              />
+            )}
+            <Badge
               variant="secondary"
               className={project.status === 'ACTIVE' ? 'status-active' : 'status-completed'}
             >
@@ -157,8 +176,8 @@ export default function ProjectDetailPage() {
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <div className="flex items-center gap-2">
-                      <Avatar className="w-6 h-6 border-2 border-primary">
-                        <AvatarFallback className="text-[10px] bg-primary text-primary-foreground">
+                      <Avatar className="w-6 h-6 border-2" style={{ borderColor: project.keyColor || 'hsl(var(--primary))' }}>
+                        <AvatarFallback className="text-[10px]" style={{ backgroundColor: project.keyColor || 'hsl(var(--primary))', color: 'white' }}>
                           {getInitials(pm.name)}
                         </AvatarFallback>
                       </Avatar>
@@ -217,29 +236,52 @@ export default function ProjectDetailPage() {
 
       {/* Tabs */}
       <Tabs defaultValue="overview" className="space-y-6">
-        <TabsList className="w-full justify-start">
-          <TabsTrigger value="overview" className="gap-2">
+        <TabsList
+          className="w-full justify-start"
+          style={{
+            '--project-color': project.keyColor || 'hsl(var(--primary))'
+          } as React.CSSProperties}
+        >
+          <TabsTrigger
+            value="overview"
+            className="gap-2 data-[state=active]:text-[var(--project-color)] data-[state=active]:border-b-2 data-[state=active]:border-[var(--project-color)]"
+          >
             <LayoutGrid className="w-4 h-4" />
             Overview
           </TabsTrigger>
-          <TabsTrigger value="calendar" className="gap-2">
+          <TabsTrigger
+            value="calendar"
+            className="gap-2 data-[state=active]:text-[var(--project-color)] data-[state=active]:border-b-2 data-[state=active]:border-[var(--project-color)]"
+          >
             <Calendar className="w-4 h-4" />
             Calendar
           </TabsTrigger>
-          <TabsTrigger value="chat" className="gap-2">
+          <TabsTrigger
+            value="chat"
+            className="gap-2 data-[state=active]:text-[var(--project-color)] data-[state=active]:border-b-2 data-[state=active]:border-[var(--project-color)]"
+          >
             <MessageSquare className="w-4 h-4" />
             Chat
           </TabsTrigger>
-          <TabsTrigger value="files" className="gap-2">
+          <TabsTrigger
+            value="files"
+            className="gap-2 data-[state=active]:text-[var(--project-color)] data-[state=active]:border-b-2 data-[state=active]:border-[var(--project-color)]"
+          >
             <FolderOpen className="w-4 h-4" />
             Files
           </TabsTrigger>
-          <TabsTrigger value="todos" className="gap-2">
+          <TabsTrigger
+            value="todos"
+            className="gap-2 data-[state=active]:text-[var(--project-color)] data-[state=active]:border-b-2 data-[state=active]:border-[var(--project-color)]"
+          >
             <LayoutGrid className="w-4 h-4" />
             To-dos
           </TabsTrigger>
           {isAdmin && (
-            <TabsTrigger value="budget" className="gap-2">
+            <TabsTrigger
+              value="budget"
+              className="gap-2 data-[state=active]:text-[var(--project-color)] data-[state=active]:border-b-2 data-[state=active]:border-[var(--project-color)]"
+            >
               <DollarSign className="w-4 h-4" />
               Budget
             </TabsTrigger>
@@ -247,8 +289,8 @@ export default function ProjectDetailPage() {
         </TabsList>
 
         <TabsContent value="overview">
-          <OverviewTab 
-            project={project} 
+          <OverviewTab
+            project={project}
             onCompleteProject={handleCompleteProject}
           />
         </TabsContent>

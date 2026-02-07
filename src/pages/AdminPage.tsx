@@ -1,57 +1,152 @@
+import { useState } from 'react';
 import { useAppStore } from '@/stores/appStore';
-import { Users, FolderKanban, TrendingUp, FileText } from 'lucide-react';
+import { Users, TrendingUp, FolderKanban, Settings, Dumbbell } from 'lucide-react';
 import { Card } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { HumanResourceTab } from '@/components/admin/HumanResourceTab';
 import { FinanceTab } from '@/components/admin/FinanceTab';
 import { GeneralAffairsTab } from '@/components/admin/GeneralAffairsTab';
+import { AdminSettingsTab } from '@/components/admin/AdminSettingsTab';
+import { WelfareTab } from '@/components/admin/WelfareTab';
+import { cn } from '@/lib/utils';
+import { useTranslation } from '@/hooks/useTranslation';
+
+type AdminSection = 'hr' | 'finance' | 'ga' | 'welfare' | 'settings';
+
+interface NavigationButton {
+  id: AdminSection;
+  labelKey: string;
+  icon: any;
+  descriptionKey: string;
+  color: string;
+  bgGradient: string;
+}
 
 export default function AdminPage() {
-  const { users, projects, peerFeedback, projectContributions } = useAppStore();
+  const { t } = useTranslation();
+  const [activeSection, setActiveSection] = useState<AdminSection>('hr');
 
-  const stats = [
-    { label: 'Total Users', value: users.length, icon: Users, change: '+2 this month', color: 'text-primary' },
-    { label: 'Active Projects', value: projects.filter(p => p.status === 'ACTIVE').length, icon: FolderKanban, change: '3 starting soon', color: 'text-emerald-500' },
-    { label: 'Feedback Records', value: peerFeedback.length, icon: TrendingUp, change: 'This period', color: 'text-violet-500' },
-    { label: 'Contribution Records', value: projectContributions.length, icon: FileText, change: 'Tracked', color: 'text-orange-500' },
+  const navigationButtons: NavigationButton[] = [
+    {
+      id: 'hr',
+      labelKey: 'humanResource',
+      icon: Users,
+      descriptionKey: 'employeeManagement',
+      color: 'text-blue-500',
+      bgGradient: 'from-blue-500/10 to-blue-600/5',
+    },
+    {
+      id: 'finance',
+      labelKey: 'finance',
+      icon: TrendingUp,
+      descriptionKey: 'projectBudgets',
+      color: 'text-emerald-500',
+      bgGradient: 'from-emerald-500/10 to-emerald-600/5',
+    },
+    {
+      id: 'ga',
+      labelKey: 'generalAffairs',
+      icon: FolderKanban,
+      descriptionKey: 'companyResources',
+      color: 'text-violet-500',
+      bgGradient: 'from-violet-500/10 to-violet-600/5',
+    },
+    {
+      id: 'welfare',
+      labelKey: 'welfare',
+      icon: Dumbbell,
+      descriptionKey: 'renatusTraining',
+      color: 'text-pink-500',
+      bgGradient: 'from-pink-500/10 to-pink-600/5',
+    },
+    {
+      id: 'settings',
+      labelKey: 'adminSettings',
+      icon: Settings,
+      descriptionKey: 'systemConfiguration',
+      color: 'text-orange-500',
+      bgGradient: 'from-orange-500/10 to-orange-600/5',
+    },
   ];
+
+  const renderContent = () => {
+    switch (activeSection) {
+      case 'hr':
+        return <HumanResourceTab />;
+      case 'finance':
+        return <FinanceTab />;
+      case 'ga':
+        return <GeneralAffairsTab />;
+      case 'welfare':
+        return <WelfareTab />;
+      case 'settings':
+        return <AdminSettingsTab />;
+      default:
+        return <HumanResourceTab />;
+    }
+  };
 
   return (
     <div className="page-container animate-fade-in">
       <div className="page-header">
         <div>
-          <h1 className="page-title">Admin Dashboard</h1>
-          <p className="text-sm text-muted-foreground mt-1">Human Resource, Finance, General Affairs</p>
+          <h1 className="page-title">{t('adminDashboard')}</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            {t('manageOrganization')}
+          </p>
         </div>
       </div>
 
-      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
-        {stats.map((stat) => (
-          <Card key={stat.label} className="p-5 shadow-card">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">{stat.label}</p>
-                <p className="text-3xl font-semibold text-foreground mt-1">{stat.value}</p>
-                <p className="text-xs text-muted-foreground mt-1">{stat.change}</p>
+      {/* Navigation Buttons */}
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 mb-6">
+        {navigationButtons.map((button) => {
+          const Icon = button.icon;
+          const isActive = activeSection === button.id;
+
+          return (
+            <Card
+              key={button.id}
+              className={cn(
+                "cursor-pointer transition-all duration-200 hover:shadow-lg",
+                isActive
+                  ? "ring-2 ring-primary shadow-lg"
+                  : "hover:scale-105"
+              )}
+              onClick={() => setActiveSection(button.id)}
+            >
+              <div className={cn(
+                "p-6 bg-gradient-to-br",
+                button.bgGradient
+              )}>
+                <div className="flex items-start gap-4">
+                  <div className={cn(
+                    "w-12 h-12 rounded-lg flex items-center justify-center",
+                    isActive ? "bg-primary" : "bg-background",
+                    isActive ? "text-primary-foreground" : button.color
+                  )}>
+                    <Icon className="w-6 h-6" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className={cn(
+                      "font-semibold text-lg mb-1",
+                      isActive ? "text-primary" : "text-foreground"
+                    )}>
+                      {t(button.labelKey as any)}
+                    </h3>
+                    <p className="text-xs text-muted-foreground leading-relaxed">
+                      {t(button.descriptionKey as any)}
+                    </p>
+                  </div>
+                </div>
               </div>
-              <div className={`w-10 h-10 rounded-lg bg-muted flex items-center justify-center ${stat.color}`}>
-                <stat.icon className="w-5 h-5" />
-              </div>
-            </div>
-          </Card>
-        ))}
+            </Card>
+          );
+        })}
       </div>
 
-      <Tabs defaultValue="hr" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="hr" className="gap-2"><Users className="w-4 h-4" />Human Resource</TabsTrigger>
-          <TabsTrigger value="finance" className="gap-2"><TrendingUp className="w-4 h-4" />Finance</TabsTrigger>
-          <TabsTrigger value="ga" className="gap-2"><FolderKanban className="w-4 h-4" />General Affairs</TabsTrigger>
-        </TabsList>
-        <TabsContent value="hr"><HumanResourceTab /></TabsContent>
-        <TabsContent value="finance"><FinanceTab /></TabsContent>
-        <TabsContent value="ga"><GeneralAffairsTab /></TabsContent>
-      </Tabs>
+      {/* Content Area */}
+      <div className="animate-fade-in">
+        {renderContent()}
+      </div>
     </div>
   );
 }

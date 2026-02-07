@@ -1,4 +1,4 @@
-import { User, Project, CalendarEvent, ChatMessage, FileGroup, FileItem, PerformanceSnapshot, PortfolioItem, PeerFeedback, ProjectContribution } from '@/types/core';
+import { User, Project, CalendarEvent, ChatMessage, FileGroup, FileItem, PerformanceSnapshot, PortfolioItem, PeerFeedback, ProjectContribution, PersonalTodo } from '@/types/core';
 
 // Helper to generate dates relative to today
 const today = new Date();
@@ -41,6 +41,7 @@ export const mockProjects: Project[] = [
     tasksCompleted: 12,
     tasksTotal: 18,
     budget: 500000000,
+    keyColor: '#3B82F6', // Blue - Samsung brand color
   },
   {
     id: 'p2',
@@ -66,6 +67,7 @@ export const mockProjects: Project[] = [
     tasksCompleted: 5,
     tasksTotal: 15,
     budget: 800000000,
+    keyColor: '#10B981', // Green - Eco/EV theme
   },
   {
     id: 'p3',
@@ -89,6 +91,7 @@ export const mockProjects: Project[] = [
     tasksCompleted: 3,
     tasksTotal: 10,
     budget: 200000000,
+    keyColor: '#8B5CF6', // Purple - LG brand color
   },
   {
     id: 'p4',
@@ -111,6 +114,7 @@ export const mockProjects: Project[] = [
     tasksCompleted: 25,
     tasksTotal: 25,
     budget: 1000000000,
+    keyColor: '#EF4444', // Red - SK Telecom brand color
   },
   {
     id: 'p5',
@@ -135,6 +139,7 @@ export const mockProjects: Project[] = [
     tasksCompleted: 8,
     tasksTotal: 12,
     budget: 350000000,
+    keyColor: '#F59E0B', // Yellow/Amber - Kakao brand color
   },
 ];
 
@@ -450,6 +455,64 @@ export const mockProjectContributions: ProjectContribution[] = [
   { id: 'pc5', projectId: 'p2', userId: 'u2', contributionRate: 0.40, contributionValue: 32000000, calculatedAt: addDays(-1) },
   { id: 'pc6', projectId: 'p2', userId: 'u3', contributionRate: 0.30, contributionValue: 24000000, calculatedAt: addDays(-1) },
   { id: 'pc7', projectId: 'p2', userId: 'u5', contributionRate: 0.30, contributionValue: 24000000, calculatedAt: addDays(-1) },
+];
+
+// Personal Todos
+export const mockPersonalTodos: PersonalTodo[] = [
+  {
+    id: 'td1',
+    title: 'Review Samsung campaign final deck',
+    assigneeIds: ['u1'],
+    requestedById: 'u2',
+    projectId: 'p1',
+    dueDate: addDays(2),
+    priority: 'HIGH',
+    status: 'PENDING',
+    createdAt: addDays(-1),
+  },
+  {
+    id: 'td2',
+    title: 'Approve Hyundai storyboard revisions',
+    assigneeIds: ['u1'],
+    requestedById: 'u3',
+    projectId: 'p2',
+    dueDate: addDays(1),
+    priority: 'HIGH',
+    status: 'PENDING',
+    createdAt: addDays(-2),
+  },
+  {
+    id: 'td3',
+    title: 'Update LG proposal timeline',
+    assigneeIds: ['u1', 'u3'],
+    requestedById: 'u1',
+    projectId: 'p3',
+    dueDate: addDays(5),
+    priority: 'NORMAL',
+    status: 'PENDING',
+    createdAt: addDays(-1),
+  },
+  {
+    id: 'td4',
+    title: 'Prepare Kakao client presentation',
+    assigneeIds: ['u1', 'u5'],
+    requestedById: 'u5',
+    projectId: 'p5',
+    dueDate: addDays(7),
+    priority: 'NORMAL',
+    status: 'PENDING',
+    createdAt: addDays(0),
+  },
+  {
+    id: 'td5',
+    title: 'Weekly team performance review',
+    assigneeIds: ['u1'],
+    requestedById: 'u1',
+    dueDate: addDays(3),
+    priority: 'NORMAL',
+    status: 'PENDING',
+    createdAt: addDays(-3),
+  },
 ];
 
 // Current logged in user (for demo)

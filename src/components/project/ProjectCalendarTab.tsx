@@ -11,13 +11,26 @@ import { Button } from '@/components/ui/button';
 import { EventSidePanel } from '@/components/calendar/EventSidePanel';
 import { CalendarEventFilter } from './CalendarEventFilter';
 import { NewEventModal } from './NewEventModal';
-import { Plus } from 'lucide-react';
+import { Plus, CheckSquare, AlertCircle, Users, Presentation, Truck, ListTodo, FileText, Dumbbell } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface ProjectCalendarTabProps {
   projectId: string;
 }
 
+// Event type icons (pictograms) - same as main calendar
+const eventTypeIcons: Record<EventType, any> = {
+  TASK: CheckSquare,
+  DEADLINE: AlertCircle,
+  MEETING: Users,
+  PT: Presentation,
+  DELIVERY: Truck,
+  TODO: ListTodo,
+  DELIVERABLE: FileText,
+  R_TRAINING: Dumbbell,
+};
+
+// Fallback colors if project has no key color
 const eventTypeColors: Record<EventType, string> = {
   TASK: 'fc-event-task',
   DEADLINE: 'fc-event-deadline',
@@ -30,14 +43,15 @@ const eventTypeColors: Record<EventType, string> = {
 };
 
 export function ProjectCalendarTab({ projectId }: ProjectCalendarTabProps) {
-  const { getEventsByProject, updateEvent } = useAppStore();
+  const { getEventsByProject, updateEvent, getProjectById } = useAppStore();
   const projectEvents = getEventsByProject(projectId);
+  const project = getProjectById(projectId);
   const calendarRef = useRef<FullCalendar>(null);
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [isPanelOpen, setIsPanelOpen] = useState(false);
   const [selectedTypes, setSelectedTypes] = useState<EventType[]>(['TASK', 'DEADLINE', 'MEETING', 'PT', 'DELIVERY', 'TODO', 'DELIVERABLE', 'R_TRAINING']);
   const [currentView, setCurrentView] = useState<string>('dayGridMonth');
-  
+
   // New event modal state
   const [showNewEventModal, setShowNewEventModal] = useState(false);
   const [newEventDate, setNewEventDate] = useState<string | undefined>();
@@ -57,17 +71,26 @@ export function ProjectCalendarTab({ projectId }: ProjectCalendarTabProps) {
     return projectEvents.filter((event) => selectedTypes.includes(event.type));
   }, [projectEvents, selectedTypes]);
 
-  const calendarEvents = filteredEvents.map((event) => ({
-    id: event.id,
-    title: event.title,
-    start: event.startAt,
-    end: event.endAt,
-    className: eventTypeColors[event.type],
-    extendedProps: {
-      type: event.type,
-      ownerId: event.ownerId,
-    },
-  }));
+  // Use project key color for all events, fallback to event type colors
+  const calendarEvents = filteredEvents.map((event) => {
+    const backgroundColor = project?.keyColor || undefined;
+    const className = !backgroundColor ? eventTypeColors[event.type] : '';
+
+    return {
+      id: event.id,
+      title: event.title,
+      start: event.startAt,
+      end: event.endAt,
+      className,
+      backgroundColor,
+      borderColor: backgroundColor,
+      extendedProps: {
+        type: event.type,
+        ownerId: event.ownerId,
+        icon: eventTypeIcons[event.type],
+      },
+    };
+  });
 
   const handleToggleType = (type: EventType) => {
     setSelectedTypes((prev) => {
@@ -99,7 +122,7 @@ export function ProjectCalendarTab({ projectId }: ProjectCalendarTabProps) {
         startAt: newStart,
         endAt: newEnd || newStart,
       });
-      
+
       toast.success('Event rescheduled', {
         description: `"${info.event.title}" moved to ${new Date(newStart).toLocaleDateString()}`,
       });
@@ -116,7 +139,7 @@ export function ProjectCalendarTab({ projectId }: ProjectCalendarTabProps) {
         startAt: newStart,
         endAt: newEnd || newStart,
       });
-      
+
       toast.success('Event duration updated', {
         description: `"${info.event.title}" duration changed`,
       });
@@ -132,11 +155,11 @@ export function ProjectCalendarTab({ projectId }: ProjectCalendarTabProps) {
   const handleSelect = (info: any) => {
     const startDate = info.start;
     const endDate = info.end;
-    
+
     const dateStr = startDate.toISOString().split('T')[0];
     const startTimeStr = startDate.toTimeString().slice(0, 5);
     const endTimeStr = endDate.toTimeString().slice(0, 5);
-    
+
     setNewEventDate(dateStr);
     setNewEventStartTime(startTimeStr);
     setNewEventEndTime(endTimeStr);
@@ -212,11 +235,18 @@ export function ProjectCalendarTab({ projectId }: ProjectCalendarTabProps) {
           eventResize={handleEventResize}
           select={handleSelect}
           datesSet={handleViewChange}
-          eventContent={(eventInfo) => (
-            <div className="px-1.5 py-0.5 overflow-hidden cursor-pointer">
-              <div className="text-xs font-medium truncate">{eventInfo.event.title}</div>
-            </div>
-          )}
+          eventContent={(eventInfo) => {
+            const EventIcon = eventInfo.event.extendedProps.icon;
+
+            return (
+              <div className="px-1 sm:px-1.5 py-0.5 overflow-hidden">
+                <div className="flex items-center gap-1 text-[10px] sm:text-xs font-medium truncate">
+                  {EventIcon && <EventIcon className="w-3 h-3 shrink-0" />}
+                  <span className="truncate">{eventInfo.event.title}</span>
+                </div>
+              </div>
+            );
+          }}
         />
       </Card>
 

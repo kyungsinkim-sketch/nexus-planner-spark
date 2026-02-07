@@ -1,12 +1,22 @@
 import { create } from 'zustand';
-import { User, Project, CalendarEvent, ChatMessage, FileGroup, FileItem, PerformanceSnapshot, PortfolioItem, PeerFeedback, ProjectContribution, ScoreSettings, UserWorkStatus } from '@/types/core';
-import { mockUsers, mockProjects, mockEvents, mockMessages, mockFileGroups, mockFiles, mockPerformanceSnapshots, mockPortfolioItems, mockPeerFeedback, mockProjectContributions, currentUser } from '@/mock/data';
+import { persist } from 'zustand/middleware';
+import { User, Project, CalendarEvent, ChatMessage, FileGroup, FileItem, PerformanceSnapshot, PortfolioItem, PeerFeedback, ProjectContribution, ScoreSettings, UserWorkStatus, PersonalTodo } from '@/types/core';
+import { mockUsers, mockProjects, mockEvents, mockMessages, mockFileGroups, mockFiles, mockPerformanceSnapshots, mockPortfolioItems, mockPeerFeedback, mockProjectContributions, mockPersonalTodos, currentUser } from '@/mock/data';
 import { Language } from '@/lib/i18n';
+import { isSupabaseConfigured } from '@/lib/supabase';
+import * as projectService from '@/services/projectService';
+import * as eventService from '@/services/eventService';
+import * as authService from '@/services/authService';
+import * as chatService from '@/services/chatService';
+import * as todoService from '@/services/todoService';
+import * as fileService from '@/services/fileService';
 
 interface AppState {
   // Auth
-  currentUser: User;
-  
+  currentUser: User | null;
+  isAuthenticated: boolean;
+  isLoading: boolean;
+
   // Data
   users: User[];
   projects: Project[];
@@ -18,43 +28,70 @@ interface AppState {
   portfolioItems: PortfolioItem[];
   peerFeedback: PeerFeedback[];
   projectContributions: ProjectContribution[];
+  personalTodos: PersonalTodo[];
   scoreSettings: ScoreSettings;
-  
+
   // User Work Status
   userWorkStatus: UserWorkStatus;
-  
+
   // Language
   language: Language;
-  
+
   // UI State
   selectedProjectId: string | null;
   sidebarCollapsed: boolean;
-  
-  // Actions
+
+  // Auth Actions
+  signIn: (email: string, password: string) => Promise<void>;
+  signUp: (email: string, password: string, name: string) => Promise<void>;
+  signOut: () => Promise<void>;
+  setCurrentUser: (user: User | null) => void;
+  initializeAuth: () => Promise<void>;
+
+  // Data Loading Actions
+  loadProjects: () => Promise<void>;
+  loadEvents: () => Promise<void>;
+  loadUsers: () => Promise<void>;
+  loadTodos: () => Promise<void>;
+  loadFileGroups: (projectId: string) => Promise<void>;
+
+  // UI Actions
   setSelectedProject: (projectId: string | null) => void;
   toggleSidebar: () => void;
   setUserWorkStatus: (status: UserWorkStatus) => void;
   setLanguage: (lang: Language) => void;
-  
-  // Project Actions (placeholder)
-  addProject: (project: Project) => void;
-  updateProject: (projectId: string, updates: Partial<Project>) => void;
-  
-  // Event Actions (placeholder)
-  addEvent: (event: CalendarEvent) => void;
-  updateEvent: (eventId: string, updates: Partial<CalendarEvent>) => void;
-  deleteEvent: (eventId: string) => void;
-  
-  // Message Actions (placeholder)
+
+  // Project Actions
+  addProject: (project: Partial<Project>) => Promise<void>;
+  updateProject: (projectId: string, updates: Partial<Project>) => Promise<void>;
+  deleteProject: (projectId: string) => Promise<void>;
+
+  // Event Actions
+  addEvent: (event: Partial<CalendarEvent>) => Promise<void>;
+  updateEvent: (eventId: string, updates: Partial<CalendarEvent>) => Promise<void>;
+  deleteEvent: (eventId: string) => Promise<void>;
+
+  // Message Actions
   addMessage: (message: ChatMessage) => void;
-  
-  // File Actions (placeholder)
+  sendProjectMessage: (projectId: string, content: string) => Promise<void>;
+  sendDirectMessage: (toUserId: string, content: string) => Promise<void>;
+
+  // File Actions
   addFileGroup: (fileGroup: FileGroup) => void;
   addFile: (file: FileItem) => void;
-  
+  createFileGroup: (fileGroup: Partial<FileGroup>) => Promise<void>;
+  uploadFile: (file: File, projectId: string, fileGroupId: string) => Promise<void>;
+  deleteFileItem: (fileId: string) => Promise<void>;
+
+  // Todo Actions
+  addTodo: (todo: Partial<PersonalTodo>) => Promise<void>;
+  updateTodo: (todoId: string, updates: Partial<PersonalTodo>) => Promise<void>;
+  deleteTodo: (todoId: string) => Promise<void>;
+  completeTodo: (todoId: string) => Promise<void>;
+
   // Settings Actions
   updateScoreSettings: (settings: Partial<ScoreSettings>) => void;
-  
+
   // Getters
   getProjectById: (id: string) => Project | undefined;
   getEventsByProject: (projectId: string) => CalendarEvent[];
@@ -68,77 +105,585 @@ interface AppState {
   getContributionsByProject: (projectId: string) => ProjectContribution[];
 }
 
-export const useAppStore = create<AppState>((set, get) => ({
-  // Initial state from mock data
-  currentUser,
-  users: mockUsers,
-  projects: mockProjects,
-  events: mockEvents,
-  messages: mockMessages,
-  fileGroups: mockFileGroups,
-  files: mockFiles,
-  performanceSnapshots: mockPerformanceSnapshots,
-  portfolioItems: mockPortfolioItems,
-  peerFeedback: mockPeerFeedback,
-  projectContributions: mockProjectContributions,
-  scoreSettings: { financialWeight: 70, peerWeight: 30 },
-  
-  // User Work Status
-  userWorkStatus: 'NOT_AT_WORK',
-  
-  // Language
-  language: 'ko',
-  
-  // UI State
-  selectedProjectId: null,
-  sidebarCollapsed: false,
-  
-  // Actions
-  setSelectedProject: (projectId) => set({ selectedProjectId: projectId }),
-  toggleSidebar: () => set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
-  setUserWorkStatus: (status) => set({ userWorkStatus: status }),
-  setLanguage: (lang) => set({ language: lang }),
-  
-  // Project Actions
-  addProject: (project) => set((state) => ({ projects: [...state.projects, project] })),
-  updateProject: (projectId, updates) => set((state) => ({
-    projects: state.projects.map((p) => 
-      p.id === projectId ? { ...p, ...updates } : p
-    ),
-  })),
-  
-  // Event Actions
-  addEvent: (event) => set((state) => ({ events: [...state.events, event] })),
-  updateEvent: (eventId, updates) => set((state) => ({
-    events: state.events.map((e) => 
-      e.id === eventId ? { ...e, ...updates } : e
-    ),
-  })),
-  deleteEvent: (eventId) => set((state) => ({
-    events: state.events.filter((e) => e.id !== eventId),
-  })),
-  
-  // Message Actions
-  addMessage: (message) => set((state) => ({ messages: [...state.messages, message] })),
-  
-  // File Actions
-  addFileGroup: (fileGroup) => set((state) => ({ fileGroups: [...state.fileGroups, fileGroup] })),
-  addFile: (file) => set((state) => ({ files: [...state.files, file] })),
-  
-  // Settings Actions
-  updateScoreSettings: (settings) => set((state) => ({ 
-    scoreSettings: { ...state.scoreSettings, ...settings } 
-  })),
-  
-  // Getters
-  getProjectById: (id) => get().projects.find((p) => p.id === id),
-  getEventsByProject: (projectId) => get().events.filter((e) => e.projectId === projectId),
-  getMessagesByProject: (projectId) => get().messages.filter((m) => m.projectId === projectId),
-  getFileGroupsByProject: (projectId) => get().fileGroups.filter((fg) => fg.projectId === projectId),
-  getFilesByGroup: (groupId) => get().files.filter((f) => f.fileGroupId === groupId),
-  getUserById: (id) => get().users.find((u) => u.id === id),
-  getPerformanceByUser: (userId) => get().performanceSnapshots.filter((ps) => ps.userId === userId),
-  getPortfolioByUser: (userId) => get().portfolioItems.filter((pi) => pi.userId === userId),
-  getFeedbackByProject: (projectId) => get().peerFeedback.filter((f) => f.projectId === projectId),
-  getContributionsByProject: (projectId) => get().projectContributions.filter((c) => c.projectId === projectId),
-}));
+export const useAppStore = create<AppState>()(
+  persist(
+    (set, get) => ({
+      // Initial state - use mock data if Supabase not configured
+      currentUser: isSupabaseConfigured() ? null : currentUser,
+      isAuthenticated: !isSupabaseConfigured(),
+      isLoading: false,
+      users: mockUsers,
+      projects: mockProjects,
+      events: mockEvents,
+      messages: mockMessages,
+      fileGroups: mockFileGroups,
+      files: mockFiles,
+      performanceSnapshots: mockPerformanceSnapshots,
+      portfolioItems: mockPortfolioItems,
+      peerFeedback: mockPeerFeedback,
+      projectContributions: mockProjectContributions,
+      personalTodos: mockPersonalTodos,
+      scoreSettings: { financialWeight: 70, peerWeight: 30 },
+      userWorkStatus: 'NOT_AT_WORK',
+      language: 'ko',
+      selectedProjectId: null,
+      sidebarCollapsed: false,
+
+      // Auth Actions
+      signIn: async (email: string, password: string) => {
+        if (!isSupabaseConfigured()) {
+          throw new Error('Supabase not configured');
+        }
+
+        set({ isLoading: true });
+        try {
+          const user = await authService.signIn(email, password);
+          set({ currentUser: user, isAuthenticated: true });
+
+          // Load user data
+          await get().loadProjects();
+          await get().loadEvents();
+          await get().loadUsers();
+        } finally {
+          set({ isLoading: false });
+        }
+      },
+
+      signUp: async (email: string, password: string, name: string) => {
+        if (!isSupabaseConfigured()) {
+          throw new Error('Supabase not configured');
+        }
+
+        set({ isLoading: true });
+        try {
+          const user = await authService.signUp(email, password, name);
+          set({ currentUser: user, isAuthenticated: true });
+        } finally {
+          set({ isLoading: false });
+        }
+      },
+
+      signOut: async () => {
+        if (!isSupabaseConfigured()) {
+          set({ currentUser: null, isAuthenticated: false });
+          return;
+        }
+
+        await authService.signOut();
+        set({
+          currentUser: null,
+          isAuthenticated: false,
+          projects: [],
+          events: [],
+          messages: [],
+        });
+      },
+
+      setCurrentUser: (user: User | null) => {
+        set({ currentUser: user, isAuthenticated: !!user });
+      },
+
+      initializeAuth: async () => {
+        if (!isSupabaseConfigured()) {
+          return;
+        }
+
+        set({ isLoading: true });
+        try {
+          const user = await authService.getCurrentUser();
+          if (user) {
+            set({ currentUser: user, isAuthenticated: true });
+            await get().loadProjects();
+            await get().loadEvents();
+            await get().loadUsers();
+          }
+        } finally {
+          set({ isLoading: false });
+        }
+      },
+
+      // Data Loading Actions
+      loadProjects: async () => {
+        if (!isSupabaseConfigured()) {
+          return;
+        }
+
+        try {
+          const projects = await projectService.getProjects();
+          set({ projects });
+        } catch (error) {
+          console.error('Failed to load projects:', error);
+        }
+      },
+
+      loadEvents: async () => {
+        if (!isSupabaseConfigured()) {
+          return;
+        }
+
+        try {
+          const events = await eventService.getEvents();
+          set({ events });
+        } catch (error) {
+          console.error('Failed to load events:', error);
+        }
+      },
+
+      loadUsers: async () => {
+        if (!isSupabaseConfigured()) {
+          return;
+        }
+
+        try {
+          const users = await authService.getAllUsers();
+          set({ users });
+        } catch (error) {
+          console.error('Failed to load users:', error);
+        }
+      },
+
+      loadTodos: async () => {
+        if (!isSupabaseConfigured()) {
+          return;
+        }
+
+        try {
+          const todos = await todoService.getTodos();
+          set({ personalTodos: todos });
+        } catch (error) {
+          console.error('Failed to load todos:', error);
+        }
+      },
+
+      loadFileGroups: async (projectId: string) => {
+        if (!isSupabaseConfigured()) {
+          return;
+        }
+
+        try {
+          const groups = await fileService.getFileGroupsByProject(projectId);
+          set({ fileGroups: groups });
+
+          // Load files for each group
+          const allFiles: FileItem[] = [];
+          for (const group of groups) {
+            const files = await fileService.getFilesByGroup(group.id);
+            allFiles.push(...files);
+          }
+          set({ files: allFiles });
+        } catch (error) {
+          console.error('Failed to load file groups:', error);
+        }
+      },
+
+      // UI Actions
+      setSelectedProject: (projectId) => set({ selectedProjectId: projectId }),
+      toggleSidebar: () => set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
+
+      setUserWorkStatus: async (status) => {
+        set({ userWorkStatus: status });
+
+        const { currentUser } = get();
+        if (currentUser && isSupabaseConfigured()) {
+          try {
+            await authService.updateWorkStatus(currentUser.id, status);
+          } catch (error) {
+            console.error('Failed to update work status:', error);
+          }
+        }
+      },
+
+      setLanguage: (lang) => set({ language: lang }),
+
+      // Project Actions
+      addProject: async (project) => {
+        if (isSupabaseConfigured()) {
+          try {
+            const newProject = await projectService.createProject(project);
+            set((state) => ({ projects: [...state.projects, newProject] }));
+          } catch (error) {
+            console.error('Failed to create project:', error);
+            throw error;
+          }
+        } else {
+          // Mock mode
+          const newProject: Project = {
+            id: `p${Date.now()}`,
+            title: project.title || '',
+            client: project.client || '',
+            status: project.status || 'ACTIVE',
+            startDate: project.startDate || new Date().toISOString(),
+            endDate: project.endDate || new Date().toISOString(),
+            ...project,
+          };
+          set((state) => ({ projects: [...state.projects, newProject] }));
+        }
+      },
+
+      updateProject: async (projectId, updates) => {
+        if (isSupabaseConfigured()) {
+          try {
+            const updatedProject = await projectService.updateProject(projectId, updates);
+            set((state) => ({
+              projects: state.projects.map((p) =>
+                p.id === projectId ? updatedProject : p
+              ),
+            }));
+          } catch (error) {
+            console.error('Failed to update project:', error);
+            throw error;
+          }
+        } else {
+          // Mock mode
+          set((state) => ({
+            projects: state.projects.map((p) =>
+              p.id === projectId ? { ...p, ...updates } : p
+            ),
+          }));
+        }
+      },
+
+      deleteProject: async (projectId) => {
+        if (isSupabaseConfigured()) {
+          try {
+            await projectService.deleteProject(projectId);
+            set((state) => ({
+              projects: state.projects.filter((p) => p.id !== projectId),
+            }));
+          } catch (error) {
+            console.error('Failed to delete project:', error);
+            throw error;
+          }
+        } else {
+          // Mock mode
+          set((state) => ({
+            projects: state.projects.filter((p) => p.id !== projectId),
+          }));
+        }
+      },
+
+      // Event Actions
+      addEvent: async (event) => {
+        if (isSupabaseConfigured()) {
+          try {
+            const newEvent = await eventService.createEvent(event);
+            set((state) => ({ events: [...state.events, newEvent] }));
+          } catch (error) {
+            console.error('Failed to create event:', error);
+            throw error;
+          }
+        } else {
+          // Mock mode
+          const newEvent: CalendarEvent = {
+            id: `e${Date.now()}`,
+            title: event.title || '',
+            type: event.type || 'TASK',
+            startAt: event.startAt || new Date().toISOString(),
+            endAt: event.endAt || new Date().toISOString(),
+            ownerId: event.ownerId || get().currentUser?.id || '',
+            source: event.source || 'PAULUS',
+            ...event,
+          };
+          set((state) => ({ events: [...state.events, newEvent] }));
+        }
+      },
+
+      updateEvent: async (eventId, updates) => {
+        if (isSupabaseConfigured()) {
+          try {
+            const updatedEvent = await eventService.updateEvent(eventId, updates);
+            set((state) => ({
+              events: state.events.map((e) =>
+                e.id === eventId ? updatedEvent : e
+              ),
+            }));
+          } catch (error) {
+            console.error('Failed to update event:', error);
+            throw error;
+          }
+        } else {
+          // Mock mode
+          set((state) => ({
+            events: state.events.map((e) =>
+              e.id === eventId ? { ...e, ...updates } : e
+            ),
+          }));
+        }
+      },
+
+      deleteEvent: async (eventId) => {
+        if (isSupabaseConfigured()) {
+          try {
+            await eventService.deleteEvent(eventId);
+            set((state) => ({
+              events: state.events.filter((e) => e.id !== eventId),
+            }));
+          } catch (error) {
+            console.error('Failed to delete event:', error);
+            throw error;
+          }
+        } else {
+          // Mock mode
+          set((state) => ({
+            events: state.events.filter((e) => e.id !== eventId),
+          }));
+        }
+      },
+
+      // Message Actions
+      addMessage: (message) => set((state) => ({ messages: [...state.messages, message] })),
+
+      sendProjectMessage: async (projectId, content) => {
+        const { currentUser } = get();
+        if (!currentUser) return;
+
+        if (isSupabaseConfigured()) {
+          try {
+            const message = await chatService.sendProjectMessage(projectId, currentUser.id, content);
+            set((state) => ({ messages: [...state.messages, message] }));
+          } catch (error) {
+            console.error('Failed to send message:', error);
+            throw error;
+          }
+        } else {
+          // Mock mode
+          const message: ChatMessage = {
+            id: `m${Date.now()}`,
+            projectId,
+            userId: currentUser.id,
+            content,
+            createdAt: new Date().toISOString(),
+          };
+          set((state) => ({ messages: [...state.messages, message] }));
+        }
+      },
+
+      sendDirectMessage: async (toUserId, content) => {
+        const { currentUser } = get();
+        if (!currentUser) return;
+
+        if (isSupabaseConfigured()) {
+          try {
+            const message = await chatService.sendDirectMessage(currentUser.id, toUserId, content);
+            set((state) => ({ messages: [...state.messages, message] }));
+          } catch (error) {
+            console.error('Failed to send direct message:', error);
+            throw error;
+          }
+        } else {
+          // Mock mode
+          const message: ChatMessage = {
+            id: `m${Date.now()}`,
+            projectId: '',
+            userId: currentUser.id,
+            content,
+            createdAt: new Date().toISOString(),
+            directChatUserId: toUserId,
+          };
+          set((state) => ({ messages: [...state.messages, message] }));
+        }
+      },
+
+      // File Actions
+      addFileGroup: (fileGroup) => set((state) => ({ fileGroups: [...state.fileGroups, fileGroup] })),
+      addFile: (file) => set((state) => ({ files: [...state.files, file] })),
+
+      createFileGroup: async (fileGroup) => {
+        if (isSupabaseConfigured()) {
+          try {
+            const newGroup = await fileService.createFileGroup(fileGroup);
+            set((state) => ({ fileGroups: [...state.fileGroups, newGroup] }));
+          } catch (error) {
+            console.error('Failed to create file group:', error);
+            throw error;
+          }
+        } else {
+          // Mock mode
+          const newGroup: FileGroup = {
+            id: `fg${Date.now()}`,
+            projectId: fileGroup.projectId!,
+            category: fileGroup.category!,
+            title: fileGroup.title!,
+          };
+          set((state) => ({ fileGroups: [...state.fileGroups, newGroup] }));
+        }
+      },
+
+      uploadFile: async (file, projectId, fileGroupId) => {
+        const { currentUser } = get();
+        if (!currentUser) return;
+
+        if (isSupabaseConfigured()) {
+          try {
+            const { path, url } = await fileService.uploadFile(file, projectId, currentUser.id);
+            const fileItem = await fileService.createFileItem({
+              fileGroupId,
+              name: file.name,
+              uploadedBy: currentUser.id,
+              size: `${(file.size / 1024).toFixed(2)} KB`,
+              type: file.type,
+            });
+            set((state) => ({ files: [...state.files, fileItem] }));
+          } catch (error) {
+            console.error('Failed to upload file:', error);
+            throw error;
+          }
+        } else {
+          // Mock mode
+          const newFile: FileItem = {
+            id: `f${Date.now()}`,
+            fileGroupId,
+            name: file.name,
+            uploadedBy: currentUser.id,
+            createdAt: new Date().toISOString(),
+            size: `${(file.size / 1024).toFixed(2)} KB`,
+            type: file.type,
+          };
+          set((state) => ({ files: [...state.files, newFile] }));
+        }
+      },
+
+      deleteFileItem: async (fileId) => {
+        if (isSupabaseConfigured()) {
+          try {
+            await fileService.deleteFileItem(fileId);
+            set((state) => ({
+              files: state.files.filter((f) => f.id !== fileId),
+            }));
+          } catch (error) {
+            console.error('Failed to delete file:', error);
+            throw error;
+          }
+        } else {
+          // Mock mode
+          set((state) => ({
+            files: state.files.filter((f) => f.id !== fileId),
+          }));
+        }
+      },
+
+      // Todo Actions
+      addTodo: async (todo) => {
+        const { currentUser } = get();
+        if (!currentUser) return;
+
+        if (isSupabaseConfigured()) {
+          try {
+            const newTodo = await todoService.createTodo({
+              ...todo,
+              requestedById: todo.requestedById || currentUser.id,
+            });
+            set((state) => ({ personalTodos: [...state.personalTodos, newTodo] }));
+          } catch (error) {
+            console.error('Failed to create todo:', error);
+            throw error;
+          }
+        } else {
+          // Mock mode
+          const newTodo: PersonalTodo = {
+            id: `td${Date.now()}`,
+            title: todo.title!,
+            assigneeIds: todo.assigneeIds || [currentUser.id],
+            requestedById: todo.requestedById || currentUser.id,
+            projectId: todo.projectId,
+            dueDate: todo.dueDate!,
+            priority: todo.priority || 'NORMAL',
+            status: 'PENDING',
+            createdAt: new Date().toISOString(),
+          };
+          set((state) => ({ personalTodos: [...state.personalTodos, newTodo] }));
+        }
+      },
+
+      updateTodo: async (todoId, updates) => {
+        if (isSupabaseConfigured()) {
+          try {
+            const updatedTodo = await todoService.updateTodo(todoId, updates);
+            set((state) => ({
+              personalTodos: state.personalTodos.map((t) =>
+                t.id === todoId ? updatedTodo : t
+              ),
+            }));
+          } catch (error) {
+            console.error('Failed to update todo:', error);
+            throw error;
+          }
+        } else {
+          // Mock mode
+          set((state) => ({
+            personalTodos: state.personalTodos.map((t) =>
+              t.id === todoId ? { ...t, ...updates } : t
+            ),
+          }));
+        }
+      },
+
+      deleteTodo: async (todoId) => {
+        if (isSupabaseConfigured()) {
+          try {
+            await todoService.deleteTodo(todoId);
+            set((state) => ({
+              personalTodos: state.personalTodos.filter((t) => t.id !== todoId),
+            }));
+          } catch (error) {
+            console.error('Failed to delete todo:', error);
+            throw error;
+          }
+        } else {
+          // Mock mode
+          set((state) => ({
+            personalTodos: state.personalTodos.filter((t) => t.id !== todoId),
+          }));
+        }
+      },
+
+      completeTodo: async (todoId) => {
+        if (isSupabaseConfigured()) {
+          try {
+            const completedTodo = await todoService.completeTodo(todoId);
+            set((state) => ({
+              personalTodos: state.personalTodos.map((t) =>
+                t.id === todoId ? completedTodo : t
+              ),
+            }));
+          } catch (error) {
+            console.error('Failed to complete todo:', error);
+            throw error;
+          }
+        } else {
+          // Mock mode
+          set((state) => ({
+            personalTodos: state.personalTodos.map((t) =>
+              t.id === todoId ? { ...t, status: 'COMPLETED' as const, completedAt: new Date().toISOString() } : t
+            ),
+          }));
+        }
+      },
+
+      // Settings Actions
+      updateScoreSettings: (settings) => set((state) => ({
+        scoreSettings: { ...state.scoreSettings, ...settings }
+      })),
+
+      // Getters
+      getProjectById: (id) => get().projects.find((p) => p.id === id),
+      getEventsByProject: (projectId) => get().events.filter((e) => e.projectId === projectId),
+      getMessagesByProject: (projectId) => get().messages.filter((m) => m.projectId === projectId),
+      getFileGroupsByProject: (projectId) => get().fileGroups.filter((fg) => fg.projectId === projectId),
+      getFilesByGroup: (groupId) => get().files.filter((f) => f.fileGroupId === groupId),
+      getUserById: (id) => get().users.find((u) => u.id === id),
+      getPerformanceByUser: (userId) => get().performanceSnapshots.filter((ps) => ps.userId === userId),
+      getPortfolioByUser: (userId) => get().portfolioItems.filter((pi) => pi.userId === userId),
+      getFeedbackByProject: (projectId) => get().peerFeedback.filter((f) => f.projectId === projectId),
+      getContributionsByProject: (projectId) => get().projectContributions.filter((c) => c.projectId === projectId),
+    }),
+    {
+      name: 'nexus-planner-storage',
+      partialize: (state) => ({
+        language: state.language,
+        sidebarCollapsed: state.sidebarCollapsed,
+        userWorkStatus: state.userWorkStatus,
+      }),
+    }
+  )
+);

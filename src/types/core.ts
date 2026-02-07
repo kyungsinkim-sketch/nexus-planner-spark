@@ -1,11 +1,15 @@
 export type UserRole = 'ADMIN' | 'MANAGER' | 'MEMBER';
 
+// User work status
+export type UserWorkStatus = 'AT_WORK' | 'NOT_AT_WORK' | 'LUNCH' | 'TRAINING';
+
 export interface User {
   id: string;
   name: string;
   avatar?: string;
   role: UserRole;
   department?: string;
+  workStatus?: UserWorkStatus;
 }
 
 export type ProjectType = 'BIDDING' | 'EXECUTION';
@@ -97,9 +101,6 @@ export interface Project {
 }
 
 export type EventSource = 'PAULUS' | 'GOOGLE';
-
-// User work status
-export type UserWorkStatus = 'AT_WORK' | 'NOT_AT_WORK' | 'LUNCH' | 'TRAINING';
 
 export interface CalendarEvent {
   id: string;

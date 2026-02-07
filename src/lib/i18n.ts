@@ -3,6 +3,7 @@ export type Language = 'ko' | 'en';
 export const translations = {
   ko: {
     // Navigation
+    dashboard: '대시보드',
     calendar: '캘린더',
     projects: '프로젝트',
     chat: '채팅',
@@ -10,14 +11,14 @@ export const translations = {
     admin: '관리자',
     inbox: '알림함',
     settings: '설정',
-    
+
     // User Status
     atWork: '출근상태',
     notAtWork: '출근하지 않은 상태',
     lunch: '점심식사',
     training: '운동',
     setStatus: '상태 설정',
-    
+
     // Calendar
     newEvent: '새 이벤트',
     today: '오늘',
@@ -25,7 +26,7 @@ export const translations = {
     week: '주',
     day: '일',
     agenda: '일정',
-    
+
     // Event Types
     meeting: '회의',
     deadline: '마감',
@@ -35,7 +36,7 @@ export const translations = {
     renatus: 'Renatus',
     todo: '할 일',
     deliverable: '산출물',
-    
+
     // Projects
     allProjects: '전체 프로젝트',
     newProject: '새 프로젝트',
@@ -64,7 +65,7 @@ export const translations = {
     low: '낮음',
     normal: '보통',
     high: '높음',
-    
+
     // Chat
     projectChats: '프로젝트 채팅',
     directMessages: '1:1 메시지',
@@ -73,7 +74,48 @@ export const translations = {
     typeMessage: '메시지 입력...',
     selectChat: '채팅을 선택하세요',
     startConversation: '대화를 시작하세요',
-    
+    projectConversations: '프로젝트 대화 및 1:1 메시지',
+    searchChats: '채팅 검색...',
+    direct: '1:1',
+    noUsersFound: '사용자가 없습니다',
+    noMessagesYet: '아직 메시지가 없습니다',
+    chooseProjectOrDM: '프로젝트를 선택하거나 1:1 메시지를 시작하여 채팅을 시작하세요',
+    you: '나',
+    justNow: '방금',
+
+    // Inbox
+    allNotifications: '모든 알림',
+    markAllAsRead: '모두 읽음으로 표시',
+    markAsRead: '읽음으로 표시',
+    noNotifications: '알림이 없습니다',
+    allCaughtUpNotifications: '모든 알림을 확인했습니다',
+    notificationsWillAppearHere: '알림이 여기에 표시됩니다',
+    new: '새 알림',
+    unread: '읽지 않음',
+    tasks: '작업',
+    messages: '메시지',
+    deadlines: '마감일',
+
+    // Profile
+    personalInformation: '개인 정보',
+    editProfile: '프로필 편집',
+    phoneNumber: '전화번호',
+    birthDate: '생년월일',
+    address: '주소',
+    bio: '자기소개',
+    education: '학력',
+    addEducation: '학력 추가',
+    degree: '학위',
+    major: '전공',
+    university: '대학교',
+    graduationYear: '졸업년도',
+    careerHistory: '경력',
+    certifications: '자격증',
+    yourPerformanceAndPortfolio: '당신의 성과와 포트폴리오',
+    memberSince: '가입일',
+    completedProjects: '완료한 프로젝트',
+    currentScore: '현재 점수',
+
     // Common
     cancel: '취소',
     save: '저장',
@@ -93,15 +135,15 @@ export const translations = {
     previous: '이전',
     loading: '로딩중...',
     noResults: '결과 없음',
-    
+
     // Profile
     performance: '성과',
     portfolio: '포트폴리오',
-    
+
     // Admin
     productivity: '생산성',
     contribution: '기여도',
-    
+
     // Forms
     title: '제목',
     description: '설명',
@@ -111,11 +153,11 @@ export const translations = {
     type: '유형',
     status: '상태',
     priority: '우선순위',
-    
+
     // File Upload
     addComment: '코멘트 추가',
     fileComment: '파일 설명...',
-    
+
     // Events
     createEvent: '이벤트 생성',
     eventTitle: '이벤트 제목',
@@ -124,20 +166,14 @@ export const translations = {
     enterEventTitle: '이벤트 제목 입력',
     eventCreated: '이벤트 생성됨',
     addedToCalendar: '캘린더에 추가됨',
-    
-    // Inbox
-    notifications: '알림',
-    markAsRead: '읽음으로 표시',
-    markAllAsRead: '모두 읽음으로 표시',
-    deleteNotification: '알림 삭제',
-    
+
     // Settings
     googleCalendar: 'Google 캘린더',
     connect: '연결',
     disconnect: '연결 해제',
     sync: '동기화',
     autoSync: '자동 동기화',
-    
+
     // Misc
     todaysEvents: '오늘의 일정',
     noEventsToday: '오늘 일정 없음',
@@ -145,9 +181,144 @@ export const translations = {
     events: '이벤트',
     exportToGoogle: 'Google로 내보내기',
     filterEvents: '이벤트 필터',
+
+    // Dashboard
+    welcomeBack: '환영합니다',
+    whatsHappeningToday: '오늘의 프로젝트 현황입니다',
+    activeProjects: '진행중인 프로젝트',
+    teamMembers: '팀 멤버',
+    pendingTasks: '대기중인 작업',
+    yourProjects: '내 프로젝트',
+    noProjectsFound: '프로젝트가 없습니다',
+    daysRemaining: '일 남음',
+    todaysWeather: '오늘의 날씨',
+    clearSky: '맑음',
+    partlyCloudy: '구름 조금',
+    lightRain: '약한 비',
+    snow: '눈',
+    inspiration: '영감',
+    weeklyFocus: '주간 포커스',
+    productionPhase: '제작 단계',
+    strategyTeams: '전략 팀',
+    checkingInWith: '와 확인하는 것을 고려하세요',
+    yourWorkload: '업무량의',
+    notificationsWidget: '알림',
+    myTodoList: '내 할 일 목록',
+    allCaughtUp: '모두 완료했습니다! 🎉',
+    due: '마감',
+    strategy: '전략',
+    production: '제작',
+    deliveryPhase: '납품',
+
+    // Welfare
+    welfare: '복지',
+    renatusTraining: 'Renatus 사내 트레이닝 관리',
+
+    // Admin Settings
+    adminSettings: '관리자 설정',
+    userPermissions: '사용자 권한',
+    inspirationQuotes: '영감 문구',
+    sendNotification: '알림 전송',
+    userManagement: '사용자 관리 및 권한',
+    manageUserAccounts: '사용자 계정 관리 및 시스템 권한 할당',
+    createUser: '사용자 생성',
+    createNewUser: '새 사용자 생성',
+    addNewUser: '시스템에 새 사용자를 추가하고 역할을 할당합니다',
+    fullName: '전체 이름',
+    email: '이메일',
+    role: '역할',
+    administrator: '관리자',
+    manager: '매니저',
+    trainer: '트레이너',
+    generalUser: '일반 사용자',
+    name: '이름',
+    department: '부서',
+    accessLevel: '접근 권한',
+    actions: '작업',
+    rolePermissionsReference: '역할 권한 참조',
+    rolePermissionsOverview: '각 역할이 접근할 수 있는 항목 개요',
+    manageInspirationQuotes: '영감 문구 관리',
+    editQuotesOnDashboard: '메인 대시보드에 표시되는 문구를 편집합니다',
+    addNewQuote: '새 문구 추가',
+    quoteText: '문구 내용',
+    author: '작성자',
+    enterInspirationalQuote: '영감을 주는 문구를 입력하세요...',
+    authorName: '작성자 이름',
+    addQuote: '문구 추가',
+    existingQuotes: '기존 문구',
+    sendCompanyWideNotification: '전사 알림 전송',
+    sendNotificationToAllUsers: '모든 사용자의 대시보드에 표시될 알림을 전송합니다',
+    notificationTitle: '알림 제목',
+    message: '메시지',
+    enterMessageHere: '메시지를 입력하세요...',
+    sendToAllUsers: '모든 사용자에게 전송',
+    clear: '지우기',
+    preview: '미리보기',
+
+    // Admin Page
+    humanResource: '인적 자원',
+    finance: '재무',
+    generalAffairs: '총무',
+    employeeManagement: '직원 관리, 성과 및 포트폴리오',
+    projectBudgets: '프로젝트 예산, 수익 및 재무 분석',
+    companyResources: '회사 자원 및 관리 업무',
+    systemConfiguration: '시스템 구성, 권한 및 알림',
+    manageOrganization: '조직의 자원, 재무 및 시스템 설정을 관리합니다',
+    adminDashboard: '관리자 대시보드',
+
+    // Admin HR Tab
+    organizationChart: '조직도',
+    employeeDirectory: '임직원명부',
+    salaryTable: '연봉규정표',
+    diligence: '근태',
+
+    // Organization Chart
+    paulusOrgChart: 'PAULUS CO., LTD 조직도',
+    ceo: '대표이사',
+
+    // Employee Directory
+    employeeList: '임직원 목록',
+    position: '직급',
+    hireDate: '입사일',
+
+    // Salary Table
+    paulusSalaryTable: '2025 파울러스 연봉규정표',
+    grade: '등급',
+    classLevel: '호봉',
+    annualSalary: '연봉',
+    monthlySalary: '월급',
+    hourlyWage: '시급 (209h)',
+    baseSalary: '기본급',
+    fixedOvertime: '고정 OT',
+    mealAllowance: '식대',
+    probationSalary: '수습 (80%)',
+    promotionCondition: '승진 조건',
+    tenureRequirement: '근속 요건',
+    experienceRequirement: '경력 요건',
+    joinDate: '입사일',
+    monthsWorked: '근속월수',
+    yearsWorked: '근속연수',
+    addMember: '구성원 추가',
+    deleteMember: '구성원 삭제',
+    searchPlaceholder: '검색...',
+    performanceBonus: '성과급',
+    totalCompensation: '총 보수',
+
+    // Finance Tab
+    projectFinance: '프로젝트 재무',
+    contractStatus: '계약 현황',
+    expenseDetails: '지출 내역',
+    revenueAnalysis: '수익 분석',
+
+    // General Affairs Tab
+    facilityManagement: '시설 관리',
+    assetManagement: '자산 관리',
+    supplies: '비품',
+    maintenance: '유지보수',
   },
   en: {
     // Navigation
+    dashboard: 'Dashboard',
     calendar: 'Calendar',
     projects: 'Projects',
     chat: 'Chat',
@@ -155,14 +326,14 @@ export const translations = {
     admin: 'Admin',
     inbox: 'Inbox',
     settings: 'Settings',
-    
+
     // User Status
     atWork: 'At Work',
     notAtWork: 'Not at Work',
     lunch: 'Lunch',
     training: 'Training',
     setStatus: 'Set Status',
-    
+
     // Calendar
     newEvent: 'New Event',
     today: 'Today',
@@ -170,7 +341,7 @@ export const translations = {
     week: 'Week',
     day: 'Day',
     agenda: 'Agenda',
-    
+
     // Event Types
     meeting: 'Meeting',
     deadline: 'Deadline',
@@ -180,7 +351,7 @@ export const translations = {
     renatus: 'Renatus',
     todo: 'Todo',
     deliverable: 'Deliverable',
-    
+
     // Projects
     allProjects: 'All Projects',
     newProject: 'New Project',
@@ -209,7 +380,7 @@ export const translations = {
     low: 'Low',
     normal: 'Normal',
     high: 'High',
-    
+
     // Chat
     projectChats: 'Project Chats',
     directMessages: 'Direct Messages',
@@ -218,7 +389,7 @@ export const translations = {
     typeMessage: 'Type a message...',
     selectChat: 'Select a chat',
     startConversation: 'Start a conversation',
-    
+
     // Common
     cancel: 'Cancel',
     save: 'Save',
@@ -238,15 +409,15 @@ export const translations = {
     previous: 'Previous',
     loading: 'Loading...',
     noResults: 'No results',
-    
+
     // Profile
     performance: 'Performance',
     portfolio: 'Portfolio',
-    
+
     // Admin
     productivity: 'Productivity',
     contribution: 'Contribution',
-    
+
     // Forms
     title: 'Title',
     description: 'Description',
@@ -256,11 +427,11 @@ export const translations = {
     type: 'Type',
     status: 'Status',
     priority: 'Priority',
-    
+
     // File Upload
     addComment: 'Add Comment',
     fileComment: 'File description...',
-    
+
     // Events
     createEvent: 'Create Event',
     eventTitle: 'Event Title',
@@ -269,20 +440,20 @@ export const translations = {
     enterEventTitle: 'Enter event title',
     eventCreated: 'Event created',
     addedToCalendar: 'added to calendar',
-    
+
     // Inbox
     notifications: 'Notifications',
     markAsRead: 'Mark as read',
     markAllAsRead: 'Mark all as read',
     deleteNotification: 'Delete notification',
-    
+
     // Settings
     googleCalendar: 'Google Calendar',
     connect: 'Connect',
     disconnect: 'Disconnect',
     sync: 'Sync',
     autoSync: 'Auto Sync',
-    
+
     // Misc
     todaysEvents: "Today's Events",
     noEventsToday: 'No events today',
@@ -290,6 +461,140 @@ export const translations = {
     events: 'events',
     exportToGoogle: 'Export to Google',
     filterEvents: 'Filter Events',
+
+    // Dashboard
+    welcomeBack: 'Welcome back',
+    whatsHappeningToday: "Here's what's happening with your projects today",
+    activeProjects: 'Active Projects',
+    teamMembers: 'Team Members',
+    pendingTasks: 'Pending Tasks',
+    yourProjects: 'Your Projects',
+    noProjectsFound: 'No projects found',
+    daysRemaining: 'days remaining',
+    todaysWeather: "TODAY'S WEATHER",
+    clearSky: 'Clear sky',
+    partlyCloudy: 'Partly cloudy',
+    lightRain: 'Light rain',
+    snow: 'Snow',
+    inspiration: 'INSPIRATION',
+    weeklyFocus: 'WEEKLY FOCUS',
+    productionPhase: 'Production Phase',
+    strategyTeams: 'Strategy teams',
+    checkingInWith: 'Consider checking in with',
+    yourWorkload: 'of your workload',
+    notificationsWidget: 'NOTIFICATIONS',
+    myTodoList: 'MY TO-DO LIST',
+    allCaughtUp: 'All caught up! 🎉',
+    due: 'Due',
+    strategy: 'Strategy',
+    production: 'Production',
+    deliveryPhase: 'Delivery',
+
+    // Welfare
+    welfare: 'Welfare',
+    renatusTraining: 'Renatus In-house Training Management',
+
+    // Admin Settings
+    adminSettings: 'Admin Settings',
+    userPermissions: 'User Permissions',
+    inspirationQuotes: 'Inspiration Quotes',
+    sendNotification: 'Send Notification',
+    userManagement: 'User Management & Permissions',
+    manageUserAccounts: 'Manage user accounts and assign system permissions',
+    createUser: 'Create User',
+    createNewUser: 'Create New User',
+    addNewUser: 'Add a new user to the system and assign their role',
+    fullName: 'Full Name',
+    email: 'Email',
+    role: 'Role',
+    administrator: 'Administrator',
+    manager: 'Manager',
+    trainer: 'Trainer',
+    generalUser: 'General User',
+    name: 'Name',
+    department: 'Department',
+    accessLevel: 'Access Level',
+    actions: 'Actions',
+    rolePermissionsReference: 'Role Permissions Reference',
+    rolePermissionsOverview: 'Overview of what each role can access',
+    manageInspirationQuotes: 'Manage Inspiration Quotes',
+    editQuotesOnDashboard: 'Edit quotes that appear on the main dashboard',
+    addNewQuote: 'Add New Quote',
+    quoteText: 'Quote Text',
+    author: 'Author',
+    enterInspirationalQuote: 'Enter inspirational quote...',
+    authorName: 'Author name',
+    addQuote: 'Add Quote',
+    existingQuotes: 'Existing Quotes',
+    sendCompanyWideNotification: 'Send Company-Wide Notification',
+    sendNotificationToAllUsers: 'Send a notification to all users that will appear on their dashboard',
+    notificationTitle: 'Notification Title',
+    message: 'Message',
+    enterMessageHere: 'Enter your message here...',
+    sendToAllUsers: 'Send to All Users',
+    clear: 'Clear',
+    preview: 'Preview',
+
+    // Admin Page
+    humanResource: 'Human Resource',
+    finance: 'Finance',
+    generalAffairs: 'General Affairs',
+    employeeManagement: 'Employee management, performance, and portfolios',
+    projectBudgets: 'Project budgets, revenue, and financial analytics',
+    companyResources: 'Company resources and administrative tasks',
+    systemConfiguration: 'System configuration, permissions, and notifications',
+    manageOrganization: "Manage your organization's resources, finances, and system settings",
+
+    // Admin HR Tab
+    organizationChart: 'Organization Chart',
+    employeeDirectory: 'Employee Directory',
+    salaryTable: 'Salary Table',
+    diligence: 'Diligence',
+
+    // Organization Chart
+    paulusOrgChart: 'PAULUS CO., LTD Organization Chart',
+    ceo: 'CEO',
+
+    // Employee Directory
+    employeeList: 'Employee List',
+    position: 'Position',
+    hireDate: 'Hire Date',
+
+    // Salary Table
+    paulusSalaryTable: '2025 Paulus Salary Table',
+    grade: 'Grade',
+    classLevel: 'Class',
+    annualSalary: 'Annual Salary',
+    monthlySalary: 'Monthly Salary',
+    hourlyWage: 'Hourly Wage (209h)',
+    baseSalary: 'Base Salary',
+    fixedOvertime: 'Fixed OT',
+    mealAllowance: 'Meal Allow.',
+    probationSalary: 'Probation (80%)',
+    promotionCondition: 'Promotion Cond.',
+    tenureRequirement: 'Tenure Req.',
+    experienceRequirement: 'Exp. Req.',
+    joinDate: 'Join Date',
+    monthsWorked: 'Months Worked',
+    yearsWorked: 'Years Worked',
+    addMember: 'Add Member',
+    deleteMember: 'Delete Member',
+    searchPlaceholder: 'Search...',
+    performanceBonus: 'Performance Bonus',
+    totalCompensation: 'Total Compensation',
+
+    // Finance Tab
+    projectFinance: 'Project Finance',
+    contractStatus: 'Contract Status',
+    expenseDetails: 'Expense Details',
+    revenueAnalysis: 'Revenue Analysis',
+
+    // General Affairs Tab
+    facilityManagement: 'Facility Management',
+    assetManagement: 'Asset Management',
+    supplies: 'Supplies',
+    maintenance: 'Maintenance',
+    adminDashboard: 'Admin Dashboard',
   },
 } as const;
 

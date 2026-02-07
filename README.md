@@ -1,73 +1,276 @@
-# Welcome to your Lovable project
+# Nexus Planner - Project Management System
 
-## Project info
+A modern, full-stack project management and collaboration platform built with React, TypeScript, and Supabase.
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+## 🚀 Features
 
-## How can I edit this code?
+### Core Functionality
+- **Dashboard**: Real-time project overview with stats, weather, inspirational quotes, and personal to-do list
+- **Calendar Management**: Full-featured calendar with event creation, editing, and Google Calendar integration
+- **Project Management**: Comprehensive project tracking with progress indicators, milestones, and team collaboration
+- **Chat System**: Real-time messaging for projects and direct messages between team members
+- **File Management**: Organized file storage with categories (Deck, Final, Reference, Contract, etc.)
+- **Personal To-Do**: Task management system with priorities and due dates
+- **Performance Tracking**: Employee performance snapshots and peer feedback system
+- **Portfolio Management**: Showcase completed projects and contributions
 
-There are several ways of editing your application.
+### Technical Features
+- **Real-time Updates**: Supabase realtime subscriptions for instant data synchronization
+- **Internationalization**: Multi-language support (Korean/English)
+- **Responsive Design**: Mobile-first design that works on all devices
+- **Role-Based Access**: Admin, Manager, and Member roles with appropriate permissions
+- **Dark Mode**: Beautiful dark theme optimized for extended use
+- **Type Safety**: Full TypeScript implementation for robust code
 
-**Use Lovable**
+## 🛠️ Tech Stack
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+### Frontend
+- **React 18** - UI framework
+- **TypeScript** - Type safety
+- **Vite** - Build tool and dev server
+- **TailwindCSS** - Utility-first CSS framework
+- **Radix UI** - Accessible component primitives
+- **FullCalendar** - Calendar component
+- **Zustand** - State management
+- **React Router** - Client-side routing
+- **Lucide React** - Icon library
+- **Sonner** - Toast notifications
 
-Changes made via Lovable will be committed automatically to this repo.
+### Backend & Database
+- **Supabase** - Backend as a Service
+  - PostgreSQL database
+  - Real-time subscriptions
+  - Row Level Security (RLS)
+  - Authentication
+  - File storage
 
-**Use your preferred IDE**
+## 📦 Installation
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+### Prerequisites
+- Node.js 18+ and npm
+- Supabase account (for production)
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+### Setup
 
-Follow these steps:
+1. **Clone the repository**
+```bash
+git clone <repository-url>
+cd nexus-planner-spark
+```
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+2. **Install dependencies**
+```bash
+npm install
+```
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+3. **Environment Configuration**
 
-# Step 3: Install the necessary dependencies.
-npm i
+Create a `.env` file in the root directory:
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+```env
+# Supabase Configuration
+VITE_SUPABASE_URL=your_supabase_project_url
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+
+# Optional: Google Calendar API (for calendar sync)
+VITE_GOOGLE_CLIENT_ID=your_google_client_id
+```
+
+4. **Database Setup**
+
+Run the migration file to set up your Supabase database:
+
+```bash
+# Navigate to Supabase SQL Editor and run:
+supabase/migrations/001_initial_schema.sql
+```
+
+This will create:
+- All necessary tables
+- Indexes for performance
+- Row Level Security policies
+- Triggers for automatic timestamps
+- Storage bucket for file uploads
+
+5. **Start Development Server**
+```bash
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+The application will be available at `http://localhost:8080`
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+## 🏗️ Project Structure
 
-**Use GitHub Codespaces**
+```
+nexus-planner-spark/
+├── src/
+│   ├── components/          # Reusable UI components
+│   │   ├── calendar/       # Calendar-specific components
+│   │   ├── chat/           # Chat components
+│   │   ├── layout/         # Layout components (Sidebar, etc.)
+│   │   ├── project/        # Project-related components
+│   │   └── ui/             # Base UI components (shadcn/ui)
+│   ├── hooks/              # Custom React hooks
+│   ├── lib/                # Utility functions and configurations
+│   │   ├── i18n.ts        # Internationalization
+│   │   ├── supabase.ts    # Supabase client
+│   │   └── utils.ts       # Helper functions
+│   ├── mock/               # Mock data for development
+│   ├── pages/              # Page components
+│   │   ├── DashboardPage.tsx
+│   │   ├── CalendarPage.tsx
+│   │   ├── ProjectsPage.tsx
+│   │   ├── ChatPage.tsx
+│   │   └── ...
+│   ├── services/           # API service layer
+│   │   ├── authService.ts
+│   │   ├── projectService.ts
+│   │   ├── eventService.ts
+│   │   ├── chatService.ts
+│   │   ├── todoService.ts
+│   │   └── fileService.ts
+│   ├── stores/             # State management (Zustand)
+│   │   └── appStore.ts
+│   ├── types/              # TypeScript type definitions
+│   │   ├── core.ts
+│   │   └── database.ts
+│   ├── App.tsx             # Main app component
+│   └── main.tsx            # Entry point
+├── supabase/
+│   └── migrations/         # Database migration files
+├── public/                 # Static assets
+└── package.json
+```
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+## 🔑 Key Services
 
-## What technologies are used for this project?
+### Authentication Service (`authService.ts`)
+- User sign up/sign in/sign out
+- Profile management
+- Work status updates
 
-This project is built with:
+### Project Service (`projectService.ts`)
+- CRUD operations for projects
+- Project filtering and search
+- Milestone management
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+### Event Service (`eventService.ts`)
+- Calendar event management
+- Date range queries
+- Real-time event updates
 
-## How can I deploy this project?
+### Chat Service (`chatService.ts`)
+- Project-based messaging
+- Direct messaging
+- Real-time message delivery
 
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
+### Todo Service (`todoService.ts`)
+- Personal task management
+- Priority and status tracking
+- Assignment to multiple users
 
-## Can I connect a custom domain to my Lovable project?
+### File Service (`fileService.ts`)
+- File upload to Supabase storage
+- File categorization
+- Metadata management
 
-Yes, you can!
+## 🎨 Customization
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+### Theme
+The application uses CSS variables for theming. Modify `src/index.css` to customize colors:
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+```css
+:root {
+  --background: ...;
+  --foreground: ...;
+  --primary: ...;
+  /* etc. */
+}
+```
+
+### Translations
+Add or modify translations in `src/lib/i18n.ts`:
+
+```typescript
+export const translations = {
+  ko: { /* Korean translations */ },
+  en: { /* English translations */ },
+  // Add more languages here
+};
+```
+
+## 🚀 Deployment
+
+### Build for Production
+```bash
+npm run build
+```
+
+The built files will be in the `dist/` directory.
+
+### Deploy to Vercel
+```bash
+vercel deploy
+```
+
+### Deploy to Netlify
+```bash
+netlify deploy --prod
+```
+
+### Environment Variables
+Make sure to set the following environment variables in your deployment platform:
+- `VITE_SUPABASE_URL`
+- `VITE_SUPABASE_ANON_KEY`
+
+## 📊 Database Schema
+
+### Main Tables
+- `profiles` - User profiles and authentication
+- `projects` - Project information and metadata
+- `calendar_events` - Calendar events and deadlines
+- `personal_todos` - Personal task management
+- `chat_messages` - Chat and messaging
+- `file_groups` - File organization
+- `file_items` - Individual files
+- `performance_snapshots` - Performance tracking
+- `portfolio_items` - User portfolios
+- `peer_feedback` - Peer reviews
+- `project_contributions` - Contribution tracking
+
+See `supabase/migrations/001_initial_schema.sql` for complete schema details.
+
+## 🔒 Security
+
+- Row Level Security (RLS) enabled on all tables
+- User-based access control
+- Secure file storage with access policies
+- Environment variables for sensitive data
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## 📝 License
+
+This project is licensed under the MIT License.
+
+## 🙏 Acknowledgments
+
+- Built with [Vite](https://vitejs.dev/)
+- UI components from [shadcn/ui](https://ui.shadcn.com/)
+- Icons from [Lucide](https://lucide.dev/)
+- Backend powered by [Supabase](https://supabase.com/)
+- Calendar by [FullCalendar](https://fullcalendar.io/)
+
+## 📧 Support
+
+For support, please open an issue in the GitHub repository or contact the development team.
+
+---
+
+**Built with ❤️ by the Paulus.ai team**

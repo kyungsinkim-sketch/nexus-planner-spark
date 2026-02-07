@@ -7,8 +7,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { PerformanceSection, PortfolioSection } from '@/components/profile';
 import { Trophy, Briefcase } from 'lucide-react';
+import { useTranslation } from '@/hooks/useTranslation';
 
 export default function ProfilePage() {
+  const { t } = useTranslation();
   const { currentUser, getPortfolioByUser } = useAppStore();
   const portfolioItems = getPortfolioByUser(currentUser.id);
 
@@ -17,9 +19,9 @@ export default function ProfilePage() {
       {/* Header */}
       <div className="page-header">
         <div>
-          <h1 className="page-title">My Profile</h1>
+          <h1 className="page-title">{t('myProfile')}</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Your performance and portfolio
+            {t('yourPerformanceAndPortfolio')}
           </p>
         </div>
       </div>
@@ -48,20 +50,20 @@ export default function ProfilePage() {
               paul@paulus.ai
             </p>
           </div>
-          
+
           <Separator className="my-6" />
-          
+
           <div className="space-y-3 text-sm">
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Member since</span>
+              <span className="text-muted-foreground">{t('memberSince')}</span>
               <span className="text-foreground">Jan 2024</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Completed Projects</span>
+              <span className="text-muted-foreground">{t('completedProjects')}</span>
               <span className="text-foreground">{portfolioItems.length}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Current Score</span>
+              <span className="text-muted-foreground">{t('currentScore')}</span>
               <span className="font-semibold text-primary">91</span>
             </div>
           </div>
@@ -72,11 +74,11 @@ export default function ProfilePage() {
           <TabsList>
             <TabsTrigger value="performance" className="gap-2">
               <Trophy className="w-4 h-4" />
-              Performance
+              {t('performance')}
             </TabsTrigger>
             <TabsTrigger value="portfolio" className="gap-2">
               <Briefcase className="w-4 h-4" />
-              Portfolio
+              {t('portfolio')}
             </TabsTrigger>
           </TabsList>
 

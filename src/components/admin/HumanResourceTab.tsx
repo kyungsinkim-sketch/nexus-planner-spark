@@ -6,9 +6,11 @@ import { EmployeeList } from './EmployeeList';
 import { SalaryTable } from './SalaryTable';
 import { ProductivityTab } from './ProductivityTab';
 import { DiligenceTab } from './DiligenceTab';
+import { useTranslation } from '@/hooks/useTranslation';
 
 export function HumanResourceTab() {
   const [activeTab, setActiveTab] = useState('org_chart');
+  const { t } = useTranslation();
 
   return (
     <div className="space-y-4">
@@ -16,23 +18,23 @@ export function HumanResourceTab() {
         <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="org_chart" className="gap-2">
             <Network className="w-4 h-4" />
-            조직도
+            {t('organizationChart')}
           </TabsTrigger>
           <TabsTrigger value="employees" className="gap-2">
             <Users className="w-4 h-4" />
-            임직원명부
+            {t('employeeDirectory')}
           </TabsTrigger>
           <TabsTrigger value="salary" className="gap-2">
             <DollarSign className="w-4 h-4" />
-            연봉규정표
+            {t('salaryTable')}
           </TabsTrigger>
           <TabsTrigger value="productivity" className="gap-2">
             <BarChart3 className="w-4 h-4" />
-            Productivity
+            {t('productivity')}
           </TabsTrigger>
           <TabsTrigger value="diligence" className="gap-2">
             <Clock className="w-4 h-4" />
-            Diligence
+            {t('diligence')}
           </TabsTrigger>
         </TabsList>
 

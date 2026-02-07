@@ -1,9 +1,10 @@
 import { NavLink, useLocation } from 'react-router-dom';
-import { 
-  Calendar, 
-  FolderKanban, 
-  User, 
-  ChevronLeft, 
+import {
+  Home,
+  Calendar,
+  FolderKanban,
+  User,
+  ChevronLeft,
   ChevronRight,
   Sparkles,
   Settings,
@@ -31,6 +32,8 @@ import { UserWorkStatus } from '@/types/core';
 import { useTranslation } from '@/hooks/useTranslation';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { isSupabaseConfigured } from '@/lib/supabase';
+import { toast } from 'sonner';
 
 const workStatusConfig: Record<UserWorkStatus, { labelKey: 'atWork' | 'notAtWork' | 'lunch' | 'training'; icon: typeof Building2; colorClass: string }> = {
   AT_WORK: { labelKey: 'atWork', icon: Building2, colorClass: 'text-emerald-500' },
@@ -40,13 +43,14 @@ const workStatusConfig: Record<UserWorkStatus, { labelKey: 'atWork' | 'notAtWork
 };
 
 export function Sidebar() {
-  const { currentUser, sidebarCollapsed, toggleSidebar, userWorkStatus, setUserWorkStatus } = useAppStore();
+  const { currentUser, sidebarCollapsed, toggleSidebar, userWorkStatus, setUserWorkStatus, signOut } = useAppStore();
   const location = useLocation();
   const { t, language, toggleLanguage } = useTranslation();
 
   // Menu items - Admin only visible to ADMIN role
   const navItems = [
-    { path: '/', icon: Calendar, labelKey: 'calendar' as const, visible: true },
+    { path: '/', icon: Home, labelKey: 'dashboard' as const, visible: true },
+    { path: '/calendar', icon: Calendar, labelKey: 'calendar' as const, visible: true },
     { path: '/projects', icon: FolderKanban, labelKey: 'projects' as const, visible: true },
     { path: '/chat', icon: MessageSquare, labelKey: 'chat' as const, visible: true },
     { path: '/inbox', icon: Inbox, labelKey: 'inbox' as const, visible: true },
@@ -79,9 +83,9 @@ export function Sidebar() {
       {/* Navigation */}
       <nav className="flex-1 px-3 py-4 space-y-1">
         {navItems.map((item) => {
-          const isActive = location.pathname === item.path || 
+          const isActive = location.pathname === item.path ||
             (item.path !== '/' && location.pathname.startsWith(item.path));
-          
+
           return (
             <NavLink
               key={item.path}
@@ -105,22 +109,43 @@ export function Sidebar() {
       <div className="px-3 pb-2">
         <Tooltip>
           <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="sm"
+            <button
               onClick={toggleLanguage}
               className={cn(
-                'w-full gap-2 text-sidebar-muted hover:text-sidebar-foreground hover:bg-sidebar-accent',
-                sidebarCollapsed && 'justify-center px-2'
+                'w-full rounded-lg p-2 transition-all hover:bg-sidebar-accent',
+                sidebarCollapsed && 'flex justify-center'
               )}
             >
-              <Languages className="w-4 h-4 shrink-0" />
-              {!sidebarCollapsed && (
-                <span className="animate-fade-in text-xs font-medium">
-                  {language === 'ko' ? 'English' : '한국어'}
-                </span>
+              {sidebarCollapsed ? (
+                <Languages className="w-4 h-4 text-sidebar-muted" />
+              ) : (
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <Languages className="w-4 h-4 text-sidebar-muted" />
+                    <span className="text-xs font-medium text-sidebar-muted">
+                      {language === 'ko' ? '언어' : 'Language'}
+                    </span>
+                  </div>
+                  {/* Toggle Switch */}
+                  <div className="relative inline-flex h-6 w-12 items-center rounded-full bg-sidebar-accent border border-sidebar-border">
+                    <div
+                      className={cn(
+                        'absolute h-5 w-5 rounded-full bg-sidebar-primary transition-transform duration-200 ease-in-out flex items-center justify-center',
+                        language === 'en' ? 'translate-x-[26px]' : 'translate-x-0.5'
+                      )}
+                    >
+                      <span className="text-[8px] font-bold text-white">
+                        {language === 'ko' ? 'KO' : 'EN'}
+                      </span>
+                    </div>
+                    <div className="flex w-full justify-between px-1.5 text-[8px] font-medium text-sidebar-muted">
+                      <span className={language === 'ko' ? 'opacity-0' : 'opacity-50'}>KO</span>
+                      <span className={language === 'en' ? 'opacity-0' : 'opacity-50'}>EN</span>
+                    </div>
+                  </div>
+                </div>
               )}
-            </Button>
+            </button>
           </TooltipTrigger>
           <TooltipContent side="right">
             {language === 'ko' ? 'Switch to English' : '한국어로 변경'}
@@ -170,7 +195,7 @@ export function Sidebar() {
               const config = workStatusConfig[status];
               const Icon = config.icon;
               const isSelected = userWorkStatus === status;
-              
+
               return (
                 <DropdownMenuItem
                   key={status}
@@ -183,6 +208,27 @@ export function Sidebar() {
                 </DropdownMenuItem>
               );
             })}
+
+            {/* Logout button - only show if Supabase is configured */}
+            {isSupabaseConfigured() && (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={async () => {
+                    try {
+                      await signOut();
+                      toast.success('Logged out successfully');
+                    } catch (error: any) {
+                      toast.error(error.message || 'Failed to log out');
+                    }
+                  }}
+                  className="gap-3 text-destructive focus:text-destructive"
+                >
+                  <LogOut className="w-4 h-4" />
+                  <span>Log Out</span>
+                </DropdownMenuItem>
+              </>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
       </div>

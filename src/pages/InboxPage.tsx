@@ -25,6 +25,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
 import { Link } from 'react-router-dom';
+import { useTranslation } from '@/hooks/useTranslation';
 
 type NotificationType = 'task' | 'message' | 'file' | 'deadline' | 'mention' | 'feedback';
 
@@ -145,6 +146,7 @@ const formatRelativeTime = (dateString: string) => {
 };
 
 export default function InboxPage() {
+  const { t } = useTranslation();
   const [notifications, setNotifications] = useState<Notification[]>(mockNotifications);
   const [activeTab, setActiveTab] = useState('all');
 
@@ -175,34 +177,34 @@ export default function InboxPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <h1 className="text-2xl font-semibold text-foreground">Inbox</h1>
+          <h1 className="text-2xl font-semibold text-foreground">{t('inbox')}</h1>
           {unreadCount > 0 && (
             <Badge variant="default" className="bg-primary text-primary-foreground">
-              {unreadCount} new
+              {unreadCount} {t('new')}
             </Badge>
           )}
         </div>
         <Button variant="outline" size="sm" onClick={markAllAsRead}>
           <Check className="w-4 h-4 mr-2" />
-          Mark all as read
+          {t('markAllAsRead')}
         </Button>
       </div>
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="bg-muted/50">
-          <TabsTrigger value="all">All</TabsTrigger>
+          <TabsTrigger value="all">{t('all')}</TabsTrigger>
           <TabsTrigger value="unread">
-            Unread
+            {t('unread')}
             {unreadCount > 0 && (
               <span className="ml-1.5 px-1.5 py-0.5 text-xs bg-primary text-primary-foreground rounded-full">
                 {unreadCount}
               </span>
             )}
           </TabsTrigger>
-          <TabsTrigger value="task">Tasks</TabsTrigger>
-          <TabsTrigger value="message">Messages</TabsTrigger>
-          <TabsTrigger value="deadline">Deadlines</TabsTrigger>
+          <TabsTrigger value="task">{t('tasks')}</TabsTrigger>
+          <TabsTrigger value="message">{t('messages')}</TabsTrigger>
+          <TabsTrigger value="deadline">{t('deadlines')}</TabsTrigger>
         </TabsList>
 
         <TabsContent value={activeTab} className="mt-4">
@@ -211,12 +213,12 @@ export default function InboxPage() {
               <CardContent className="py-12 text-center">
                 <Bell className="w-12 h-12 mx-auto text-muted-foreground/50 mb-4" />
                 <h3 className="text-lg font-medium text-foreground mb-1">
-                  No notifications
+                  {t('noNotifications')}
                 </h3>
                 <p className="text-sm text-muted-foreground">
                   {activeTab === 'unread'
-                    ? "You're all caught up!"
-                    : 'Notifications will appear here'}
+                    ? t('allCaughtUpNotifications')
+                    : t('notificationsWillAppearHere')}
                 </p>
               </CardContent>
             </Card>
@@ -284,14 +286,14 @@ export default function InboxPage() {
                               <DropdownMenuContent align="end">
                                 <DropdownMenuItem onClick={() => markAsRead(notification.id)}>
                                   <Check className="w-4 h-4 mr-2" />
-                                  Mark as read
+                                  {t('markAsRead')}
                                 </DropdownMenuItem>
                                 <DropdownMenuItem
                                   onClick={() => deleteNotification(notification.id)}
                                   className="text-destructive"
                                 >
                                   <Trash2 className="w-4 h-4 mr-2" />
-                                  Delete
+                                  {t('delete')}
                                 </DropdownMenuItem>
                               </DropdownMenuContent>
                             </DropdownMenu>

@@ -7,15 +7,16 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
-import { 
-  FolderKanban, 
-  Users, 
-  Search, 
+import {
+  FolderKanban,
+  Users,
+  Search,
   MessageSquare,
   Send,
   Paperclip,
   ArrowLeft,
 } from 'lucide-react';
+import { useTranslation } from '@/hooks/useTranslation';
 
 type ChatType = 'project' | 'direct';
 
@@ -25,6 +26,7 @@ interface SelectedChat {
 }
 
 export default function ChatPage() {
+  const { t } = useTranslation();
   const { projects, users, currentUser, messages, addMessage, getUserById } = useAppStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTab, setSelectedTab] = useState<'projects' | 'direct'>('projects');
@@ -41,8 +43,8 @@ export default function ChatPage() {
   const filteredProjects = useMemo(() => {
     if (!searchQuery) return activeProjects;
     const q = searchQuery.toLowerCase();
-    return activeProjects.filter(p => 
-      p.title.toLowerCase().includes(q) || 
+    return activeProjects.filter(p =>
+      p.title.toLowerCase().includes(q) ||
       p.client.toLowerCase().includes(q)
     );
   }, [activeProjects, searchQuery]);
@@ -62,13 +64,13 @@ export default function ChatPage() {
   // Get messages for selected chat
   const chatMessages = useMemo(() => {
     if (!selectedChat) return [];
-    
+
     if (selectedChat.type === 'project') {
       return messages.filter(m => m.projectId === selectedChat.id);
     } else {
       // Direct messages - filter by both users
-      return messages.filter(m => 
-        m.directChatUserId === selectedChat.id || 
+      return messages.filter(m =>
+        m.directChatUserId === selectedChat.id ||
         (m.userId === currentUser.id && m.directChatUserId === selectedChat.id) ||
         (m.userId === selectedChat.id && m.directChatUserId === currentUser.id)
       );
@@ -94,14 +96,14 @@ export default function ChatPage() {
     const date = new Date(dateString);
     const now = new Date();
     const diffHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60));
-    
+
     if (diffHours < 1) return 'Just now';
     if (diffHours < 24) return `${diffHours}h ago`;
-    
+
     const diffDays = Math.floor(diffHours / 24);
     if (diffDays === 1) return 'Yesterday';
     if (diffDays < 7) return `${diffDays}d ago`;
-    
+
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   };
 
@@ -140,7 +142,7 @@ export default function ChatPage() {
 
   const handleSendMessage = () => {
     if (!newMessage.trim() || !selectedChat) return;
-    
+
     addMessage({
       id: `m${Date.now()}`,
       projectId: selectedChat.type === 'project' ? selectedChat.id : '',
@@ -149,7 +151,7 @@ export default function ChatPage() {
       createdAt: new Date().toISOString(),
       directChatUserId: selectedChat.type === 'direct' ? selectedChat.id : undefined,
     });
-    
+
     setNewMessage('');
   };
 
@@ -168,7 +170,7 @@ export default function ChatPage() {
   // Get selected chat info
   const selectedChatInfo = useMemo(() => {
     if (!selectedChat) return null;
-    
+
     if (selectedChat.type === 'project') {
       const project = projects.find(p => p.id === selectedChat.id);
       return project ? { name: project.title, subtitle: project.client, thumbnail: project.thumbnail } : null;
@@ -194,9 +196,9 @@ export default function ChatPage() {
     <div className="page-container animate-fade-in">
       <div className="page-header">
         <div>
-          <h1 className="page-title">Chat</h1>
+          <h1 className="page-title">{t('chat')}</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Project conversations and direct messages
+            {t('projectConversations')}
           </p>
         </div>
       </div>
@@ -208,7 +210,7 @@ export default function ChatPage() {
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
-                placeholder="Search chats..."
+                placeholder={t('searchChats')}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-9"
@@ -218,19 +220,19 @@ export default function ChatPage() {
 
           <Tabs value={selectedTab} onValueChange={(v) => setSelectedTab(v as 'projects' | 'direct')}>
             <TabsList className="w-full rounded-none border-b border-border bg-transparent p-0">
-              <TabsTrigger 
-                value="projects" 
+              <TabsTrigger
+                value="projects"
                 className="flex-1 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent gap-2"
               >
                 <FolderKanban className="w-4 h-4" />
-                Projects
+                {t('projects')}
               </TabsTrigger>
-              <TabsTrigger 
-                value="direct" 
+              <TabsTrigger
+                value="direct"
                 className="flex-1 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent gap-2"
               >
                 <Users className="w-4 h-4" />
-                Direct
+                {t('direct')}
               </TabsTrigger>
             </TabsList>
 
@@ -239,7 +241,7 @@ export default function ChatPage() {
                 {filteredProjects.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-12 text-center">
                     <FolderKanban className="w-10 h-10 text-muted-foreground mb-3" />
-                    <p className="text-sm text-muted-foreground">No projects found</p>
+                    <p className="text-sm text-muted-foreground">{t('noProjectsFound')}</p>
                   </div>
                 ) : (
                   <div className="divide-y divide-border">
@@ -247,14 +249,13 @@ export default function ChatPage() {
                       const lastMessage = getLastMessage(project.id);
                       const messageCount = getMessageCount(project.id);
                       const isSelected = selectedChat?.type === 'project' && selectedChat?.id === project.id;
-                      
+
                       return (
                         <button
                           key={project.id}
                           onClick={() => handleSelectProjectChat(project.id)}
-                          className={`w-full flex items-start gap-3 p-4 hover:bg-muted/50 transition-colors group text-left ${
-                            isSelected ? 'bg-muted' : ''
-                          }`}
+                          className={`w-full flex items-start gap-3 p-4 hover:bg-muted/50 transition-colors group text-left ${isSelected ? 'bg-muted' : ''
+                            }`}
                         >
                           <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 overflow-hidden">
                             {project.thumbnail ? (
@@ -283,7 +284,7 @@ export default function ChatPage() {
                               </p>
                             ) : (
                               <p className="text-xs text-muted-foreground/50 italic mt-1">
-                                No messages yet
+                                {t('noMessagesYet')}
                               </p>
                             )}
                           </div>
@@ -304,20 +305,19 @@ export default function ChatPage() {
                 {filteredUsers.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-12 text-center">
                     <Users className="w-10 h-10 text-muted-foreground mb-3" />
-                    <p className="text-sm text-muted-foreground">No users found</p>
+                    <p className="text-sm text-muted-foreground">{t('noUsersFound')}</p>
                   </div>
                 ) : (
                   <div className="divide-y divide-border">
                     {filteredUsers.map((user) => {
                       const isSelected = selectedChat?.type === 'direct' && selectedChat?.id === user.id;
-                      
+
                       return (
                         <button
                           key={user.id}
                           onClick={() => handleSelectDirectChat(user.id)}
-                          className={`w-full flex items-center gap-3 p-4 hover:bg-muted/50 transition-colors group text-left ${
-                            isSelected ? 'bg-muted' : ''
-                          }`}
+                          className={`w-full flex items-center gap-3 p-4 hover:bg-muted/50 transition-colors group text-left ${isSelected ? 'bg-muted' : ''
+                            }`}
                         >
                           <Avatar className="w-10 h-10">
                             <AvatarFallback className="bg-primary/10 text-primary text-sm">
@@ -349,15 +349,15 @@ export default function ChatPage() {
             <>
               {/* Chat Header */}
               <div className="p-4 border-b border-border flex items-center gap-3">
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
+                <Button
+                  variant="ghost"
+                  size="icon"
                   className="lg:hidden shrink-0"
                   onClick={handleBackToList}
                 >
                   <ArrowLeft className="w-5 h-5" />
                 </Button>
-                
+
                 {selectedChat.type === 'project' ? (
                   <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 overflow-hidden">
                     {selectedChatInfo.thumbnail ? (
@@ -373,7 +373,7 @@ export default function ChatPage() {
                     </AvatarFallback>
                   </Avatar>
                 )}
-                
+
                 <div className="flex-1 min-w-0">
                   <h2 className="font-semibold text-foreground truncate">
                     {selectedChatInfo.name}
@@ -391,9 +391,9 @@ export default function ChatPage() {
                     <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
                       <Send className="w-8 h-8 text-muted-foreground" />
                     </div>
-                    <h3 className="font-medium text-foreground mb-1">No messages yet</h3>
+                    <h3 className="font-medium text-foreground mb-1">{t('noMessagesYet')}</h3>
                     <p className="text-sm text-muted-foreground">
-                      Start the conversation!
+                      {t('startConversation')}
                     </p>
                   </div>
                 ) : (
@@ -410,19 +410,18 @@ export default function ChatPage() {
                             const user = getUserById(message.userId);
                             const isCurrentUser = message.userId === currentUser.id;
                             const showAvatar = index === 0 || dateMessages[index - 1].userId !== message.userId;
-                            
+
                             return (
-                              <div 
-                                key={message.id} 
+                              <div
+                                key={message.id}
                                 className={`flex gap-3 ${isCurrentUser ? 'flex-row-reverse' : ''}`}
                               >
                                 {showAvatar ? (
                                   <Avatar className="w-8 h-8 shrink-0">
-                                    <AvatarFallback className={`text-xs ${
-                                      isCurrentUser 
-                                        ? 'bg-primary text-primary-foreground' 
+                                    <AvatarFallback className={`text-xs ${isCurrentUser
+                                        ? 'bg-primary text-primary-foreground'
                                         : 'bg-muted text-muted-foreground'
-                                    }`}>
+                                      }`}>
                                       {user?.name.split(' ').map(n => n[0]).join('')}
                                     </AvatarFallback>
                                   </Avatar>
@@ -433,19 +432,18 @@ export default function ChatPage() {
                                   {showAvatar && (
                                     <div className={`flex items-center gap-2 mb-1 ${isCurrentUser ? 'flex-row-reverse' : ''}`}>
                                       <span className="text-sm font-medium text-foreground">
-                                        {isCurrentUser ? 'You' : user?.name}
+                                        {isCurrentUser ? t('you') : user?.name}
                                       </span>
                                       <span className="text-xs text-muted-foreground">
                                         {formatMessageTime(message.createdAt)}
                                       </span>
                                     </div>
                                   )}
-                                  <div 
-                                    className={`inline-block rounded-2xl px-4 py-2 text-sm ${
-                                      isCurrentUser 
-                                        ? 'bg-primary text-primary-foreground' 
+                                  <div
+                                    className={`inline-block rounded-2xl px-4 py-2 text-sm ${isCurrentUser
+                                        ? 'bg-primary text-primary-foreground'
                                         : 'bg-muted text-foreground'
-                                    }`}
+                                      }`}
                                   >
                                     {message.content}
                                   </div>
@@ -470,14 +468,14 @@ export default function ChatPage() {
                     <Paperclip className="w-5 h-5" />
                   </Button>
                   <Input
-                    placeholder="Type a message..."
+                    placeholder={t('typeMessage')}
                     value={newMessage}
                     onChange={(e) => setNewMessage(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSendMessage()}
                     className="flex-1"
                   />
-                  <Button 
-                    size="icon" 
+                  <Button
+                    size="icon"
                     onClick={handleSendMessage}
                     disabled={!newMessage.trim()}
                   >
@@ -491,9 +489,9 @@ export default function ChatPage() {
               <div className="w-20 h-20 rounded-full bg-muted flex items-center justify-center mb-4">
                 <MessageSquare className="w-10 h-10 text-muted-foreground" />
               </div>
-              <h3 className="font-semibold text-foreground text-lg mb-1">Select a chat</h3>
+              <h3 className="font-semibold text-foreground text-lg mb-1">{t('selectChat')}</h3>
               <p className="text-sm text-muted-foreground max-w-[240px]">
-                Choose a project or start a direct message to begin chatting
+                {t('chooseProjectOrDM')}
               </p>
             </div>
           )}

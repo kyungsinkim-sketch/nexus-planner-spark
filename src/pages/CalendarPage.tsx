@@ -6,7 +6,7 @@ import interactionPlugin from '@fullcalendar/interaction';
 import listPlugin from '@fullcalendar/list';
 import { useAppStore } from '@/stores/appStore';
 import { CalendarEvent, EventType } from '@/types/core';
-import { Plus, Filter, ChevronDown, Settings, Download, ExternalLink } from 'lucide-react';
+import { Plus, Filter, ChevronDown, Settings, Download, ExternalLink, CheckSquare, AlertCircle, Users, Presentation, Truck, ListTodo, FileText, Dumbbell } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
@@ -25,6 +25,19 @@ import { toast } from 'sonner';
 import { useTranslation } from '@/hooks/useTranslation';
 import { TranslationKey } from '@/lib/i18n';
 
+// Event type icons (pictograms)
+const eventTypeIcons: Record<EventType, any> = {
+  TASK: CheckSquare,
+  DEADLINE: AlertCircle,
+  MEETING: Users,
+  PT: Presentation,
+  DELIVERY: Truck,
+  TODO: ListTodo,
+  DELIVERABLE: FileText,
+  R_TRAINING: Dumbbell,
+};
+
+// Event type colors (fallback if no project key color)
 const eventTypeColors: Record<EventType, string> = {
   TASK: 'fc-event-task',
   DEADLINE: 'fc-event-deadline',
@@ -50,10 +63,10 @@ const eventTypeBadgeKeys: Record<EventType, { labelKey: TranslationKey; classNam
 function GoogleCalendarIcon({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 18 18" className={className}>
-      <rect x="3" y="3" width="12" height="12" rx="1.5" fill="#4285F4"/>
-      <rect x="3" y="3" width="12" height="3" rx="1" fill="#1A73E8"/>
-      <line x1="6" y1="8" x2="12" y2="8" stroke="white" strokeWidth="1"/>
-      <line x1="6" y1="11" x2="10" y2="11" stroke="white" strokeWidth="1"/>
+      <rect x="3" y="3" width="12" height="12" rx="1.5" fill="#4285F4" />
+      <rect x="3" y="3" width="12" height="3" rx="1" fill="#1A73E8" />
+      <line x1="6" y1="8" x2="12" y2="8" stroke="white" strokeWidth="1" />
+      <line x1="6" y1="11" x2="10" y2="11" stroke="white" strokeWidth="1" />
     </svg>
   );
 }
@@ -67,7 +80,7 @@ export default function CalendarPage() {
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [isPanelOpen, setIsPanelOpen] = useState(false);
   const [currentView, setCurrentView] = useState<string>('dayGridMonth');
-  
+
   // New event modal state
   const [showNewEventModal, setShowNewEventModal] = useState(false);
   const [newEventDate, setNewEventDate] = useState<string | undefined>();
@@ -85,13 +98,25 @@ export default function CalendarPage() {
   const calendarEvents = filteredEvents.map((event) => {
     const project = event.projectId ? getProjectById(event.projectId) : null;
     const isGoogleEvent = event.source === 'GOOGLE';
+
+    // Use project key color if available, otherwise use event type color
+    const backgroundColor = project?.keyColor || undefined;
+    const className = `${!backgroundColor ? eventTypeColors[event.type] : ''} ${isGoogleEvent ? 'fc-event-google' : ''}`;
+
     return {
       id: event.id,
       title: event.title,
       start: event.startAt,
       end: event.endAt,
-      className: `${eventTypeColors[event.type]} ${isGoogleEvent ? 'fc-event-google' : ''}`,
-      extendedProps: { type: event.type, projectTitle: project?.title, source: event.source },
+      className,
+      backgroundColor,
+      borderColor: backgroundColor,
+      extendedProps: {
+        type: event.type,
+        projectTitle: project?.title,
+        source: event.source,
+        icon: eventTypeIcons[event.type],
+      },
     };
   });
 
@@ -108,11 +133,11 @@ export default function CalendarPage() {
   const handleSelect = (info: any) => {
     const startDate = info.start;
     const endDate = info.end;
-    
+
     const dateStr = startDate.toISOString().split('T')[0];
     const startTimeStr = startDate.toTimeString().slice(0, 5);
     const endTimeStr = endDate.toTimeString().slice(0, 5);
-    
+
     setNewEventDate(dateStr);
     setNewEventStartTime(startTimeStr);
     setNewEventEndTime(endTimeStr);
@@ -200,7 +225,7 @@ END:VCALENDAR`;
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-          
+
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm" className="gap-2">
@@ -218,7 +243,7 @@ END:VCALENDAR`;
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-          
+
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -236,14 +261,31 @@ END:VCALENDAR`;
       </div>
 
       <div className="flex flex-wrap gap-2">
-        {(Object.keys(eventTypeBadgeKeys) as EventType[]).map((type) => (
-          <button key={type} onClick={() => toggleEventType(type)}
-            className={`${eventTypeBadgeKeys[type].className} cursor-pointer transition-opacity ${selectedTypes.includes(type) ? 'opacity-100' : 'opacity-40'}`}>
-            {t(eventTypeBadgeKeys[type].labelKey)}
-          </button>
-        ))}
+        {(Object.keys(eventTypeBadgeKeys) as EventType[]).map((type) => {
+          const EventIcon = eventTypeIcons[type];
+          const isSelected = selectedTypes.includes(type);
+          
+          return (
+            <button 
+              key={type} 
+              onClick={() => toggleEventType(type)}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all cursor-pointer ${
+                isSelected 
+                  ? 'bg-foreground text-background border-foreground' 
+                  : 'bg-background text-muted-foreground border-border hover:border-foreground/30'
+              }`}
+            >
+              <EventIcon className="w-3.5 h-3.5" />
+              {t(eventTypeBadgeKeys[type].labelKey)}
+            </button>
+          );
+        })}
         <button onClick={() => setShowGoogleEvents(!showGoogleEvents)}
-          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border transition-opacity cursor-pointer ${showGoogleEvents ? 'bg-blue-500/10 text-blue-600 border-blue-500/30 opacity-100' : 'bg-muted text-muted-foreground border-border opacity-40'}`}>
+          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all cursor-pointer ${
+            showGoogleEvents 
+              ? 'bg-blue-500 text-white border-blue-500' 
+              : 'bg-background text-muted-foreground border-border hover:border-foreground/30'
+          }`}>
           <GoogleCalendarIcon className="w-3.5 h-3.5" />Google
         </button>
       </div>
@@ -267,10 +309,13 @@ END:VCALENDAR`;
             datesSet={handleViewChange}
             eventContent={(eventInfo) => {
               const isGoogle = eventInfo.event.extendedProps.source === 'GOOGLE';
+              const EventIcon = eventInfo.event.extendedProps.icon;
+
               return (
                 <div className="px-1 sm:px-1.5 py-0.5 overflow-hidden">
                   <div className="flex items-center gap-1 text-[10px] sm:text-xs font-medium truncate">
                     {isGoogle && <GoogleCalendarIcon className="w-3 h-3 shrink-0" />}
+                    {!isGoogle && EventIcon && <EventIcon className="w-3 h-3 shrink-0" />}
                     <span className="truncate">{eventInfo.event.title}</span>
                   </div>
                 </div>
@@ -312,7 +357,7 @@ END:VCALENDAR`;
       </div>
 
       <EventSidePanel event={selectedEvent} isOpen={isPanelOpen} onClose={() => { setIsPanelOpen(false); setSelectedEvent(null); }} />
-      
+
       <NewEventModal
         open={showNewEventModal}
         onClose={() => setShowNewEventModal(false)}
