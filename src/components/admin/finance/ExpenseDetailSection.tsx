@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { AutoFitText } from '@/components/ui/auto-fit-text';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Table,
@@ -217,46 +218,46 @@ export function ExpenseDetailSection({ year }: ExpenseDetailSectionProps) {
   return (
     <div className="space-y-6">
       {/* Summary Cards */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-        <Card className="p-4 shadow-card">
-          <div className="flex items-center gap-2">
-            <FileText className="w-5 h-5 text-blue-500" />
-            <p className="text-sm text-muted-foreground">세금계산서</p>
+      <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-5">
+        <Card className="p-3 sm:p-4 shadow-card overflow-hidden">
+          <div className="flex items-center gap-1.5">
+            <FileText className="w-4 h-4 sm:w-5 sm:h-5 text-blue-500 shrink-0" />
+            <p className="text-xs sm:text-sm text-muted-foreground">세금계산서</p>
           </div>
-          <p className="text-xl font-bold text-foreground mt-1">{formatKRW(totalTaxInvoice)}</p>
-          <p className="text-xs text-muted-foreground">{mockTaxInvoices.length}건</p>
+          <AutoFitText className="text-lg sm:text-xl font-bold text-foreground mt-1">{formatKRW(totalTaxInvoice)}</AutoFitText>
+          <p className="text-[10px] sm:text-xs text-muted-foreground">{mockTaxInvoices.length}건</p>
         </Card>
-        <Card className="p-4 shadow-card">
-          <div className="flex items-center gap-2">
-            <FileText className="w-5 h-5 text-violet-500" />
-            <p className="text-sm text-muted-foreground">원천징수</p>
+        <Card className="p-3 sm:p-4 shadow-card overflow-hidden">
+          <div className="flex items-center gap-1.5">
+            <FileText className="w-4 h-4 sm:w-5 sm:h-5 text-violet-500 shrink-0" />
+            <p className="text-xs sm:text-sm text-muted-foreground">원천징수</p>
           </div>
-          <p className="text-xl font-bold text-foreground mt-1">{formatKRW(totalWithholding)}</p>
-          <p className="text-xs text-muted-foreground">{mockWithholding.length}건</p>
+          <AutoFitText className="text-lg sm:text-xl font-bold text-foreground mt-1">{formatKRW(totalWithholding)}</AutoFitText>
+          <p className="text-[10px] sm:text-xs text-muted-foreground">{mockWithholding.length}건</p>
         </Card>
-        <Card className="p-4 shadow-card">
-          <div className="flex items-center gap-2">
-            <CreditCard className="w-5 h-5 text-orange-500" />
-            <p className="text-sm text-muted-foreground">법인카드</p>
+        <Card className="p-3 sm:p-4 shadow-card overflow-hidden">
+          <div className="flex items-center gap-1.5">
+            <CreditCard className="w-4 h-4 sm:w-5 sm:h-5 text-orange-500 shrink-0" />
+            <p className="text-xs sm:text-sm text-muted-foreground">법인카드</p>
           </div>
-          <p className="text-xl font-bold text-foreground mt-1">{formatKRW(totalCard)}</p>
-          <p className="text-xs text-muted-foreground">{mockCorporateCard.length}건</p>
+          <AutoFitText className="text-lg sm:text-xl font-bold text-foreground mt-1">{formatKRW(totalCard)}</AutoFitText>
+          <p className="text-[10px] sm:text-xs text-muted-foreground">{mockCorporateCard.length}건</p>
         </Card>
-        <Card className="p-4 shadow-card">
-          <div className="flex items-center gap-2">
-            <User className="w-5 h-5 text-gray-500" />
-            <p className="text-sm text-muted-foreground">개인비용</p>
+        <Card className="p-3 sm:p-4 shadow-card overflow-hidden">
+          <div className="flex items-center gap-1.5">
+            <User className="w-4 h-4 sm:w-5 sm:h-5 text-gray-500 shrink-0" />
+            <p className="text-xs sm:text-sm text-muted-foreground">개인비용</p>
           </div>
-          <p className="text-xl font-bold text-foreground mt-1">{formatKRW(totalPersonal)}</p>
-          <p className="text-xs text-muted-foreground">{mockPersonalExpense.length}건</p>
+          <AutoFitText className="text-lg sm:text-xl font-bold text-foreground mt-1">{formatKRW(totalPersonal)}</AutoFitText>
+          <p className="text-[10px] sm:text-xs text-muted-foreground">{mockPersonalExpense.length}건</p>
         </Card>
-        <Card className="p-4 shadow-card bg-primary/5">
-          <div className="flex items-center gap-2">
-            <Wallet className="w-5 h-5 text-primary" />
-            <p className="text-sm text-muted-foreground">전체 합계</p>
+        <Card className="p-3 sm:p-4 shadow-card bg-primary/5 overflow-hidden">
+          <div className="flex items-center gap-1.5">
+            <Wallet className="w-4 h-4 sm:w-5 sm:h-5 text-primary shrink-0" />
+            <p className="text-xs sm:text-sm text-muted-foreground">전체 합계</p>
           </div>
-          <p className="text-xl font-bold text-primary mt-1">{formatKRW(grandTotal)}</p>
-          <p className="text-xs text-muted-foreground">{mockTaxInvoices.length + mockWithholding.length + mockCorporateCard.length + mockPersonalExpense.length}건</p>
+          <AutoFitText className="text-lg sm:text-xl font-bold text-primary mt-1">{formatKRW(grandTotal)}</AutoFitText>
+          <p className="text-[10px] sm:text-xs text-muted-foreground">{mockTaxInvoices.length + mockWithholding.length + mockCorporateCard.length + mockPersonalExpense.length}건</p>
         </Card>
       </div>
 

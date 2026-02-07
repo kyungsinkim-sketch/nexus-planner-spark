@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Card } from '@/components/ui/card';
+import { AutoFitText } from '@/components/ui/auto-fit-text';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { 
@@ -131,7 +132,7 @@ export function FinanceTab() {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-[10px] sm:text-xs text-muted-foreground truncate">{stat.label}</p>
-                <p className="text-sm sm:text-lg font-bold text-foreground truncate">{stat.value}</p>
+                <AutoFitText className="text-sm sm:text-lg font-bold text-foreground">{stat.value}</AutoFitText>
                 <p className="text-[10px] sm:text-xs text-muted-foreground truncate">{stat.sub}</p>
               </div>
             </div>
