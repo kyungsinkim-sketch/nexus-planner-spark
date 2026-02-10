@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAppStore } from '@/stores/appStore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,7 +17,8 @@ const DEMO_USERS = [
 ];
 
 export function AuthPage() {
-  const { signIn, signUp, isLoading } = useAppStore();
+  const { signIn, signUp, isLoading, users } = useAppStore();
+  const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isSignUp, setIsSignUp] = useState(false);
@@ -32,18 +34,16 @@ export function AuthPage() {
     try {
       await signIn(email, password);
       toast.success('환영합니다!');
+      navigate('/', { replace: true });
     } catch (error: unknown) {
       toast.error(error instanceof Error ? error.message : '로그인에 실패했습니다');
     }
   };
 
-  const handleDemoLogin = (demoEmail: string) => {
-    // For mock mode, directly set the user
-    const store = useAppStore.getState();
-    const user = store.users.find(u => {
-      const demo = DEMO_USERS.find(d => d.email === demoEmail);
-      return demo && u.name === demo.name;
-    });
+  const handleArkLogin = () => {
+    // Ark.Cards SSO — 현재는 mock 모드로 첫번째 유저(ADMIN)로 로그인
+    const demo = DEMO_USERS[0];
+    const user = users.find(u => u.name === demo.name);
 
     if (user) {
       useAppStore.setState({
@@ -51,6 +51,9 @@ export function AuthPage() {
         isAuthenticated: true,
       });
       toast.success(`${user.name}님 환영합니다!`);
+      navigate('/', { replace: true });
+    } else {
+      toast.error('로그인에 실패했습니다. 잠시 후 다시 시도해주세요.');
     }
   };
 
@@ -94,7 +97,7 @@ export function AuthPage() {
               {/* Ark.Cards SSO Login */}
               <Button
                 className="w-full gap-2 h-12 text-base font-semibold"
-                onClick={() => handleDemoLogin(DEMO_USERS[0].email)}
+                onClick={handleArkLogin}
               >
                 <ExternalLink className="w-5 h-5" />
                 Ark.Cards로 로그인
