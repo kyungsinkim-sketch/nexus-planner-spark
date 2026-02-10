@@ -16,7 +16,7 @@ import {
   Calendar,
   FolderKanban,
   MessageSquare,
-  Settings,
+  Crown,
   Menu,
   Sparkles,
   Download,
@@ -47,14 +47,14 @@ import { toast } from 'sonner';
 
 // Work status config - matches Sidebar
 const workStatusConfig: Record<UserWorkStatus, { label: string; icon: typeof Building2; colorClass: string }> = {
-  AT_WORK: { label: '사무실 출근', icon: Building2, colorClass: 'text-emerald-500' },
-  REMOTE: { label: '재택 근무', icon: HomeIcon, colorClass: 'text-blue-500' },
-  OVERSEAS: { label: '해외 출장', icon: Plane, colorClass: 'text-violet-500' },
-  FILMING: { label: '촬영 현장', icon: Film, colorClass: 'text-orange-500' },
-  FIELD: { label: '현장 근무', icon: MapPinned, colorClass: 'text-teal-500' },
-  LUNCH: { label: '점심시간', icon: Coffee, colorClass: 'text-amber-500' },
-  TRAINING: { label: 'PT/운동', icon: Dumbbell, colorClass: 'text-pink-500' },
-  NOT_AT_WORK: { label: '퇴근', icon: LogOut, colorClass: 'text-muted-foreground' },
+  AT_WORK: { label: '사무실', icon: Building2, colorClass: 'text-emerald-500' },
+  REMOTE: { label: '재택', icon: HomeIcon, colorClass: 'text-blue-500' },
+  OVERSEAS: { label: '출장', icon: Plane, colorClass: 'text-violet-500' },
+  FILMING: { label: '촬영중', icon: Film, colorClass: 'text-orange-500' },
+  FIELD: { label: '현장', icon: MapPinned, colorClass: 'text-teal-500' },
+  LUNCH: { label: '식사중', icon: Coffee, colorClass: 'text-amber-500' },
+  TRAINING: { label: '운동중', icon: Dumbbell, colorClass: 'text-pink-500' },
+  NOT_AT_WORK: { label: '오프라인', icon: LogOut, colorClass: 'text-muted-foreground' },
 };
 
 // Check if running as installed PWA
@@ -107,11 +107,11 @@ export function EnhancedMobileNav() {
   };
 
   const navItems = [
-    { path: '/', icon: Home, labelKey: 'dashboard' as const, visible: true },
-    { path: '/calendar', icon: Calendar, labelKey: 'calendar' as const, visible: true },
-    { path: '/projects', icon: FolderKanban, labelKey: 'projects' as const, visible: true },
-    { path: '/chat', icon: MessageSquare, labelKey: 'chat' as const, visible: true },
-    { path: '/admin', icon: Settings, labelKey: 'admin' as const, visible: currentUser?.role === 'ADMIN' },
+    { path: '/', icon: Home, labelKey: 'dashboard' as const, visible: true, pro: false },
+    { path: '/projects', icon: FolderKanban, labelKey: 'projects' as const, visible: true, pro: false },
+    { path: '/chat', icon: MessageSquare, labelKey: 'chat' as const, visible: true, pro: false },
+    { path: '/calendar', icon: Calendar, labelKey: 'calendar' as const, visible: true, pro: false },
+    { path: '/admin', icon: Crown, labelKey: 'admin' as const, visible: currentUser?.role === 'ADMIN', pro: true },
   ].filter(item => item.visible);
 
   const getInitials = (name: string) => {
@@ -253,7 +253,15 @@ export function EnhancedMobileNav() {
                         )}
                       >
                         <item.icon className="w-5 h-5" />
-                        <span className="font-medium">{t(item.labelKey)}</span>
+                        <span className="font-medium flex-1">{t(item.labelKey)}</span>
+                        {item.pro && (
+                          <span className={cn(
+                            "text-[9px] font-bold px-1.5 py-0.5 rounded-full",
+                            isActive ? "bg-white/20 text-white" : "bg-amber-500/20 text-amber-600"
+                          )}>
+                            Pro
+                          </span>
+                        )}
                       </NavLink>
                     );
                   })}
