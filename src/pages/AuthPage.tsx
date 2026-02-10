@@ -91,29 +91,14 @@ export function AuthPage() {
         <CardContent className="space-y-4">
           {!isSignUp ? (
             <>
-              {/* Demo Login Buttons */}
-              <div className="space-y-2">
-                <p className="text-xs text-muted-foreground text-center">빠른 로그인</p>
-                <div className="grid gap-2">
-                  {DEMO_USERS.map((demo) => (
-                    <Button
-                      key={demo.email}
-                      variant="outline"
-                      className="w-full justify-start gap-3 h-11"
-                      onClick={() => handleDemoLogin(demo.email)}
-                    >
-                      <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary">
-                        {demo.name[0]}
-                      </div>
-                      <div className="flex-1 text-left">
-                        <p className="text-sm font-medium">{demo.name}</p>
-                        <p className="text-xs text-muted-foreground">{demo.email}</p>
-                      </div>
-                      <span className="text-[10px] text-muted-foreground">{demo.role}</span>
-                    </Button>
-                  ))}
-                </div>
-              </div>
+              {/* Ark.Cards SSO Login */}
+              <Button
+                className="w-full gap-2 h-12 text-base font-semibold"
+                onClick={() => handleDemoLogin(DEMO_USERS[0].email)}
+              >
+                <ExternalLink className="w-5 h-5" />
+                Ark.Cards로 로그인
+              </Button>
 
               <div className="relative">
                 <Separator />
@@ -146,22 +131,12 @@ export function AuthPage() {
                     disabled={isLoading}
                   />
                 </div>
-                <Button type="submit" className="w-full" disabled={isLoading}>
+                <Button type="submit" className="w-full" variant="outline" disabled={isLoading}>
                   {isLoading ? (
                     <><Loader2 className="mr-2 h-4 w-4 animate-spin" />로그인 중...</>
-                  ) : '로그인'}
+                  ) : '이메일로 로그인'}
                 </Button>
               </form>
-
-              {/* Ark.Cards SSO placeholder */}
-              <Button
-                variant="outline"
-                className="w-full gap-2 border-dashed"
-                disabled
-              >
-                <ExternalLink className="w-4 h-4" />
-                Ark.Cards로 로그인 (준비 중)
-              </Button>
             </>
           ) : (
             <form onSubmit={handleSignUp} className="space-y-3">
