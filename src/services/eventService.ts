@@ -130,7 +130,7 @@ export const createEvent = async (event: Partial<CalendarEvent>): Promise<Calend
 
     const { data, error } = await supabase
         .from('calendar_events')
-        .insert(insertData as any)
+        .insert(insertData as unknown as Record<string, unknown>)
         .select()
         .single();
 
@@ -166,7 +166,7 @@ export const updateEvent = async (
 
     const { data, error } = await supabase
         .from('calendar_events')
-        .update(updateData as any)
+        .update(updateData as unknown as Record<string, unknown>)
         .eq('id', id)
         .select()
         .single();

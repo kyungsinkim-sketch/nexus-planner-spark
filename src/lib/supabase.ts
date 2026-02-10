@@ -32,7 +32,7 @@ export const isSupabaseConfigured = () => {
 };
 
 // Helper function to handle Supabase errors
-export const handleSupabaseError = (error: any) => {
+export const handleSupabaseError = (error: { message?: string } | null) => {
   console.error('Supabase error:', error);
   
   if (error?.message) {

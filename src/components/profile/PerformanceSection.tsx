@@ -6,7 +6,7 @@ import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'rec
 
 export function PerformanceSection() {
   const { currentUser, getPerformanceByUser } = useAppStore();
-  const performanceData = getPerformanceByUser(currentUser.id);
+  const performanceData = currentUser ? getPerformanceByUser(currentUser.id) : [];
   
   // Get latest performance
   const latestPerformance = performanceData.sort(

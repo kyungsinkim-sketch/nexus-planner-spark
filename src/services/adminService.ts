@@ -25,7 +25,7 @@ export const createEmployee = async (employee: CreateEmployeeInput): Promise<Adm
 
     const { data, error } = await supabase
         .from('nexus_employees')
-        .insert([employee] as any)
+        .insert([employee] as unknown as Record<string, unknown>[])
         .select()
         .single();
 
@@ -38,7 +38,7 @@ export const updateEmployee = async (id: string, updates: UpdateEmployeeInput): 
 
     const { data, error } = await supabase
         .from('nexus_employees')
-        .update(updates as any)
+        .update(updates as unknown as Record<string, unknown>)
         .eq('id', id)
         .select()
         .single();
@@ -81,7 +81,7 @@ export const updateSalaryGrade = async (id: string, updates: UpdateSalaryGradeIn
 
     const { data, error } = await supabase
         .from('nexus_salary_grades')
-        .update(updates as any)
+        .update(updates as unknown as Record<string, unknown>)
         .eq('id', id)
         .select()
         .single();

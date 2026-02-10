@@ -4,178 +4,221 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Sparkles, ExternalLink } from 'lucide-react';
+
+// Mock users for demo login
+const DEMO_USERS = [
+  { email: 'kyungshin@paulus.pro', name: '김경신', role: 'ADMIN' },
+  { email: 'yohan@paulus.pro', name: '장요한', role: 'MANAGER' },
+  { email: 'mingyu@paulus.pro', name: '박민규', role: 'MANAGER' },
+];
 
 export function AuthPage() {
-    const { signIn, signUp, isLoading } = useAppStore();
-    const [signInEmail, setSignInEmail] = useState('');
-    const [signInPassword, setSignInPassword] = useState('');
-    const [signUpEmail, setSignUpEmail] = useState('');
-    const [signUpPassword, setSignUpPassword] = useState('');
-    const [signUpName, setSignUpName] = useState('');
+  const { signIn, signUp, isLoading } = useAppStore();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [isSignUp, setIsSignUp] = useState(false);
+  const [name, setName] = useState('');
 
-    const handleSignIn = async (e: React.FormEvent) => {
-        e.preventDefault();
+  const handleSignIn = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email || !password) {
+      toast.error('이메일과 비밀번호를 입력해주세요');
+      return;
+    }
 
-        if (!signInEmail || !signInPassword) {
-            toast.error('Please fill in all fields');
-            return;
-        }
+    try {
+      await signIn(email, password);
+      toast.success('환영합니다!');
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : '로그인에 실패했습니다');
+    }
+  };
 
-        try {
-            await signIn(signInEmail, signInPassword);
-            toast.success('Welcome back!');
-        } catch (error: any) {
-            toast.error(error.message || 'Failed to sign in');
-        }
-    };
+  const handleDemoLogin = (demoEmail: string) => {
+    // For mock mode, directly set the user
+    const store = useAppStore.getState();
+    const user = store.users.find(u => {
+      const demo = DEMO_USERS.find(d => d.email === demoEmail);
+      return demo && u.name === demo.name;
+    });
 
-    const handleSignUp = async (e: React.FormEvent) => {
-        e.preventDefault();
+    if (user) {
+      useAppStore.setState({
+        currentUser: user,
+        isAuthenticated: true,
+      });
+      toast.success(`${user.name}님 환영합니다!`);
+    }
+  };
 
-        if (!signUpEmail || !signUpPassword || !signUpName) {
-            toast.error('Please fill in all fields');
-            return;
-        }
+  const handleSignUp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email || !password || !name) {
+      toast.error('모든 필드를 입력해주세요');
+      return;
+    }
+    if (password.length < 6) {
+      toast.error('비밀번호는 6자 이상이어야 합니다');
+      return;
+    }
 
-        if (signUpPassword.length < 6) {
-            toast.error('Password must be at least 6 characters');
-            return;
-        }
+    try {
+      await signUp(email, password, name);
+      toast.success('계정이 생성되었습니다!');
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : '계정 생성에 실패했습니다');
+    }
+  };
 
-        try {
-            await signUp(signUpEmail, signUpPassword, signUpName);
-            toast.success('Account created successfully!');
-        } catch (error: any) {
-            toast.error(error.message || 'Failed to create account');
-        }
-    };
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-secondary/5 p-4">
+      <Card className="w-full max-w-md shadow-lg">
+        <CardHeader className="space-y-1 text-center">
+          <div className="flex items-center justify-center mb-4">
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center shadow-lg">
+              <Sparkles className="w-7 h-7 text-white" />
+            </div>
+          </div>
+          <CardTitle className="text-2xl font-bold">Re-Be.io</CardTitle>
+          <CardDescription>
+            Creative Process & Production Collaboration
+          </CardDescription>
+        </CardHeader>
 
-    return (
-        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-secondary/5 p-4">
-            <Card className="w-full max-w-md shadow-lg">
-                <CardHeader className="space-y-1">
-                    <div className="flex items-center justify-center mb-4">
-                        <div className="w-12 h-12 rounded-xl bg-primary flex items-center justify-center">
-                            <span className="text-2xl font-bold text-primary-foreground">N</span>
-                        </div>
-                    </div>
-                    <CardTitle className="text-2xl text-center">Nexus Planner</CardTitle>
-                    <CardDescription className="text-center">
-                        Project management and collaboration platform
-                    </CardDescription>
-                </CardHeader>
+        <CardContent className="space-y-4">
+          {!isSignUp ? (
+            <>
+              {/* Demo Login Buttons */}
+              <div className="space-y-2">
+                <p className="text-xs text-muted-foreground text-center">빠른 로그인</p>
+                <div className="grid gap-2">
+                  {DEMO_USERS.map((demo) => (
+                    <Button
+                      key={demo.email}
+                      variant="outline"
+                      className="w-full justify-start gap-3 h-11"
+                      onClick={() => handleDemoLogin(demo.email)}
+                    >
+                      <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary">
+                        {demo.name[0]}
+                      </div>
+                      <div className="flex-1 text-left">
+                        <p className="text-sm font-medium">{demo.name}</p>
+                        <p className="text-xs text-muted-foreground">{demo.email}</p>
+                      </div>
+                      <span className="text-[10px] text-muted-foreground">{demo.role}</span>
+                    </Button>
+                  ))}
+                </div>
+              </div>
 
-                <CardContent>
-                    <Tabs defaultValue="signin" className="w-full">
-                        <TabsList className="grid w-full grid-cols-2">
-                            <TabsTrigger value="signin">Sign In</TabsTrigger>
-                            <TabsTrigger value="signup">Sign Up</TabsTrigger>
-                        </TabsList>
+              <div className="relative">
+                <Separator />
+                <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-card px-3 text-xs text-muted-foreground">
+                  또는
+                </span>
+              </div>
 
-                        <TabsContent value="signin">
-                            <form onSubmit={handleSignIn} className="space-y-4">
-                                <div className="space-y-2">
-                                    <Label htmlFor="signin-email">Email</Label>
-                                    <Input
-                                        id="signin-email"
-                                        type="email"
-                                        placeholder="your@email.com"
-                                        value={signInEmail}
-                                        onChange={(e) => setSignInEmail(e.target.value)}
-                                        disabled={isLoading}
-                                        required
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="signin-password">Password</Label>
-                                    <Input
-                                        id="signin-password"
-                                        type="password"
-                                        placeholder="••••••••"
-                                        value={signInPassword}
-                                        onChange={(e) => setSignInPassword(e.target.value)}
-                                        disabled={isLoading}
-                                        required
-                                    />
-                                </div>
-                                <Button type="submit" className="w-full" disabled={isLoading}>
-                                    {isLoading ? (
-                                        <>
-                                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                            Signing in...
-                                        </>
-                                    ) : (
-                                        'Sign In'
-                                    )}
-                                </Button>
-                            </form>
-                        </TabsContent>
+              {/* Email/Password Login */}
+              <form onSubmit={handleSignIn} className="space-y-3">
+                <div className="space-y-2">
+                  <Label htmlFor="email">이메일</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="name@paulus.pro"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    disabled={isLoading}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="password">비밀번호</Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    disabled={isLoading}
+                  />
+                </div>
+                <Button type="submit" className="w-full" disabled={isLoading}>
+                  {isLoading ? (
+                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" />로그인 중...</>
+                  ) : '로그인'}
+                </Button>
+              </form>
 
-                        <TabsContent value="signup">
-                            <form onSubmit={handleSignUp} className="space-y-4">
-                                <div className="space-y-2">
-                                    <Label htmlFor="signup-name">Full Name</Label>
-                                    <Input
-                                        id="signup-name"
-                                        type="text"
-                                        placeholder="John Doe"
-                                        value={signUpName}
-                                        onChange={(e) => setSignUpName(e.target.value)}
-                                        disabled={isLoading}
-                                        required
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="signup-email">Email</Label>
-                                    <Input
-                                        id="signup-email"
-                                        type="email"
-                                        placeholder="your@email.com"
-                                        value={signUpEmail}
-                                        onChange={(e) => setSignUpEmail(e.target.value)}
-                                        disabled={isLoading}
-                                        required
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="signup-password">Password</Label>
-                                    <Input
-                                        id="signup-password"
-                                        type="password"
-                                        placeholder="••••••••"
-                                        value={signUpPassword}
-                                        onChange={(e) => setSignUpPassword(e.target.value)}
-                                        disabled={isLoading}
-                                        required
-                                    />
-                                    <p className="text-xs text-muted-foreground">
-                                        Must be at least 6 characters
-                                    </p>
-                                </div>
-                                <Button type="submit" className="w-full" disabled={isLoading}>
-                                    {isLoading ? (
-                                        <>
-                                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                            Creating account...
-                                        </>
-                                    ) : (
-                                        'Create Account'
-                                    )}
-                                </Button>
-                            </form>
-                        </TabsContent>
-                    </Tabs>
-                </CardContent>
+              {/* Ark.Cards SSO placeholder */}
+              <Button
+                variant="outline"
+                className="w-full gap-2 border-dashed"
+                disabled
+              >
+                <ExternalLink className="w-4 h-4" />
+                Ark.Cards로 로그인 (준비 중)
+              </Button>
+            </>
+          ) : (
+            <form onSubmit={handleSignUp} className="space-y-3">
+              <div className="space-y-2">
+                <Label htmlFor="signup-name">이름</Label>
+                <Input
+                  id="signup-name"
+                  placeholder="홍길동"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  disabled={isLoading}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="signup-email">이메일</Label>
+                <Input
+                  id="signup-email"
+                  type="email"
+                  placeholder="name@paulus.pro"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  disabled={isLoading}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="signup-password">비밀번호</Label>
+                <Input
+                  id="signup-password"
+                  type="password"
+                  placeholder="6자 이상"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  disabled={isLoading}
+                />
+              </div>
+              <Button type="submit" className="w-full" disabled={isLoading}>
+                {isLoading ? (
+                  <><Loader2 className="mr-2 h-4 w-4 animate-spin" />생성 중...</>
+                ) : '계정 만들기'}
+              </Button>
+            </form>
+          )}
+        </CardContent>
 
-                <CardFooter className="flex flex-col space-y-2">
-                    <div className="text-xs text-center text-muted-foreground">
-                        By continuing, you agree to our Terms of Service and Privacy Policy
-                    </div>
-                </CardFooter>
-            </Card>
-        </div>
-    );
+        <CardFooter className="flex flex-col space-y-3">
+          <Button
+            variant="ghost"
+            className="text-xs"
+            onClick={() => setIsSignUp(!isSignUp)}
+          >
+            {isSignUp ? '이미 계정이 있나요? 로그인' : '계정이 없나요? 회원가입'}
+          </Button>
+          <p className="text-[10px] text-center text-muted-foreground">
+            계속하면 서비스 이용약관 및 개인정보 처리방침에 동의하는 것으로 간주됩니다
+          </p>
+        </CardFooter>
+      </Card>
+    </div>
+  );
 }

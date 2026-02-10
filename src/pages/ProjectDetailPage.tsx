@@ -37,11 +37,13 @@ import {
   TodosTab,
 } from '@/components/project';
 import { EditProjectModal } from '@/components/project/EditProjectModal';
+import { ProjectCompletionDialog } from '@/components/project/ProjectCompletionDialog';
 
 export default function ProjectDetailPage() {
   const { projectId } = useParams<{ projectId: string }>();
   const { getProjectById, updateProject, currentUser, getUserById } = useAppStore();
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showCompletionDialog, setShowCompletionDialog] = useState(false);
 
   const project = getProjectById(projectId || '');
 
@@ -80,7 +82,7 @@ export default function ProjectDetailPage() {
   };
 
   const handleCompleteProject = () => {
-    updateProject(project.id, { status: 'COMPLETED', progress: 100 });
+    setShowCompletionDialog(true);
   };
 
   const getInitials = (name: string) => {
@@ -323,6 +325,12 @@ export default function ProjectDetailPage() {
         open={showEditModal}
         onOpenChange={setShowEditModal}
         project={project}
+      />
+
+      <ProjectCompletionDialog
+        project={project}
+        open={showCompletionDialog}
+        onOpenChange={setShowCompletionDialog}
       />
     </div>
   );

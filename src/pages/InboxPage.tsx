@@ -279,7 +279,7 @@ export default function InboxPage() {
                             {/* Actions */}
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild onClick={e => e.stopPropagation()}>
-                                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                <Button variant="ghost" size="sm" className="h-8 w-8 p-0" aria-label="Notification actions">
                                   <MoreHorizontal className="w-4 h-4" />
                                 </Button>
                               </DropdownMenuTrigger>

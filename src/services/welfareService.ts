@@ -63,7 +63,7 @@ type LockerAssignmentInsert = Database['public']['Tables']['locker_assignments']
 // TRANSFORM FUNCTIONS
 // ============================================
 
-const transformTrainingSession = (row: any): TrainingSession => {
+const transformTrainingSession = (row: TrainingSessionRow & { profiles?: { name: string } }): TrainingSession => {
     return {
         id: row.id,
         userId: row.user_id,
@@ -79,7 +79,7 @@ const transformTrainingSession = (row: any): TrainingSession => {
     };
 };
 
-const transformLockerAssignment = (row: any): LockerAssignment => {
+const transformLockerAssignment = (row: LockerAssignmentRow & { profiles?: { name: string } }): LockerAssignment => {
     return {
         lockerNumber: row.locker_number,
         userId: row.user_id,
@@ -516,7 +516,7 @@ export const getAvailableLockers = async (): Promise<number[]> => {
         throw new Error(handleSupabaseError(error));
     }
 
-    return (data || []).map((row: any) => row.locker_number);
+    return (data || []).map((row: { locker_number: number }) => row.locker_number);
 };
 
 // ============================================
@@ -546,7 +546,7 @@ export const subscribeToTrainingSessions = (
             async (payload) => {
                 if (payload.new) {
                     // Fetch the full session with joined data
-                    const session = await getTrainingSessionById((payload.new as any).id);
+                    const session = await getTrainingSessionById((payload.new as TrainingSessionRow).id);
                     callback(session);
                 }
             }
@@ -582,7 +582,7 @@ export const subscribeToLockerAssignments = (
                 if (payload.new) {
                     // Fetch the full assignment with joined data
                     const assignment = await getLockerAssignmentByNumber(
-                        (payload.new as any).locker_number
+                        (payload.new as LockerAssignmentRow).locker_number
                     );
                     if (assignment) {
                         callback(assignment);

@@ -10,7 +10,7 @@ import { PortfolioItem } from '@/types/core';
 
 export function PortfolioSection() {
   const { currentUser, getPortfolioByUser } = useAppStore();
-  const portfolioItems = getPortfolioByUser(currentUser.id);
+  const portfolioItems = currentUser ? getPortfolioByUser(currentUser.id) : [];
   const [selectedItem, setSelectedItem] = useState<PortfolioItem | null>(null);
 
   return (

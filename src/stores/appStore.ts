@@ -37,6 +37,9 @@ interface AppState {
   // Language
   language: Language;
 
+  // Theme
+  theme: 'light' | 'dark';
+
   // UI State
   selectedProjectId: string | null;
   sidebarCollapsed: boolean;
@@ -60,6 +63,8 @@ interface AppState {
   toggleSidebar: () => void;
   setUserWorkStatus: (status: UserWorkStatus) => void;
   setLanguage: (lang: Language) => void;
+  setTheme: (theme: 'light' | 'dark') => void;
+  toggleTheme: () => void;
 
   // Project Actions
   addProject: (project: Partial<Project>) => Promise<void>;
@@ -108,9 +113,9 @@ interface AppState {
 export const useAppStore = create<AppState>()(
   persist(
     (set, get) => ({
-      // Initial state - use mock data if Supabase not configured
-      currentUser: isSupabaseConfigured() ? null : currentUser,
-      isAuthenticated: !isSupabaseConfigured(),
+      // Initial state - always start unauthenticated (login required)
+      currentUser: null,
+      isAuthenticated: false,
       isLoading: false,
       users: mockUsers,
       projects: mockProjects,
@@ -126,6 +131,7 @@ export const useAppStore = create<AppState>()(
       scoreSettings: { financialWeight: 70, peerWeight: 30 },
       userWorkStatus: 'NOT_AT_WORK',
       language: 'ko',
+      theme: 'light',
       selectedProjectId: null,
       sidebarCollapsed: false,
 
@@ -165,18 +171,24 @@ export const useAppStore = create<AppState>()(
 
       signOut: async () => {
         if (!isSupabaseConfigured()) {
-          set({ currentUser: null, isAuthenticated: false });
+          set({ currentUser: null, isAuthenticated: false, userWorkStatus: 'NOT_AT_WORK' });
           return;
         }
 
-        await authService.signOut();
-        set({
-          currentUser: null,
-          isAuthenticated: false,
-          projects: [],
-          events: [],
-          messages: [],
-        });
+        try {
+          await authService.signOut();
+        } catch (error) {
+          console.error('Failed to sign out:', error);
+        } finally {
+          // Always clear local state even if API call fails
+          set({
+            currentUser: null,
+            isAuthenticated: false,
+            projects: [],
+            events: [],
+            messages: [],
+          });
+        }
       },
 
       setCurrentUser: (user: User | null) => {
@@ -262,15 +274,26 @@ export const useAppStore = create<AppState>()(
 
         try {
           const groups = await fileService.getFileGroupsByProject(projectId);
-          set({ fileGroups: groups });
+
+          // Merge with existing groups instead of replacing
+          set((state) => {
+            const otherGroups = state.fileGroups.filter(fg => fg.projectId !== projectId);
+            return { fileGroups: [...otherGroups, ...groups] };
+          });
 
           // Load files for each group
-          const allFiles: FileItem[] = [];
+          const newFiles: FileItem[] = [];
           for (const group of groups) {
             const files = await fileService.getFilesByGroup(group.id);
-            allFiles.push(...files);
+            newFiles.push(...files);
           }
-          set({ files: allFiles });
+
+          // Merge with existing files instead of replacing
+          const groupIds = new Set(groups.map(g => g.id));
+          set((state) => {
+            const otherFiles = state.files.filter(f => !groupIds.has(f.fileGroupId));
+            return { files: [...otherFiles, ...newFiles] };
+          });
         } catch (error) {
           console.error('Failed to load file groups:', error);
         }
@@ -294,6 +317,19 @@ export const useAppStore = create<AppState>()(
       },
 
       setLanguage: (lang) => set({ language: lang }),
+      setTheme: (theme) => {
+        set({ theme });
+        if (theme === 'dark') {
+          document.documentElement.classList.add('dark');
+        } else {
+          document.documentElement.classList.remove('dark');
+        }
+      },
+      toggleTheme: () => {
+        const current = get().theme;
+        const next = current === 'dark' ? 'light' : 'dark';
+        get().setTheme(next);
+      },
 
       // Project Actions
       addProject: async (project) => {
@@ -678,7 +714,7 @@ export const useAppStore = create<AppState>()(
       getContributionsByProject: (projectId) => get().projectContributions.filter((c) => c.projectId === projectId),
     }),
     {
-      name: 'nexus-planner-storage',
+      name: 're-be-storage',
       partialize: (state) => ({
         language: state.language,
         sidebarCollapsed: state.sidebarCollapsed,

@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
@@ -26,7 +26,7 @@ import { useTranslation } from '@/hooks/useTranslation';
 import { TranslationKey } from '@/lib/i18n';
 
 // Event type icons (pictograms)
-const eventTypeIcons: Record<EventType, any> = {
+const eventTypeIcons: Record<EventType, React.ComponentType<{ className?: string }>> = {
   TASK: CheckSquare,
   DEADLINE: AlertCircle,
   MEETING: Users,
@@ -124,13 +124,13 @@ export default function CalendarPage() {
     setSelectedTypes((prev) => prev.includes(type) ? prev.filter((t) => t !== type) : [...prev, type]);
   };
 
-  const handleEventClick = (info: any) => {
+  const handleEventClick = (info: { event: { id: string } }) => {
     const event = events.find((e) => e.id === info.event.id);
     if (event) { setSelectedEvent(event); setIsPanelOpen(true); }
   };
 
   // Handle date selection (for creating events)
-  const handleSelect = (info: any) => {
+  const handleSelect = (info: { start: Date; end: Date }) => {
     const startDate = info.start;
     const endDate = info.end;
 
@@ -145,7 +145,7 @@ export default function CalendarPage() {
   };
 
   // Handle view change
-  const handleViewChange = (viewInfo: any) => {
+  const handleViewChange = (viewInfo: { view: { type: string } }) => {
     setCurrentView(viewInfo.view.type);
   };
 

@@ -12,7 +12,17 @@ import { useTranslation } from '@/hooks/useTranslation';
 export default function ProfilePage() {
   const { t } = useTranslation();
   const { currentUser, getPortfolioByUser } = useAppStore();
-  const portfolioItems = getPortfolioByUser(currentUser.id);
+  const portfolioItems = currentUser ? getPortfolioByUser(currentUser.id) : [];
+
+  if (!currentUser) {
+    return (
+      <div className="page-container animate-fade-in">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="page-container animate-fade-in">
@@ -47,7 +57,7 @@ export default function ProfilePage() {
               {currentUser.role}
             </Badge>
             <p className="text-sm text-muted-foreground mt-2">
-              paul@paulus.ai
+              hello@re-be.io
             </p>
           </div>
 

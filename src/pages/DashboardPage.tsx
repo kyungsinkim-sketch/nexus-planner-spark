@@ -24,9 +24,11 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 import { useTranslation } from '@/hooks/useTranslation';
+import { TranslationKey } from '@/lib/i18n';
 import { Project, PersonalTodo } from '@/types/core';
 import { ProjectProgressChart } from '@/components/dashboard/ProjectProgressChart';
 import { ActivityChart } from '@/components/dashboard/ActivityChart';
+import { AttendanceWidget } from '@/components/dashboard/AttendanceWidget';
 
 // Mock weather data
 const getWeatherData = () => {
@@ -97,9 +99,9 @@ export default function DashboardPage() {
     });
 
     // Get user's pending todos
-    const myTodos = personalTodos.filter(
+    const myTodos = currentUser ? personalTodos.filter(
         todo => todo.assigneeIds.includes(currentUser.id) && todo.status === 'PENDING'
-    ).slice(0, 5);
+    ).slice(0, 5) : [];
 
     // Calculate team members on vacation
     const totalMembers = users.length;
@@ -143,7 +145,7 @@ export default function DashboardPage() {
                 <div className="flex flex-col gap-4">
                     <div>
                         <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-2">
-                            {t('welcomeBack')}, {currentUser.name.split(' ')[0]} 👋
+                            {t('welcomeBack')}, {currentUser?.name.split(' ')[0] || ''} 👋
                         </h1>
                         <p className="text-muted-foreground">
                             {t('whatsHappeningToday')}
@@ -364,7 +366,7 @@ export default function DashboardPage() {
                                                         <div className="flex items-center justify-between text-xs text-muted-foreground">
                                                             <div className="flex items-center gap-2">
                                                                 <Badge variant="outline" className={cn("text-xs", phase.color, "text-white border-0")}>
-                                                                    {t(phase.label.toLowerCase() as any)}
+                                                                    {t(phase.label.toLowerCase() as TranslationKey)}
                                                                 </Badge>
                                                                 <span>{daysLeft}{t('daysRemaining')}</span>
                                                             </div>
@@ -386,8 +388,11 @@ export default function DashboardPage() {
                         </Card>
                     </div>
 
-                    {/* Sidebar - Notifications, Todos */}
+                    {/* Sidebar - Attendance, Notifications, Todos */}
                     <div className="space-y-4">
+                        {/* Attendance Widget */}
+                        <AttendanceWidget />
+
                         {/* Notifications */}
                         <Card className="border-border/50">
                             <CardHeader className="pb-3">

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useAppStore } from '@/stores/appStore';
 import { Users, TrendingUp, FolderKanban, Settings, Dumbbell } from 'lucide-react';
 import { Card } from '@/components/ui/card';
@@ -7,16 +7,19 @@ import { FinanceTab } from '@/components/admin/FinanceTab';
 import { GeneralAffairsTab } from '@/components/admin/GeneralAffairsTab';
 import { AdminSettingsTab } from '@/components/admin/AdminSettingsTab';
 import { WelfareTab } from '@/components/admin/WelfareTab';
+import { MobileAdminPage } from '@/components/admin/MobileAdminPage';
 import { cn } from '@/lib/utils';
 import { useTranslation } from '@/hooks/useTranslation';
+import { useIsMobile } from '@/hooks/useIsMobile';
+import { TranslationKey } from '@/lib/i18n';
 
 type AdminSection = 'hr' | 'finance' | 'ga' | 'welfare' | 'settings';
 
 interface NavigationButton {
   id: AdminSection;
-  labelKey: string;
-  icon: any;
-  descriptionKey: string;
+  labelKey: TranslationKey;
+  icon: React.ComponentType<{ className?: string }>;
+  descriptionKey: TranslationKey;
   color: string;
   bgGradient: string;
   activeRing: string;
@@ -27,7 +30,13 @@ interface NavigationButton {
 
 export default function AdminPage() {
   const { t } = useTranslation();
+  const isMobile = useIsMobile();
   const [activeSection, setActiveSection] = useState<AdminSection>('hr');
+
+  // Render mobile-optimized view on small screens
+  if (isMobile) {
+    return <MobileAdminPage />;
+  }
 
   const navigationButtons: NavigationButton[] = [
     {
@@ -154,10 +163,10 @@ export default function AdminPage() {
                       "font-semibold text-lg mb-1",
                       isActive ? button.activeText : "text-foreground"
                     )}>
-                      {t(button.labelKey as any)}
+                      {t(button.labelKey)}
                     </h3>
                     <p className="text-xs text-muted-foreground leading-relaxed">
-                      {t(button.descriptionKey as any)}
+                      {t(button.descriptionKey)}
                     </p>
                   </div>
                 </div>

@@ -165,7 +165,7 @@ export const updateUserProfile = async (
 
     const { data, error } = await supabase
         .from('profiles')
-        .update(updateData as any)
+        .update(updateData as unknown as Record<string, unknown>)
         .eq('id', userId)
         .select()
         .single();
@@ -188,7 +188,7 @@ export const updateWorkStatus = async (
 
     const { error } = await supabase
         .from('profiles')
-        .update({ work_status: status } as any)
+        .update({ work_status: status } as unknown as Record<string, unknown>)
         .eq('id', userId);
 
     if (error) {
@@ -212,7 +212,7 @@ export const getUserWorkStatus = async (userId: string): Promise<UserWorkStatus>
         throw new Error(handleSupabaseError(error));
     }
 
-    return (data as any)?.work_status as UserWorkStatus;
+    return (data as Record<string, unknown>)?.work_status as UserWorkStatus;
 };
 
 // Subscribe to auth state changes

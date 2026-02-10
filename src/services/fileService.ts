@@ -66,7 +66,7 @@ export const createFileGroup = async (fileGroup: Partial<FileGroup>): Promise<Fi
 
     const { data, error } = await supabase
         .from('file_groups')
-        .insert(insertData as any)
+        .insert(insertData as unknown as Record<string, unknown>)
         .select()
         .single();
 
@@ -115,7 +115,7 @@ export const createFileItem = async (fileItem: Partial<FileItem>): Promise<FileI
 
     const { data, error } = await supabase
         .from('file_items')
-        .insert(insertData as any)
+        .insert(insertData as unknown as Record<string, unknown>)
         .select()
         .single();
 
@@ -195,14 +195,14 @@ export const updateFileItem = async (
         throw new Error('Supabase not configured');
     }
 
-    const updateData: any = {};
+    const updateData: Record<string, unknown> = {};
     if (updates.name !== undefined) updateData.name = updates.name;
     if (updates.isImportant !== undefined) updateData.is_important = updates.isImportant;
     if (updates.comment !== undefined) updateData.comment = updates.comment;
 
     const { data, error } = await supabase
         .from('file_items')
-        .update(updateData as any)
+        .update(updateData as unknown as Record<string, unknown>)
         .eq('id', id)
         .select()
         .single();

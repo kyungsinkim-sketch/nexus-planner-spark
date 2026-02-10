@@ -1,7 +1,7 @@
 export type UserRole = 'ADMIN' | 'MANAGER' | 'MEMBER';
 
 // User work status
-export type UserWorkStatus = 'AT_WORK' | 'NOT_AT_WORK' | 'LUNCH' | 'TRAINING';
+export type UserWorkStatus = 'AT_WORK' | 'NOT_AT_WORK' | 'LUNCH' | 'TRAINING' | 'REMOTE' | 'OVERSEAS' | 'FILMING' | 'FIELD';
 
 export interface User {
   id: string;
@@ -98,6 +98,31 @@ export interface Project {
   feedbackStatus?: FeedbackStatus;
   thumbnail?: string;
   keyColor?: string; // Project key color for calendar display
+  // Completion fields
+  finalVideoUrl?: string; // URL of published final video
+  completedAt?: string; // When the project was marked complete
+  completionApprovedBy?: string; // User ID who submitted completion
+}
+
+// Completion peer review
+export interface CompletionReview {
+  id: string;
+  projectId: string;
+  fromUserId: string;
+  toUserId: string;
+  rating: number; // 1-5
+  comment?: string;
+  createdAt: string;
+}
+
+// Team Load Snapshot for a project
+export interface TeamLoadSnapshot {
+  userId: string;
+  chatMessages: number;
+  fileUploads: number;
+  todosCompleted: number;
+  calendarEvents: number;
+  loadScore: number; // Calculated workload score
 }
 
 export type EventSource = 'PAULUS' | 'GOOGLE';
@@ -117,6 +142,53 @@ export interface CalendarEvent {
   deliverableId?: string; // Link to Deliverable
 }
 
+// Chat message types for rich content sharing
+export type ChatMessageType = 'text' | 'file' | 'location' | 'schedule' | 'decision';
+
+export interface LocationShare {
+  title: string;
+  address: string;
+  url: string; // Google Maps, Naver Map, etc.
+  latitude?: number;
+  longitude?: number;
+  provider: 'google' | 'naver' | 'kakao' | 'other';
+}
+
+export interface ScheduleShare {
+  title: string;
+  startAt: string;
+  endAt: string;
+  location?: string;
+  description?: string;
+  inviteeIds: string[]; // Users invited to this event
+  calendarEventId?: string; // If synced to internal calendar
+}
+
+export interface DecisionOption {
+  id: string;
+  title: string;
+  description?: string;
+  imageUrl?: string;
+  metadata?: Record<string, string>; // e.g. { location: '...', actor: '...', costume: '...' }
+}
+
+export interface DecisionVote {
+  userId: string;
+  optionId: string;
+  reason: string; // Required: must explain why
+  votedAt: string;
+}
+
+export interface DecisionShare {
+  title: string;
+  description?: string;
+  options: DecisionOption[];
+  votes: DecisionVote[];
+  status: 'open' | 'closed';
+  closedAt?: string;
+  selectedOptionId?: string; // Final decision
+}
+
 export interface ChatMessage {
   id: string;
   projectId: string;
@@ -125,6 +197,10 @@ export interface ChatMessage {
   createdAt: string;
   attachmentId?: string; // Reference to uploaded file
   directChatUserId?: string; // For direct messages between users
+  messageType: ChatMessageType;
+  locationData?: LocationShare;
+  scheduleData?: ScheduleShare;
+  decisionData?: DecisionShare;
 }
 
 export interface FileGroup {

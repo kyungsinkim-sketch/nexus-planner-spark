@@ -104,7 +104,7 @@ export function FilesTab({ projectId }: FilesTabProps) {
       const groupFiles = getFilesByGroup(group.id);
       return groupFiles.map((file) => ({ ...file, category: group.category }));
     });
-  }, [fileGroups, files, localFiles]);
+  }, [fileGroups, files, localFiles, getFilesByGroup]);
 
   // Important files
   const importantFiles = useMemo(() => {
@@ -182,6 +182,8 @@ export function FilesTab({ projectId }: FilesTabProps) {
   };
 
   const handleUploadConfirm = (category: FileCategory, isImportant: boolean, comment: string) => {
+    if (!currentUser) return;
+
     const categoryTitles: Record<FileCategory, string> = {
       DECK: 'Presentations',
       FINAL: 'Final Deliverables',
@@ -191,7 +193,7 @@ export function FilesTab({ projectId }: FilesTabProps) {
     };
 
     let fileGroup = fileGroups.find(fg => fg.category === category);
-    
+
     if (!fileGroup) {
       const newGroupId = `fg${Date.now()}`;
       addFileGroup({
@@ -354,10 +356,10 @@ export function FilesTab({ projectId }: FilesTabProps) {
                           </div>
                         </div>
                         <div className="flex items-center gap-1">
-                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleOpenComment(file.id, file.comment)}>
+                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleOpenComment(file.id, file.comment)} aria-label="Add or edit comment">
                             <MessageCircle className="w-4 h-4" />
                           </Button>
-                          <Button variant="ghost" size="icon" className="h-8 w-8">
+                          <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Download file">
                             <Download className="w-4 h-4" />
                           </Button>
                         </div>
@@ -443,6 +445,7 @@ export function FilesTab({ projectId }: FilesTabProps) {
                                     className="h-8 w-8"
                                     onClick={() => handleOpenComment(file.id, file.comment)}
                                     title="Add/Edit Comment"
+                                    aria-label="Add or edit comment"
                                   >
                                     <MessageCircle className={`w-4 h-4 ${file.comment ? 'text-primary' : ''}`} />
                                   </Button>
@@ -451,6 +454,7 @@ export function FilesTab({ projectId }: FilesTabProps) {
                                     size="icon"
                                     className="h-8 w-8"
                                     onClick={() => handleToggleImportant(file.id)}
+                                    aria-label="Toggle important"
                                   >
                                     <Star className={`w-4 h-4 ${file.isImportant ? 'text-amber-500 fill-amber-500' : ''}`} />
                                   </Button>
@@ -458,12 +462,13 @@ export function FilesTab({ projectId }: FilesTabProps) {
                                     variant="ghost"
                                     size="icon"
                                     className="h-8 w-8"
+                                    aria-label="Download file"
                                   >
                                     <Download className="w-4 h-4" />
                                   </Button>
                                   <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
-                                      <Button variant="ghost" size="icon" className="h-8 w-8">
+                                      <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="More actions">
                                         <MoreHorizontal className="w-4 h-4" />
                                       </Button>
                                     </DropdownMenuTrigger>

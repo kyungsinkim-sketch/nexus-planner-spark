@@ -103,7 +103,7 @@ export const createTodo = async (todo: Partial<PersonalTodo>): Promise<PersonalT
 
     const { data, error } = await supabase
         .from('personal_todos')
-        .insert(insertData as any)
+        .insert(insertData as unknown as Record<string, unknown>)
         .select()
         .single();
 
@@ -137,7 +137,7 @@ export const updateTodo = async (
 
     const { data, error } = await supabase
         .from('personal_todos')
-        .update(updateData as any)
+        .update(updateData as unknown as Record<string, unknown>)
         .eq('id', id)
         .select()
         .single();

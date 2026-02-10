@@ -17,6 +17,9 @@ import {
   ArrowLeft,
 } from 'lucide-react';
 import { useTranslation } from '@/hooks/useTranslation';
+import { ChatShareMenu } from '@/components/chat/ChatShareMenu';
+import { ChatMessageBubble } from '@/components/chat/ChatMessageBubble';
+import type { LocationShare, ScheduleShare, DecisionShare, ChatMessage } from '@/types/core';
 
 type ChatType = 'project' | 'direct';
 
@@ -27,7 +30,7 @@ interface SelectedChat {
 
 export default function ChatPage() {
   const { t } = useTranslation();
-  const { projects, users, currentUser, messages, addMessage, getUserById } = useAppStore();
+  const { projects, users, currentUser, messages, sendProjectMessage, sendDirectMessage, getUserById } = useAppStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTab, setSelectedTab] = useState<'projects' | 'direct'>('projects');
   const [selectedChat, setSelectedChat] = useState<SelectedChat | null>(null);
@@ -51,8 +54,9 @@ export default function ChatPage() {
 
   // Filter users (excluding current user)
   const otherUsers = useMemo(() => {
+    if (!currentUser) return users;
     return users.filter(u => u.id !== currentUser.id);
-  }, [users, currentUser.id]);
+  }, [users, currentUser]);
 
   // Filter users by search
   const filteredUsers = useMemo(() => {
@@ -69,13 +73,14 @@ export default function ChatPage() {
       return messages.filter(m => m.projectId === selectedChat.id);
     } else {
       // Direct messages - filter by both users
+      if (!currentUser) return [];
       return messages.filter(m =>
         m.directChatUserId === selectedChat.id ||
         (m.userId === currentUser.id && m.directChatUserId === selectedChat.id) ||
         (m.userId === selectedChat.id && m.directChatUserId === currentUser.id)
       );
     }
-  }, [messages, selectedChat, currentUser.id]);
+  }, [messages, selectedChat, currentUser]);
 
   // Get last message for a project
   const getLastMessage = (projectId: string) => {
@@ -141,18 +146,80 @@ export default function ChatPage() {
   }, [chatMessages]);
 
   const handleSendMessage = () => {
-    if (!newMessage.trim() || !selectedChat) return;
+    if (!newMessage.trim() || !selectedChat || !currentUser) return;
 
-    addMessage({
-      id: `m${Date.now()}`,
-      projectId: selectedChat.type === 'project' ? selectedChat.id : '',
-      userId: currentUser.id,
-      content: newMessage.trim(),
-      createdAt: new Date().toISOString(),
-      directChatUserId: selectedChat.type === 'direct' ? selectedChat.id : undefined,
-    });
+    if (selectedChat.type === 'project') {
+      sendProjectMessage(selectedChat.id, newMessage.trim());
+    } else {
+      sendDirectMessage(selectedChat.id, newMessage.trim());
+    }
 
     setNewMessage('');
+  };
+
+  // Rich content sharing handlers
+  const addRichMessage = (content: string, extra: Partial<ChatMessage>) => {
+    if (!selectedChat || !currentUser) return;
+    const msg: ChatMessage = {
+      id: `msg_${Date.now()}`,
+      projectId: selectedChat.type === 'project' ? selectedChat.id : '',
+      userId: currentUser.id,
+      content,
+      createdAt: new Date().toISOString(),
+      directChatUserId: selectedChat.type === 'direct' ? selectedChat.id : undefined,
+      messageType: 'text',
+      ...extra,
+    };
+    // Add to local store
+    const { addMessage } = useAppStore.getState();
+    addMessage(msg);
+  };
+
+  const handleShareLocation = (data: LocationShare) => {
+    addRichMessage(`📍 ${data.title}`, { messageType: 'location', locationData: data });
+  };
+
+  const handleShareSchedule = (data: ScheduleShare) => {
+    addRichMessage(`📅 ${data.title}`, { messageType: 'schedule', scheduleData: data });
+  };
+
+  const handleShareDecision = (data: DecisionShare) => {
+    addRichMessage(`🗳️ ${data.title}`, { messageType: 'decision', decisionData: data });
+  };
+
+  const handleVoteDecision = (messageId: string, optionId: string, reason: string) => {
+    if (!currentUser) return;
+    const { messages: allMessages } = useAppStore.getState();
+    const msgIndex = allMessages.findIndex(m => m.id === messageId);
+    if (msgIndex === -1 || !allMessages[msgIndex].decisionData) return;
+
+    const updatedMsg = { ...allMessages[msgIndex] };
+    const updatedDecision = { ...updatedMsg.decisionData! };
+    updatedDecision.votes = [
+      ...updatedDecision.votes,
+      { userId: currentUser.id, optionId, reason, votedAt: new Date().toISOString() },
+    ];
+    updatedMsg.decisionData = updatedDecision;
+
+    const updatedMessages = [...allMessages];
+    updatedMessages[msgIndex] = updatedMsg;
+    useAppStore.setState({ messages: updatedMessages });
+  };
+
+  const handleAcceptSchedule = (messageId: string) => {
+    if (!currentUser) return;
+    const msg = messages.find(m => m.id === messageId);
+    if (!msg?.scheduleData) return;
+
+    const { addEvent } = useAppStore.getState();
+    addEvent({
+      title: msg.scheduleData.title,
+      type: 'MEETING',
+      startAt: msg.scheduleData.startAt,
+      endAt: msg.scheduleData.endAt,
+      ownerId: currentUser.id,
+      source: 'PAULUS',
+    });
   };
 
   const handleSelectProjectChat = (projectId: string) => {
@@ -179,6 +246,18 @@ export default function ChatPage() {
       return user ? { name: user.name, subtitle: user.department } : null;
     }
   }, [selectedChat, projects, users]);
+
+  // 채팅방 멤버 ID 목록 (프로젝트 채팅 = teamMemberIds, DM = 상대방+본인)
+  const chatMemberIds = useMemo(() => {
+    if (!selectedChat) return undefined;
+    if (selectedChat.type === 'project') {
+      const project = projects.find(p => p.id === selectedChat.id);
+      return project?.teamMemberIds || undefined;
+    } else {
+      // DM: 상대방 + 본인
+      return currentUser ? [selectedChat.id, currentUser.id] : [selectedChat.id];
+    }
+  }, [selectedChat, projects, currentUser]);
 
   // Group messages by date
   const groupedMessages = useMemo(() => {
@@ -354,6 +433,7 @@ export default function ChatPage() {
                   size="icon"
                   className="lg:hidden shrink-0"
                   onClick={handleBackToList}
+                  aria-label="Back to chat list"
                 >
                   <ArrowLeft className="w-5 h-5" />
                 </Button>
@@ -408,7 +488,7 @@ export default function ChatPage() {
                         <div className="space-y-4">
                           {dateMessages.map((message, index) => {
                             const user = getUserById(message.userId);
-                            const isCurrentUser = message.userId === currentUser.id;
+                            const isCurrentUser = message.userId === currentUser?.id;
                             const showAvatar = index === 0 || dateMessages[index - 1].userId !== message.userId;
 
                             return (
@@ -439,14 +519,12 @@ export default function ChatPage() {
                                       </span>
                                     </div>
                                   )}
-                                  <div
-                                    className={`inline-block rounded-2xl px-4 py-2 text-sm ${isCurrentUser
-                                        ? 'bg-primary text-primary-foreground'
-                                        : 'bg-muted text-foreground'
-                                      }`}
-                                  >
-                                    {message.content}
-                                  </div>
+                                  <ChatMessageBubble
+                                    message={message}
+                                    isCurrentUser={isCurrentUser}
+                                    onVoteDecision={handleVoteDecision}
+                                    onAcceptSchedule={handleAcceptSchedule}
+                                  />
                                 </div>
                               </div>
                             );
@@ -464,7 +542,13 @@ export default function ChatPage() {
               {/* Message Input */}
               <div className="p-4 bg-background">
                 <div className="flex items-center gap-2">
-                  <Button variant="ghost" size="icon" className="shrink-0">
+                  <ChatShareMenu
+                    onShareLocation={handleShareLocation}
+                    onShareSchedule={handleShareSchedule}
+                    onShareDecision={handleShareDecision}
+                    chatMemberIds={chatMemberIds}
+                  />
+                  <Button variant="ghost" size="icon" className="shrink-0" aria-label="Attach file">
                     <Paperclip className="w-5 h-5" />
                   </Button>
                   <Input
@@ -478,6 +562,7 @@ export default function ChatPage() {
                     size="icon"
                     onClick={handleSendMessage}
                     disabled={!newMessage.trim()}
+                    aria-label="Send message"
                   >
                     <Send className="w-4 h-4" />
                   </Button>

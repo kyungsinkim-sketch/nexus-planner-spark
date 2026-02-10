@@ -48,7 +48,7 @@ export function MobileNav() {
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-purple-600 flex items-center justify-center">
               <Sparkles className="w-4 h-4 text-white" />
             </div>
-            <span className="text-lg font-semibold">Paulus.ai</span>
+            <span className="text-lg font-semibold">Re-Be.io</span>
           </div>
 
           <Sheet open={open} onOpenChange={setOpen}>

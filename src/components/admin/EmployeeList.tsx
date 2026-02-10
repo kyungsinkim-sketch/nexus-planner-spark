@@ -181,7 +181,7 @@ export function EmployeeList() {
                       <TableCell>
                         <Select
                           value={emp.status}
-                          onValueChange={(val: any) => handleUpdate(emp.id, 'status', val)}
+                          onValueChange={(val: string) => handleUpdate(emp.id, 'status', val)}
                         >
                           <SelectTrigger className="h-8 w-[80px]">
                             <SelectValue />

@@ -6,12 +6,23 @@ interface ProjectProgressChartProps {
     projects: Project[];
 }
 
+// Calculate time-based progress when project.progress is undefined
+const calculateTimeProgress = (project: Project): number => {
+    if (project.progress !== undefined) return project.progress;
+    const start = new Date(project.startDate).getTime();
+    const end = new Date(project.endDate).getTime();
+    const now = Date.now();
+    if (now < start) return 0;
+    if (now > end) return 100;
+    return Math.round(((now - start) / (end - start)) * 100);
+};
+
 export function ProjectProgressChart({ projects }: ProjectProgressChartProps) {
     const activeProjects = projects.filter(p => p.status === 'ACTIVE');
-    
+
     const data = activeProjects.map(project => ({
         name: project.title.length > 15 ? project.title.substring(0, 15) + '...' : project.title,
-        progress: project.progress,
+        progress: calculateTimeProgress(project),
         keyColor: project.keyColor || '#3B82F6',
     }));
 

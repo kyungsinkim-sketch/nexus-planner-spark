@@ -911,6 +911,7 @@ export const mockMessages: ChatMessage[] = [
     userId: 'u1',
     content: '현대글로비스 브랜드필름 최종본 업로드 완료',
     createdAt: dateFrom(2025, 3, 20),
+    messageType: 'text',
   },
   {
     id: 'm2',
@@ -918,6 +919,7 @@ export const mockMessages: ChatMessage[] = [
     userId: 'u2',
     content: '클라이언트 최종 확인 완료. 수고하셨습니다!',
     createdAt: dateFrom(2025, 3, 25),
+    messageType: 'text',
   },
   {
     id: 'm3',
@@ -925,6 +927,7 @@ export const mockMessages: ChatMessage[] = [
     userId: 'u3',
     content: 'WFP 다큐멘터리 현지 촬영 완료, 후반작업 진행합니다',
     createdAt: dateFrom(2025, 6, 1),
+    messageType: 'text',
   },
   {
     id: 'm4',
@@ -932,6 +935,7 @@ export const mockMessages: ChatMessage[] = [
     userId: 'u3',
     content: '셔클 홍보영상 최종 수정본 전달드립니다',
     createdAt: dateFrom(2025, 9, 10),
+    messageType: 'text',
   },
   {
     id: 'm5',
@@ -939,6 +943,7 @@ export const mockMessages: ChatMessage[] = [
     userId: 'u2',
     content: '네오리빙 홍보영상 촬영 완료',
     createdAt: dateFrom(2025, 8, 8),
+    messageType: 'text',
   },
 ];
 

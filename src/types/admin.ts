@@ -51,7 +51,7 @@ export interface AdminSalaryGrade {
     updated_at?: string;
 }
 
-export interface CreateEmployeeInput extends Omit<AdminEmployee, 'id' | 'created_at' | 'updated_at'> { }
-export interface UpdateEmployeeInput extends Partial<CreateEmployeeInput> { }
+export type CreateEmployeeInput = Omit<AdminEmployee, 'id' | 'created_at' | 'updated_at'>;
+export type UpdateEmployeeInput = Partial<CreateEmployeeInput>;
 
-export interface UpdateSalaryGradeInput extends Partial<AdminSalaryGrade> { }
+export type UpdateSalaryGradeInput = Partial<AdminSalaryGrade>;

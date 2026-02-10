@@ -1,6 +1,5 @@
 import { Outlet } from 'react-router-dom';
-import { Sidebar } from './Sidebar';
-import { MobileBottomNav } from './MobileBottomNav';
+import { Sidebar, EnhancedMobileNav } from './';
 import { useAppStore } from '@/stores/appStore';
 import { cn } from '@/lib/utils';
 
@@ -13,19 +12,22 @@ export function AppLayout() {
       <div className="hidden md:block">
         <Sidebar />
       </div>
-      
+
       {/* Main Content */}
       <main
         className={cn(
           'transition-all duration-300 pb-20 md:pb-0',
+          'pt-14 md:pt-0', // Add top padding for mobile header
           sidebarCollapsed ? 'md:ml-16' : 'md:ml-60'
         )}
       >
-        <Outlet />
+        <div className="p-0">
+          <Outlet />
+        </div>
       </main>
-      
-      {/* Mobile Bottom Navigation */}
-      <MobileBottomNav />
+
+      {/* Mobile Navigation (Header + Bottom Nav) */}
+      <EnhancedMobileNav />
     </div>
   );
 }

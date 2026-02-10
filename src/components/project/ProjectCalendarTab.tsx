@@ -1,3 +1,4 @@
+import React from 'react';
 import { useState, useMemo, useRef } from 'react';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
@@ -19,7 +20,7 @@ interface ProjectCalendarTabProps {
 }
 
 // Event type icons (pictograms) - same as main calendar
-const eventTypeIcons: Record<EventType, any> = {
+const eventTypeIcons: Record<EventType, React.ComponentType<{ className?: string }>> = {
   TASK: CheckSquare,
   DEADLINE: AlertCircle,
   MEETING: Users,
@@ -103,7 +104,7 @@ export function ProjectCalendarTab({ projectId }: ProjectCalendarTabProps) {
     });
   };
 
-  const handleEventClick = (info: any) => {
+  const handleEventClick = (info: { event: { id: string } }) => {
     const eventId = info.event.id;
     const event = projectEvents.find((e) => e.id === eventId);
     if (event) {
@@ -112,7 +113,7 @@ export function ProjectCalendarTab({ projectId }: ProjectCalendarTabProps) {
     }
   };
 
-  const handleEventDrop = (info: any) => {
+  const handleEventDrop = (info: { event: { id: string; title: string; start: Date | null; end: Date | null } }) => {
     const eventId = info.event.id;
     const newStart = info.event.start?.toISOString();
     const newEnd = info.event.end?.toISOString() || newStart;
@@ -129,7 +130,7 @@ export function ProjectCalendarTab({ projectId }: ProjectCalendarTabProps) {
     }
   };
 
-  const handleEventResize = (info: any) => {
+  const handleEventResize = (info: { event: { id: string; title: string; start: Date | null; end: Date | null } }) => {
     const eventId = info.event.id;
     const newStart = info.event.start?.toISOString();
     const newEnd = info.event.end?.toISOString();
@@ -147,12 +148,12 @@ export function ProjectCalendarTab({ projectId }: ProjectCalendarTabProps) {
   };
 
   // Handle double-click on date (month view)
-  const handleDateClick = (info: any) => {
+  const handleDateClick = (_info: { date: Date }) => {
     // Only trigger on double-click-like behavior by using select
   };
 
   // Handle date selection (for creating events)
-  const handleSelect = (info: any) => {
+  const handleSelect = (info: { start: Date; end: Date }) => {
     const startDate = info.start;
     const endDate = info.end;
 
@@ -167,7 +168,7 @@ export function ProjectCalendarTab({ projectId }: ProjectCalendarTabProps) {
   };
 
   // Handle view change to track current view
-  const handleViewChange = (viewInfo: any) => {
+  const handleViewChange = (viewInfo: { view: { type: string } }) => {
     setCurrentView(viewInfo.view.type);
   };
 

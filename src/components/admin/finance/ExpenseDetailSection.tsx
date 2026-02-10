@@ -137,7 +137,7 @@ export function ExpenseDetailSection({ year }: ExpenseDetailSectionProps) {
     .map(p => ({ id: p.id, name: p.title.length > 20 ? p.title.substring(0, 20) + '...' : p.title }));
 
   const filterAndSort = (items: ExpenseItem[]) => {
-    let filtered = items.filter(item => 
+    const filtered = items.filter(item =>
       (filterProject === 'all' || item.projectId === filterProject) &&
       (item.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
        item.projectName.toLowerCase().includes(searchTerm.toLowerCase()) ||

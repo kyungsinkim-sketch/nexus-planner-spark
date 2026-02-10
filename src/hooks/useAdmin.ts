@@ -23,18 +23,18 @@ export const useAdminEmployees = () => {
             queryClient.invalidateQueries({ queryKey: ['adminEmployees'] });
             toast.success('직원이 성공적으로 추가되었습니다.');
         },
-        onError: (error: any) => {
+        onError: (error: Error) => {
             toast.error(`직원 추가 실패: ${error.message}`);
         }
     });
 
     const updateEmployeeMutation = useMutation({
-        mutationFn: ({ id, updates }: { id: string; updates: any }) => updateEmployee(id, updates),
+        mutationFn: ({ id, updates }: { id: string; updates: Record<string, unknown> }) => updateEmployee(id, updates),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['adminEmployees'] });
             toast.success('직원 정보가 수정되었습니다.');
         },
-        onError: (error: any) => {
+        onError: (error: Error) => {
             toast.error(`수정 실패: ${error.message}`);
         }
     });
@@ -45,7 +45,7 @@ export const useAdminEmployees = () => {
             queryClient.invalidateQueries({ queryKey: ['adminEmployees'] });
             toast.success('직원이 삭제되었습니다.');
         },
-        onError: (error: any) => {
+        onError: (error: Error) => {
             toast.error(`삭제 실패: ${error.message}`);
         }
     });
@@ -72,12 +72,12 @@ export const useAdminSalaryGrades = () => {
     });
 
     const updateGradeMutation = useMutation({
-        mutationFn: ({ id, updates }: { id: string; updates: any }) => updateSalaryGrade(id, updates),
+        mutationFn: ({ id, updates }: { id: string; updates: Record<string, unknown> }) => updateSalaryGrade(id, updates),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['adminSalaryGrades'] });
             toast.success('연봉 정보가 수정되었습니다.');
         },
-        onError: (error: any) => {
+        onError: (error: Error) => {
             toast.error(`수정 실패: ${error.message}`);
         }
     });
