@@ -105,7 +105,7 @@ insert into nexus_salary_grades (category, level, class_level, annual_salary, mo
 -- (Note: Only inserting a few representative rows for seed. User can add more via UI)
 
 -- Insert Employees (Sample from EmployeeList.tsx)
-insert into nexus_employees (employee_no, name, status, join_date, department, team, category, position, level, class_level, annual_salary, monthly_salary, contact) values
+insert into nexus_employees (employee_no, name, status, join_date, department, team, category, position, level, class_level, annual_salary, monthly_salary, phone) values
 (1, '김경신', '재직중', '2016-02-17', 'Management', '', 'C-lev', 'Chief Executive Officer', 'D1', '-', 111137280, 9261440, '01093090391'),
 (2, '사판 카디르', '재직중', '2016-07-18', 'Creative Solution', '', 'Leader', 'Creative Director', 'L2', 'A', 70985000, 5915420, '01029910391'),
 (3, '장요한', '재직중', '2018-06-01', 'Production', '', 'Leader', 'Director', 'L1', 'E', 69900000, 5825000, '01067760318'),
