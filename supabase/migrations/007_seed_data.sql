@@ -6,20 +6,72 @@
 -- Version: 2026.02.11
 -- =====================================================
 
+-- pgcrypto 확장 (crypt/gen_salt 사용에 필요)
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
 -- =====================================================
--- 1. PROFILES (5명)
+-- 1. AUTH USERS + PROFILES (5명)
+-- profiles.id는 auth.users(id) FK 참조이므로 auth.users에 먼저 생성
 -- id는 UUID 고정값 사용 (mock u1-u5 매핑)
 -- =====================================================
-INSERT INTO profiles (id, name, avatar, role, department, work_status) VALUES
-    ('00000000-0000-0000-0000-000000000001', '김경신', '', 'ADMIN', 'Management', 'AT_WORK'),
-    ('00000000-0000-0000-0000-000000000002', '장요한', '', 'MANAGER', 'Production', 'AT_WORK'),
-    ('00000000-0000-0000-0000-000000000003', '박민규', '', 'MANAGER', 'Production', 'AT_WORK'),
-    ('00000000-0000-0000-0000-000000000004', '백송희', '', 'MEMBER', 'Production', 'AT_WORK'),
-    ('00000000-0000-0000-0000-000000000005', '홍원준', '', 'MEMBER', 'Production', 'AT_WORK')
-ON CONFLICT (id) DO UPDATE SET
-    name = EXCLUDED.name,
-    role = EXCLUDED.role,
-    department = EXCLUDED.department;
+
+-- auth.users에 시드 유저 생성 (handle_new_user 트리거가 profiles 자동 생성)
+-- 트리거가 생성한 profiles는 이후 UPDATE로 덮어씀
+INSERT INTO auth.users (
+    id, instance_id, aud, role, email, encrypted_password,
+    email_confirmed_at, created_at, updated_at,
+    raw_app_meta_data, raw_user_meta_data, confirmation_token
+) VALUES
+    ('00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated',
+     'kyungsin@paulus.pro', crypt('seed-password-001', gen_salt('bf')),
+     NOW(), NOW(), NOW(),
+     '{"provider":"email","providers":["email"]}'::jsonb, '{"name":"김경신"}'::jsonb, ''),
+    ('00000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated',
+     'yohan@paulus.pro', crypt('seed-password-002', gen_salt('bf')),
+     NOW(), NOW(), NOW(),
+     '{"provider":"email","providers":["email"]}'::jsonb, '{"name":"장요한"}'::jsonb, ''),
+    ('00000000-0000-0000-0000-000000000003', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated',
+     'mingyu@paulus.pro', crypt('seed-password-003', gen_salt('bf')),
+     NOW(), NOW(), NOW(),
+     '{"provider":"email","providers":["email"]}'::jsonb, '{"name":"박민규"}'::jsonb, ''),
+    ('00000000-0000-0000-0000-000000000004', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated',
+     'songhee@paulus.pro', crypt('seed-password-004', gen_salt('bf')),
+     NOW(), NOW(), NOW(),
+     '{"provider":"email","providers":["email"]}'::jsonb, '{"name":"백송희"}'::jsonb, ''),
+    ('00000000-0000-0000-0000-000000000005', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated',
+     'wonjun@paulus.pro', crypt('seed-password-005', gen_salt('bf')),
+     NOW(), NOW(), NOW(),
+     '{"provider":"email","providers":["email"]}'::jsonb, '{"name":"홍원준"}'::jsonb, '')
+ON CONFLICT (id) DO NOTHING;
+
+-- auth.identities도 생성 (이메일 로그인에 필요)
+INSERT INTO auth.identities (
+    id, user_id, provider_id, provider, identity_data, last_sign_in_at, created_at, updated_at
+) VALUES
+    ('00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000001', 'kyungsin@paulus.pro', 'email',
+     '{"sub":"00000000-0000-0000-0000-000000000001","email":"kyungsin@paulus.pro"}'::jsonb, NOW(), NOW(), NOW()),
+    ('00000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000002', 'yohan@paulus.pro', 'email',
+     '{"sub":"00000000-0000-0000-0000-000000000002","email":"yohan@paulus.pro"}'::jsonb, NOW(), NOW(), NOW()),
+    ('00000000-0000-0000-0000-000000000003', '00000000-0000-0000-0000-000000000003', 'mingyu@paulus.pro', 'email',
+     '{"sub":"00000000-0000-0000-0000-000000000003","email":"mingyu@paulus.pro"}'::jsonb, NOW(), NOW(), NOW()),
+    ('00000000-0000-0000-0000-000000000004', '00000000-0000-0000-0000-000000000004', 'songhee@paulus.pro', 'email',
+     '{"sub":"00000000-0000-0000-0000-000000000004","email":"songhee@paulus.pro"}'::jsonb, NOW(), NOW(), NOW()),
+    ('00000000-0000-0000-0000-000000000005', '00000000-0000-0000-0000-000000000005', 'wonjun@paulus.pro', 'email',
+     '{"sub":"00000000-0000-0000-0000-000000000005","email":"wonjun@paulus.pro"}'::jsonb, NOW(), NOW(), NOW())
+ON CONFLICT (id) DO NOTHING;
+
+-- handle_new_user 트리거가 profiles를 자동 생성하지만,
+-- role/department/work_status를 올바르게 설정하기 위해 UPDATE
+UPDATE profiles SET name = '김경신', avatar = '', role = 'ADMIN', department = 'Management', work_status = 'AT_WORK'
+    WHERE id = '00000000-0000-0000-0000-000000000001';
+UPDATE profiles SET name = '장요한', avatar = '', role = 'MANAGER', department = 'Production', work_status = 'AT_WORK'
+    WHERE id = '00000000-0000-0000-0000-000000000002';
+UPDATE profiles SET name = '박민규', avatar = '', role = 'MANAGER', department = 'Production', work_status = 'AT_WORK'
+    WHERE id = '00000000-0000-0000-0000-000000000003';
+UPDATE profiles SET name = '백송희', avatar = '', role = 'MEMBER', department = 'Production', work_status = 'AT_WORK'
+    WHERE id = '00000000-0000-0000-0000-000000000004';
+UPDATE profiles SET name = '홍원준', avatar = '', role = 'MEMBER', department = 'Production', work_status = 'AT_WORK'
+    WHERE id = '00000000-0000-0000-0000-000000000005';
 
 -- =====================================================
 -- 2. PROJECTS (31개)
