@@ -269,17 +269,17 @@ CREATE POLICY "Users can delete own events" ON calendar_events FOR DELETE USING 
 
 -- Personal todos policies
 CREATE POLICY "Users can view todos assigned to them" ON personal_todos FOR SELECT USING (
-    auth.uid() = ANY(assignee_ids) OR requested_by_id = auth.uid()
+    auth.uid()::uuid = ANY(assignee_ids) OR requested_by_id = auth.uid()
 );
 CREATE POLICY "Users can create todos" ON personal_todos FOR INSERT WITH CHECK (true);
 CREATE POLICY "Assignees can update their todos" ON personal_todos FOR UPDATE USING (
-    auth.uid() = ANY(assignee_ids) OR requested_by_id = auth.uid()
+    auth.uid()::uuid = ANY(assignee_ids) OR requested_by_id = auth.uid()
 );
 CREATE POLICY "Creators can delete todos" ON personal_todos FOR DELETE USING (requested_by_id = auth.uid());
 
 -- Chat messages policies
 CREATE POLICY "Users can view project messages" ON chat_messages FOR SELECT USING (
-    project_id IN (SELECT id FROM projects WHERE auth.uid() = ANY(team_member_ids)) OR
+    project_id IN (SELECT id FROM projects WHERE auth.uid()::uuid = ANY(team_member_ids)) OR
     user_id = auth.uid() OR
     direct_chat_user_id = auth.uid()
 );
@@ -287,11 +287,11 @@ CREATE POLICY "Users can send messages" ON chat_messages FOR INSERT WITH CHECK (
 
 -- File policies
 CREATE POLICY "Users can view project files" ON file_groups FOR SELECT USING (
-    project_id IN (SELECT id FROM projects WHERE auth.uid() = ANY(team_member_ids))
+    project_id IN (SELECT id FROM projects WHERE auth.uid()::uuid = ANY(team_member_ids))
 );
 CREATE POLICY "Users can view file items" ON file_items FOR SELECT USING (
     file_group_id IN (SELECT id FROM file_groups WHERE project_id IN (
-        SELECT id FROM projects WHERE auth.uid() = ANY(team_member_ids)
+        SELECT id FROM projects WHERE auth.uid()::uuid = ANY(team_member_ids)
     ))
 );
 CREATE POLICY "Users can upload files" ON file_items FOR INSERT WITH CHECK (uploaded_by = auth.uid());
@@ -358,5 +358,5 @@ CREATE POLICY "Authenticated users can upload files" ON storage.objects FOR INSE
     bucket_id = 'project-files' AND auth.role() = 'authenticated'
 );
 CREATE POLICY "Users can delete own files" ON storage.objects FOR DELETE USING (
-    bucket_id = 'project-files' AND auth.uid()::text = owner
+    bucket_id = 'project-files' AND (auth.uid())::text = (owner::text)
 );

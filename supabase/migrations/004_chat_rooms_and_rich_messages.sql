@@ -80,7 +80,7 @@ CREATE POLICY "Team members can view project chat rooms"
     ON chat_rooms FOR SELECT
     USING (
         project_id IN (
-            SELECT id FROM projects WHERE auth.uid() = ANY(team_member_ids)
+            SELECT id FROM projects WHERE auth.uid()::uuid = ANY(team_member_ids)
         )
     );
 
@@ -89,7 +89,7 @@ CREATE POLICY "Team members can create chat rooms"
     ON chat_rooms FOR INSERT
     WITH CHECK (
         project_id IN (
-            SELECT id FROM projects WHERE auth.uid() = ANY(team_member_ids)
+            SELECT id FROM projects WHERE auth.uid()::uuid = ANY(team_member_ids)
         )
         AND created_by = auth.uid()
     );
@@ -128,7 +128,7 @@ CREATE POLICY "Team members can add room members"
         room_id IN (
             SELECT cr.id FROM chat_rooms cr
             JOIN projects p ON p.id = cr.project_id
-            WHERE auth.uid() = ANY(p.team_member_ids)
+            WHERE auth.uid()::uuid = ANY(p.team_member_ids)
         )
     );
 

@@ -52,7 +52,7 @@ CREATE POLICY "Team members can view completion reviews"
     ON completion_reviews FOR SELECT
     USING (
         project_id IN (
-            SELECT id FROM projects WHERE auth.uid() = ANY(team_member_ids)
+            SELECT id FROM projects WHERE auth.uid()::uuid = ANY(team_member_ids)
         )
     );
 
@@ -62,7 +62,7 @@ CREATE POLICY "Team members can create completion reviews"
     WITH CHECK (
         from_user_id = auth.uid() AND
         project_id IN (
-            SELECT id FROM projects WHERE auth.uid() = ANY(team_member_ids)
+            SELECT id FROM projects WHERE auth.uid()::uuid = ANY(team_member_ids)
         )
     );
 
