@@ -374,7 +374,7 @@ ON CONFLICT (project_id) DO NOTHING;
 INSERT INTO annual_financials (fiscal_year, total_revenue, total_expenses, overhead, payroll, production_cost, quarterly_breakdown, notes) VALUES
 (2025, 4367593508,
  -- total_expenses = overhead + payroll + production_cost
- 1100167210 + 1163474086 + 2064158633,
+ 4327799929,
  1100167210, 1163474086, 2064158633,
  '[
    {"quarter":"Q1","revenue":1091898377,"expenses":831949982},
@@ -385,7 +385,7 @@ INSERT INTO annual_financials (fiscal_year, total_revenue, total_expenses, overh
  '2025 실적 (investment: 615,029,240 별도). net_profit 654,822,819. arkworks expense: 271,850,922'),
 
 (2026, 5022732534,
- 1023033474 + 879080270 + 2136404185,
+ 4038517929,
  1023033474, 879080270, 2136404185,
  '[
    {"quarter":"Q1","revenue":1255683134,"expenses":1009629482},
