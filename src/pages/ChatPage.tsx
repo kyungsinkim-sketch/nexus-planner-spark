@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useEffect } from 'react';
+import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { useAppStore } from '@/stores/appStore';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -8,6 +8,15 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
+import {
   FolderKanban,
   Users,
   Search,
@@ -15,42 +24,56 @@ import {
   Send,
   Paperclip,
   ArrowLeft,
+  Plus,
+  Hash,
+  ChevronRight,
 } from 'lucide-react';
 import { useTranslation } from '@/hooks/useTranslation';
 import { ChatShareMenu } from '@/components/chat/ChatShareMenu';
 import { ChatMessageBubble } from '@/components/chat/ChatMessageBubble';
-import type { LocationShare, ScheduleShare, DecisionShare, ChatMessage } from '@/types/core';
+import type { LocationShare, ScheduleShare, DecisionShare, ChatMessage, ChatRoom } from '@/types/core';
 
 type ChatType = 'project' | 'direct';
 
 interface SelectedChat {
   type: ChatType;
-  id: string;
+  id: string; // projectId or userId
+  roomId?: string; // selected room within project
 }
 
 export default function ChatPage() {
   const { t } = useTranslation();
-  const { projects, users, currentUser, messages, sendProjectMessage, sendDirectMessage, getUserById } = useAppStore();
+  const {
+    projects, users, currentUser, messages, chatRooms,
+    sendProjectMessage, sendDirectMessage, sendRoomMessage,
+    loadChatRooms, createChatRoom, getChatRoomsByProject,
+    getUserById,
+  } = useAppStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTab, setSelectedTab] = useState<'projects' | 'direct'>('projects');
   const [selectedChat, setSelectedChat] = useState<SelectedChat | null>(null);
   const [newMessage, setNewMessage] = useState('');
+  const [expandedProjectId, setExpandedProjectId] = useState<string | null>(null);
+  const [showCreateRoom, setShowCreateRoom] = useState(false);
+  const [newRoomName, setNewRoomName] = useState('');
+  const [newRoomDescription, setNewRoomDescription] = useState('');
+  const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Filter active projects
-  const activeProjects = useMemo(() => {
-    return projects.filter(p => p.status === 'ACTIVE');
+  // Filter all projects (not just active, to show completed ones too)
+  const allProjects = useMemo(() => {
+    return projects;
   }, [projects]);
 
   // Filter projects by search
   const filteredProjects = useMemo(() => {
-    if (!searchQuery) return activeProjects;
+    if (!searchQuery) return allProjects;
     const q = searchQuery.toLowerCase();
-    return activeProjects.filter(p =>
+    return allProjects.filter(p =>
       p.title.toLowerCase().includes(q) ||
       p.client.toLowerCase().includes(q)
     );
-  }, [activeProjects, searchQuery]);
+  }, [allProjects, searchQuery]);
 
   // Filter users (excluding current user)
   const otherUsers = useMemo(() => {
@@ -65,14 +88,25 @@ export default function ChatPage() {
     return otherUsers.filter(u => u.name.toLowerCase().includes(q));
   }, [otherUsers, searchQuery]);
 
+  // Get rooms for expanded project
+  const projectRooms = useMemo(() => {
+    if (!expandedProjectId) return [];
+    return getChatRoomsByProject(expandedProjectId);
+  }, [expandedProjectId, chatRooms, getChatRoomsByProject]);
+
   // Get messages for selected chat
   const chatMessages = useMemo(() => {
     if (!selectedChat) return [];
 
     if (selectedChat.type === 'project') {
+      if (selectedChat.roomId) {
+        // Room-based filtering
+        return messages.filter(m => m.roomId === selectedChat.roomId);
+      }
+      // Fallback: all messages for the project (legacy or default room)
       return messages.filter(m => m.projectId === selectedChat.id);
     } else {
-      // Direct messages - filter by both users
+      // Direct messages
       if (!currentUser) return [];
       return messages.filter(m =>
         m.directChatUserId === selectedChat.id ||
@@ -149,7 +183,11 @@ export default function ChatPage() {
     if (!newMessage.trim() || !selectedChat || !currentUser) return;
 
     if (selectedChat.type === 'project') {
-      sendProjectMessage(selectedChat.id, newMessage.trim());
+      if (selectedChat.roomId) {
+        sendRoomMessage(selectedChat.roomId, selectedChat.id, newMessage.trim());
+      } else {
+        sendProjectMessage(selectedChat.id, newMessage.trim());
+      }
     } else {
       sendDirectMessage(selectedChat.id, newMessage.trim());
     }
@@ -167,10 +205,10 @@ export default function ChatPage() {
       content,
       createdAt: new Date().toISOString(),
       directChatUserId: selectedChat.type === 'direct' ? selectedChat.id : undefined,
+      roomId: selectedChat.roomId,
       messageType: 'text',
       ...extra,
     };
-    // Add to local store
     const { addMessage } = useAppStore.getState();
     addMessage(msg);
   };
@@ -222,10 +260,23 @@ export default function ChatPage() {
     });
   };
 
-  const handleSelectProjectChat = (projectId: string) => {
-    setSelectedChat({ type: 'project', id: projectId });
+  // Project click: expand to show rooms
+  const handleExpandProject = useCallback(async (projectId: string) => {
+    if (expandedProjectId === projectId) {
+      // Toggle collapse
+      setExpandedProjectId(null);
+      return;
+    }
+    setExpandedProjectId(projectId);
+    await loadChatRooms(projectId);
+  }, [expandedProjectId, loadChatRooms]);
+
+  // Room click: select the room for chatting
+  const handleSelectRoom = (projectId: string, room: ChatRoom) => {
+    setSelectedChat({ type: 'project', id: projectId, roomId: room.id });
   };
 
+  // Direct chat selection
   const handleSelectDirectChat = (userId: string) => {
     setSelectedChat({ type: 'direct', id: userId });
   };
@@ -234,27 +285,57 @@ export default function ChatPage() {
     setSelectedChat(null);
   };
 
+  // Create new room
+  const handleCreateRoom = async () => {
+    if (!newRoomName.trim() || !expandedProjectId || !currentUser) return;
+
+    const memberIds = selectedMemberIds.length > 0 ? selectedMemberIds : undefined;
+    await createChatRoom(expandedProjectId, newRoomName.trim(), memberIds || [], newRoomDescription.trim() || undefined);
+
+    setNewRoomName('');
+    setNewRoomDescription('');
+    setSelectedMemberIds([]);
+    setShowCreateRoom(false);
+  };
+
+  // Get project team members for room creation dialog
+  const expandedProjectMembers = useMemo(() => {
+    if (!expandedProjectId) return [];
+    const project = projects.find(p => p.id === expandedProjectId);
+    if (!project?.teamMemberIds) return [];
+    return project.teamMemberIds.map(id => users.find(u => u.id === id)).filter(Boolean);
+  }, [expandedProjectId, projects, users]);
+
   // Get selected chat info
   const selectedChatInfo = useMemo(() => {
     if (!selectedChat) return null;
 
     if (selectedChat.type === 'project') {
       const project = projects.find(p => p.id === selectedChat.id);
-      return project ? { name: project.title, subtitle: project.client, thumbnail: project.thumbnail } : null;
+      if (!project) return null;
+
+      const room = selectedChat.roomId
+        ? chatRooms.find(r => r.id === selectedChat.roomId)
+        : null;
+
+      return {
+        name: room ? `${project.title}` : project.title,
+        subtitle: room ? `# ${room.name}` : project.client,
+        thumbnail: project.thumbnail,
+      };
     } else {
       const user = users.find(u => u.id === selectedChat.id);
       return user ? { name: user.name, subtitle: user.department } : null;
     }
-  }, [selectedChat, projects, users]);
+  }, [selectedChat, projects, users, chatRooms]);
 
-  // 채팅방 멤버 ID 목록 (프로젝트 채팅 = teamMemberIds, DM = 상대방+본인)
+  // Chat member IDs
   const chatMemberIds = useMemo(() => {
     if (!selectedChat) return undefined;
     if (selectedChat.type === 'project') {
       const project = projects.find(p => p.id === selectedChat.id);
       return project?.teamMemberIds || undefined;
     } else {
-      // DM: 상대방 + 본인
       return currentUser ? [selectedChat.id, currentUser.id] : [selectedChat.id];
     }
   }, [selectedChat, projects, currentUser]);
@@ -327,53 +408,75 @@ export default function ChatPage() {
                     {filteredProjects.map((project) => {
                       const lastMessage = getLastMessage(project.id);
                       const messageCount = getMessageCount(project.id);
-                      const isSelected = selectedChat?.type === 'project' && selectedChat?.id === project.id;
+                      const isExpanded = expandedProjectId === project.id;
+                      const rooms = isExpanded ? projectRooms : [];
 
                       return (
-                        <button
-                          key={project.id}
-                          onClick={() => handleSelectProjectChat(project.id)}
-                          className={`w-full flex items-start gap-3 p-4 hover:bg-muted/50 transition-colors group text-left ${isSelected ? 'bg-muted' : ''
-                            }`}
-                        >
-                          <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 overflow-hidden">
-                            {project.thumbnail ? (
-                              <img src={project.thumbnail} alt="" className="w-full h-full object-cover" />
-                            ) : (
-                              <FolderKanban className="w-5 h-5 text-primary" />
-                            )}
-                          </div>
-                          <div className="flex-1 min-w-0 overflow-hidden">
-                            <div className="flex items-center justify-between gap-2">
-                              <h3 className="font-medium text-foreground text-sm line-clamp-2">
-                                {project.title}
-                              </h3>
-                              {lastMessage && (
-                                <span className="text-xs text-muted-foreground shrink-0">
-                                  {formatTime(lastMessage.createdAt)}
-                                </span>
+                        <div key={project.id}>
+                          <button
+                            onClick={() => handleExpandProject(project.id)}
+                            className={`w-full flex items-start gap-3 p-4 hover:bg-muted/50 transition-colors group text-left ${isExpanded ? 'bg-muted/30' : ''}`}
+                          >
+                            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 overflow-hidden">
+                              {project.thumbnail ? (
+                                <img src={project.thumbnail} alt="" className="w-full h-full object-cover" />
+                              ) : (
+                                <FolderKanban className="w-5 h-5 text-primary" />
                               )}
                             </div>
-                            <p className="text-xs text-muted-foreground truncate mt-0.5">
-                              {project.client}
-                            </p>
-                            {lastMessage ? (
-                              <p className="text-xs text-muted-foreground line-clamp-2 mt-1">
-                                {lastMessage.content}
+                            <div className="flex-1 min-w-0 overflow-hidden">
+                              <div className="flex items-center justify-between gap-2">
+                                <h3 className="font-medium text-foreground text-sm line-clamp-2">
+                                  {project.title}
+                                </h3>
+                                <ChevronRight className={`w-4 h-4 text-muted-foreground shrink-0 transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
+                              </div>
+                              <p className="text-xs text-muted-foreground truncate mt-0.5">
+                                {project.client}
                               </p>
-                            ) : (
-                              <p className="text-xs text-muted-foreground/50 italic mt-1">
-                                {t('noMessagesYet')}
-                              </p>
-                            )}
-                          </div>
-                          {messageCount > 0 && (
-                            <div className="flex items-center gap-1 text-xs text-muted-foreground shrink-0">
-                              <MessageSquare className="w-3 h-3" />
-                              {messageCount}
+                              {lastMessage ? (
+                                <p className="text-xs text-muted-foreground line-clamp-1 mt-1">
+                                  {lastMessage.content}
+                                </p>
+                              ) : (
+                                <p className="text-xs text-muted-foreground/50 italic mt-1">
+                                  {t('noMessagesYet')}
+                                </p>
+                              )}
+                            </div>
+                          </button>
+
+                          {/* Chat Rooms Sub-list */}
+                          {isExpanded && (
+                            <div className="bg-muted/20 border-t border-border/50">
+                              {rooms.map((room) => {
+                                const isRoomSelected = selectedChat?.roomId === room.id;
+                                return (
+                                  <button
+                                    key={room.id}
+                                    onClick={() => handleSelectRoom(project.id, room)}
+                                    className={`w-full flex items-center gap-2 px-4 py-2.5 pl-14 hover:bg-muted/50 transition-colors text-left text-sm ${isRoomSelected ? 'bg-primary/10 text-primary' : 'text-muted-foreground'}`}
+                                  >
+                                    <Hash className="w-3.5 h-3.5 shrink-0" />
+                                    <span className="truncate">{room.name}</span>
+                                    {room.isDefault && (
+                                      <span className="text-[10px] bg-muted px-1.5 py-0.5 rounded-full shrink-0">기본</span>
+                                    )}
+                                  </button>
+                                );
+                              })}
+
+                              {/* Create new room button */}
+                              <button
+                                onClick={() => setShowCreateRoom(true)}
+                                className="w-full flex items-center gap-2 px-4 py-2.5 pl-14 hover:bg-muted/50 transition-colors text-left text-sm text-muted-foreground/70"
+                              >
+                                <Plus className="w-3.5 h-3.5" />
+                                <span>새 채팅방</span>
+                              </button>
                             </div>
                           )}
-                        </button>
+                        </div>
                       );
                     })}
                   </div>
@@ -395,8 +498,7 @@ export default function ChatPage() {
                         <button
                           key={user.id}
                           onClick={() => handleSelectDirectChat(user.id)}
-                          className={`w-full flex items-center gap-3 p-4 hover:bg-muted/50 transition-colors group text-left ${isSelected ? 'bg-muted' : ''
-                            }`}
+                          className={`w-full flex items-center gap-3 p-4 hover:bg-muted/50 transition-colors group text-left ${isSelected ? 'bg-muted' : ''}`}
                         >
                           <Avatar className="w-10 h-10">
                             <AvatarFallback className="bg-primary/10 text-primary text-sm">
@@ -582,6 +684,68 @@ export default function ChatPage() {
           )}
         </Card>
       </div>
+
+      {/* Create Room Dialog */}
+      <Dialog open={showCreateRoom} onOpenChange={setShowCreateRoom}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>새 채팅방 만들기</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="roomName">채팅방 이름</Label>
+              <Input
+                id="roomName"
+                value={newRoomName}
+                onChange={(e) => setNewRoomName(e.target.value)}
+                placeholder="예: 촬영 준비, 후반작업"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="roomDesc">설명 (선택)</Label>
+              <Input
+                id="roomDesc"
+                value={newRoomDescription}
+                onChange={(e) => setNewRoomDescription(e.target.value)}
+                placeholder="채팅방 설명..."
+              />
+            </div>
+            {expandedProjectMembers.length > 0 && (
+              <div className="space-y-2">
+                <Label>멤버 선택</Label>
+                <div className="space-y-2 max-h-[200px] overflow-y-auto">
+                  {expandedProjectMembers.map((user) => user && (
+                    <div key={user.id} className="flex items-center gap-2">
+                      <Checkbox
+                        id={`member-${user.id}`}
+                        checked={selectedMemberIds.includes(user.id)}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            setSelectedMemberIds(prev => [...prev, user.id]);
+                          } else {
+                            setSelectedMemberIds(prev => prev.filter(id => id !== user.id));
+                          }
+                        }}
+                      />
+                      <Label htmlFor={`member-${user.id}`} className="text-sm font-normal cursor-pointer">
+                        {user.name} <span className="text-muted-foreground">({user.department})</span>
+                      </Label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowCreateRoom(false)}>
+              취소
+            </Button>
+            <Button onClick={handleCreateRoom} disabled={!newRoomName.trim()}>
+              만들기
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

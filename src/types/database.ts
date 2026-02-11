@@ -17,7 +17,7 @@ export interface Database {
                     avatar: string | null
                     role: 'ADMIN' | 'MANAGER' | 'MEMBER'
                     department: string | null
-                    work_status: 'AT_WORK' | 'NOT_AT_WORK' | 'LUNCH' | 'TRAINING'
+                    work_status: 'AT_WORK' | 'NOT_AT_WORK' | 'LUNCH' | 'TRAINING' | 'REMOTE' | 'OVERSEAS' | 'FILMING' | 'FIELD'
                     created_at: string
                     updated_at: string
                 }
@@ -27,7 +27,7 @@ export interface Database {
                     avatar?: string | null
                     role?: 'ADMIN' | 'MANAGER' | 'MEMBER'
                     department?: string | null
-                    work_status?: 'AT_WORK' | 'NOT_AT_WORK' | 'LUNCH' | 'TRAINING'
+                    work_status?: 'AT_WORK' | 'NOT_AT_WORK' | 'LUNCH' | 'TRAINING' | 'REMOTE' | 'OVERSEAS' | 'FILMING' | 'FIELD'
                     created_at?: string
                     updated_at?: string
                 }
@@ -37,7 +37,7 @@ export interface Database {
                     avatar?: string | null
                     role?: 'ADMIN' | 'MANAGER' | 'MEMBER'
                     department?: string | null
-                    work_status?: 'AT_WORK' | 'NOT_AT_WORK' | 'LUNCH' | 'TRAINING'
+                    work_status?: 'AT_WORK' | 'NOT_AT_WORK' | 'LUNCH' | 'TRAINING' | 'REMOTE' | 'OVERSEAS' | 'FILMING' | 'FIELD'
                     created_at?: string
                     updated_at?: string
                 }
@@ -68,6 +68,9 @@ export interface Database {
                     feedback_status: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | null
                     thumbnail: string | null
                     key_color: string | null
+                    final_video_url: string | null
+                    completed_at: string | null
+                    completion_approved_by: string | null
                     created_at: string
                     updated_at: string
                 }
@@ -96,6 +99,9 @@ export interface Database {
                     feedback_status?: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | null
                     thumbnail?: string | null
                     key_color?: string | null
+                    final_video_url?: string | null
+                    completed_at?: string | null
+                    completion_approved_by?: string | null
                     created_at?: string
                     updated_at?: string
                 }
@@ -124,6 +130,9 @@ export interface Database {
                     feedback_status?: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | null
                     thumbnail?: string | null
                     key_color?: string | null
+                    final_video_url?: string | null
+                    completed_at?: string | null
+                    completion_approved_by?: string | null
                     created_at?: string
                     updated_at?: string
                 }
@@ -212,6 +221,11 @@ export interface Database {
                     content: string
                     attachment_id: string | null
                     direct_chat_user_id: string | null
+                    room_id: string | null
+                    message_type: 'text' | 'file' | 'location' | 'schedule' | 'decision'
+                    location_data: Json | null
+                    schedule_data: Json | null
+                    decision_data: Json | null
                     created_at: string
                 }
                 Insert: {
@@ -221,6 +235,11 @@ export interface Database {
                     content: string
                     attachment_id?: string | null
                     direct_chat_user_id?: string | null
+                    room_id?: string | null
+                    message_type?: 'text' | 'file' | 'location' | 'schedule' | 'decision'
+                    location_data?: Json | null
+                    schedule_data?: Json | null
+                    decision_data?: Json | null
                     created_at?: string
                 }
                 Update: {
@@ -230,6 +249,11 @@ export interface Database {
                     content?: string
                     attachment_id?: string | null
                     direct_chat_user_id?: string | null
+                    room_id?: string | null
+                    message_type?: 'text' | 'file' | 'location' | 'schedule' | 'decision'
+                    location_data?: Json | null
+                    schedule_data?: Json | null
+                    decision_data?: Json | null
                     created_at?: string
                 }
             }
@@ -579,6 +603,166 @@ export interface Database {
                     class_level?: string
                     annual_salary?: number
                     monthly_salary?: number
+                    created_at?: string
+                    updated_at?: string
+                }
+            }
+            chat_rooms: {
+                Row: {
+                    id: string
+                    project_id: string
+                    name: string
+                    description: string | null
+                    is_default: boolean
+                    created_by: string | null
+                    created_at: string
+                    updated_at: string
+                }
+                Insert: {
+                    id?: string
+                    project_id: string
+                    name: string
+                    description?: string | null
+                    is_default?: boolean
+                    created_by?: string | null
+                    created_at?: string
+                    updated_at?: string
+                }
+                Update: {
+                    id?: string
+                    project_id?: string
+                    name?: string
+                    description?: string | null
+                    is_default?: boolean
+                    created_by?: string | null
+                    created_at?: string
+                    updated_at?: string
+                }
+            }
+            chat_room_members: {
+                Row: {
+                    room_id: string
+                    user_id: string
+                    joined_at: string
+                }
+                Insert: {
+                    room_id: string
+                    user_id: string
+                    joined_at?: string
+                }
+                Update: {
+                    room_id?: string
+                    user_id?: string
+                    joined_at?: string
+                }
+            }
+            completion_reviews: {
+                Row: {
+                    id: string
+                    project_id: string
+                    from_user_id: string
+                    to_user_id: string
+                    rating: number
+                    comment: string | null
+                    created_at: string
+                }
+                Insert: {
+                    id?: string
+                    project_id: string
+                    from_user_id: string
+                    to_user_id: string
+                    rating: number
+                    comment?: string | null
+                    created_at?: string
+                }
+                Update: {
+                    id?: string
+                    project_id?: string
+                    from_user_id?: string
+                    to_user_id?: string
+                    rating?: number
+                    comment?: string | null
+                    created_at?: string
+                }
+            }
+            project_financials: {
+                Row: {
+                    id: string
+                    project_id: string
+                    contract_amount: number
+                    expenses: number
+                    profit: number
+                    profit_rate: number
+                    vat_amount: number
+                    net_revenue: number
+                    payment_status: 'UNPAID' | 'PARTIAL' | 'PAID' | 'OVERDUE'
+                    payment_date: string | null
+                    notes: string | null
+                    created_at: string
+                    updated_at: string
+                }
+                Insert: {
+                    id?: string
+                    project_id: string
+                    contract_amount: number
+                    expenses?: number
+                    payment_status?: 'UNPAID' | 'PARTIAL' | 'PAID' | 'OVERDUE'
+                    payment_date?: string | null
+                    notes?: string | null
+                    created_at?: string
+                    updated_at?: string
+                }
+                Update: {
+                    id?: string
+                    project_id?: string
+                    contract_amount?: number
+                    expenses?: number
+                    payment_status?: 'UNPAID' | 'PARTIAL' | 'PAID' | 'OVERDUE'
+                    payment_date?: string | null
+                    notes?: string | null
+                    created_at?: string
+                    updated_at?: string
+                }
+            }
+            annual_financials: {
+                Row: {
+                    id: string
+                    fiscal_year: number
+                    total_revenue: number
+                    total_expenses: number
+                    overhead: number
+                    payroll: number
+                    production_cost: number
+                    net_profit: number
+                    profit_rate: number
+                    quarterly_breakdown: Json | null
+                    notes: string | null
+                    created_at: string
+                    updated_at: string
+                }
+                Insert: {
+                    id?: string
+                    fiscal_year: number
+                    total_revenue: number
+                    total_expenses: number
+                    overhead?: number
+                    payroll?: number
+                    production_cost?: number
+                    quarterly_breakdown?: Json | null
+                    notes?: string | null
+                    created_at?: string
+                    updated_at?: string
+                }
+                Update: {
+                    id?: string
+                    fiscal_year?: number
+                    total_revenue?: number
+                    total_expenses?: number
+                    overhead?: number
+                    payroll?: number
+                    production_cost?: number
+                    quarterly_breakdown?: Json | null
+                    notes?: string | null
                     created_at?: string
                     updated_at?: string
                 }

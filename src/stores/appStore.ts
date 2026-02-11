@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { User, Project, CalendarEvent, ChatMessage, FileGroup, FileItem, PerformanceSnapshot, PortfolioItem, PeerFeedback, ProjectContribution, ScoreSettings, UserWorkStatus, PersonalTodo } from '@/types/core';
+import { User, Project, CalendarEvent, ChatMessage, ChatRoom, ChatMessageType, LocationShare, ScheduleShare, DecisionShare, FileGroup, FileItem, PerformanceSnapshot, PortfolioItem, PeerFeedback, ProjectContribution, ScoreSettings, UserWorkStatus, PersonalTodo } from '@/types/core';
 import { mockUsers, mockProjects, mockEvents, mockMessages, mockFileGroups, mockFiles, mockPerformanceSnapshots, mockPortfolioItems, mockPeerFeedback, mockProjectContributions, mockPersonalTodos, currentUser } from '@/mock/data';
 import { Language } from '@/lib/i18n';
 import { isSupabaseConfigured } from '@/lib/supabase';
@@ -22,6 +22,7 @@ interface AppState {
   projects: Project[];
   events: CalendarEvent[];
   messages: ChatMessage[];
+  chatRooms: ChatRoom[];
   fileGroups: FileGroup[];
   files: FileItem[];
   performanceSnapshots: PerformanceSnapshot[];
@@ -81,6 +82,16 @@ interface AppState {
   sendProjectMessage: (projectId: string, content: string) => Promise<void>;
   sendDirectMessage: (toUserId: string, content: string) => Promise<void>;
 
+  // Chat Room Actions
+  loadChatRooms: (projectId: string) => Promise<void>;
+  createChatRoom: (projectId: string, name: string, memberIds: string[], description?: string) => Promise<ChatRoom | null>;
+  sendRoomMessage: (roomId: string, projectId: string, content: string, options?: {
+    messageType?: ChatMessageType;
+    locationData?: LocationShare;
+    scheduleData?: ScheduleShare;
+    decisionData?: DecisionShare;
+  }) => Promise<void>;
+
   // File Actions
   addFileGroup: (fileGroup: FileGroup) => void;
   addFile: (file: FileItem) => void;
@@ -101,6 +112,8 @@ interface AppState {
   getProjectById: (id: string) => Project | undefined;
   getEventsByProject: (projectId: string) => CalendarEvent[];
   getMessagesByProject: (projectId: string) => ChatMessage[];
+  getMessagesByRoom: (roomId: string) => ChatMessage[];
+  getChatRoomsByProject: (projectId: string) => ChatRoom[];
   getFileGroupsByProject: (projectId: string) => FileGroup[];
   getFilesByGroup: (groupId: string) => FileItem[];
   getUserById: (id: string) => User | undefined;
@@ -121,6 +134,7 @@ export const useAppStore = create<AppState>()(
       projects: mockProjects,
       events: mockEvents,
       messages: mockMessages,
+      chatRooms: [],
       fileGroups: mockFileGroups,
       files: mockFiles,
       performanceSnapshots: mockPerformanceSnapshots,
@@ -489,6 +503,7 @@ export const useAppStore = create<AppState>()(
             userId: currentUser.id,
             content,
             createdAt: new Date().toISOString(),
+            messageType: 'text',
           };
           set((state) => ({ messages: [...state.messages, message] }));
         }
@@ -515,6 +530,99 @@ export const useAppStore = create<AppState>()(
             content,
             createdAt: new Date().toISOString(),
             directChatUserId: toUserId,
+            messageType: 'text',
+          };
+          set((state) => ({ messages: [...state.messages, message] }));
+        }
+      },
+
+      // Chat Room Actions
+      loadChatRooms: async (projectId) => {
+        if (isSupabaseConfigured()) {
+          try {
+            const rooms = await chatService.getRoomsByProject(projectId);
+            set((state) => {
+              const otherRooms = state.chatRooms.filter(r => r.projectId !== projectId);
+              return { chatRooms: [...otherRooms, ...rooms] };
+            });
+          } catch (error) {
+            console.error('Failed to load chat rooms:', error);
+          }
+        } else {
+          // Mock mode: create a default room for the project if none exists
+          set((state) => {
+            const existing = state.chatRooms.filter(r => r.projectId === projectId);
+            if (existing.length === 0) {
+              const defaultRoom: ChatRoom = {
+                id: `room-default-${projectId}`,
+                projectId,
+                name: '전체',
+                isDefault: true,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+              };
+              return { chatRooms: [...state.chatRooms, defaultRoom] };
+            }
+            return state;
+          });
+        }
+      },
+
+      createChatRoom: async (projectId, name, memberIds, description) => {
+        const { currentUser } = get();
+        if (!currentUser) return null;
+
+        if (isSupabaseConfigured()) {
+          try {
+            const room = await chatService.createRoom(projectId, name, currentUser.id, description, memberIds);
+            set((state) => ({ chatRooms: [...state.chatRooms, room] }));
+            return room;
+          } catch (error) {
+            console.error('Failed to create chat room:', error);
+            return null;
+          }
+        } else {
+          // Mock mode
+          const room: ChatRoom = {
+            id: `room-${Date.now()}`,
+            projectId,
+            name,
+            description,
+            isDefault: false,
+            createdBy: currentUser.id,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          };
+          set((state) => ({ chatRooms: [...state.chatRooms, room] }));
+          return room;
+        }
+      },
+
+      sendRoomMessage: async (roomId, projectId, content, options) => {
+        const { currentUser } = get();
+        if (!currentUser) return;
+
+        if (isSupabaseConfigured()) {
+          try {
+            const message = await chatService.sendRoomMessage(roomId, projectId, currentUser.id, content, options);
+            set((state) => ({ messages: [...state.messages, message] }));
+          } catch (error) {
+            console.error('Failed to send room message:', error);
+            throw error;
+          }
+        } else {
+          // Mock mode
+          const message: ChatMessage = {
+            id: `m${Date.now()}`,
+            projectId,
+            userId: currentUser.id,
+            content,
+            createdAt: new Date().toISOString(),
+            roomId,
+            messageType: options?.messageType || 'text',
+            locationData: options?.locationData,
+            scheduleData: options?.scheduleData,
+            decisionData: options?.decisionData,
           };
           set((state) => ({ messages: [...state.messages, message] }));
         }
@@ -705,6 +813,8 @@ export const useAppStore = create<AppState>()(
       getProjectById: (id) => get().projects.find((p) => p.id === id),
       getEventsByProject: (projectId) => get().events.filter((e) => e.projectId === projectId),
       getMessagesByProject: (projectId) => get().messages.filter((m) => m.projectId === projectId),
+      getMessagesByRoom: (roomId) => get().messages.filter((m) => m.roomId === roomId),
+      getChatRoomsByProject: (projectId) => get().chatRooms.filter((r) => r.projectId === projectId),
       getFileGroupsByProject: (projectId) => get().fileGroups.filter((fg) => fg.projectId === projectId),
       getFilesByGroup: (groupId) => get().files.filter((f) => f.fileGroupId === groupId),
       getUserById: (id) => get().users.find((u) => u.id === id),

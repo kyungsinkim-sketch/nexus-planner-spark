@@ -189,6 +189,23 @@ export interface DecisionShare {
   selectedOptionId?: string; // Final decision
 }
 
+export interface ChatRoom {
+  id: string;
+  projectId: string;
+  name: string;
+  description?: string;
+  isDefault: boolean;
+  createdBy?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ChatRoomMember {
+  roomId: string;
+  userId: string;
+  joinedAt: string;
+}
+
 export interface ChatMessage {
   id: string;
   projectId: string;
@@ -197,6 +214,7 @@ export interface ChatMessage {
   createdAt: string;
   attachmentId?: string; // Reference to uploaded file
   directChatUserId?: string; // For direct messages between users
+  roomId?: string; // Chat room reference
   messageType: ChatMessageType;
   locationData?: LocationShare;
   scheduleData?: ScheduleShare;
