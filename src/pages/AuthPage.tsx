@@ -9,15 +9,8 @@ import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
 import { Loader2, Sparkles, ExternalLink } from 'lucide-react';
 
-// Mock users for demo login
-const DEMO_USERS = [
-  { email: 'kyungshin@paulus.pro', name: '김경신', role: 'ADMIN' },
-  { email: 'yohan@paulus.pro', name: '장요한', role: 'MANAGER' },
-  { email: 'mingyu@paulus.pro', name: '박민규', role: 'MANAGER' },
-];
-
 export function AuthPage() {
-  const { signIn, signUp, isLoading, users } = useAppStore();
+  const { signIn, signUp, isLoading } = useAppStore();
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -37,23 +30,6 @@ export function AuthPage() {
       navigate('/', { replace: true });
     } catch (error: unknown) {
       toast.error(error instanceof Error ? error.message : '로그인에 실패했습니다');
-    }
-  };
-
-  const handleArkLogin = () => {
-    // Ark.Cards SSO — 현재는 mock 모드로 첫번째 유저(ADMIN)로 로그인
-    const demo = DEMO_USERS[0];
-    const user = users.find(u => u.name === demo.name);
-
-    if (user) {
-      useAppStore.setState({
-        currentUser: user,
-        isAuthenticated: true,
-      });
-      toast.success(`${user.name}님 환영합니다!`);
-      navigate('/', { replace: true });
-    } else {
-      toast.error('로그인에 실패했습니다. 잠시 후 다시 시도해주세요.');
     }
   };
 
@@ -94,13 +70,13 @@ export function AuthPage() {
         <CardContent className="space-y-4">
           {!isSignUp ? (
             <>
-              {/* Ark.Cards SSO Login */}
+              {/* Ark.Cards SSO Login — 준비중 */}
               <Button
                 className="w-full gap-2 h-12 text-base font-semibold"
-                onClick={handleArkLogin}
+                disabled
               >
                 <ExternalLink className="w-5 h-5" />
-                Ark.Cards로 로그인
+                Ark.Cards로 로그인 (준비중)
               </Button>
 
               <div className="relative">
