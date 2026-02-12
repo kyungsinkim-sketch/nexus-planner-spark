@@ -1,10 +1,10 @@
-import { useState } from 'react';
-import { 
-  Bell, 
-  CheckCircle2, 
-  Clock, 
-  MessageSquare, 
-  FileText, 
+import { useState, useEffect } from 'react';
+import {
+  Bell,
+  CheckCircle2,
+  Clock,
+  MessageSquare,
+  FileText,
   Calendar,
   AlertCircle,
   MoreHorizontal,
@@ -26,6 +26,7 @@ import {
 import { cn } from '@/lib/utils';
 import { Link } from 'react-router-dom';
 import { useTranslation } from '@/hooks/useTranslation';
+import * as notificationService from '@/services/notificationService';
 
 type NotificationType = 'task' | 'message' | 'file' | 'deadline' | 'mention' | 'feedback';
 
@@ -45,72 +46,7 @@ interface Notification {
 }
 
 // Mock notifications data
-const mockNotifications: Notification[] = [
-  {
-    id: '1',
-    type: 'task',
-    title: 'Task assigned to you',
-    description: 'Create wireframes for landing page',
-    projectId: 'proj-1',
-    projectName: 'Brand Campaign 2024',
-    fromUser: { name: 'Sarah Kim' },
-    createdAt: '2024-01-15T10:30:00Z',
-    isRead: false,
-  },
-  {
-    id: '2',
-    type: 'deadline',
-    title: 'Deadline approaching',
-    description: 'Deck Submission is due tomorrow',
-    projectId: 'proj-2',
-    projectName: 'Tech Corp Pitch',
-    createdAt: '2024-01-15T09:00:00Z',
-    isRead: false,
-  },
-  {
-    id: '3',
-    type: 'message',
-    title: 'New message in project chat',
-    description: 'Mike: "Can we schedule a review meeting?"',
-    projectId: 'proj-1',
-    projectName: 'Brand Campaign 2024',
-    fromUser: { name: 'Mike Johnson' },
-    createdAt: '2024-01-15T08:45:00Z',
-    isRead: false,
-  },
-  {
-    id: '4',
-    type: 'feedback',
-    title: 'Peer feedback requested',
-    description: 'Please provide feedback for completed project',
-    projectId: 'proj-3',
-    projectName: 'Annual Report Design',
-    createdAt: '2024-01-14T16:00:00Z',
-    isRead: true,
-  },
-  {
-    id: '5',
-    type: 'file',
-    title: 'New file uploaded',
-    description: 'final_presentation_v2.pdf was added to Files',
-    projectId: 'proj-1',
-    projectName: 'Brand Campaign 2024',
-    fromUser: { name: 'Emily Chen' },
-    createdAt: '2024-01-14T14:30:00Z',
-    isRead: true,
-  },
-  {
-    id: '6',
-    type: 'mention',
-    title: 'You were mentioned',
-    description: '@you Please review the latest mockups',
-    projectId: 'proj-2',
-    projectName: 'Tech Corp Pitch',
-    fromUser: { name: 'Alex Park' },
-    createdAt: '2024-01-14T11:00:00Z',
-    isRead: true,
-  },
-];
+// Mock notifications removed in favor of real data
 
 const getNotificationIcon = (type: NotificationType) => {
   switch (type) {
@@ -147,8 +83,25 @@ const formatRelativeTime = (dateString: string) => {
 
 export default function InboxPage() {
   const { t } = useTranslation();
-  const [notifications, setNotifications] = useState<Notification[]>(mockNotifications);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('all');
+
+  useEffect(() => {
+    loadNotifications();
+  }, []);
+
+  const loadNotifications = async () => {
+    try {
+      setIsLoading(true);
+      const data = await notificationService.getNotifications();
+      setNotifications(data);
+    } catch (error) {
+      console.error('Failed to load notifications:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const unreadCount = notifications.filter(n => !n.isRead).length;
 
@@ -158,18 +111,33 @@ export default function InboxPage() {
     return n.type === activeTab;
   });
 
-  const markAsRead = (id: string) => {
-    setNotifications(prev =>
-      prev.map(n => (n.id === id ? { ...n, isRead: true } : n))
-    );
+  const markAsRead = async (id: string) => {
+    try {
+      await notificationService.markAsRead(id);
+      setNotifications(prev =>
+        prev.map(n => (n.id === id ? { ...n, isRead: true } : n))
+      );
+    } catch (error) {
+      console.error('Failed to mark as read:', error);
+    }
   };
 
-  const markAllAsRead = () => {
-    setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+  const markAllAsRead = async () => {
+    try {
+      await notificationService.markAllAsRead();
+      setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+    } catch (error) {
+      console.error('Failed to mark all as read:', error);
+    }
   };
 
-  const deleteNotification = (id: string) => {
-    setNotifications(prev => prev.filter(n => n.id !== id));
+  const deleteNotification = async (id: string) => {
+    try {
+      await notificationService.deleteNotification(id);
+      setNotifications(prev => prev.filter(n => n.id !== id));
+    } catch (error) {
+      console.error('Failed to delete notification:', error);
+    }
   };
 
   return (

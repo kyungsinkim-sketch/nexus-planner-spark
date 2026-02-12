@@ -57,7 +57,7 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
 }
 
 const App = () => {
-  const { initializeAuth, isLoading, theme } = useAppStore();
+  const { initializeAuth, isInitializing, theme } = useAppStore();
 
   useEffect(() => {
     if (isSupabaseConfigured()) {
@@ -74,7 +74,7 @@ const App = () => {
     }
   }, [theme]);
 
-  if (isLoading && isSupabaseConfigured()) {
+  if (isInitializing && isSupabaseConfigured()) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center space-y-4">
@@ -97,32 +97,32 @@ const App = () => {
             </div>
           }>
             <ErrorBoundary>
-            <Routes>
-              {/* Auth Route */}
-              <Route path="/auth" element={<AuthPage />} />
+              <Routes>
+                {/* Auth Route */}
+                <Route path="/auth" element={<AuthPage />} />
 
-              {/* Protected Routes */}
-              <Route
-                element={
-                  <ProtectedRoute>
-                    <AppLayout />
-                  </ProtectedRoute>
-                }
-              >
-                <Route path="/" element={<DashboardPage />} />
-                <Route path="/calendar" element={<CalendarPage />} />
-                <Route path="/projects" element={<ProjectsPage />} />
-                <Route path="/projects/:projectId" element={<ProjectDetailPage />} />
-                <Route path="/projects/:projectId/deposits" element={<DepositStatusPage />} />
-                <Route path="/chat" element={<ChatPage />} />
-                <Route path="/inbox" element={<InboxPage />} />
-                <Route path="/admin" element={<AdminRoute><AdminPage /></AdminRoute>} />
-                <Route path="/profile" element={<ProfilePage />} />
-                <Route path="/settings" element={<SettingsPage />} />
-              </Route>
+                {/* Protected Routes */}
+                <Route
+                  element={
+                    <ProtectedRoute>
+                      <AppLayout />
+                    </ProtectedRoute>
+                  }
+                >
+                  <Route path="/" element={<DashboardPage />} />
+                  <Route path="/calendar" element={<CalendarPage />} />
+                  <Route path="/projects" element={<ProjectsPage />} />
+                  <Route path="/projects/:projectId" element={<ProjectDetailPage />} />
+                  <Route path="/projects/:projectId/deposits" element={<DepositStatusPage />} />
+                  <Route path="/chat" element={<ChatPage />} />
+                  <Route path="/inbox" element={<InboxPage />} />
+                  <Route path="/admin" element={<AdminRoute><AdminPage /></AdminRoute>} />
+                  <Route path="/profile" element={<ProfilePage />} />
+                  <Route path="/settings" element={<SettingsPage />} />
+                </Route>
 
-              <Route path="*" element={<NotFound />} />
-            </Routes>
+                <Route path="*" element={<NotFound />} />
+              </Routes>
             </ErrorBoundary>
           </Suspense>
         </TooltipProvider>

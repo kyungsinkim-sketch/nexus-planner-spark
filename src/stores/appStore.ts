@@ -16,6 +16,7 @@ interface AppState {
   currentUser: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  isInitializing: boolean;
 
   // Data
   users: User[];
@@ -130,6 +131,7 @@ export const useAppStore = create<AppState>()(
       currentUser: null,
       isAuthenticated: false,
       isLoading: false,
+      isInitializing: true,
       users: mockUsers,
       projects: mockProjects,
       events: mockEvents,
@@ -211,10 +213,11 @@ export const useAppStore = create<AppState>()(
 
       initializeAuth: async () => {
         if (!isSupabaseConfigured()) {
+          set({ isInitializing: false });
           return;
         }
 
-        set({ isLoading: true });
+        set({ isInitializing: true });
         try {
           const user = await authService.getCurrentUser();
           if (user) {
@@ -224,7 +227,7 @@ export const useAppStore = create<AppState>()(
             await get().loadUsers();
           }
         } finally {
-          set({ isLoading: false });
+          set({ isInitializing: false });
         }
       },
 

@@ -32,7 +32,7 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { User, UserRole } from '@/types/core';
-import { Shield, UserPlus, Trash2, Edit, Sparkles, Bell, Save } from 'lucide-react';
+import { Shield, UserPlus, Trash2, Edit, Sparkles, Bell, Save, Database } from 'lucide-react';
 import { toast } from 'sonner';
 import { useTranslation } from '@/hooks/useTranslation';
 
@@ -194,7 +194,7 @@ export function AdminSettingsTab() {
 
     return (
         <Tabs value={selectedTab} onValueChange={setSelectedTab} className="space-y-4">
-            <TabsList className="grid w-full grid-cols-3">
+            <TabsList className="grid w-full grid-cols-2 lg:grid-cols-4 h-auto">
                 <TabsTrigger value="users" className="gap-2">
                     <Shield className="w-4 h-4" />
                     {t('userPermissions')}
@@ -206,6 +206,10 @@ export function AdminSettingsTab() {
                 <TabsTrigger value="notifications" className="gap-2">
                     <Bell className="w-4 h-4" />
                     {t('sendNotification')}
+                </TabsTrigger>
+                <TabsTrigger value="system" className="gap-2">
+                    <Database className="w-4 h-4" />
+                    System Data
                 </TabsTrigger>
             </TabsList>
 
@@ -594,6 +598,52 @@ export function AdminSettingsTab() {
                                 </div>
                             </div>
                         )}
+                    </CardContent>
+                </Card>
+            </TabsContent>
+
+            {/* System Tab */}
+            <TabsContent value="system" className="space-y-4">
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Data Management</CardTitle>
+                        <CardDescription>
+                            Manage system data and restoration.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <div className="p-4 border rounded-lg bg-yellow-500/10 border-yellow-500/20">
+                            <h4 className="font-semibold text-yellow-700 dark:text-yellow-400 mb-2">Seed Mock Data</h4>
+                            <p className="text-sm text-muted-foreground mb-4">
+                                This will populate the database with the initial mock data (Projects, Events, etc.).
+                                Use this if the dashboard is empty after deployment.
+                                <br />
+                                <strong>Warning:</strong> This may duplicate data if run multiple times.
+                            </p>
+                            <Button
+                                onClick={async () => {
+                                    if (!confirm('Are you sure you want to seed the database? This might create duplicate data.')) return;
+
+                                    toast.info('Seeding database...');
+                                    try {
+                                        const { seedDatabase } = await import('@/services/seedService');
+                                        const result = await seedDatabase();
+                                        if (result.success) {
+                                            toast.success(result.message);
+                                            window.location.reload();
+                                        } else {
+                                            toast.error('Seeding failed: ' + JSON.stringify(result.error));
+                                        }
+                                    } catch (e: any) {
+                                        toast.error('Error: ' + e.message);
+                                    }
+                                }}
+                                className="bg-yellow-600 hover:bg-yellow-700 text-white"
+                            >
+                                <Database className="w-4 h-4 mr-2" />
+                                Seed Database
+                            </Button>
+                        </div>
                     </CardContent>
                 </Card>
             </TabsContent>
