@@ -50,7 +50,7 @@ const teams: Record<string, string[]> = {
 export function OrganizationChart() {
   const { t } = useTranslation();
   const { employees, isLoading, addEmployee, updateEmployee, deleteEmployee } = useAdminEmployees();
-  
+
   const [members, setMembers] = useState<OrgMember[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isAdding, setIsAdding] = useState(false);
@@ -212,74 +212,74 @@ export function OrganizationChart() {
       </div>
 
       {isAdding && (
-         <Card className="mb-6 p-4 border-2 border-primary/20 bg-primary/5">
-           <div className="grid grid-cols-2 md:grid-cols-5 gap-4 items-end">
-             <div className="space-y-2">
-               <label className="text-xs font-medium">Name</label>
-               <Input 
-                 placeholder="Name" 
-                 value={tempMember.name || ''} 
-                 onChange={e => setTempMember({...tempMember, name: e.target.value})}
-               />
-             </div>
-             <div className="space-y-2">
-               <label className="text-xs font-medium">Position</label>
-               <Input 
-                 placeholder="e.g. Director" 
-                 value={tempMember.position || ''} 
-                 onChange={e => setTempMember({...tempMember, position: e.target.value})}
-               />
-             </div>
-              <div className="space-y-2">
-               <label className="text-xs font-medium">Title/Level</label>
-               <Input 
-                 placeholder="e.g. L1" 
-                 value={tempMember.title || ''} 
-                 onChange={e => setTempMember({...tempMember, title: e.target.value})}
-               />
-             </div>
-             <div className="space-y-2">
-               <label className="text-xs font-medium">Department</label>
-               <Select 
-                 value={tempMember.department} 
-                 onValueChange={val => setTempMember({...tempMember, department: val})}
-               >
-                 <SelectTrigger>
-                   <SelectValue placeholder="Select Dept" />
-                 </SelectTrigger>
-                 <SelectContent>
-                   {departments.map(d => (
-                     <SelectItem key={d} value={d}>{d}</SelectItem>
-                   ))}
-                 </SelectContent>
-               </Select>
-             </div>
-             <div className="space-y-2">
-               <label className="text-xs font-medium">Team</label>
-               <Select 
-                 value={tempMember.team} 
-                 onValueChange={val => setTempMember({...tempMember, team: val})}
-               >
-                 <SelectTrigger>
-                   <SelectValue placeholder="Select Team" />
-                 </SelectTrigger>
-                 <SelectContent>
-                    {(tempMember.department && teams[tempMember.department]) ? (
-                        teams[tempMember.department].map(t => (
-                            <SelectItem key={t} value={t}>{t}</SelectItem>
-                        ))
-                    ) : (
-                        <SelectItem value="General">General</SelectItem>
-                    )}
-                 </SelectContent>
-               </Select>
-             </div>
-           </div>
-           <div className="flex justify-end gap-2 mt-4">
-             <Button variant="ghost" size="sm" onClick={() => setIsAdding(false)}>Cancel</Button>
-             <Button size="sm" onClick={handleAdd}>Save Member</Button>
-           </div>
-         </Card>
+        <Card className="mb-6 p-4 border-2 border-primary/20 bg-primary/5">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4 items-end">
+            <div className="space-y-2">
+              <label className="text-xs font-medium">Name</label>
+              <Input
+                placeholder="Name"
+                value={tempMember.name || ''}
+                onChange={e => setTempMember({ ...tempMember, name: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs font-medium">Position</label>
+              <Input
+                placeholder="e.g. Director"
+                value={tempMember.position || ''}
+                onChange={e => setTempMember({ ...tempMember, position: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs font-medium">Title/Level</label>
+              <Input
+                placeholder="e.g. L1"
+                value={tempMember.title || ''}
+                onChange={e => setTempMember({ ...tempMember, title: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs font-medium">Department</label>
+              <Select
+                value={tempMember.department}
+                onValueChange={val => setTempMember({ ...tempMember, department: val })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select Dept" />
+                </SelectTrigger>
+                <SelectContent>
+                  {departments.map(d => (
+                    <SelectItem key={d} value={d}>{d}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs font-medium">Team</label>
+              <Select
+                value={tempMember.team}
+                onValueChange={val => setTempMember({ ...tempMember, team: val })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select Team" />
+                </SelectTrigger>
+                <SelectContent>
+                  {(tempMember.department && teams[tempMember.department]) ? (
+                    teams[tempMember.department].map(t => (
+                      <SelectItem key={t} value={t}>{t}</SelectItem>
+                    ))
+                  ) : (
+                    <SelectItem value="General">General</SelectItem>
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div className="flex justify-end gap-2 mt-4">
+            <Button variant="ghost" size="sm" onClick={() => setIsAdding(false)}>Cancel</Button>
+            <Button size="sm" onClick={handleAdd}>Save Member</Button>
+          </div>
+        </Card>
       )}
 
       <div className="space-y-8">
@@ -303,43 +303,43 @@ export function OrganizationChart() {
                     <TableRow className="hover:bg-transparent">
                       <TableHead className="w-[40px]"></TableHead>
                       <TableHead className="w-[150px]">{t('name')}</TableHead>
-                      <TableHead>{t('position')}</TableHead>
-                      <TableHead>{t('grade')}</TableHead>
-                      <TableHead>Team</TableHead>
+                      <TableHead className="w-[200px]">{t('position')}</TableHead>
+                      <TableHead className="w-[100px]">{t('grade')}</TableHead>
+                      <TableHead className="w-[200px]">Team</TableHead>
                       <TableHead className="w-[80px]"></TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {allTeams.map(team => {
                       const teamMembers = deptMembers[team] || [];
-                      
+
                       // Skip rendering empty teams unless it's a drag target
                       if (teamMembers.length === 0 && dragOverDept !== `${dept}-${team}`) return null;
-                      
+
                       const isDropTarget = dragOverDept === `${dept}-${team}`;
 
                       return (
                         <React.Fragment key={team}>
-                           {(team !== 'General' && (teamMembers.length > 0 || isDropTarget)) && (
+                          {(team !== 'General' && (teamMembers.length > 0 || isDropTarget)) && (
                             <TableRow className="bg-muted/10">
                               <TableCell colSpan={6} className="py-2 text-xs font-bold text-muted-foreground pl-4">
                                 {team}
                               </TableCell>
                             </TableRow>
                           )}
-                          
+
                           {/* Drop Zone for empty teams */}
                           {teamMembers.length === 0 && isDropTarget && (
-                             <TableRow 
-                               className="bg-blue-50/50 border-dashed border-2 border-blue-200"
-                               onDragOver={(e) => handleDragOver(e, dept, team)}
-                               onDragLeave={handleDragLeave}
-                               onDrop={(e) => handleDrop(e, dept, team)}
-                             >
-                                <TableCell colSpan={6} className="text-center py-4 text-blue-500">
-                                   Drop here to move to {team}
-                                </TableCell>
-                             </TableRow>
+                            <TableRow
+                              className="bg-blue-50/50 border-dashed border-2 border-blue-200"
+                              onDragOver={(e) => handleDragOver(e, dept, team)}
+                              onDragLeave={handleDragLeave}
+                              onDrop={(e) => handleDrop(e, dept, team)}
+                            >
+                              <TableCell colSpan={6} className="text-center py-4 text-blue-500">
+                                Drop here to move to {team}
+                              </TableCell>
+                            </TableRow>
                           )}
 
                           {teamMembers.map(member => (
@@ -347,29 +347,29 @@ export function OrganizationChart() {
                               <TableRow key={member.id} className="bg-blue-50/50">
                                 <TableCell><GripVertical className="w-4 h-4 text-muted-foreground" /></TableCell>
                                 <TableCell>
-                                  <Input 
-                                    value={member.name} 
+                                  <Input
+                                    value={member.name}
                                     onChange={(e) => setMembers(prev => prev.map(m => m.id === member.id ? { ...m, name: e.target.value } : m))}
                                     className="h-8"
                                   />
                                 </TableCell>
                                 <TableCell>
-                                  <Input 
-                                    value={member.position} 
+                                  <Input
+                                    value={member.position}
                                     onChange={(e) => setMembers(prev => prev.map(m => m.id === member.id ? { ...m, position: e.target.value } : m))}
                                     className="h-8"
                                   />
                                 </TableCell>
                                 <TableCell>
-                                  <Input 
-                                    value={member.title} 
+                                  <Input
+                                    value={member.title}
                                     onChange={(e) => setMembers(prev => prev.map(m => m.id === member.id ? { ...m, title: e.target.value } : m))}
                                     className="h-8"
                                   />
                                 </TableCell>
                                 <TableCell>
-                                  <Select 
-                                    value={member.team || 'General'} 
+                                  <Select
+                                    value={member.team || 'General'}
                                     onValueChange={(val) => setMembers(prev => prev.map(m => m.id === member.id ? { ...m, team: val === 'General' ? '' : val } : m))}
                                   >
                                     <SelectTrigger className="h-8">
@@ -377,7 +377,7 @@ export function OrganizationChart() {
                                     </SelectTrigger>
                                     <SelectContent>
                                       {allTeams.map(t => (
-                                          <SelectItem key={t} value={t}>{t}</SelectItem>
+                                        <SelectItem key={t} value={t}>{t}</SelectItem>
                                       ))}
                                     </SelectContent>
                                   </Select>
@@ -394,7 +394,7 @@ export function OrganizationChart() {
                                 </TableCell>
                               </TableRow>
                             ) : (
-                              <TableRow 
+                              <TableRow
                                 key={member.id}
                                 draggable
                                 onDragStart={(e) => handleDragStart(e, member)}
