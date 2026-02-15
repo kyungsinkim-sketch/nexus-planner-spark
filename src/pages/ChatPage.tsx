@@ -344,9 +344,10 @@ export default function ChatPage() {
 
   // File upload handler for chat
   const handleFileUploadConfirm = async (category: FileCategory, isImportant: boolean, comment: string, file?: File) => {
-    if (!currentUser || !selectedChat || selectedChat.type !== 'project') return;
+    if (!currentUser || !selectedChat) return;
 
-    const projectId = selectedChat.id;
+    // For DM: use a shared "direct-messages" project bucket or skip file group
+    const projectId = selectedChat.type === 'project' ? selectedChat.id : 'direct-messages';
     const categoryTitles: Record<FileCategory, string> = {
       DECK: 'Presentations',
       FINAL: 'Final Deliverables',
@@ -392,7 +393,9 @@ export default function ChatPage() {
         addFile(fileItem);
 
         // Send chat message about the file
-        if (selectedChat.roomId) {
+        if (selectedChat.type === 'direct') {
+          await sendDirectMessage(selectedChat.id, `📎 Uploaded file: ${file.name}`, fileItem.id);
+        } else if (selectedChat.roomId) {
           await sendRoomMessage(selectedChat.roomId, projectId, `📎 Uploaded file: ${file.name}`, {
             messageType: 'file',
             attachmentId: fileItem.id,
@@ -445,7 +448,7 @@ export default function ChatPage() {
     }
   };
 
-  // Project click: expand to show rooms
+  // Project click: expand rooms AND auto-select default room
   const handleExpandProject = useCallback(async (projectId: string) => {
     if (expandedProjectId === projectId) {
       // Toggle collapse
@@ -454,7 +457,14 @@ export default function ChatPage() {
     }
     setExpandedProjectId(projectId);
     await loadChatRooms(projectId);
-  }, [expandedProjectId, loadChatRooms]);
+
+    // Auto-select default room so user enters chat immediately
+    const rooms = getChatRoomsByProject(projectId);
+    const defaultRoom = rooms.find(r => r.isDefault) || rooms[0];
+    if (defaultRoom) {
+      setSelectedChat({ type: 'project', id: projectId, roomId: defaultRoom.id });
+    }
+  }, [expandedProjectId, loadChatRooms, getChatRoomsByProject]);
 
   // Room click: select the room for chatting
   const handleSelectRoom = (projectId: string, room: ChatRoom) => {
@@ -867,13 +877,7 @@ export default function ChatPage() {
                     size="icon"
                     className="shrink-0"
                     aria-label="Attach file"
-                    onClick={() => {
-                      if (selectedChat?.type === 'project') {
-                        setShowFileUpload(true);
-                      } else {
-                        toast.info('파일 업로드는 프로젝트 채팅에서만 가능합니다');
-                      }
-                    }}
+                    onClick={() => setShowFileUpload(true)}
                   >
                     <Paperclip className="w-5 h-5" />
                   </Button>
@@ -915,11 +919,11 @@ export default function ChatPage() {
       </div>
 
       {/* File Upload Modal */}
-      {selectedChat?.type === 'project' && (
+      {selectedChat && (
         <FileUploadModal
           open={showFileUpload}
           onClose={() => setShowFileUpload(false)}
-          projectId={selectedChat.id}
+          projectId={selectedChat.type === 'project' ? selectedChat.id : 'direct-messages'}
           onUpload={handleFileUploadConfirm}
         />
       )}

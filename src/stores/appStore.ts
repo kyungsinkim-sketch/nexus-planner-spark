@@ -82,7 +82,7 @@ interface AppState {
   addMessage: (message: ChatMessage) => void;
   deleteMessage: (messageId: string) => Promise<void>;
   sendProjectMessage: (projectId: string, content: string, attachmentId?: string) => Promise<void>;
-  sendDirectMessage: (toUserId: string, content: string) => Promise<void>;
+  sendDirectMessage: (toUserId: string, content: string, attachmentId?: string) => Promise<void>;
 
   // Chat Room Actions
   loadChatRooms: (projectId: string) => Promise<void>;
@@ -582,13 +582,13 @@ export const useAppStore = create<AppState>()(
         }
       },
 
-      sendDirectMessage: async (toUserId, content) => {
+      sendDirectMessage: async (toUserId, content, attachmentId?) => {
         const { currentUser } = get();
         if (!currentUser) return;
 
         if (isSupabaseConfigured()) {
           try {
-            const message = await chatService.sendDirectMessage(currentUser.id, toUserId, content);
+            const message = await chatService.sendDirectMessage(currentUser.id, toUserId, content, attachmentId);
             set((state) => ({ messages: [...state.messages, message] }));
           } catch (error) {
             console.error('Failed to send direct message:', error);
@@ -603,7 +603,8 @@ export const useAppStore = create<AppState>()(
             content,
             createdAt: new Date().toISOString(),
             directChatUserId: toUserId,
-            messageType: 'text',
+            attachmentId,
+            messageType: attachmentId ? 'file' : 'text',
           };
           set((state) => ({ messages: [...state.messages, message] }));
         }
