@@ -346,8 +346,8 @@ export default function ChatPage() {
   const handleFileUploadConfirm = async (category: FileCategory, isImportant: boolean, comment: string, file?: File) => {
     if (!currentUser || !selectedChat) return;
 
-    // For DM: use a shared "direct-messages" project bucket or skip file group
-    const projectId = selectedChat.type === 'project' ? selectedChat.id : 'direct-messages';
+    const isDM = selectedChat.type === 'direct';
+    const projectId = isDM ? '' : selectedChat.id;
     const categoryTitles: Record<FileCategory, string> = {
       DECK: 'Presentations',
       FINAL: 'Final Deliverables',
@@ -357,69 +357,100 @@ export default function ChatPage() {
     };
 
     try {
-      const fileGroups = getFileGroupsByProject(projectId);
-      let fileGroup = fileGroups.find(fg => fg.category === category);
       const fileName = file?.name || `Document_${Date.now().toString().slice(-6)}.pdf`;
 
       if (isSupabaseConfigured() && file) {
-        if (!fileGroup) {
-          fileGroup = await fileService.createFileGroup({
-            projectId,
-            category,
-            title: categoryTitles[category],
-          });
-          addFileGroup(fileGroup);
-        }
-
-        const { path: storagePath } = await fileService.uploadFile(file, projectId, currentUser.id);
+        // Upload file to storage (use 'dm-files' path for DMs)
+        const storageBucket = isDM ? 'dm-files' : projectId;
+        const { path: storagePath } = await fileService.uploadFile(file, storageBucket, currentUser.id);
 
         const fileExt = file.name.split('.').pop() || '';
         const fileSize = file.size < 1024 * 1024
           ? `${(file.size / 1024).toFixed(1)} KB`
           : `${(file.size / (1024 * 1024)).toFixed(1)} MB`;
 
-        const fileItem = await fileService.createFileItem({
-          fileGroupId: fileGroup.id,
-          name: file.name,
-          uploadedBy: currentUser.id,
-          size: fileSize,
-          type: fileExt,
-          isImportant,
-          source: 'CHAT',
-          comment,
-          storagePath,
-        });
+        let fileItemId: string;
 
-        addFile(fileItem);
+        if (isDM) {
+          // DM: create file_item without file_group (direct insert)
+          const { data, error } = await (await import('@/lib/supabase')).supabase
+            .from('file_items')
+            .insert({
+              name: file.name,
+              uploaded_by: currentUser.id,
+              size: fileSize,
+              type: fileExt,
+              is_important: isImportant,
+              source: 'CHAT',
+              comment: comment || null,
+              storage_path: storagePath,
+            })
+            .select()
+            .single();
+
+          if (error) throw new Error(error.message);
+          fileItemId = data.id;
+
+          addFile({
+            id: data.id,
+            fileGroupId: '',
+            name: file.name,
+            uploadedBy: currentUser.id,
+            createdAt: data.created_at,
+            size: fileSize,
+            type: fileExt,
+            isImportant,
+            source: 'CHAT',
+            comment,
+            storagePath,
+          });
+        } else {
+          // Project chat: use file_group as before
+          const fileGroups = getFileGroupsByProject(projectId);
+          let fileGroup = fileGroups.find(fg => fg.category === category);
+
+          if (!fileGroup) {
+            fileGroup = await fileService.createFileGroup({
+              projectId,
+              category,
+              title: categoryTitles[category],
+            });
+            addFileGroup(fileGroup);
+          }
+
+          const fileItem = await fileService.createFileItem({
+            fileGroupId: fileGroup.id,
+            name: file.name,
+            uploadedBy: currentUser.id,
+            size: fileSize,
+            type: fileExt,
+            isImportant,
+            source: 'CHAT',
+            comment,
+            storagePath,
+          });
+
+          addFile(fileItem);
+          fileItemId = fileItem.id;
+        }
 
         // Send chat message about the file
-        if (selectedChat.type === 'direct') {
-          await sendDirectMessage(selectedChat.id, `📎 Uploaded file: ${file.name}`, fileItem.id);
+        if (isDM) {
+          await sendDirectMessage(selectedChat.id, `📎 Uploaded file: ${file.name}`, fileItemId);
         } else if (selectedChat.roomId) {
           await sendRoomMessage(selectedChat.roomId, projectId, `📎 Uploaded file: ${file.name}`, {
             messageType: 'file',
-            attachmentId: fileItem.id,
+            attachmentId: fileItemId,
           });
         } else {
-          await sendProjectMessage(projectId, `📎 Uploaded file: ${file.name}`, fileItem.id);
+          await sendProjectMessage(projectId, `📎 Uploaded file: ${file.name}`, fileItemId);
         }
       } else {
         // Mock mode
-        if (!fileGroup) {
-          const newGroupId = `fg${Date.now()}`;
-          addFileGroup({
-            id: newGroupId,
-            projectId,
-            category,
-            title: categoryTitles[category],
-          });
-          fileGroup = { id: newGroupId, projectId, category, title: categoryTitles[category] };
-        }
-
         const newFileId = `f${Date.now()}`;
         addFile({
           id: newFileId,
-          fileGroupId: fileGroup.id,
+          fileGroupId: '',
           name: fileName,
           uploadedBy: currentUser.id,
           createdAt: new Date().toISOString(),
@@ -438,6 +469,7 @@ export default function ChatPage() {
           createdAt: new Date().toISOString(),
           attachmentId: newFileId,
           messageType: 'file',
+          directChatUserId: isDM ? selectedChat.id : undefined,
         });
       }
 
