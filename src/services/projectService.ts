@@ -168,14 +168,17 @@ export const updateProject = async (
         .from('projects')
         .update(updateData)
         .eq('id', id)
-        .select()
-        .single();
+        .select();
 
     if (error) {
         throw new Error(handleSupabaseError(error));
     }
 
-    return transformProject(data);
+    if (!data || data.length === 0) {
+        throw new Error('Project not found or you do not have permission to update it');
+    }
+
+    return transformProject(data[0]);
 };
 
 // Delete project
