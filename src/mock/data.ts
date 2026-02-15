@@ -14,11 +14,11 @@ const dateFrom = (year: number, month: number, day: number = 1) => {
 };
 
 export const mockUsers: User[] = [
-  { id: 'u1', name: '김경신', avatar: '', role: 'ADMIN', department: 'Management' },
-  { id: 'u2', name: '장요한', avatar: '', role: 'MANAGER', department: 'Production' },
-  { id: 'u3', name: '박민규', avatar: '', role: 'MANAGER', department: 'Production' },
-  { id: 'u4', name: '백송희', avatar: '', role: 'MEMBER', department: 'Production' },
-  { id: 'u5', name: '홍원준', avatar: '', role: 'MEMBER', department: 'Production' },
+  { id: 'u1', name: '김경신', email: 'kyungsin.kim@paulus.pro', avatar: '', role: 'ADMIN', department: 'Management' },
+  { id: 'u2', name: '장요한', email: 'john.jang@paulus.pro', avatar: '', role: 'MANAGER', department: 'Production' },
+  { id: 'u3', name: '박민규', email: 'minkyu.park@paulus.pro', avatar: '', role: 'MANAGER', department: 'Production' },
+  { id: 'u4', name: '백송희', email: 'songhee.baek@paulus.pro', avatar: '', role: 'MEMBER', department: 'Production' },
+  { id: 'u5', name: '홍원준', email: 'wonjun.hong@paulus.pro', avatar: '', role: 'MEMBER', department: 'Production' },
 ];
 
 export const mockProjects: Project[] = [

@@ -76,6 +76,9 @@ export const signIn = async (email: string, password: string): Promise<User> => 
         throw new Error('User profile not found');
     }
 
+    if (data.user.email) {
+        profile.email = data.user.email;
+    }
     return profile;
 };
 
@@ -104,7 +107,11 @@ export const getCurrentUser = async (): Promise<User | null> => {
         return null;
     }
 
-    return await getUserProfile(user.id);
+    const profile = await getUserProfile(user.id);
+    if (profile && user.email) {
+        profile.email = user.email;
+    }
+    return profile;
 };
 
 // Get user profile
@@ -228,6 +235,9 @@ export const onAuthStateChange = (
         async (event, session) => {
             if (session?.user) {
                 const profile = await getUserProfile(session.user.id);
+                if (profile && session.user.email) {
+                    profile.email = session.user.email;
+                }
                 callback(profile);
             } else {
                 callback(null);

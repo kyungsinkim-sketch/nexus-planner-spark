@@ -50,8 +50,10 @@ export default function ProfilePage() {
           .from('project-files')
           .getPublicUrl(fileName);
 
-        await authService.updateUserProfile(currentUser.id, { avatar: publicUrl });
-        setCurrentUser({ ...currentUser, avatar: publicUrl });
+        // Add cache-busting timestamp to force browser to load fresh image
+        const avatarUrl = `${publicUrl}?t=${Date.now()}`;
+        await authService.updateUserProfile(currentUser.id, { avatar: avatarUrl });
+        setCurrentUser({ ...currentUser, avatar: avatarUrl });
         toast.success('Profile photo updated');
       } else {
         // Mock mode: use object URL
@@ -135,7 +137,7 @@ export default function ProfilePage() {
               {currentUser.role}
             </Badge>
             <p className="text-sm text-muted-foreground mt-2">
-              hello@re-be.io
+              {currentUser.email || ''}
             </p>
           </div>
 

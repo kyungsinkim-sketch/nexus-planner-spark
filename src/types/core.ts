@@ -6,6 +6,7 @@ export type UserWorkStatus = 'AT_WORK' | 'NOT_AT_WORK' | 'LUNCH' | 'TRAINING' | 
 export interface User {
   id: string;
   name: string;
+  email?: string;
   avatar?: string;
   role: UserRole;
   department?: string;
