@@ -19,10 +19,11 @@ interface ProjectChatTabProps {
 }
 
 export function ProjectChatTab({ projectId }: ProjectChatTabProps) {
-  const { getMessagesByProject, getUserById, currentUser, addMessage, sendProjectMessage, loadChatRooms, getChatRoomsByProject, sendRoomMessage, addFile, addFileGroup, getFileGroupsByProject } = useAppStore();
-  const messages = getMessagesByProject(projectId);
+  const { getMessagesByProject, getMessagesByRoom, getUserById, currentUser, addMessage, sendProjectMessage, loadChatRooms, getChatRoomsByProject, sendRoomMessage, addFile, addFileGroup, getFileGroupsByProject } = useAppStore();
   const chatRooms = getChatRoomsByProject(projectId);
   const defaultRoom = chatRooms.find(r => r.isDefault);
+  // Show only default room messages (matching ChatPage behavior), fallback to all project messages
+  const messages = defaultRoom ? getMessagesByRoom(defaultRoom.id) : getMessagesByProject(projectId);
   const [newMessage, setNewMessage] = useState('');
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [pendingFileName, setPendingFileName] = useState('');
