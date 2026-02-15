@@ -100,49 +100,40 @@ CREATE POLICY "Team members can create chat rooms"
     );
 
 -- =====================================================
--- 8. EXPAND file_groups policies (ensure these exist)
+-- 8. file_groups policies (DROP + CREATE for reliability)
 -- =====================================================
-DO $$ BEGIN
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'file_groups' AND policyname = 'Team members can create file groups') THEN
-        CREATE POLICY "Team members can create file groups" ON file_groups
-            FOR INSERT WITH CHECK (
-                project_id IN (
-                    SELECT id FROM projects
-                    WHERE auth.uid() = pm_id
-                       OR auth.uid()::uuid = ANY(team_member_ids)
-                       OR EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'ADMIN')
-                )
-            );
-    END IF;
-END $$;
+DROP POLICY IF EXISTS "Team members can create file groups" ON file_groups;
+CREATE POLICY "Team members can create file groups" ON file_groups
+    FOR INSERT WITH CHECK (
+        project_id IN (
+            SELECT id FROM projects
+            WHERE auth.uid() = pm_id
+               OR auth.uid()::uuid = ANY(team_member_ids)
+               OR EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'ADMIN')
+        )
+    );
 
-DO $$ BEGIN
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'file_groups' AND policyname = 'Team members can update file groups') THEN
-        CREATE POLICY "Team members can update file groups" ON file_groups
-            FOR UPDATE USING (
-                project_id IN (
-                    SELECT id FROM projects
-                    WHERE auth.uid() = pm_id
-                       OR auth.uid()::uuid = ANY(team_member_ids)
-                       OR EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'ADMIN')
-                )
-            );
-    END IF;
-END $$;
+DROP POLICY IF EXISTS "Team members can update file groups" ON file_groups;
+CREATE POLICY "Team members can update file groups" ON file_groups
+    FOR UPDATE USING (
+        project_id IN (
+            SELECT id FROM projects
+            WHERE auth.uid() = pm_id
+               OR auth.uid()::uuid = ANY(team_member_ids)
+               OR EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'ADMIN')
+        )
+    );
 
-DO $$ BEGIN
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'file_groups' AND policyname = 'Team members can delete file groups') THEN
-        CREATE POLICY "Team members can delete file groups" ON file_groups
-            FOR DELETE USING (
-                project_id IN (
-                    SELECT id FROM projects
-                    WHERE auth.uid() = pm_id
-                       OR auth.uid()::uuid = ANY(team_member_ids)
-                       OR EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'ADMIN')
-                )
-            );
-    END IF;
-END $$;
+DROP POLICY IF EXISTS "Team members can delete file groups" ON file_groups;
+CREATE POLICY "Team members can delete file groups" ON file_groups
+    FOR DELETE USING (
+        project_id IN (
+            SELECT id FROM projects
+            WHERE auth.uid() = pm_id
+               OR auth.uid()::uuid = ANY(team_member_ids)
+               OR EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'ADMIN')
+        )
+    );
 
 -- =====================================================
 -- 9. FIX calendar_events UPDATE policy

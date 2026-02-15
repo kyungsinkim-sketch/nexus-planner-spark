@@ -72,15 +72,25 @@ export default function ChatPage() {
     return projects;
   }, [projects]);
 
-  // Filter projects by search
+  // Filter projects by search, sorted by most recent message
   const filteredProjects = useMemo(() => {
-    if (!searchQuery) return allProjects;
-    const q = searchQuery.toLowerCase();
-    return allProjects.filter(p =>
-      p.title.toLowerCase().includes(q) ||
-      p.client.toLowerCase().includes(q)
-    );
-  }, [allProjects, searchQuery]);
+    let filtered = allProjects;
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      filtered = filtered.filter(p =>
+        p.title.toLowerCase().includes(q) ||
+        p.client.toLowerCase().includes(q)
+      );
+    }
+    // Sort by most recent message timestamp (desc), projects with no messages at bottom
+    return [...filtered].sort((a, b) => {
+      const aMsg = messages.filter(m => m.projectId === a.id && !m.directChatUserId);
+      const bMsg = messages.filter(m => m.projectId === b.id && !m.directChatUserId);
+      const aLast = aMsg.length > 0 ? new Date(aMsg[aMsg.length - 1].createdAt).getTime() : 0;
+      const bLast = bMsg.length > 0 ? new Date(bMsg[bMsg.length - 1].createdAt).getTime() : 0;
+      return bLast - aLast;
+    });
+  }, [allProjects, searchQuery, messages]);
 
   // Filter users (excluding current user)
   const otherUsers = useMemo(() => {
@@ -88,12 +98,29 @@ export default function ChatPage() {
     return users.filter(u => u.id !== currentUser.id);
   }, [users, currentUser]);
 
-  // Filter users by search
+  // Filter users by search, sorted by most recent DM
   const filteredUsers = useMemo(() => {
-    if (!searchQuery) return otherUsers;
-    const q = searchQuery.toLowerCase();
-    return otherUsers.filter(u => u.name.toLowerCase().includes(q));
-  }, [otherUsers, searchQuery]);
+    let filtered = otherUsers;
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      filtered = filtered.filter(u => u.name.toLowerCase().includes(q));
+    }
+    if (!currentUser) return filtered;
+    // Sort by most recent DM timestamp (desc), users with no DMs at bottom
+    return [...filtered].sort((a, b) => {
+      const aDms = messages.filter(m =>
+        (m.userId === currentUser.id && m.directChatUserId === a.id) ||
+        (m.userId === a.id && m.directChatUserId === currentUser.id)
+      );
+      const bDms = messages.filter(m =>
+        (m.userId === currentUser.id && m.directChatUserId === b.id) ||
+        (m.userId === b.id && m.directChatUserId === currentUser.id)
+      );
+      const aLast = aDms.length > 0 ? new Date(aDms[aDms.length - 1].createdAt).getTime() : 0;
+      const bLast = bDms.length > 0 ? new Date(bDms[bDms.length - 1].createdAt).getTime() : 0;
+      return bLast - aLast;
+    });
+  }, [otherUsers, searchQuery, currentUser, messages]);
 
   // Get rooms for expanded project
   const projectRooms = useMemo(() => {
@@ -125,13 +152,23 @@ export default function ChatPage() {
 
   // Get last message for a project
   const getLastMessage = (projectId: string) => {
-    const projectMessages = messages.filter(m => m.projectId === projectId);
+    const projectMessages = messages.filter(m => m.projectId === projectId && !m.directChatUserId);
     return projectMessages[projectMessages.length - 1];
+  };
+
+  // Get last DM message with a user
+  const getLastDirectMessage = (userId: string) => {
+    if (!currentUser) return undefined;
+    const dms = messages.filter(m =>
+      (m.userId === currentUser.id && m.directChatUserId === userId) ||
+      (m.userId === userId && m.directChatUserId === currentUser.id)
+    );
+    return dms[dms.length - 1];
   };
 
   // Get message count for a project
   const getMessageCount = (projectId: string) => {
-    return messages.filter(m => m.projectId === projectId).length;
+    return messages.filter(m => m.projectId === projectId && !m.directChatUserId).length;
   };
 
   const getInitials = (name: string) => {
@@ -562,10 +599,17 @@ export default function ChatPage() {
                             </div>
                             <div className="flex-1 min-w-0 overflow-hidden">
                               <div className="flex items-center justify-between gap-2">
-                                <h3 className="font-medium text-foreground text-sm line-clamp-2">
+                                <h3 className="font-medium text-foreground text-sm line-clamp-1">
                                   {project.title}
                                 </h3>
-                                <ChevronRight className={`w-4 h-4 text-muted-foreground shrink-0 transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
+                                <div className="flex items-center gap-1 shrink-0">
+                                  {lastMessage && (
+                                    <span className="text-[10px] text-muted-foreground">
+                                      {formatTime(lastMessage.createdAt)}
+                                    </span>
+                                  )}
+                                  <ChevronRight className={`w-4 h-4 text-muted-foreground transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
+                                </div>
                               </div>
                               <p className="text-xs text-muted-foreground truncate mt-0.5">
                                 {project.client}
@@ -629,28 +673,44 @@ export default function ChatPage() {
                   <div className="divide-y divide-border">
                     {filteredUsers.map((user) => {
                       const isSelected = selectedChat?.type === 'direct' && selectedChat?.id === user.id;
+                      const lastDM = getLastDirectMessage(user.id);
 
                       return (
                         <button
                           key={user.id}
                           onClick={() => handleSelectDirectChat(user.id)}
-                          className={`w-full flex items-center gap-3 p-4 hover:bg-muted/50 transition-colors group text-left ${isSelected ? 'bg-muted' : ''}`}
+                          className={`w-full flex items-start gap-3 p-4 hover:bg-muted/50 transition-colors group text-left ${isSelected ? 'bg-muted' : ''}`}
                         >
-                          <Avatar className="w-10 h-10">
+                          <Avatar className="w-10 h-10 shrink-0">
                             {user.avatar && <AvatarImage src={user.avatar} alt={user.name} />}
                             <AvatarFallback className="bg-primary/10 text-primary text-sm">
                               {getInitials(user.name)}
                             </AvatarFallback>
                           </Avatar>
                           <div className="flex-1 min-w-0">
-                            <h3 className="font-medium text-foreground text-sm">
-                              {user.name}
-                            </h3>
+                            <div className="flex items-center justify-between gap-2">
+                              <h3 className="font-medium text-foreground text-sm">
+                                {user.name}
+                              </h3>
+                              {lastDM && (
+                                <span className="text-[10px] text-muted-foreground shrink-0">
+                                  {formatTime(lastDM.createdAt)}
+                                </span>
+                              )}
+                            </div>
                             <p className="text-xs text-muted-foreground">
                               {user.department}
                             </p>
+                            {lastDM ? (
+                              <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">
+                                {lastDM.content}
+                              </p>
+                            ) : (
+                              <p className="text-xs text-muted-foreground/50 italic mt-0.5">
+                                대화 없음
+                              </p>
+                            )}
                           </div>
-                          <MessageSquare className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
                         </button>
                       );
                     })}
