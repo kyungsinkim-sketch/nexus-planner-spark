@@ -19,7 +19,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { FileText, Upload, Star, X } from 'lucide-react';
+import { FileText, Upload, Star, X, AlertTriangle } from 'lucide-react';
+import { toast } from 'sonner';
+
+const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB - matches Supabase bucket limit
 
 interface FileUploadModalProps {
   open: boolean;
@@ -62,6 +65,11 @@ export function FileUploadModal({
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      if (file.size > MAX_FILE_SIZE) {
+        toast.error(`File is too large (${formatFileSize(file.size)}). Maximum size is ${formatFileSize(MAX_FILE_SIZE)}.`);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+        return;
+      }
       setSelectedFile(file);
     }
   };

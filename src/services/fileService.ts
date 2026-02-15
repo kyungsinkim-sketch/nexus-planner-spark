@@ -147,6 +147,11 @@ export const uploadFile = async (
         .upload(filePath, file);
 
     if (uploadError) {
+        // Provide user-friendly message for common storage errors
+        const errMsg = uploadError.message || '';
+        if (errMsg.includes('exceeded the maximum allowed size')) {
+            throw new Error('File is too large. Maximum upload size is 100MB.');
+        }
         throw new Error(handleSupabaseError(uploadError));
     }
 

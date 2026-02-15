@@ -318,7 +318,8 @@ export function FilesTab({ projectId }: FilesTabProps) {
       }
     } catch (error) {
       console.error('Failed to upload file:', error);
-      toast.error('Failed to upload file. Please try again.');
+      const message = error instanceof Error ? error.message : 'Failed to upload file. Please try again.';
+      toast.error(message);
     }
   };
 

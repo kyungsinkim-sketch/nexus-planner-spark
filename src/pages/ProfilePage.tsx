@@ -61,7 +61,12 @@ export default function ProfilePage() {
       }
     } catch (error) {
       console.error('Avatar upload failed:', error);
-      toast.error('Failed to upload photo');
+      const errMsg = error instanceof Error ? error.message : '';
+      if (errMsg.includes('row-level security')) {
+        toast.error('Upload permission denied. Please sign out and sign back in.');
+      } else {
+        toast.error('Failed to upload photo');
+      }
     } finally {
       setIsUploading(false);
       // Reset input so same file can be re-selected
