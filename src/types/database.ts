@@ -286,7 +286,7 @@ export interface Database {
             file_items: {
                 Row: {
                     id: string
-                    file_group_id: string
+                    file_group_id: string | null
                     name: string
                     uploaded_by: string
                     size: string | null
@@ -299,7 +299,7 @@ export interface Database {
                 }
                 Insert: {
                     id?: string
-                    file_group_id: string
+                    file_group_id?: string | null
                     name: string
                     uploaded_by: string
                     size?: string | null

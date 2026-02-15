@@ -393,7 +393,7 @@ export default function ChatPage() {
 
           addFile({
             id: data.id,
-            fileGroupId: '',
+            fileGroupId: null,
             name: file.name,
             uploadedBy: currentUser.id,
             createdAt: data.created_at,

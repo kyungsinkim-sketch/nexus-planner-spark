@@ -104,7 +104,7 @@ export const createFileItem = async (fileItem: Partial<FileItem>): Promise<FileI
     }
 
     const insertData: FileItemInsert = {
-        file_group_id: fileItem.fileGroupId!,
+        file_group_id: fileItem.fileGroupId || undefined,
         name: fileItem.name!,
         uploaded_by: fileItem.uploadedBy!,
         size: fileItem.size || null,

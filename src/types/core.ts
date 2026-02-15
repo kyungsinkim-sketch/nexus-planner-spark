@@ -231,7 +231,7 @@ export interface FileGroup {
 
 export interface FileItem {
   id: string;
-  fileGroupId: string;
+  fileGroupId: string | null;
   name: string;
   uploadedBy: string;
   createdAt: string;
