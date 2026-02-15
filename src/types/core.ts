@@ -240,6 +240,7 @@ export interface FileItem {
   isImportant?: boolean;
   source?: 'UPLOAD' | 'CHAT';
   comment?: string; // Comment for searchability
+  storagePath?: string; // Supabase Storage path for download
 }
 
 // Performance & Evaluation Types

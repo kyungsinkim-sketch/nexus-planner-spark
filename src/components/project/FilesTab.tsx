@@ -81,7 +81,7 @@ const categoryColors: Record<FileCategory, string> = {
 };
 
 export function FilesTab({ projectId }: FilesTabProps) {
-  const { getFileGroupsByProject, getFilesByGroup, getUserById, files, addFile, addFileGroup, loadFileGroups, currentUser } = useAppStore();
+  const { getFileGroupsByProject, getFilesByGroup, getUserById, files, addFile, addFileGroup, loadFileGroups, updateFileItem, deleteFileItem, currentUser } = useAppStore();
   const fileGroups = getFileGroupsByProject(projectId);
   const [selectedCategory, setSelectedCategory] = useState<FileCategory | 'ALL' | 'IMPORTANT'>('ALL');
   const [showUploadModal, setShowUploadModal] = useState(false);
@@ -132,10 +132,15 @@ export function FilesTab({ projectId }: FilesTabProps) {
   };
 
   // Toggle important status
-  const handleToggleImportant = (fileId: string) => {
+  const handleToggleImportant = async (fileId: string) => {
     const file = allProjectFiles.find(f => f.id === fileId);
-    if (file) {
+    if (!file) return;
+    try {
+      await updateFileItem(fileId, { isImportant: !file.isImportant });
       toast.success(file.isImportant ? 'Removed from important files' : 'Added to important files');
+    } catch (error) {
+      console.error('Failed to toggle important:', error);
+      toast.error('Failed to update file');
     }
   };
 
@@ -146,9 +151,15 @@ export function FilesTab({ projectId }: FilesTabProps) {
     setShowRenameModal(true);
   };
 
-  const handleRename = () => {
+  const handleRename = async () => {
     if (!renameValue.trim() || !selectedFileId) return;
-    toast.success(`File renamed to "${renameValue}"`);
+    try {
+      await updateFileItem(selectedFileId, { name: renameValue.trim() });
+      toast.success(`File renamed to "${renameValue.trim()}"`);
+    } catch (error) {
+      console.error('Failed to rename file:', error);
+      toast.error('Failed to rename file');
+    }
     setShowRenameModal(false);
     setSelectedFileId(null);
     setRenameValue('');
@@ -161,16 +172,45 @@ export function FilesTab({ projectId }: FilesTabProps) {
     setShowMoveModal(true);
   };
 
-  const handleMove = () => {
+  const handleMove = async () => {
     if (!selectedFileId) return;
-    toast.success(`File moved to ${categoryLabels[moveToCategory]}`);
+    try {
+      // Find or create the target file group for this category
+      const categoryTitles: Record<FileCategory, string> = {
+        DECK: 'Presentations', FINAL: 'Final Deliverables',
+        REFERENCE: 'References', CONTRACT: 'Contracts', ETC: 'Others',
+      };
+      let targetGroup = fileGroups.find(fg => fg.category === moveToCategory);
+      if (!targetGroup) {
+        targetGroup = await fileService.createFileGroup({
+          projectId, category: moveToCategory, title: categoryTitles[moveToCategory],
+        });
+        addFileGroup(targetGroup);
+      }
+      await updateFileItem(selectedFileId, { fileGroupId: targetGroup.id });
+      toast.success(`File moved to ${categoryLabels[moveToCategory]}`);
+    } catch (error) {
+      console.error('Failed to move file:', error);
+      toast.error('Failed to move file');
+    }
     setShowMoveModal(false);
     setSelectedFileId(null);
   };
 
   // Delete file
-  const handleDelete = (fileId: string) => {
-    toast.success('File deleted');
+  const handleDelete = async (fileId: string) => {
+    const file = allProjectFiles.find(f => f.id === fileId);
+    try {
+      // Delete from storage if storagePath exists
+      if (file?.storagePath) {
+        await fileService.deleteFile(file.storagePath);
+      }
+      await deleteFileItem(fileId);
+      toast.success('File deleted');
+    } catch (error) {
+      console.error('Failed to delete file:', error);
+      toast.error('Failed to delete file');
+    }
   };
 
   // Comment on file
@@ -180,9 +220,15 @@ export function FilesTab({ projectId }: FilesTabProps) {
     setShowCommentModal(true);
   };
 
-  const handleSaveComment = () => {
+  const handleSaveComment = async () => {
     if (!selectedFileId) return;
-    toast.success('Comment saved');
+    try {
+      await updateFileItem(selectedFileId, { comment: commentValue.trim() || undefined });
+      toast.success('Comment saved');
+    } catch (error) {
+      console.error('Failed to save comment:', error);
+      toast.error('Failed to save comment');
+    }
     setShowCommentModal(false);
     setSelectedFileId(null);
     setCommentValue('');
@@ -214,7 +260,7 @@ export function FilesTab({ projectId }: FilesTabProps) {
         }
 
         // Upload file to storage
-        await fileService.uploadFile(file, projectId, currentUser.id);
+        const { path: storagePath } = await fileService.uploadFile(file, projectId, currentUser.id);
 
         // Create file item metadata
         const fileExt = file.name.split('.').pop() || '';
@@ -231,6 +277,7 @@ export function FilesTab({ projectId }: FilesTabProps) {
           isImportant,
           source: 'UPLOAD',
           comment,
+          storagePath,
         });
 
         addFile(fileItem);
@@ -272,6 +319,18 @@ export function FilesTab({ projectId }: FilesTabProps) {
     } catch (error) {
       console.error('Failed to upload file:', error);
       toast.error('Failed to upload file. Please try again.');
+    }
+  };
+
+  // Download file
+  const handleDownload = (fileId: string) => {
+    const file = allProjectFiles.find(f => f.id === fileId);
+    if (!file) return;
+    if (file.storagePath) {
+      const url = fileService.getFileDownloadUrl(file.storagePath);
+      window.open(url, '_blank');
+    } else {
+      toast.error('No download URL available for this file');
     }
   };
 
@@ -412,7 +471,7 @@ export function FilesTab({ projectId }: FilesTabProps) {
                           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleOpenComment(file.id, file.comment)} aria-label="Add or edit comment">
                             <MessageCircle className="w-4 h-4" />
                           </Button>
-                          <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Download file">
+                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleDownload(file.id)} aria-label="Download file">
                             <Download className="w-4 h-4" />
                           </Button>
                         </div>
@@ -515,6 +574,7 @@ export function FilesTab({ projectId }: FilesTabProps) {
                                     variant="ghost"
                                     size="icon"
                                     className="h-8 w-8"
+                                    onClick={() => handleDownload(file.id)}
                                     aria-label="Download file"
                                   >
                                     <Download className="w-4 h-4" />

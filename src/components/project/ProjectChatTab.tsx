@@ -152,7 +152,7 @@ export function ProjectChatTab({ projectId }: ProjectChatTabProps) {
           addFileGroup(fileGroup);
         }
 
-        await fileService.uploadFile(file, projectId, currentUser.id);
+        const { path: storagePath } = await fileService.uploadFile(file, projectId, currentUser.id);
 
         const fileExt = file.name.split('.').pop() || '';
         const fileSize = file.size < 1024 * 1024
@@ -168,6 +168,7 @@ export function ProjectChatTab({ projectId }: ProjectChatTabProps) {
           isImportant,
           source: 'CHAT',
           comment,
+          storagePath,
         });
 
         addFile(fileItem);

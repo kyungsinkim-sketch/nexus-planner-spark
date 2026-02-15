@@ -30,6 +30,7 @@ const transformFileItem = (row: FileItemRow): FileItem => {
         isImportant: row.is_important || false,
         source: row.source || 'UPLOAD',
         comment: row.comment || undefined,
+        storagePath: row.storage_path || undefined,
     };
 };
 
@@ -111,6 +112,7 @@ export const createFileItem = async (fileItem: Partial<FileItem>): Promise<FileI
         is_important: fileItem.isImportant || false,
         source: fileItem.source || 'UPLOAD',
         comment: fileItem.comment || null,
+        storage_path: fileItem.storagePath || null,
     };
 
     const { data, error } = await supabase
@@ -153,6 +155,14 @@ export const uploadFile = async (
         .getPublicUrl(filePath);
 
     return { path: filePath, url: publicUrl };
+};
+
+// Get download URL for a file
+export const getFileDownloadUrl = (storagePath: string): string => {
+    const { data: { publicUrl } } = supabase.storage
+        .from('project-files')
+        .getPublicUrl(storagePath);
+    return publicUrl;
 };
 
 // Delete file from storage
@@ -199,6 +209,7 @@ export const updateFileItem = async (
     if (updates.name !== undefined) updateData.name = updates.name;
     if (updates.isImportant !== undefined) updateData.is_important = updates.isImportant;
     if (updates.comment !== undefined) updateData.comment = updates.comment;
+    if (updates.fileGroupId !== undefined) updateData.file_group_id = updates.fileGroupId;
 
     const { data, error } = await supabase
         .from('file_items')

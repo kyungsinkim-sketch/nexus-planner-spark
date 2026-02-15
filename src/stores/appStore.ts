@@ -100,6 +100,7 @@ interface AppState {
   addFile: (file: FileItem) => void;
   createFileGroup: (fileGroup: Partial<FileGroup>) => Promise<void>;
   uploadFile: (file: File, projectId: string, fileGroupId: string) => Promise<void>;
+  updateFileItem: (fileId: string, updates: Partial<FileItem>) => Promise<void>;
   deleteFileItem: (fileId: string) => Promise<void>;
 
   // Todo Actions
@@ -769,6 +770,25 @@ export const useAppStore = create<AppState>()(
             type: file.type,
           };
           set((state) => ({ files: [...state.files, newFile] }));
+        }
+      },
+
+      updateFileItem: async (fileId, updates) => {
+        if (isSupabaseConfigured()) {
+          try {
+            const updated = await fileService.updateFileItem(fileId, updates);
+            set((state) => ({
+              files: state.files.map((f) => f.id === fileId ? { ...f, ...updated } : f),
+            }));
+          } catch (error) {
+            console.error('Failed to update file:', error);
+            throw error;
+          }
+        } else {
+          // Mock mode
+          set((state) => ({
+            files: state.files.map((f) => f.id === fileId ? { ...f, ...updates } : f),
+          }));
         }
       },
 
