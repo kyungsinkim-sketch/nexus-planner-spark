@@ -1,6 +1,6 @@
 import { CalendarEvent, EventType } from '@/types/core';
 import { useAppStore } from '@/stores/appStore';
-import { X, Calendar, Clock, User, FolderKanban, Edit, Trash2, Users } from 'lucide-react';
+import { X, Calendar, User, FolderKanban, Edit, Trash2, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
@@ -14,6 +14,8 @@ interface EventSidePanelProps {
   event: CalendarEvent | null;
   isOpen: boolean;
   onClose: () => void;
+  onEdit?: (event: CalendarEvent) => void;
+  onDelete?: (event: CalendarEvent) => void;
 }
 
 const eventTypeBadgeKeys: Record<EventType, { labelKey: TranslationKey; className: string }> = {
@@ -44,7 +46,7 @@ function GoogleCalendarIcon({ className }: { className?: string }) {
   );
 }
 
-export function EventSidePanel({ event, isOpen, onClose }: EventSidePanelProps) {
+export function EventSidePanel({ event, isOpen, onClose, onEdit, onDelete }: EventSidePanelProps) {
   const { getProjectById, getUserById } = useAppStore();
   const { t } = useTranslation();
 
@@ -107,10 +109,10 @@ export function EventSidePanel({ event, isOpen, onClose }: EventSidePanelProps) 
             </TooltipProvider>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon" className="h-8 w-8">
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => event && onEdit?.(event)}>
               <Edit className="w-4 h-4" />
             </Button>
-            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive">
+            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => event && onDelete?.(event)}>
               <Trash2 className="w-4 h-4" />
             </Button>
             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onClose}>
@@ -220,22 +222,6 @@ export function EventSidePanel({ event, isOpen, onClose }: EventSidePanelProps) 
             )}
           </div>
 
-          {/* Quick Actions */}
-          <div className="space-y-2">
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-              Quick Actions
-            </p>
-            <div className="grid grid-cols-2 gap-2">
-              <Button variant="outline" size="sm" className="justify-start">
-                <Clock className="w-4 h-4 mr-2" />
-                Reschedule
-              </Button>
-              <Button variant="outline" size="sm" className="justify-start">
-                <User className="w-4 h-4 mr-2" />
-                Reassign
-              </Button>
-            </div>
-          </div>
         </div>
       </div>
     </>

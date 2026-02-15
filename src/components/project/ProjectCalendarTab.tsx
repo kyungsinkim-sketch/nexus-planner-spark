@@ -44,7 +44,7 @@ const eventTypeColors: Record<EventType, string> = {
 };
 
 export function ProjectCalendarTab({ projectId }: ProjectCalendarTabProps) {
-  const { getEventsByProject, updateEvent, getProjectById } = useAppStore();
+  const { getEventsByProject, updateEvent, deleteEvent, getProjectById } = useAppStore();
   const projectEvents = getEventsByProject(projectId);
   const project = getProjectById(projectId);
   const calendarRef = useRef<FullCalendar>(null);
@@ -58,6 +58,28 @@ export function ProjectCalendarTab({ projectId }: ProjectCalendarTabProps) {
   const [newEventDate, setNewEventDate] = useState<string | undefined>();
   const [newEventStartTime, setNewEventStartTime] = useState<string | undefined>();
   const [newEventEndTime, setNewEventEndTime] = useState<string | undefined>();
+  const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
+
+  const handleEditEvent = (event: CalendarEvent) => {
+    setEditingEvent(event);
+    setIsPanelOpen(false);
+    setSelectedEvent(null);
+    setShowNewEventModal(true);
+  };
+
+  const handleDeleteEvent = async (event: CalendarEvent) => {
+    if (confirm('Delete this event?')) {
+      try {
+        await deleteEvent(event.id);
+        toast.success('Event deleted');
+        setIsPanelOpen(false);
+        setSelectedEvent(null);
+      } catch (error) {
+        console.error('Failed to delete event:', error);
+        toast.error('Failed to delete event');
+      }
+    }
+  };
 
   // Calculate event counts by type
   const eventCounts = useMemo(() => {
@@ -258,15 +280,21 @@ export function ProjectCalendarTab({ projectId }: ProjectCalendarTabProps) {
           setIsPanelOpen(false);
           setSelectedEvent(null);
         }}
+        onEdit={handleEditEvent}
+        onDelete={handleDeleteEvent}
       />
 
       <NewEventModal
         open={showNewEventModal}
-        onClose={() => setShowNewEventModal(false)}
+        onClose={() => {
+          setShowNewEventModal(false);
+          setEditingEvent(null);
+        }}
         projectId={projectId}
-        defaultDate={newEventDate}
-        defaultStartTime={newEventStartTime}
-        defaultEndTime={newEventEndTime}
+        editEvent={editingEvent || undefined}
+        defaultDate={editingEvent ? undefined : newEventDate}
+        defaultStartTime={editingEvent ? undefined : newEventStartTime}
+        defaultEndTime={editingEvent ? undefined : newEventEndTime}
       />
     </div>
   );

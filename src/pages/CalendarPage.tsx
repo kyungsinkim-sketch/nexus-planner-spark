@@ -72,7 +72,7 @@ function GoogleCalendarIcon({ className }: { className?: string }) {
 }
 
 export default function CalendarPage() {
-  const { events, getProjectById } = useAppStore();
+  const { events, getProjectById, deleteEvent } = useAppStore();
   const calendarRef = useRef<FullCalendar>(null);
   const { t } = useTranslation();
   const [selectedTypes, setSelectedTypes] = useState<EventType[]>(['TASK', 'DEADLINE', 'MEETING', 'PT', 'DELIVERY', 'TODO', 'DELIVERABLE', 'R_TRAINING']);
@@ -86,6 +86,28 @@ export default function CalendarPage() {
   const [newEventDate, setNewEventDate] = useState<string | undefined>();
   const [newEventStartTime, setNewEventStartTime] = useState<string | undefined>();
   const [newEventEndTime, setNewEventEndTime] = useState<string | undefined>();
+  const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
+
+  const handleEditEvent = (event: CalendarEvent) => {
+    setEditingEvent(event);
+    setIsPanelOpen(false);
+    setSelectedEvent(null);
+    setShowNewEventModal(true);
+  };
+
+  const handleDeleteEvent = async (event: CalendarEvent) => {
+    if (confirm('Delete this event?')) {
+      try {
+        await deleteEvent(event.id);
+        toast.success('Event deleted');
+        setIsPanelOpen(false);
+        setSelectedEvent(null);
+      } catch (error) {
+        console.error('Failed to delete event:', error);
+        toast.error('Failed to delete event');
+      }
+    }
+  };
 
   const filteredEvents = events.filter((e) => {
     const typeMatch = selectedTypes.includes(e.type);
@@ -356,15 +378,19 @@ END:VCALENDAR`;
         </div>
       </div>
 
-      <EventSidePanel event={selectedEvent} isOpen={isPanelOpen} onClose={() => { setIsPanelOpen(false); setSelectedEvent(null); }} />
+      <EventSidePanel event={selectedEvent} isOpen={isPanelOpen} onClose={() => { setIsPanelOpen(false); setSelectedEvent(null); }} onEdit={handleEditEvent} onDelete={handleDeleteEvent} />
 
       <NewEventModal
         open={showNewEventModal}
-        onClose={() => setShowNewEventModal(false)}
-        projectId=""
-        defaultDate={newEventDate}
-        defaultStartTime={newEventStartTime}
-        defaultEndTime={newEventEndTime}
+        onClose={() => {
+          setShowNewEventModal(false);
+          setEditingEvent(null);
+        }}
+        projectId={editingEvent?.projectId || ""}
+        editEvent={editingEvent || undefined}
+        defaultDate={editingEvent ? undefined : newEventDate}
+        defaultStartTime={editingEvent ? undefined : newEventStartTime}
+        defaultEndTime={editingEvent ? undefined : newEventEndTime}
       />
     </div>
   );
