@@ -135,19 +135,43 @@ export function ProjectCalendarTab({ projectId }: ProjectCalendarTabProps) {
     }
   };
 
-  const handleEventDrop = (info: { event: { id: string; title: string; start: Date | null; end: Date | null } }) => {
+  const handleEventDrop = (info: { event: { id: string; title: string; start: Date | null; end: Date | null }; view: { type: string } }) => {
     const eventId = info.event.id;
-    const newStart = info.event.start?.toISOString();
-    const newEnd = info.event.end?.toISOString() || newStart;
+    const originalEvent = projectEvents.find((e) => e.id === eventId);
+    const newStart = info.event.start;
+    const newEnd = info.event.end;
 
-    if (newStart) {
+    if (!newStart || !originalEvent) return;
+
+    if (info.view.type === 'dayGridMonth') {
+      // Month view: keep original time, only change date
+      const origStart = new Date(originalEvent.startAt);
+      const origEnd = new Date(originalEvent.endAt);
+
+      const updatedStart = new Date(newStart);
+      updatedStart.setHours(origStart.getHours(), origStart.getMinutes(), origStart.getSeconds());
+
+      const dayDiff = Math.round((newStart.getTime() - new Date(originalEvent.startAt).setHours(0,0,0,0)) / (1000 * 60 * 60 * 24));
+      const finalEnd = new Date(origEnd);
+      finalEnd.setDate(finalEnd.getDate() + dayDiff);
+
       updateEvent(eventId, {
-        startAt: newStart,
-        endAt: newEnd || newStart,
+        startAt: updatedStart.toISOString(),
+        endAt: finalEnd.toISOString(),
       });
 
       toast.success('Event rescheduled', {
-        description: `"${info.event.title}" moved to ${new Date(newStart).toLocaleDateString()}`,
+        description: `"${info.event.title}" moved to ${updatedStart.toLocaleDateString()}`,
+      });
+    } else {
+      // Week/Day view: update both date and time
+      updateEvent(eventId, {
+        startAt: newStart.toISOString(),
+        endAt: (newEnd || newStart).toISOString(),
+      });
+
+      toast.success('Event rescheduled', {
+        description: `"${info.event.title}" moved to ${newStart.toLocaleString()}`,
       });
     }
   };
@@ -253,6 +277,7 @@ export function ProjectCalendarTab({ projectId }: ProjectCalendarTabProps) {
           selectMirror={true}
           dayMaxEvents={3}
           height="auto"
+          slotMinTime="07:00:00"
           eventClick={handleEventClick}
           eventDrop={handleEventDrop}
           eventResize={handleEventResize}

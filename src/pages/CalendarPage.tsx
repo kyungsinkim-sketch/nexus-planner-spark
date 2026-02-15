@@ -72,7 +72,7 @@ function GoogleCalendarIcon({ className }: { className?: string }) {
 }
 
 export default function CalendarPage() {
-  const { events, getProjectById, deleteEvent } = useAppStore();
+  const { events, getProjectById, deleteEvent, updateEvent } = useAppStore();
   const calendarRef = useRef<FullCalendar>(null);
   const { t } = useTranslation();
   const [selectedTypes, setSelectedTypes] = useState<EventType[]>(['TASK', 'DEADLINE', 'MEETING', 'PT', 'DELIVERY', 'TODO', 'DELIVERABLE', 'R_TRAINING']);
@@ -164,6 +164,68 @@ export default function CalendarPage() {
     setNewEventStartTime(startTimeStr);
     setNewEventEndTime(endTimeStr);
     setShowNewEventModal(true);
+  };
+
+  // Handle drag & drop in month view (change date only, keep time)
+  // Handle drag & drop in week/day view (change date + time)
+  const handleEventDrop = (info: { event: { id: string; title: string; start: Date | null; end: Date | null }; view: { type: string } }) => {
+    const eventId = info.event.id;
+    const originalEvent = events.find((e) => e.id === eventId);
+    const newStart = info.event.start;
+    const newEnd = info.event.end;
+
+    if (!newStart || !originalEvent) return;
+
+    if (info.view.type === 'dayGridMonth') {
+      // Month view: keep original time, only change date
+      const origStart = new Date(originalEvent.startAt);
+      const origEnd = new Date(originalEvent.endAt);
+
+      const updatedStart = new Date(newStart);
+      updatedStart.setHours(origStart.getHours(), origStart.getMinutes(), origStart.getSeconds());
+
+      const updatedEnd = new Date(newEnd || newStart);
+      // If event spans multiple days, calculate the day difference and apply
+      const dayDiff = Math.round((newStart.getTime() - new Date(originalEvent.startAt).setHours(0,0,0,0)) / (1000 * 60 * 60 * 24));
+      const finalEnd = new Date(origEnd);
+      finalEnd.setDate(finalEnd.getDate() + dayDiff);
+
+      updateEvent(eventId, {
+        startAt: updatedStart.toISOString(),
+        endAt: finalEnd.toISOString(),
+      });
+
+      toast.success('Event rescheduled', {
+        description: `"${info.event.title}" moved to ${updatedStart.toLocaleDateString()}`,
+      });
+    } else {
+      // Week/Day view: update both date and time
+      updateEvent(eventId, {
+        startAt: newStart.toISOString(),
+        endAt: (newEnd || newStart).toISOString(),
+      });
+
+      toast.success('Event rescheduled', {
+        description: `"${info.event.title}" moved to ${newStart.toLocaleString()}`,
+      });
+    }
+  };
+
+  const handleEventResize = (info: { event: { id: string; title: string; start: Date | null; end: Date | null } }) => {
+    const eventId = info.event.id;
+    const newStart = info.event.start?.toISOString();
+    const newEnd = info.event.end?.toISOString();
+
+    if (newStart) {
+      updateEvent(eventId, {
+        startAt: newStart,
+        endAt: newEnd || newStart,
+      });
+
+      toast.success('Event duration updated', {
+        description: `"${info.event.title}" duration changed`,
+      });
+    }
   };
 
   // Handle view change
@@ -322,11 +384,15 @@ END:VCALENDAR`;
             buttonText={{ today: t('today'), month: t('month'), week: t('week'), day: t('day'), list: t('agenda') }}
             events={calendarEvents}
             editable={true}
+            droppable={true}
             selectable={true}
             selectMirror={true}
             dayMaxEvents={2}
             height="auto"
+            slotMinTime="07:00:00"
             eventClick={handleEventClick}
+            eventDrop={handleEventDrop}
+            eventResize={handleEventResize}
             select={handleSelect}
             datesSet={handleViewChange}
             eventContent={(eventInfo) => {
