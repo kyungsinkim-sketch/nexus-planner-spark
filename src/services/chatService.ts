@@ -310,6 +310,7 @@ export const sendProjectMessage = async (
         user_id: userId,
         content,
         attachment_id: attachmentId || null,
+        message_type: attachmentId ? 'file' : 'text',
     };
 
     const { data, error } = await supabase
@@ -398,6 +399,7 @@ export const sendDirectMessage = async (
         direct_chat_user_id: toUserId,
         content,
         attachment_id: attachmentId || null,
+        message_type: attachmentId ? 'file' : 'text',
     };
 
     const { data, error } = await supabase
