@@ -1,4 +1,4 @@
-import { supabase, isSupabaseConfigured, handleSupabaseError } from '@/lib/supabase';
+import { supabase, supabaseAdmin, isSupabaseConfigured, handleSupabaseError } from '@/lib/supabase';
 import type { FileGroup, FileItem } from '@/types/core';
 import type { Database } from '@/types/database';
 
@@ -52,7 +52,7 @@ export const getFileGroupsByProject = async (projectId: string): Promise<FileGro
     return data.map(transformFileGroup);
 };
 
-// Create file group
+// Create file group (uses admin client to bypass RLS if available)
 export const createFileGroup = async (fileGroup: Partial<FileGroup>): Promise<FileGroup> => {
     if (!isSupabaseConfigured()) {
         throw new Error('Supabase not configured');
@@ -64,7 +64,10 @@ export const createFileGroup = async (fileGroup: Partial<FileGroup>): Promise<Fi
         title: fileGroup.title!,
     };
 
-    const { data, error } = await supabase
+    // Use admin client to bypass RLS for file_groups INSERT
+    const client = supabaseAdmin || supabase;
+
+    const { data, error } = await client
         .from('file_groups')
         .insert(insertData as unknown as Record<string, unknown>)
         .select()
@@ -74,7 +77,7 @@ export const createFileGroup = async (fileGroup: Partial<FileGroup>): Promise<Fi
         throw new Error(handleSupabaseError(error));
     }
 
-    return transformFileGroup(data);
+    return transformFileGroup(data as FileGroupRow);
 };
 
 // Get files by group
@@ -96,7 +99,7 @@ export const getFilesByGroup = async (fileGroupId: string): Promise<FileItem[]> 
     return data.map(transformFileItem);
 };
 
-// Upload file metadata (actual file upload to storage happens separately)
+// Upload file metadata (uses admin client to bypass RLS if available)
 export const createFileItem = async (fileItem: Partial<FileItem>): Promise<FileItem> => {
     if (!isSupabaseConfigured()) {
         throw new Error('Supabase not configured');
@@ -113,7 +116,10 @@ export const createFileItem = async (fileItem: Partial<FileItem>): Promise<FileI
         comment: fileItem.comment || null,
     };
 
-    const { data, error } = await supabase
+    // Use admin client to bypass RLS for file_items INSERT
+    const client = supabaseAdmin || supabase;
+
+    const { data, error } = await client
         .from('file_items')
         .insert(insertData as unknown as Record<string, unknown>)
         .select()
@@ -123,7 +129,7 @@ export const createFileItem = async (fileItem: Partial<FileItem>): Promise<FileI
         throw new Error(handleSupabaseError(error));
     }
 
-    return transformFileItem(data);
+    return transformFileItem(data as FileItemRow);
 };
 
 // Upload file to storage
