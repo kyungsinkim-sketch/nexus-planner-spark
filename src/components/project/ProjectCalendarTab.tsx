@@ -144,20 +144,21 @@ export function ProjectCalendarTab({ projectId }: ProjectCalendarTabProps) {
     if (!newStart || !originalEvent) return;
 
     if (info.view.type === 'dayGridMonth') {
-      // Month view: keep original time, only change date
+      // Month view: keep original time and duration, only change date
       const origStart = new Date(originalEvent.startAt);
       const origEnd = new Date(originalEvent.endAt);
+      const duration = origEnd.getTime() - origStart.getTime();
 
+      // Set new start: take dropped date, keep original hours/minutes/seconds
       const updatedStart = new Date(newStart);
-      updatedStart.setHours(origStart.getHours(), origStart.getMinutes(), origStart.getSeconds());
+      updatedStart.setHours(origStart.getHours(), origStart.getMinutes(), origStart.getSeconds(), origStart.getMilliseconds());
 
-      const dayDiff = Math.round((newStart.getTime() - new Date(originalEvent.startAt).setHours(0,0,0,0)) / (1000 * 60 * 60 * 24));
-      const finalEnd = new Date(origEnd);
-      finalEnd.setDate(finalEnd.getDate() + dayDiff);
+      // Set new end: simply add original duration to new start
+      const updatedEnd = new Date(updatedStart.getTime() + duration);
 
       updateEvent(eventId, {
         startAt: updatedStart.toISOString(),
-        endAt: finalEnd.toISOString(),
+        endAt: updatedEnd.toISOString(),
       });
 
       toast.success('Event rescheduled', {
