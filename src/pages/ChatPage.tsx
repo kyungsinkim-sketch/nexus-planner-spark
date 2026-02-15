@@ -385,9 +385,10 @@ export default function ChatPage() {
         if (selectedChat.roomId) {
           await sendRoomMessage(selectedChat.roomId, projectId, `📎 Uploaded file: ${file.name}`, {
             messageType: 'file',
+            attachmentId: fileItem.id,
           });
         } else {
-          await sendProjectMessage(projectId, `📎 Uploaded file: ${file.name}`);
+          await sendProjectMessage(projectId, `📎 Uploaded file: ${file.name}`, fileItem.id);
         }
       } else {
         // Mock mode

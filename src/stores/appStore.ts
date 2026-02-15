@@ -80,7 +80,7 @@ interface AppState {
 
   // Message Actions
   addMessage: (message: ChatMessage) => void;
-  sendProjectMessage: (projectId: string, content: string) => Promise<void>;
+  sendProjectMessage: (projectId: string, content: string, attachmentId?: string) => Promise<void>;
   sendDirectMessage: (toUserId: string, content: string) => Promise<void>;
 
   // Chat Room Actions
@@ -89,6 +89,7 @@ interface AppState {
   loadRoomMessages: (roomId: string) => Promise<void>;
   createChatRoom: (projectId: string, name: string, memberIds: string[], description?: string) => Promise<ChatRoom | null>;
   sendRoomMessage: (roomId: string, projectId: string, content: string, options?: {
+    attachmentId?: string;
     messageType?: ChatMessageType;
     locationData?: LocationShare;
     scheduleData?: ScheduleShare;
@@ -539,13 +540,13 @@ export const useAppStore = create<AppState>()(
         return { messages: [...state.messages, message] };
       }),
 
-      sendProjectMessage: async (projectId, content) => {
+      sendProjectMessage: async (projectId, content, attachmentId?) => {
         const { currentUser } = get();
         if (!currentUser) return;
 
         if (isSupabaseConfigured()) {
           try {
-            const message = await chatService.sendProjectMessage(projectId, currentUser.id, content);
+            const message = await chatService.sendProjectMessage(projectId, currentUser.id, content, attachmentId);
             set((state) => ({ messages: [...state.messages, message] }));
           } catch (error) {
             console.error('Failed to send message:', error);
@@ -559,6 +560,7 @@ export const useAppStore = create<AppState>()(
             userId: currentUser.id,
             content,
             createdAt: new Date().toISOString(),
+            attachmentId,
             messageType: 'text',
           };
           set((state) => ({ messages: [...state.messages, message] }));

@@ -177,6 +177,7 @@ export function ProjectChatTab({ projectId }: ProjectChatTabProps) {
         if (defaultRoom) {
           await sendRoomMessage(defaultRoom.id, projectId, `📎 Uploaded file: ${file.name}`, {
             messageType: 'file',
+            attachmentId: fileItem.id,
           });
         } else {
           addMessage({
