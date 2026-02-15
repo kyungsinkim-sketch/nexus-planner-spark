@@ -1,6 +1,6 @@
 -- Fix storage RLS: Add UPDATE policy for avatar upserts and general file updates
 -- The avatar upload uses upsert: true, which requires both INSERT and UPDATE policies
--- Also increase file_size_limit on the bucket to 100MB for video/large file support
+-- Note: Supabase free tier has a platform-level 50MB limit per file regardless of bucket setting
 
 -- 1. Add UPDATE policy for storage.objects (needed for upsert operations)
 DO $$

@@ -149,8 +149,11 @@ export const uploadFile = async (
     if (uploadError) {
         // Provide user-friendly message for common storage errors
         const errMsg = uploadError.message || '';
-        if (errMsg.includes('exceeded the maximum allowed size')) {
-            throw new Error('File is too large. Maximum upload size is 100MB.');
+        if (errMsg.includes('exceeded the maximum allowed size') || errMsg.includes('Payload too large')) {
+            throw new Error('File is too large. Maximum upload size is 50MB.');
+        }
+        if (errMsg.includes('<!DOCTYPE') || errMsg.includes('is not valid JSON')) {
+            throw new Error('Upload timed out. The file may be too large. Maximum size is 50MB.');
         }
         throw new Error(handleSupabaseError(uploadError));
     }

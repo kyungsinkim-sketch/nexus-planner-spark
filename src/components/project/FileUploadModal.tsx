@@ -22,7 +22,7 @@ import {
 import { FileText, Upload, Star, X, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 
-const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB - matches Supabase bucket limit
+const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB - Supabase free tier platform limit
 
 interface FileUploadModalProps {
   open: boolean;
@@ -145,7 +145,7 @@ export function FileUploadModal({
             >
               <Upload className="w-8 h-8 text-muted-foreground" />
               <span className="text-sm font-medium text-foreground">Click to select a file</span>
-              <span className="text-xs text-muted-foreground">PDF, images, documents, etc.</span>
+              <span className="text-xs text-muted-foreground">PDF, images, documents, videos (max 50MB)</span>
             </button>
           )}
 
