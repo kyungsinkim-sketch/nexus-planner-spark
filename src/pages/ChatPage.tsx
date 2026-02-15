@@ -31,9 +31,12 @@ import {
 import { useTranslation } from '@/hooks/useTranslation';
 import { ChatShareMenu } from '@/components/chat/ChatShareMenu';
 import { ChatMessageBubble } from '@/components/chat/ChatMessageBubble';
-import type { LocationShare, ScheduleShare, DecisionShare, ChatMessage, ChatRoom } from '@/types/core';
+import { FileUploadModal } from '@/components/project/FileUploadModal';
+import type { LocationShare, ScheduleShare, DecisionShare, ChatMessage, ChatRoom, FileCategory } from '@/types/core';
 import * as chatService from '@/services/chatService';
+import * as fileService from '@/services/fileService';
 import { isSupabaseConfigured } from '@/lib/supabase';
+import { toast } from 'sonner';
 
 type ChatType = 'project' | 'direct';
 
@@ -50,6 +53,7 @@ export default function ChatPage() {
     sendProjectMessage, sendDirectMessage, sendRoomMessage,
     loadChatRooms, createChatRoom, getChatRoomsByProject,
     getUserById, addMessage,
+    addFileGroup, addFile, getFileGroupsByProject,
   } = useAppStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTab, setSelectedTab] = useState<'projects' | 'direct'>('projects');
@@ -61,6 +65,7 @@ export default function ChatPage() {
   const [newRoomDescription, setNewRoomDescription] = useState('');
   const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [showFileUpload, setShowFileUpload] = useState(false);
 
   // Filter all projects (not just active, to show completed ones too)
   const allProjects = useMemo(() => {
@@ -288,6 +293,107 @@ export default function ChatPage() {
       ownerId: currentUser.id,
       source: 'PAULUS',
     });
+  };
+
+  // File upload handler for chat
+  const handleFileUploadConfirm = async (category: FileCategory, isImportant: boolean, comment: string, file?: File) => {
+    if (!currentUser || !selectedChat || selectedChat.type !== 'project') return;
+
+    const projectId = selectedChat.id;
+    const categoryTitles: Record<FileCategory, string> = {
+      DECK: 'Presentations',
+      FINAL: 'Final Deliverables',
+      REFERENCE: 'References',
+      CONTRACT: 'Contracts',
+      ETC: 'Others',
+    };
+
+    try {
+      const fileGroups = getFileGroupsByProject(projectId);
+      let fileGroup = fileGroups.find(fg => fg.category === category);
+      const fileName = file?.name || `Document_${Date.now().toString().slice(-6)}.pdf`;
+
+      if (isSupabaseConfigured() && file) {
+        if (!fileGroup) {
+          fileGroup = await fileService.createFileGroup({
+            projectId,
+            category,
+            title: categoryTitles[category],
+          });
+          addFileGroup(fileGroup);
+        }
+
+        await fileService.uploadFile(file, projectId, currentUser.id);
+
+        const fileExt = file.name.split('.').pop() || '';
+        const fileSize = file.size < 1024 * 1024
+          ? `${(file.size / 1024).toFixed(1)} KB`
+          : `${(file.size / (1024 * 1024)).toFixed(1)} MB`;
+
+        const fileItem = await fileService.createFileItem({
+          fileGroupId: fileGroup.id,
+          name: file.name,
+          uploadedBy: currentUser.id,
+          size: fileSize,
+          type: fileExt,
+          isImportant,
+          source: 'CHAT',
+          comment,
+        });
+
+        addFile(fileItem);
+
+        // Send chat message about the file
+        if (selectedChat.roomId) {
+          await sendRoomMessage(selectedChat.roomId, projectId, `📎 Uploaded file: ${file.name}`, {
+            messageType: 'file',
+          });
+        } else {
+          await sendProjectMessage(projectId, `📎 Uploaded file: ${file.name}`);
+        }
+      } else {
+        // Mock mode
+        if (!fileGroup) {
+          const newGroupId = `fg${Date.now()}`;
+          addFileGroup({
+            id: newGroupId,
+            projectId,
+            category,
+            title: categoryTitles[category],
+          });
+          fileGroup = { id: newGroupId, projectId, category, title: categoryTitles[category] };
+        }
+
+        const newFileId = `f${Date.now()}`;
+        addFile({
+          id: newFileId,
+          fileGroupId: fileGroup.id,
+          name: fileName,
+          uploadedBy: currentUser.id,
+          createdAt: new Date().toISOString(),
+          size: file ? `${(file.size / (1024 * 1024)).toFixed(1)} MB` : '2.3 MB',
+          type: file?.name.split('.').pop() || 'pdf',
+          isImportant,
+          source: 'CHAT',
+          comment,
+        });
+
+        addMessage({
+          id: `m${Date.now()}`,
+          projectId,
+          userId: currentUser.id,
+          content: `📎 Uploaded file: ${fileName}`,
+          createdAt: new Date().toISOString(),
+          attachmentId: newFileId,
+          messageType: 'file',
+        });
+      }
+
+      toast.success(`${fileName} 업로드 완료`);
+    } catch (error) {
+      console.error('Failed to upload file:', error);
+      toast.error('파일 업로드에 실패했습니다');
+    }
   };
 
   // Project click: expand to show rooms
@@ -683,7 +789,19 @@ export default function ChatPage() {
                     onShareDecision={handleShareDecision}
                     chatMemberIds={chatMemberIds}
                   />
-                  <Button variant="ghost" size="icon" className="shrink-0" aria-label="Attach file">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="shrink-0"
+                    aria-label="Attach file"
+                    onClick={() => {
+                      if (selectedChat?.type === 'project') {
+                        setShowFileUpload(true);
+                      } else {
+                        toast.info('파일 업로드는 프로젝트 채팅에서만 가능합니다');
+                      }
+                    }}
+                  >
                     <Paperclip className="w-5 h-5" />
                   </Button>
                   <Input
@@ -722,6 +840,16 @@ export default function ChatPage() {
           )}
         </Card>
       </div>
+
+      {/* File Upload Modal */}
+      {selectedChat?.type === 'project' && (
+        <FileUploadModal
+          open={showFileUpload}
+          onClose={() => setShowFileUpload(false)}
+          projectId={selectedChat.id}
+          onUpload={handleFileUploadConfirm}
+        />
+      )}
 
       {/* Create Room Dialog */}
       <Dialog open={showCreateRoom} onOpenChange={setShowCreateRoom}>

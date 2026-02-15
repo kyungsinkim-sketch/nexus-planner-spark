@@ -22,8 +22,9 @@ import {
 } from '@/components/ui/select';
 import { CurrencyInput } from '@/components/ui/currency-input';
 import { UserSearchInput } from '@/components/ui/user-search-input';
-import { X, Image } from 'lucide-react';
+import { X, Image, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 
 interface EditProjectModalProps {
   open: boolean;
@@ -148,9 +149,37 @@ export function EditProjectModal({ open, onOpenChange, project }: EditProjectMod
     }));
   };
 
-  const handleThumbnailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const [isUploadingThumb, setIsUploadingThumb] = useState(false);
+
+  const handleThumbnailChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
+    if (!file) return;
+
+    if (isSupabaseConfigured()) {
+      // Upload to Supabase Storage
+      setIsUploadingThumb(true);
+      try {
+        const ext = file.name.split('.').pop() || 'jpg';
+        const filePath = `thumbnails/${project.id}/thumb_${Date.now()}.${ext}`;
+        const { error: uploadError } = await supabase.storage
+          .from('project-files')
+          .upload(filePath, file, { upsert: true });
+
+        if (uploadError) throw uploadError;
+
+        const { data: urlData } = supabase.storage
+          .from('project-files')
+          .getPublicUrl(filePath);
+
+        setFormData(prev => ({ ...prev, thumbnail: urlData.publicUrl }));
+      } catch (err) {
+        console.error('Thumbnail upload failed:', err);
+        toast.error('이미지 업로드에 실패했습니다');
+      } finally {
+        setIsUploadingThumb(false);
+      }
+    } else {
+      // Mock mode: use base64
       const reader = new FileReader();
       reader.onloadend = () => {
         setFormData(prev => ({ ...prev, thumbnail: reader.result as string }));
@@ -200,10 +229,17 @@ export function EditProjectModal({ open, onOpenChange, project }: EditProjectMod
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  className="w-32 h-20 rounded-lg border-2 border-dashed border-border flex flex-col items-center justify-center gap-1 hover:border-primary/50 hover:bg-muted/50 transition-colors"
+                  disabled={isUploadingThumb}
+                  className="w-32 h-20 rounded-lg border-2 border-dashed border-border flex flex-col items-center justify-center gap-1 hover:border-primary/50 hover:bg-muted/50 transition-colors disabled:opacity-50"
                 >
-                  <Image className="w-5 h-5 text-muted-foreground" />
-                  <span className="text-xs text-muted-foreground">Upload</span>
+                  {isUploadingThumb ? (
+                    <Loader2 className="w-5 h-5 text-muted-foreground animate-spin" />
+                  ) : (
+                    <Image className="w-5 h-5 text-muted-foreground" />
+                  )}
+                  <span className="text-xs text-muted-foreground">
+                    {isUploadingThumb ? 'Uploading...' : 'Upload'}
+                  </span>
                 </button>
               )}
               <input
