@@ -94,6 +94,12 @@ export function EditProjectModal({ open, onOpenChange, project }: EditProjectMod
 
     setIsSaving(true);
     try {
+      // Ensure PM is included in team members
+      let finalTeamMemberIds = [...formData.teamMemberIds];
+      if (formData.pmId && !finalTeamMemberIds.includes(formData.pmId)) {
+        finalTeamMemberIds = [formData.pmId, ...finalTeamMemberIds];
+      }
+
       await updateProject(project.id, {
         title: formData.title,
         client: formData.client,
@@ -105,7 +111,7 @@ export function EditProjectModal({ open, onOpenChange, project }: EditProjectMod
         budget: parseInt(formData.budget) || 0,
         currency: formData.currency,
         pmId: formData.pmId,
-        teamMemberIds: formData.teamMemberIds,
+        teamMemberIds: finalTeamMemberIds,
         thumbnail: formData.thumbnail,
         keyColor: formData.keyColor,
       });

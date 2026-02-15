@@ -171,14 +171,17 @@ export const updateEvent = async (
         .from('calendar_events')
         .update(updateData as unknown as Record<string, unknown>)
         .eq('id', id)
-        .select()
-        .single();
+        .select();
 
     if (error) {
         throw new Error(handleSupabaseError(error));
     }
 
-    return transformEvent(data);
+    if (!data || data.length === 0) {
+        throw new Error('Event not found or you do not have permission to update it');
+    }
+
+    return transformEvent(data[0]);
 };
 
 // Delete event

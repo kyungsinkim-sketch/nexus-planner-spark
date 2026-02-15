@@ -24,14 +24,17 @@ import { CurrencyInput } from '@/components/ui/currency-input';
 import { UserSearchInput } from '@/components/ui/user-search-input';
 import { Upload, X, Image } from 'lucide-react';
 
+import { toast } from 'sonner';
+
 interface NewProjectModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
 export function NewProjectModal({ open, onOpenChange }: NewProjectModalProps) {
-  const { users, addProject } = useAppStore();
+  const { users, addProject, currentUser } = useAppStore();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     title: '',
     client: '',
@@ -50,48 +53,65 @@ export function NewProjectModal({ open, onOpenChange }: NewProjectModalProps) {
   const selectedPM = users.find(u => u.id === formData.pmId);
   const selectedTeamMembers = users.filter(u => formData.teamMemberIds.includes(u.id));
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    const newProject = {
-      id: `p${Date.now()}`,
-      title: formData.title,
-      client: formData.client,
-      description: formData.description,
-      type: formData.type,
-      priority: formData.priority,
-      status: 'ACTIVE' as const,
-      startDate: new Date(formData.startDate).toISOString(),
-      endDate: new Date(formData.endDate).toISOString(),
-      budget: parseInt(formData.budget) || 0,
-      currency: formData.currency,
-      pmId: formData.pmId,
-      teamMemberIds: formData.teamMemberIds,
-      progress: 0,
-      lastActivityAt: new Date().toISOString(),
-      health: { schedule: 'ON_TRACK' as const, workload: 'BALANCED' as const, budget: 'HEALTHY' as const },
-      milestones: [],
-      tasksCompleted: 0,
-      tasksTotal: 0,
-      thumbnail: formData.thumbnail,
-    };
+    setIsSubmitting(true);
 
-    addProject(newProject);
-    onOpenChange(false);
-    setFormData({
-      title: '',
-      client: '',
-      description: '',
-      type: 'EXECUTION',
-      priority: 'MEDIUM',
-      startDate: '',
-      endDate: '',
-      budget: '',
-      currency: 'KRW',
-      pmId: '',
-      teamMemberIds: [],
-      thumbnail: '',
-    });
+    try {
+      // Ensure creator is included in team members
+      let finalTeamMemberIds = [...formData.teamMemberIds];
+      if (currentUser && !finalTeamMemberIds.includes(currentUser.id)) {
+        finalTeamMemberIds = [currentUser.id, ...finalTeamMemberIds];
+      }
+      // Also include PM if set
+      if (formData.pmId && !finalTeamMemberIds.includes(formData.pmId)) {
+        finalTeamMemberIds = [formData.pmId, ...finalTeamMemberIds];
+      }
+
+      const newProject = {
+        title: formData.title,
+        client: formData.client,
+        description: formData.description,
+        type: formData.type,
+        priority: formData.priority,
+        status: 'ACTIVE' as const,
+        startDate: new Date(formData.startDate).toISOString(),
+        endDate: new Date(formData.endDate).toISOString(),
+        budget: parseInt(formData.budget) || 0,
+        currency: formData.currency,
+        pmId: formData.pmId || (currentUser?.id ?? ''),
+        teamMemberIds: finalTeamMemberIds,
+        progress: 0,
+        lastActivityAt: new Date().toISOString(),
+        health: { schedule: 'ON_TRACK' as const, workload: 'BALANCED' as const, budget: 'HEALTHY' as const },
+        tasksCompleted: 0,
+        tasksTotal: 0,
+        thumbnail: formData.thumbnail,
+      };
+
+      await addProject(newProject);
+      toast.success('프로젝트가 생성되었습니다');
+      onOpenChange(false);
+      setFormData({
+        title: '',
+        client: '',
+        description: '',
+        type: 'EXECUTION',
+        priority: 'MEDIUM',
+        startDate: '',
+        endDate: '',
+        budget: '',
+        currency: 'KRW',
+        pmId: '',
+        teamMemberIds: [],
+        thumbnail: '',
+      });
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : '프로젝트 생성 실패';
+      toast.error(message);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleSelectPM = (user: User) => {
@@ -151,9 +171,9 @@ export function NewProjectModal({ open, onOpenChange }: NewProjectModalProps) {
             <div className="flex items-start gap-4">
               {formData.thumbnail ? (
                 <div className="relative w-32 h-20 rounded-lg overflow-hidden border border-border">
-                  <img 
-                    src={formData.thumbnail} 
-                    alt="Project thumbnail" 
+                  <img
+                    src={formData.thumbnail}
+                    alt="Project thumbnail"
                     className="w-full h-full object-cover"
                   />
                   <button
@@ -319,7 +339,9 @@ export function NewProjectModal({ open, onOpenChange }: NewProjectModalProps) {
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button type="submit">Create Project</Button>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? '생성 중...' : 'Create Project'}
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>

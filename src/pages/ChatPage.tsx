@@ -3,7 +3,7 @@ import { useAppStore } from '@/stores/appStore';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
@@ -355,7 +355,7 @@ export default function ChatPage() {
       };
     } else {
       const user = users.find(u => u.id === selectedChat.id);
-      return user ? { name: user.name, subtitle: user.department } : null;
+      return user ? { name: user.name, subtitle: user.department, avatar: user.avatar } : null;
     }
   }, [selectedChat, projects, users, chatRooms]);
 
@@ -531,6 +531,7 @@ export default function ChatPage() {
                           className={`w-full flex items-center gap-3 p-4 hover:bg-muted/50 transition-colors group text-left ${isSelected ? 'bg-muted' : ''}`}
                         >
                           <Avatar className="w-10 h-10">
+                            {user.avatar && <AvatarImage src={user.avatar} alt={user.name} />}
                             <AvatarFallback className="bg-primary/10 text-primary text-sm">
                               {getInitials(user.name)}
                             </AvatarFallback>
@@ -580,6 +581,7 @@ export default function ChatPage() {
                   </div>
                 ) : (
                   <Avatar className="w-10 h-10">
+                    {selectedChatInfo.avatar && <AvatarImage src={selectedChatInfo.avatar} alt={selectedChatInfo.name} />}
                     <AvatarFallback className="bg-primary/10 text-primary">
                       {getInitials(selectedChatInfo.name)}
                     </AvatarFallback>
@@ -630,6 +632,7 @@ export default function ChatPage() {
                               >
                                 {showAvatar ? (
                                   <Avatar className="w-8 h-8 shrink-0">
+                                    {user?.avatar && <AvatarImage src={user.avatar} alt={user?.name} />}
                                     <AvatarFallback className={`text-xs ${isCurrentUser
                                       ? 'bg-primary text-primary-foreground'
                                       : 'bg-muted text-muted-foreground'

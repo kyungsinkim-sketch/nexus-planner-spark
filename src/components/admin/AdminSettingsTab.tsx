@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useAppStore } from '@/stores/appStore';
+import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -94,32 +95,137 @@ export function AdminSettingsTab() {
     const [notificationTitle, setNotificationTitle] = useState('');
     const [notificationMessage, setNotificationMessage] = useState('');
 
-    // User management functions
-    const handleCreateUser = () => {
+    const [isProcessing, setIsProcessing] = useState(false);
+    const { loadUsers } = useAppStore();
+
+    // User management functions — Supabase-connected
+    const handleCreateUser = useCallback(async () => {
         if (!newUserName || !newUserEmail) {
-            toast.error('Please fill in all fields');
+            toast.error('이름과 이메일을 모두 입력해주세요');
             return;
         }
 
-        // TODO: Implement actual user creation
-        toast.success(`User ${newUserName} created successfully`);
-        setIsCreateUserOpen(false);
-        setNewUserName('');
-        setNewUserEmail('');
-        setNewUserRole('MEMBER');
-    };
-
-    const handleUpdateUserRole = (userId: string, newRole: UserRole) => {
-        // TODO: Implement actual role update
-        toast.success('User role updated successfully');
-    };
-
-    const handleDeleteUser = (userId: string, userName: string) => {
-        if (confirm(`Are you sure you want to delete user ${userName}?`)) {
-            // TODO: Implement actual user deletion
-            toast.success('User deleted successfully');
+        if (!isSupabaseConfigured()) {
+            toast.error('Supabase가 설정되지 않았습니다');
+            return;
         }
-    };
+
+        setIsProcessing(true);
+        try {
+            // Use Supabase Admin API to create user
+            const serviceRoleKey = import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY;
+            const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+
+            if (!serviceRoleKey) {
+                toast.error('Service Role Key가 설정되지 않았습니다. .env 파일에 VITE_SUPABASE_SERVICE_ROLE_KEY를 추가해주세요.');
+                return;
+            }
+
+            const response = await fetch(`${supabaseUrl}/auth/v1/admin/users`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${serviceRoleKey}`,
+                    'apikey': serviceRoleKey,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    email: newUserEmail,
+                    password: 'newstart',
+                    email_confirm: true,
+                    user_metadata: { name: newUserName },
+                }),
+            });
+
+            if (!response.ok) {
+                const err = await response.json();
+                throw new Error(err.msg || err.message || '유저 생성 실패');
+            }
+
+            const userData = await response.json();
+
+            // Set role in profiles table
+            if (newUserRole !== 'MEMBER') {
+                await supabase
+                    .from('profiles')
+                    .update({ role: newUserRole })
+                    .eq('id', userData.id);
+            }
+
+            toast.success(`${newUserName} 계정이 생성되었습니다 (비밀번호: newstart)`);
+            setIsCreateUserOpen(false);
+            setNewUserName('');
+            setNewUserEmail('');
+            setNewUserRole('MEMBER');
+
+            // Reload users list
+            await loadUsers();
+        } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : '유저 생성 실패';
+            toast.error(message);
+        } finally {
+            setIsProcessing(false);
+        }
+    }, [newUserName, newUserEmail, newUserRole, loadUsers]);
+
+    const handleUpdateUserRole = useCallback(async (userId: string, newRole: UserRole) => {
+        if (!isSupabaseConfigured()) {
+            toast.error('Supabase가 설정되지 않았습니다');
+            return;
+        }
+
+        try {
+            const { error } = await supabase
+                .from('profiles')
+                .update({ role: newRole })
+                .eq('id', userId);
+
+            if (error) throw error;
+
+            toast.success('권한이 변경되었습니다');
+            await loadUsers();
+        } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : '권한 변경 실패';
+            toast.error(message);
+        }
+    }, [loadUsers]);
+
+    const handleDeleteUser = useCallback(async (userId: string, userName: string) => {
+        if (!confirm(`정말 ${userName} 유저를 삭제하시겠습니까?`)) return;
+
+        if (!isSupabaseConfigured()) {
+            toast.error('Supabase가 설정되지 않았습니다');
+            return;
+        }
+
+        try {
+            const serviceRoleKey = import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY;
+            const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+
+            if (!serviceRoleKey) {
+                toast.error('Service Role Key가 설정되지 않았습니다');
+                return;
+            }
+
+            const response = await fetch(`${supabaseUrl}/auth/v1/admin/users/${userId}`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${serviceRoleKey}`,
+                    'apikey': serviceRoleKey,
+                },
+            });
+
+            if (!response.ok) {
+                const err = await response.json();
+                throw new Error(err.msg || err.message || '유저 삭제 실패');
+            }
+
+            toast.success(`${userName} 유저가 삭제되었습니다`);
+            await loadUsers();
+        } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : '유저 삭제 실패';
+            toast.error(message);
+        }
+    }, [loadUsers]);
 
     // Quote management functions
     const handleAddQuote = () => {
@@ -277,7 +383,9 @@ export function AdminSettingsTab() {
                                         <Button variant="outline" onClick={() => setIsCreateUserOpen(false)}>
                                             Cancel
                                         </Button>
-                                        <Button onClick={handleCreateUser}>Create User</Button>
+                                        <Button onClick={handleCreateUser} disabled={isProcessing}>
+                                            {isProcessing ? '생성 중...' : 'Create User'}
+                                        </Button>
                                     </DialogFooter>
                                 </DialogContent>
                             </Dialog>

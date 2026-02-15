@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Send, Paperclip, Smile } from 'lucide-react';
 import { FileUploadModal } from './FileUploadModal';
 import { toast } from 'sonner';
@@ -281,6 +281,7 @@ export function ProjectChatTab({ projectId }: ProjectChatTabProps) {
                         >
                           {showAvatar ? (
                             <Avatar className="w-8 h-8 shrink-0">
+                              {user?.avatar && <AvatarImage src={user.avatar} alt={user?.name} />}
                               <AvatarFallback className={`text-xs ${isCurrentUser
                                 ? 'bg-primary text-primary-foreground'
                                 : 'bg-muted text-muted-foreground'

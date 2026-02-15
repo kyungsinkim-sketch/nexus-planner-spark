@@ -25,7 +25,7 @@ import {
 } from 'lucide-react';
 import { useAppStore } from '@/stores/appStore';
 import { cn } from '@/lib/utils';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -219,6 +219,9 @@ export function Sidebar() {
             )}>
               <div className="relative">
                 <Avatar className="w-8 h-8 shrink-0">
+                  {currentUser?.avatar && (
+                    <AvatarImage src={currentUser.avatar} alt={currentUser.name} />
+                  )}
                   <AvatarFallback className="bg-sidebar-primary text-sidebar-primary-foreground text-xs">
                     {currentUser?.name.split(' ').map(n => n[0]).join('') || '?'}
                   </AvatarFallback>
