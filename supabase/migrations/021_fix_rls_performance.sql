@@ -59,6 +59,8 @@ CREATE POLICY "Users can view project messages" ON chat_messages
             WHERE crm.room_id = chat_messages.room_id
             AND crm.user_id = (select auth.uid())
         )
+        OR user_id = (select auth.uid())
+        OR direct_chat_user_id = (select auth.uid())
     );
 
 DROP POLICY IF EXISTS "Users can delete own messages" ON chat_messages;
