@@ -4,6 +4,13 @@
  */
 
 import { supabase, handleSupabaseError, isSupabaseConfigured } from '@/lib/supabase';
+import { getTranslation, type Language } from '@/lib/i18n';
+import { useAppStore } from '@/stores/appStore';
+
+/** Helper to get current language from store (non-React context) */
+function getLang(): Language {
+    return useAppStore.getState().language;
+}
 
 // ============================================
 // Types
@@ -106,13 +113,13 @@ export async function getCurrentPosition(): Promise<GeoPosition> {
                 let message = 'Failed to get location';
                 switch (error.code) {
                     case error.PERMISSION_DENIED:
-                        message = '위치 정보 접근이 거부되었습니다. 설정에서 위치 권한을 허용해주세요.';
+                        message = getTranslation(getLang(), 'locationPermissionDenied');
                         break;
                     case error.POSITION_UNAVAILABLE:
-                        message = '위치 정보를 사용할 수 없습니다.';
+                        message = getTranslation(getLang(), 'locationUnavailable');
                         break;
                     case error.TIMEOUT:
-                        message = '위치 정보 요청 시간이 초과되었습니다.';
+                        message = getTranslation(getLang(), 'locationTimeout');
                         break;
                 }
                 reject(new Error(message));

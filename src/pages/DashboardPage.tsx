@@ -28,12 +28,12 @@ import { ProjectProgressChart } from '@/components/dashboard/ProjectProgressChar
 import { ActivityChart } from '@/components/dashboard/ActivityChart';
 
 // Time-based greeting
-function getGreeting(): string {
+function getGreeting(t: (key: TranslationKey) => string): string {
     const hour = new Date().getHours();
-    if (hour < 6) return '새벽에도 고생하시네요';
-    if (hour < 12) return '좋은 아침이에요';
-    if (hour < 18) return '좋은 오후에요';
-    return '좋은 저녁이에요';
+    if (hour < 6) return t('greetingNight');
+    if (hour < 12) return t('greetingMorning');
+    if (hour < 18) return t('greetingAfternoon');
+    return t('greetingEvening');
 }
 
 export default function DashboardPage() {
@@ -87,9 +87,9 @@ export default function DashboardPage() {
 
     // Get phase label based on progress
     const getPhaseLabel = (progress: number) => {
-        if (progress < 30) return { label: 'Strategy', color: 'bg-purple-500' };
-        if (progress < 70) return { label: 'Production', color: 'bg-green-500' };
-        return { label: 'Delivery', color: 'bg-blue-500' };
+        if (progress < 30) return { label: t('strategy'), color: 'bg-purple-500' };
+        if (progress < 70) return { label: t('production'), color: 'bg-green-500' };
+        return { label: t('deliveryPhase'), color: 'bg-blue-500' };
     };
 
     // Calculate days remaining
@@ -104,22 +104,22 @@ export default function DashboardPage() {
         ...projects.slice(0, 2).map(p => ({
             id: `file-${p.id}`,
             icon: FileUp,
-            text: `${p.title}에 새 파일 업로드`,
-            time: '방금 전',
+            text: `${p.title} - ${t('newFileUpload')}`,
+            time: t('justNow'),
             color: 'text-blue-500',
         })),
         ...projects.slice(0, 1).map(p => ({
             id: `msg-${p.id}`,
             icon: MessageSquare,
-            text: `${p.title} 채팅에 새 메시지`,
-            time: '10분 전',
+            text: `${p.title} - ${t('newChatMessage')}`,
+            time: `10${t('minutesAgo')}`,
             color: 'text-emerald-500',
         })),
         ...projects.slice(1, 2).map(p => ({
             id: `flag-${p.id}`,
             icon: Flag,
-            text: `${p.title} 마일스톤 완료`,
-            time: '1시간 전',
+            text: `${p.title} - ${t('milestoneComplete')}`,
+            time: `1${t('hoursAgo')}`,
             color: 'text-amber-500',
         })),
     ].slice(0, 5);
@@ -131,7 +131,7 @@ export default function DashboardPage() {
                 {/* Greeting Header */}
                 <div>
                     <h1 className="text-2xl md:text-3xl font-bold text-foreground">
-                        {getGreeting()}, {currentUser?.name || ''} 👋
+                        {getGreeting(t)}, {currentUser?.name || ''} 👋
                     </h1>
                     <p className="text-muted-foreground mt-1">
                         {t('whatsHappeningToday')}
@@ -172,7 +172,7 @@ export default function DashboardPage() {
                         <CardContent className="p-5">
                             <div className="flex items-center justify-between">
                                 <div>
-                                    <p className="text-sm text-muted-foreground">이번 주 일정</p>
+                                    <p className="text-sm text-muted-foreground">{t('weeklySchedule')}</p>
                                     <p className="text-3xl font-bold text-foreground mt-1">{upcomingEvents}</p>
                                 </div>
                                 <div className="w-11 h-11 rounded-xl bg-violet-500/10 flex items-center justify-center">
@@ -206,10 +206,10 @@ export default function DashboardPage() {
                                 <div className="flex items-center justify-between">
                                     <CardTitle className="flex items-center gap-2 text-base">
                                         <FolderKanban className="w-4 h-4" />
-                                        내 프로젝트
+                                        {t('yourProjects')}
                                     </CardTitle>
                                     <Button variant="ghost" size="sm" className="text-xs gap-1" onClick={() => navigate('/projects')}>
-                                        전체보기 <ArrowRight className="w-3 h-3" />
+                                        {t('viewAll')} <ArrowRight className="w-3 h-3" />
                                     </Button>
                                 </div>
                             </CardHeader>
@@ -260,12 +260,12 @@ export default function DashboardPage() {
                                                         <div className="flex items-center justify-between text-xs text-muted-foreground">
                                                             <div className="flex items-center gap-2">
                                                                 <Badge variant="outline" className={cn("text-[10px] px-1.5 py-0", phase.color, "text-white border-0")}>
-                                                                    {t(phase.label.toLowerCase() as TranslationKey)}
+                                                                    {phase.label}
                                                                 </Badge>
                                                                 {daysLeft > 0 ? (
                                                                     <span>D-{daysLeft}</span>
                                                                 ) : (
-                                                                    <span className="text-destructive">마감</span>
+                                                                    <span className="text-destructive">{t('deadline')}</span>
                                                                 )}
                                                             </div>
                                                             <span>{progress}%</span>
@@ -363,12 +363,12 @@ export default function DashboardPage() {
                             <CardHeader className="pb-3">
                                 <CardTitle className="text-sm font-medium flex items-center gap-2">
                                     <Clock className="w-4 h-4" />
-                                    최근 활동
+                                    {t('recentActivity')}
                                 </CardTitle>
                             </CardHeader>
                             <CardContent className="space-y-3">
                                 {recentActivity.length === 0 ? (
-                                    <p className="text-sm text-muted-foreground text-center py-4">활동 없음</p>
+                                    <p className="text-sm text-muted-foreground text-center py-4">{t('noActivity')}</p>
                                 ) : (
                                     recentActivity.map((activity) => {
                                         const ActivityIcon = activity.icon;

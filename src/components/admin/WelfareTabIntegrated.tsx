@@ -29,30 +29,30 @@ import type { TrainingSession, LockerAssignment } from '@/services/welfareServic
 
 // Time slots for the weekly calendar
 const timeSlots = [
-    '오전 9시', '오전 10시', '오전 11시', '오후 12시',
-    '오후 1시', '오후 2시', '오후 3시', '오후 4시', '오후 5시'
+    '9:00 AM', '10:00 AM', '11:00 AM', '12:00 PM',
+    '1:00 PM', '2:00 PM', '3:00 PM', '4:00 PM', '5:00 PM'
 ];
 
 // Convert time slot to hour (24-hour format)
 const timeSlotToHour = (slot: string): number => {
     const hourMap: { [key: string]: number } = {
-        '오전 9시': 9, '오전 10시': 10, '오전 11시': 11, '오후 12시': 12,
-        '오후 1시': 13, '오후 2시': 14, '오후 3시': 15, '오후 4시': 16, '오후 5시': 17
+        '9:00 AM': 9, '10:00 AM': 10, '11:00 AM': 11, '12:00 PM': 12,
+        '1:00 PM': 13, '2:00 PM': 14, '3:00 PM': 15, '4:00 PM': 16, '5:00 PM': 17
     };
     return hourMap[slot] || 9;
 };
 
 // Mock data fallback
 const mockTrainingSessions: TrainingSession[] = [
-    { id: '1', userId: 'u1', userName: '김현진', date: '2026-02-04', timeSlot: '오전 9시', trainerConfirmed: false, traineeConfirmed: false, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
-    { id: '2', userId: 'u2', userName: '홍원준', date: '2026-02-04', timeSlot: '오전 10시', trainerConfirmed: false, traineeConfirmed: false, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
-    { id: '3', userId: 'u3', userName: 'KS', date: '2026-02-04', timeSlot: '오후 2시', exerciseContent: 'Bench Press 3 sets, Squat 5 sets', trainerConfirmed: true, traineeConfirmed: true, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+    { id: '1', userId: 'u1', userName: 'Kim HJ', date: '2026-02-04', timeSlot: '9:00 AM', trainerConfirmed: false, traineeConfirmed: false, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+    { id: '2', userId: 'u2', userName: 'Hong WJ', date: '2026-02-04', timeSlot: '10:00 AM', trainerConfirmed: false, traineeConfirmed: false, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+    { id: '3', userId: 'u3', userName: 'KS', date: '2026-02-04', timeSlot: '2:00 PM', exerciseContent: 'Bench Press 3 sets, Squat 5 sets', trainerConfirmed: true, traineeConfirmed: true, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
 ];
 
 const mockLockerAssignments: LockerAssignment[] = [
-    { lockerNumber: 1, userId: 'u1', userName: '이지우', assignedDate: '2026-01-01', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
-    { lockerNumber: 2, userId: 'u2', userName: '정승제', assignedDate: '2026-01-01', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
-    { lockerNumber: 7, userId: 'u3', userName: '이분이', assignedDate: '2026-01-05', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+    { lockerNumber: 1, userId: 'u1', userName: 'Lee JW', assignedDate: '2026-01-01', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+    { lockerNumber: 2, userId: 'u2', userName: 'Jung SJ', assignedDate: '2026-01-01', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+    { lockerNumber: 7, userId: 'u3', userName: 'Lee BI', assignedDate: '2026-01-05', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
 ];
 
 export function WelfareTabIntegrated() {

@@ -12,6 +12,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { CalendarPlus, Check } from 'lucide-react';
 import { useAppStore } from '@/stores/appStore';
+import { useTranslation } from '@/hooks/useTranslation';
 import type { ScheduleShare } from '@/types/core';
 
 interface ScheduleShareDialogProps {
@@ -24,6 +25,7 @@ interface ScheduleShareDialogProps {
 
 export function ScheduleShareDialog({ open, onOpenChange, onSubmit, chatMemberIds }: ScheduleShareDialogProps) {
   const { users, currentUser } = useAppStore();
+  const { t } = useTranslation();
   const [title, setTitle] = useState('');
   const [startDate, setStartDate] = useState('');
   const [startTime, setStartTime] = useState('10:00');
@@ -79,50 +81,50 @@ export function ScheduleShareDialog({ open, onOpenChange, onSubmit, chatMemberId
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <CalendarPlus className="w-5 h-5 text-green-500" />
-            일정 공유
+            {t('shareSchedule')}
           </DialogTitle>
         </DialogHeader>
         <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-1">
           <div className="space-y-2">
-            <Label>일정 제목</Label>
+            <Label>{t('scheduleTitle')}</Label>
             <Input
-              placeholder="예: 촬영 현장 답사"
+              placeholder={t('scheduleExample')}
               value={title}
               onChange={(e) => setTitle(e.target.value)}
             />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
-              <Label>시작 날짜</Label>
+              <Label>{t('startDate')}</Label>
               <Input type="date" value={startDate} onChange={(e) => { setStartDate(e.target.value); if (!endDate) setEndDate(e.target.value); }} />
             </div>
             <div className="space-y-2">
-              <Label>시작 시간</Label>
+              <Label>{t('startTime')}</Label>
               <Input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
-              <Label>종료 날짜</Label>
+              <Label>{t('endDate')}</Label>
               <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
             </div>
             <div className="space-y-2">
-              <Label>종료 시간</Label>
+              <Label>{t('endTime')}</Label>
               <Input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} />
             </div>
           </div>
           <div className="space-y-2">
-            <Label>장소 (선택)</Label>
+            <Label>{t('locationOptional')}</Label>
             <Input
-              placeholder="예: 성수동 스튜디오"
+              placeholder={t('locationExample')}
               value={location}
               onChange={(e) => setLocation(e.target.value)}
             />
           </div>
           <div className="space-y-2">
-            <Label>설명 (선택)</Label>
+            <Label>{t('descriptionOptional')}</Label>
             <Textarea
-              placeholder="일정에 대한 설명을 입력하세요"
+              placeholder={t('scheduleDescriptionPlaceholder')}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={2}
@@ -130,9 +132,9 @@ export function ScheduleShareDialog({ open, onOpenChange, onSubmit, chatMemberId
           </div>
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <Label>참여자 초대</Label>
+              <Label>{t('inviteParticipants')}</Label>
               <Button variant="ghost" size="sm" className="text-xs h-6" onClick={selectAll}>
-                {selectedInvitees.length === invitableUsers.length ? '전체 해제' : '전체 선택'}
+                {selectedInvitees.length === invitableUsers.length ? t('deselectAll') : t('selectAll')}
               </Button>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -153,13 +155,13 @@ export function ScheduleShareDialog({ open, onOpenChange, onSubmit, chatMemberId
               })}
             </div>
             {selectedInvitees.length > 0 && (
-              <p className="text-xs text-muted-foreground">{selectedInvitees.length}명 선택됨</p>
+              <p className="text-xs text-muted-foreground">{t('selectedCount').replace('{count}', String(selectedInvitees.length))}</p>
             )}
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>취소</Button>
-          <Button onClick={handleSubmit} disabled={!title.trim() || !startDate || !endDate}>공유</Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>{t('cancel')}</Button>
+          <Button onClick={handleSubmit} disabled={!title.trim() || !startDate || !endDate}>{t('share')}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

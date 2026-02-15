@@ -12,7 +12,7 @@ import {
   Tooltip,
   Legend,
 } from 'recharts';
-import { 
+import {
   Award,
   Rocket,
   Users,
@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { formatKRW } from '@/lib/format';
 import { annualFinancials } from '@/mock/data';
+import { useTranslation } from '@/hooks/useTranslation';
 
 const DISTRIBUTION_COLORS = [
   'hsl(142, 76%, 36%)',  // 성과상여금 - green
@@ -44,16 +45,17 @@ interface ProfitDistributionSectionProps {
 }
 
 export function ProfitDistributionSection({ year }: ProfitDistributionSectionProps) {
+  const { t } = useTranslation();
   const [ratios, setRatios] = useState([20, 30, 20, 30]);
 
   const currentData = annualFinancials.find(f => f.year === year) || annualFinancials[1];
   const netProfit = currentData.netProfit;
 
   const distributions: DistributionRatio[] = [
-    { label: '성과상여금', description: '구성원 성과에 따른 배분 (수식 추후 적용)', ratio: ratios[0], icon: Award, color: DISTRIBUTION_COLORS[0] },
-    { label: '신규사업 투자', description: '솔루션 제작, 광고제 출품/참석 등', ratio: ratios[1], icon: Rocket, color: DISTRIBUTION_COLORS[1] },
-    { label: '주주배당', description: '주주 배당금', ratio: ratios[2], icon: Users, color: DISTRIBUTION_COLORS[2] },
-    { label: '사내유보', description: '차기 이월금', ratio: ratios[3], icon: PiggyBank, color: DISTRIBUTION_COLORS[3] },
+    { label: t('performanceBonusDist'), description: t('performanceBonusDesc'), ratio: ratios[0], icon: Award, color: DISTRIBUTION_COLORS[0] },
+    { label: t('newBusinessInvestment'), description: t('newBusinessInvestmentDesc'), ratio: ratios[1], icon: Rocket, color: DISTRIBUTION_COLORS[1] },
+    { label: t('shareholderDividend'), description: t('shareholderDividendDesc'), ratio: ratios[2], icon: Users, color: DISTRIBUTION_COLORS[2] },
+    { label: t('retainedEarnings'), description: t('retainedEarningsDesc'), ratio: ratios[3], icon: PiggyBank, color: DISTRIBUTION_COLORS[3] },
   ];
 
   const chartData = distributions.map(d => ({
@@ -82,21 +84,21 @@ export function ProfitDistributionSection({ year }: ProfitDistributionSectionPro
     <div className="space-y-6">
       {/* Header */}
       <h3 className="text-lg font-semibold text-foreground">
-        {currentData.year}년 {currentData.isTarget ? '목표' : '실적'} 순이익 배분 시뮬레이션
+        {currentData.year}{t('yearSuffix')} {currentData.isTarget ? t('target') : t('actual')} {t('profitDistSimulation')}
       </h3>
 
       {/* Net Profit Banner */}
       <Card className="p-4 sm:p-6 shadow-card bg-gradient-to-r from-primary/5 to-primary/10 border-primary/20">
         <div className="flex items-center justify-between gap-3">
           <div className="shrink-0">
-            <p className="text-sm text-muted-foreground">{currentData.year}년 {currentData.isTarget ? '목표' : '실적'} 순이익</p>
+            <p className="text-sm text-muted-foreground">{currentData.year}{t('yearSuffix')} {currentData.isTarget ? t('target') : t('actual')} {t('profitDistNetProfit')}</p>
           </div>
           <div className="flex items-center gap-3 min-w-0 flex-1">
             <AutoFitText className={`text-2xl sm:text-3xl font-bold ${netProfit >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
               {formatKRW(netProfit)}
             </AutoFitText>
             <Badge variant={currentData.isTarget ? 'outline' : 'default'} className="text-sm sm:text-base px-3 sm:px-4 py-1 shrink-0">
-              {currentData.isTarget ? '목표' : '확정'}
+              {currentData.isTarget ? t('target') : t('plConfirmed')}
             </Badge>
           </div>
         </div>
@@ -135,7 +137,7 @@ export function ProfitDistributionSection({ year }: ProfitDistributionSectionPro
         {/* Donut Chart */}
         <Card className="shadow-card">
           <CardHeader className="pb-0">
-            <CardTitle className="text-base">배분 비율</CardTitle>
+            <CardTitle className="text-base">{t('distributionRatio')}</CardTitle>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={280}>
@@ -172,7 +174,7 @@ export function ProfitDistributionSection({ year }: ProfitDistributionSectionPro
       <Card className="shadow-card">
         <CardHeader>
           <div className="flex items-center gap-2">
-            <CardTitle className="text-base">배분 비율 조정 (What-if 분석)</CardTitle>
+            <CardTitle className="text-base">{t('distributionRatioAdjust')}</CardTitle>
             <Info className="w-4 h-4 text-muted-foreground" />
           </div>
         </CardHeader>
@@ -201,7 +203,7 @@ export function ProfitDistributionSection({ year }: ProfitDistributionSectionPro
           {/* 사내유보 (auto-calculated) */}
           <div className="pt-4 border-t">
             <div className="flex items-center justify-between">
-              <Label className="text-sm font-medium">사내유보 (자동 계산)</Label>
+              <Label className="text-sm font-medium">{t('retainedEarningsAuto')}</Label>
               <div className="flex items-center gap-2 min-w-0">
                 <Badge variant="secondary">{ratios[3]}%</Badge>
                 <AutoFitText className="text-sm font-mono text-muted-foreground">

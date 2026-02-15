@@ -291,9 +291,9 @@ export function TodosTab({ projectId }: TodosTabProps) {
                           )}
                         </div>
                         <span className="ml-1">
-                          {assignees.length === 1 
-                            ? assignees[0].name 
-                            : `${assignees[0].name} 외 ${assignees.length - 1}명`}
+                          {assignees.length === 1
+                            ? assignees[0].name
+                            : `${assignees[0].name} ${t('andNMore').replace('{n}', String(assignees.length - 1))}`}
                         </span>
                       </span>
                     )}

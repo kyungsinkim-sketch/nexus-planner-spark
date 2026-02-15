@@ -64,21 +64,21 @@ export function MobileHRSummary({ onViewDetails }: MobileHRSummaryProps) {
                 <Card className="p-3">
                     <div className="flex items-center gap-2 mb-1">
                         <Users className="w-4 h-4 text-blue-500" />
-                        <span className="text-xs text-muted-foreground">전체</span>
+                        <span className="text-xs text-muted-foreground">{t('all')}</span>
                     </div>
                     <p className="text-2xl font-bold">{employees.length}</p>
                 </Card>
                 <Card className="p-3">
                     <div className="flex items-center gap-2 mb-1">
                         <UserCheck className="w-4 h-4 text-emerald-500" />
-                        <span className="text-xs text-muted-foreground">재직</span>
+                        <span className="text-xs text-muted-foreground">{t('employeeActive')}</span>
                     </div>
                     <p className="text-2xl font-bold text-emerald-600">{activeEmployees.length}</p>
                 </Card>
                 <Card className="p-3">
                     <div className="flex items-center gap-2 mb-1">
                         <UserX className="w-4 h-4 text-amber-500" />
-                        <span className="text-xs text-muted-foreground">휴가</span>
+                        <span className="text-xs text-muted-foreground">{t('onLeave')}</span>
                     </div>
                     <p className="text-2xl font-bold text-amber-600">{onLeaveEmployees.length}</p>
                 </Card>
@@ -89,7 +89,7 @@ export function MobileHRSummary({ onViewDetails }: MobileHRSummaryProps) {
                 <CardHeader className="pb-2">
                     <CardTitle className="text-sm font-medium flex items-center gap-2">
                         <Building2 className="w-4 h-4" />
-                        부서별 인원
+                        {t('headcountByDepartment')}
                     </CardTitle>
                 </CardHeader>
                 <CardContent className="pt-0">
@@ -100,7 +100,7 @@ export function MobileHRSummary({ onViewDetails }: MobileHRSummaryProps) {
                                 className="flex items-center justify-between p-2 rounded-lg bg-muted/50"
                             >
                                 <span className="text-sm truncate">{dept}</span>
-                                <Badge variant="secondary" className="shrink-0">{count}명</Badge>
+                                <Badge variant="secondary" className="shrink-0">{count}{t('peopleUnit')}</Badge>
                             </div>
                         ))}
                     </div>
@@ -110,13 +110,13 @@ export function MobileHRSummary({ onViewDetails }: MobileHRSummaryProps) {
             {/* Quick Employee Search */}
             <Card>
                 <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium">직원 검색</CardTitle>
+                    <CardTitle className="text-sm font-medium">{t('employeeSearch')}</CardTitle>
                 </CardHeader>
                 <CardContent className="pt-0 space-y-3">
                     <div className="relative">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                         <Input
-                            placeholder="이름, 직책, 부서 검색..."
+                            placeholder={t('searchNamePositionDept')}
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                             className="pl-9"
@@ -144,7 +144,7 @@ export function MobileHRSummary({ onViewDetails }: MobileHRSummaryProps) {
                         ))}
                         {filteredEmployees.length === 0 && (
                             <p className="text-sm text-muted-foreground text-center py-4">
-                                검색 결과가 없습니다
+                                {t('noResults')}
                             </p>
                         )}
                     </div>
@@ -158,7 +158,7 @@ export function MobileHRSummary({ onViewDetails }: MobileHRSummaryProps) {
                     className="w-full gap-2"
                     onClick={onViewDetails}
                 >
-                    전체 인사 정보 보기
+                    {t('viewFullHRInfo')}
                     <ChevronRight className="w-4 h-4" />
                 </Button>
             )}

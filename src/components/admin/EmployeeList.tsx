@@ -34,7 +34,7 @@ export function EmployeeList() {
     const diffMonths = (now.getFullYear() - start.getFullYear()) * 12 + (now.getMonth() - start.getMonth());
     const years = (diffMonths / 12).toFixed(2);
     return {
-      months: `${diffMonths}개월차`,
+      months: `${diffMonths}${t('monthsUnit')}`,
       years: years
     };
   };
@@ -102,7 +102,7 @@ export function EmployeeList() {
   };
 
   const handleDelete = (id: string) => {
-    if (confirm('정말 삭제하시겠습니까?')) {
+    if (confirm(t('confirmDelete'))) {
       deleteEmployee(id);
     }
   };
@@ -131,8 +131,8 @@ export function EmployeeList() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Status</SelectItem>
-              <SelectItem value="재직중">Active</SelectItem>
-              <SelectItem value="퇴사">Inactive</SelectItem>
+              <SelectItem value="재직중">{t('employeeActive')}</SelectItem>
+              <SelectItem value="퇴사">{t('employeeInactive')}</SelectItem>
             </SelectContent>
           </Select>
           <Select value={filterDepartment} onValueChange={setFilterDepartment}>
@@ -187,8 +187,8 @@ export function EmployeeList() {
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="재직중">재직중</SelectItem>
-                            <SelectItem value="퇴사">퇴사</SelectItem>
+                            <SelectItem value="재직중">{t('employeeActive')}</SelectItem>
+                            <SelectItem value="퇴사">{t('employeeInactive')}</SelectItem>
                           </SelectContent>
                         </Select>
                       </TableCell>
@@ -258,13 +258,13 @@ export function EmployeeList() {
                       <TableCell className="text-center text-muted-foreground">{emp.employee_no}</TableCell>
                       <TableCell className="text-center">
                         <Badge variant={emp.status === '재직중' ? 'default' : 'secondary'} className={emp.status === '재직중' ? 'bg-green-100 text-green-700 hover:bg-green-200' : ''}>
-                          {emp.status}
+                          {emp.status === '재직중' ? t('employeeActive') : t('employeeInactive')}
                         </Badge>
                       </TableCell>
                       <TableCell>
                         <div className="flex flex-col">
                           <span className="text-sm">{emp.join_date}</span>
-                          <span className="text-xs text-muted-foreground">{emp.monthsWorked} ({emp.yearsWorked}년)</span>
+                          <span className="text-xs text-muted-foreground">{emp.monthsWorked} ({emp.yearsWorked}{t('yearsUnit')})</span>
                         </div>
                       </TableCell>
                       <TableCell className="font-medium">{emp.name}</TableCell>

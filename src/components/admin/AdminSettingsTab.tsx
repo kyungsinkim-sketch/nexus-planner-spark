@@ -101,12 +101,12 @@ export function AdminSettingsTab() {
     // User management functions — Supabase-connected
     const handleCreateUser = useCallback(async () => {
         if (!newUserName || !newUserEmail) {
-            toast.error('이름과 이메일을 모두 입력해주세요');
+            toast.error(t('fillNameAndEmail'));
             return;
         }
 
         if (!isSupabaseConfigured()) {
-            toast.error('Supabase가 설정되지 않았습니다');
+            toast.error(t('supabaseNotConfigured'));
             return;
         }
 
@@ -117,7 +117,7 @@ export function AdminSettingsTab() {
             const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 
             if (!serviceRoleKey) {
-                toast.error('Service Role Key가 설정되지 않았습니다. .env 파일에 VITE_SUPABASE_SERVICE_ROLE_KEY를 추가해주세요.');
+                toast.error(t('serviceRoleKeyNotConfigured'));
                 return;
             }
 
@@ -138,7 +138,7 @@ export function AdminSettingsTab() {
 
             if (!response.ok) {
                 const err = await response.json();
-                throw new Error(err.msg || err.message || '유저 생성 실패');
+                throw new Error(err.msg || err.message || t('userCreateFailed'));
             }
 
             const userData = await response.json();
@@ -151,7 +151,7 @@ export function AdminSettingsTab() {
                     .eq('id', userData.id);
             }
 
-            toast.success(`${newUserName} 계정이 생성되었습니다 (비밀번호: newstart)`);
+            toast.success(`${newUserName} ${t('accountCreatedWithPassword')}`);
             setIsCreateUserOpen(false);
             setNewUserName('');
             setNewUserEmail('');
@@ -160,7 +160,7 @@ export function AdminSettingsTab() {
             // Reload users list
             await loadUsers();
         } catch (error: unknown) {
-            const message = error instanceof Error ? error.message : '유저 생성 실패';
+            const message = error instanceof Error ? error.message : t('userCreateFailed');
             toast.error(message);
         } finally {
             setIsProcessing(false);
@@ -169,7 +169,7 @@ export function AdminSettingsTab() {
 
     const handleUpdateUserRole = useCallback(async (userId: string, newRole: UserRole) => {
         if (!isSupabaseConfigured()) {
-            toast.error('Supabase가 설정되지 않았습니다');
+            toast.error(t('supabaseNotConfigured'));
             return;
         }
 
@@ -181,19 +181,19 @@ export function AdminSettingsTab() {
 
             if (error) throw error;
 
-            toast.success('권한이 변경되었습니다');
+            toast.success(t('roleUpdated'));
             await loadUsers();
         } catch (error: unknown) {
-            const message = error instanceof Error ? error.message : '권한 변경 실패';
+            const message = error instanceof Error ? error.message : t('roleUpdateFailed');
             toast.error(message);
         }
     }, [loadUsers]);
 
     const handleDeleteUser = useCallback(async (userId: string, userName: string) => {
-        if (!confirm(`정말 ${userName} 유저를 삭제하시겠습니까?`)) return;
+        if (!confirm(t('confirmDeleteUser'))) return;
 
         if (!isSupabaseConfigured()) {
-            toast.error('Supabase가 설정되지 않았습니다');
+            toast.error(t('supabaseNotConfigured'));
             return;
         }
 
@@ -202,7 +202,7 @@ export function AdminSettingsTab() {
             const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 
             if (!serviceRoleKey) {
-                toast.error('Service Role Key가 설정되지 않았습니다');
+                toast.error(t('serviceRoleKeyNotConfigured'));
                 return;
             }
 
@@ -216,13 +216,13 @@ export function AdminSettingsTab() {
 
             if (!response.ok) {
                 const err = await response.json();
-                throw new Error(err.msg || err.message || '유저 삭제 실패');
+                throw new Error(err.msg || err.message || t('failedToDeleteUser'));
             }
 
-            toast.success(`${userName} 유저가 삭제되었습니다`);
+            toast.success(t('userDeleted'));
             await loadUsers();
         } catch (error: unknown) {
-            const message = error instanceof Error ? error.message : '유저 삭제 실패';
+            const message = error instanceof Error ? error.message : t('failedToDeleteUser');
             toast.error(message);
         }
     }, [loadUsers]);
@@ -384,7 +384,7 @@ export function AdminSettingsTab() {
                                             Cancel
                                         </Button>
                                         <Button onClick={handleCreateUser} disabled={isProcessing}>
-                                            {isProcessing ? '생성 중...' : 'Create User'}
+                                            {isProcessing ? t('creating') : t('createUser')}
                                         </Button>
                                     </DialogFooter>
                                 </DialogContent>

@@ -15,6 +15,7 @@ import React from 'react';
 import { MapPin, Clock, MessageSquare, ExternalLink, Globe, Plane, Film, Home } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { type AttendanceRecord, ATTENDANCE_TYPES } from '@/services/attendanceService';
+import { useTranslation } from '@/hooks/useTranslation';
 
 interface AttendanceDetailDialogProps {
     record: AttendanceRecord | null;
@@ -31,6 +32,7 @@ const TYPE_ICONS: Record<string, React.ComponentType<{ className?: string }>> = 
 };
 
 export function AttendanceDetailDialog({ record, open, onOpenChange }: AttendanceDetailDialogProps) {
+    const { t } = useTranslation();
     if (!record) return null;
 
     const typeInfo = ATTENDANCE_TYPES.find(t => t.id === record.check_in_type);
@@ -63,10 +65,10 @@ export function AttendanceDetailDialog({ record, open, onOpenChange }: Attendanc
                     </div>
                     <DialogTitle className="flex items-center gap-2">
                         <Icon className="w-5 h-5" />
-                        근태 기록 상세
+                        {t('attendanceRecordDetail')}
                     </DialogTitle>
                     <DialogDescription>
-                        출퇴근 시간 및 수집된 위치 정보입니다.
+                        {t('attendanceRecordDescription')}
                     </DialogDescription>
                 </DialogHeader>
 
@@ -75,13 +77,13 @@ export function AttendanceDetailDialog({ record, open, onOpenChange }: Attendanc
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-1">
                             <p className="text-xs text-muted-foreground flex items-center gap-1">
-                                <Clock className="w-3 h-3" /> 출근
+                                <Clock className="w-3 h-3" /> {t('checkIn')}
                             </p>
                             <p className="text-sm font-medium">{formatTime(record.check_in_at)}</p>
                         </div>
                         <div className="space-y-1">
                             <p className="text-xs text-muted-foreground flex items-center gap-1">
-                                <Clock className="w-3 h-3" /> 퇴근
+                                <Clock className="w-3 h-3" /> {t('checkOut')}
                             </p>
                             <p className="text-sm font-medium">{formatTime(record.check_out_at)}</p>
                         </div>
@@ -90,11 +92,11 @@ export function AttendanceDetailDialog({ record, open, onOpenChange }: Attendanc
                     {/* Location Info (Check-in) */}
                     <div className="space-y-2">
                         <p className="text-sm font-semibold flex items-center gap-1">
-                            <MapPin className="w-4 h-4 text-primary" /> 출근 위치 정보
+                            <MapPin className="w-4 h-4 text-primary" /> {t('checkInLocationInfo')}
                         </p>
                         <div className="p-3 rounded-lg bg-muted/50 border space-y-2">
                             <p className="text-xs text-foreground leading-relaxed">
-                                {record.check_in_address || '주소 정보 없음'}
+                                {record.check_in_address || t('noAddressInfo')}
                             </p>
                             {record.check_in_latitude && record.check_in_longitude && (
                                 <div className="flex items-center justify-between">
@@ -107,7 +109,7 @@ export function AttendanceDetailDialog({ record, open, onOpenChange }: Attendanc
                                         className="h-auto p-0 text-xs gap-1"
                                         onClick={() => window.open(getMapsUrl(record.check_in_latitude!, record.check_in_longitude!), '_blank')}
                                     >
-                                        지도에서 보기
+                                        {t('viewOnMap')}
                                         <ExternalLink className="w-3 h-3" />
                                     </Button>
                                 </div>
@@ -119,7 +121,7 @@ export function AttendanceDetailDialog({ record, open, onOpenChange }: Attendanc
                     {record.check_in_note && (
                         <div className="space-y-2">
                             <p className="text-sm font-semibold flex items-center gap-1">
-                                <MessageSquare className="w-4 h-4 text-primary" /> 메모
+                                <MessageSquare className="w-4 h-4 text-primary" /> {t('memo')}
                             </p>
                             <div className="p-3 rounded-lg bg-muted/30 border text-sm italic text-muted-foreground">
                                 "{record.check_in_note}"

@@ -173,7 +173,7 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
   };
 
   const formatDate = (dateString?: string) => {
-    if (!dateString || dateString === '미정') return dateString || '-';
+    if (!dateString || dateString === t('undetermined')) return dateString || '-';
     return new Date(dateString).toLocaleDateString('ko-KR', {
       year: '2-digit',
       month: 'numeric',
@@ -188,11 +188,11 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
   const getStatusBadge = (status: PaymentStatus) => {
     switch (status) {
       case 'PAYMENT_COMPLETE':
-        return <Badge className="bg-emerald-100 text-emerald-700"><CheckCircle2 className="w-3 h-3 mr-1" />입금완료</Badge>;
+        return <Badge className="bg-emerald-100 text-emerald-700"><CheckCircle2 className="w-3 h-3 mr-1" />{t('paymentComplete')}</Badge>;
       case 'INVOICE_ISSUED':
-        return <Badge className="bg-blue-100 text-blue-700"><Clock className="w-3 h-3 mr-1" />계산서발행</Badge>;
+        return <Badge className="bg-blue-100 text-blue-700"><Clock className="w-3 h-3 mr-1" />{t('invoiceIssued')}</Badge>;
       case 'PENDING':
-        return <Badge className="bg-yellow-100 text-yellow-700"><AlertCircle className="w-3 h-3 mr-1" />대기중</Badge>;
+        return <Badge className="bg-yellow-100 text-yellow-700"><AlertCircle className="w-3 h-3 mr-1" />{t('pendingStatusLabel')}</Badge>;
       default:
         return null;
     }
@@ -208,7 +208,7 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
       lineItems: prev.lineItems.map(li => li.id === item.id ? updatedItem : li),
     }));
     setEditingLineItemId(null);
-    toast.success('항목이 수정되었습니다.');
+    toast.success(t('itemUpdated'));
   };
 
   const handleAddLineItem = (forCategory?: string) => {
@@ -240,7 +240,7 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
     setIsAddingLineItem(false);
     setAddingForCategory(null);
     setTempLineItem({});
-    toast.success('항목이 추가되었습니다.');
+    toast.success(t('itemAdded'));
   };
 
   // ========== Withholding CRUD ==========
@@ -253,7 +253,7 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
       withholdingPayments: prev.withholdingPayments.map(w => w.id === wh.id ? updatedWh : w),
     }));
     setEditingWithholdingId(null);
-    toast.success('용역비가 수정되었습니다.');
+    toast.success(t('withholdingUpdated'));
   };
 
   const handleAddWithholding = () => {
@@ -279,7 +279,7 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
     }));
     setIsAddingWithholding(false);
     setTempWithholding({});
-    toast.success('용역비가 추가되었습니다.');
+    toast.success(t('withholdingAdded'));
   };
 
   const handleDeleteWithholding = (id: string) => {
@@ -287,7 +287,7 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
       ...prev,
       withholdingPayments: prev.withholdingPayments.filter(w => w.id !== id),
     }));
-    toast.success('용역비가 삭제되었습니다.');
+    toast.success(t('withholdingDeleted'));
   };
 
   const handleDeleteLineItem = (id: string) => {
@@ -295,7 +295,7 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
       ...prev,
       lineItems: prev.lineItems.filter(li => li.id !== id),
     }));
-    toast.success('항목이 삭제되었습니다.');
+    toast.success(t('itemDeleted'));
   };
 
   // ========== Payment Schedule CRUD ==========
@@ -305,14 +305,14 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
       paymentSchedules: prev.paymentSchedules.map(p => p.id === payment.id ? payment : p),
     }));
     setEditingPaymentId(null);
-    toast.success('입금 정보가 수정되었습니다.');
+    toast.success(t('depositInfoUpdated'));
   };
 
   const handleAddPayment = () => {
     const newPayment: PaymentSchedule = {
       id: `ps-${Date.now()}`,
       projectId,
-      installment: tempPayment.installment || `${paymentSchedules.length + 1}차`,
+      installment: tempPayment.installment || `${paymentSchedules.length + 1}${t('installmentSuffix')}`,
       expectedAmount: tempPayment.expectedAmount || 0,
       expectedDate: tempPayment.expectedDate || '',
       actualAmount: 0,
@@ -325,7 +325,7 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
     }));
     setIsAddingPayment(false);
     setTempPayment({});
-    toast.success('입금 항목이 추가되었습니다.');
+    toast.success(t('depositItemAdded'));
   };
 
   const handleDeletePayment = (id: string) => {
@@ -333,7 +333,7 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
       ...prev,
       paymentSchedules: prev.paymentSchedules.filter(p => p.id !== id),
     }));
-    toast.success('입금 항목이 삭제되었습니다.');
+    toast.success(t('depositItemDeleted'));
   };
 
   // ========== Tax Invoice CRUD ==========
@@ -346,7 +346,7 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
       taxInvoices: prev.taxInvoices.map(ti => ti.id === invoice.id ? updatedInvoice : ti),
     }));
     setEditingTaxInvoiceId(null);
-    toast.success('세금계산서가 수정되었습니다.');
+    toast.success(t('taxInvoiceUpdated'));
   };
 
   const handleAddTaxInvoice = () => {
@@ -375,7 +375,7 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
     }));
     setIsAddingTaxInvoice(false);
     setTempTaxInvoice({});
-    toast.success('세금계산서가 추가되었습니다.');
+    toast.success(t('taxInvoiceAdded'));
   };
 
   const handleDeleteTaxInvoice = (id: string) => {
@@ -383,7 +383,7 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
       ...prev,
       taxInvoices: prev.taxInvoices.filter(ti => ti.id !== id),
     }));
-    toast.success('세금계산서가 삭제되었습니다.');
+    toast.success(t('taxInvoiceDeleted'));
   };
 
   // ========== Corporate Card CRUD ==========
@@ -393,7 +393,7 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
       corporateCardExpenses: prev.corporateCardExpenses.map(ce => ce.id === expense.id ? expense : ce),
     }));
     setEditingCardExpenseId(null);
-    toast.success('법인카드 내역이 수정되었습니다.');
+    toast.success(t('corporateCardUpdated'));
   };
 
   const handleAddCardExpense = () => {
@@ -401,7 +401,7 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
       id: `cc-${Date.now()}`,
       projectId,
       orderNo: corporateCardExpenses.length + 1,
-      cardHolder: tempCardExpense.cardHolder || '법인카드',
+      cardHolder: tempCardExpense.cardHolder || t('corporateCard'),
       receiptSubmitted: false,
       usageDate: tempCardExpense.usageDate || new Date().toISOString().split('T')[0],
       description: tempCardExpense.description || '',
@@ -417,7 +417,7 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
     }));
     setIsAddingCardExpense(false);
     setTempCardExpense({});
-    toast.success('법인카드 내역이 추가되었습니다.');
+    toast.success(t('corporateCardAdded'));
   };
 
   const handleDeleteCardExpense = (id: string) => {
@@ -425,7 +425,7 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
       ...prev,
       corporateCardExpenses: prev.corporateCardExpenses.filter(ce => ce.id !== id),
     }));
-    toast.success('법인카드 내역이 삭제되었습니다.');
+    toast.success(t('corporateCardDeleted'));
   };
 
   // Group line items by mainCategory
@@ -457,11 +457,11 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
               <Banknote className="w-5 h-5 text-primary" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm text-muted-foreground">총 계약금액</p>
+              <p className="text-sm text-muted-foreground">{t('totalContractAmountLabel')}</p>
               <p className="text-xl font-semibold text-foreground">
                 {formatCurrency(summary.totalWithVat)}
               </p>
-              <p className="text-xs text-primary">VAT 포함 • 클릭하여 예산표 보기</p>
+              <p className="text-xs text-primary">{t('vatIncludedClickBudget')}</p>
             </div>
           </div>
         </Card>
@@ -473,12 +473,12 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
               <TrendingDown className="w-5 h-5 text-blue-600" />
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">목표지출비용</p>
+              <p className="text-sm text-muted-foreground">{t('targetExpense')}</p>
               <p className="text-xl font-semibold text-foreground">
                 {formatCurrency(totalTargetExpense)}
               </p>
               <p className="text-xs text-blue-600">
-                {((totalTargetExpense / summary.totalWithVat) * 100).toFixed(1)}% of total
+                {((totalTargetExpense / summary.totalWithVat) * 100).toFixed(1)}% {t('ofTotal')}
               </p>
             </div>
           </div>
@@ -491,12 +491,12 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
               <Receipt className="w-5 h-5 text-orange-600" />
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">실제지출</p>
+              <p className="text-sm text-muted-foreground">{t('actualExpense')}</p>
               <p className="text-xl font-semibold text-foreground">
                 {formatCurrency(summary.actualExpenseWithVat)}
               </p>
               <p className="text-xs text-orange-600">
-                {((summary.actualExpenseWithVat / summary.totalWithVat) * 100).toFixed(2)}% of total
+                {((summary.actualExpenseWithVat / summary.totalWithVat) * 100).toFixed(2)}% {t('ofTotal')}
               </p>
             </div>
           </div>
@@ -508,12 +508,12 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
               <TrendingUp className="w-5 h-5 text-emerald-600" />
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">실제수익</p>
+              <p className="text-sm text-muted-foreground">{t('actualProfit')}</p>
               <p className="text-xl font-semibold text-foreground">
                 {formatCurrency(summary.actualProfitWithVat)}
               </p>
               <p className="text-xs text-emerald-600 font-medium">
-                {profitRate}% 수익률
+                {profitRate}% {t('profitRateLabel')}
               </p>
             </div>
           </div>
@@ -524,22 +524,22 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
       <Card className="p-6 shadow-card">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h3 className="font-semibold text-foreground">예산 달성률</h3>
-            <p className="text-sm text-muted-foreground">목표 대비 실제 지출 현황</p>
+            <h3 className="font-semibold text-foreground">{t('budgetAchievementRate')}</h3>
+            <p className="text-sm text-muted-foreground">{t('targetVsActualExpense')}</p>
           </div>
           <div className="text-right">
             <Badge variant={Number(achievementRate) > 100 ? 'destructive' : Number(achievementRate) > 80 ? 'secondary' : 'default'}>
-              {achievementRate}% 사용
+              {achievementRate}% {t('usedPercent')}
             </Badge>
             <p className="text-sm text-emerald-600 mt-1">
-              {formatCurrency(totalVariance)} 절감
+              {formatCurrency(totalVariance)} {t('savedAmount')}
             </p>
           </div>
         </div>
         <Progress value={Number(achievementRate)} className="h-3" />
         <div className="flex justify-between mt-2 text-sm text-muted-foreground">
-          <span>실지출: {formatCurrency(totalActualExpense)}</span>
-          <span>목표: {formatCurrency(totalTargetExpense)}</span>
+          <span>{t('actualExpenseShort')}: {formatCurrency(totalActualExpense)}</span>
+          <span>{t('targetLabel')}: {formatCurrency(totalTargetExpense)}</span>
         </div>
       </Card>
 
@@ -547,12 +547,12 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
       <Card className="shadow-card" id="budget-plan-table">
         <div className="p-4 border-b flex items-center justify-between">
           <div>
-            <h3 className="font-semibold">예산 계획표</h3>
-            <p className="text-sm text-muted-foreground">각 행을 클릭하여 수정하거나, 마지막 행에서 새 항목을 추가하세요</p>
+            <h3 className="font-semibold">{t('budgetPlan')}</h3>
+            <p className="text-sm text-muted-foreground">{t('budgetPlanGuide')}</p>
           </div>
           <Button variant="outline" size="sm" className="gap-2">
             <Download className="w-4 h-4" />
-            내보내기
+            {t('export')}
           </Button>
         </div>
         <div className="overflow-auto">
@@ -560,13 +560,13 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
             <TableHeader>
               <TableRow>
                 <TableHead className="w-[80px]">No.</TableHead>
-                <TableHead className="w-[120px]">대분류</TableHead>
-                <TableHead>소분류</TableHead>
-                <TableHead className="text-right w-[130px]">목표단가</TableHead>
-                <TableHead className="text-center w-[80px]">수량</TableHead>
-                <TableHead className="text-right w-[130px]">목표지출합계</TableHead>
-                <TableHead className="w-[100px]">지급 시기</TableHead>
-                <TableHead className="w-[120px]">비고</TableHead>
+                <TableHead className="w-[120px]">{t('mainCategory')}</TableHead>
+                <TableHead>{t('subCategory')}</TableHead>
+                <TableHead className="text-right w-[130px]">{t('targetUnitPrice')}</TableHead>
+                <TableHead className="text-center w-[80px]">{t('quantity')}</TableHead>
+                <TableHead className="text-right w-[130px]">{t('targetExpenseTotal')}</TableHead>
+                <TableHead className="w-[100px]">{t('paymentTiming')}</TableHead>
+                <TableHead className="w-[120px]">{t('note')}</TableHead>
                 <TableHead className="w-[60px]"></TableHead>
               </TableRow>
             </TableHeader>
@@ -653,7 +653,7 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
                                 }));
                               }}
                               className="h-8"
-                              placeholder="예: 2월말"
+                              placeholder={t('paymentTimingPlaceholder')}
                             />
                           </TableCell>
                           <TableCell>
@@ -713,13 +713,13 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
               {/* Add New Row */}
               {isAddingLineItem ? (
                 <TableRow className="bg-emerald-50/50">
-                  <TableCell className="text-muted-foreground">새 항목</TableCell>
+                  <TableCell className="text-muted-foreground">{t('newItem')}</TableCell>
                   <TableCell>
                     <Input
                       value={tempLineItem.mainCategory || ''}
                       onChange={(e) => setTempLineItem(prev => ({ ...prev, mainCategory: e.target.value }))}
                       className="h-8"
-                      placeholder="대분류"
+                      placeholder={t('mainCategory')}
                     />
                   </TableCell>
                   <TableCell>
@@ -727,7 +727,7 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
                       value={tempLineItem.subCategory || ''}
                       onChange={(e) => setTempLineItem(prev => ({ ...prev, subCategory: e.target.value }))}
                       className="h-8"
-                      placeholder="소분류"
+                      placeholder={t('subCategory')}
                     />
                   </TableCell>
                   <TableCell>
@@ -754,7 +754,7 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
                       value={tempLineItem.paymentTiming || ''}
                       onChange={(e) => setTempLineItem(prev => ({ ...prev, paymentTiming: e.target.value }))}
                       className="h-8"
-                      placeholder="지급 시기"
+                      placeholder={t('paymentTiming')}
                     />
                   </TableCell>
                   <TableCell>
@@ -762,7 +762,7 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
                       value={tempLineItem.note || ''}
                       onChange={(e) => setTempLineItem(prev => ({ ...prev, note: e.target.value }))}
                       className="h-8"
-                      placeholder="비고"
+                      placeholder={t('note')}
                     />
                   </TableCell>
                   <TableCell>
@@ -783,14 +783,14 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
                 >
                   <TableCell colSpan={9} className="text-center text-muted-foreground py-3">
                     <Plus className="w-4 h-4 inline mr-2" />
-                    새 항목 추가
+                    {t('addNewItem')}
                   </TableCell>
                 </TableRow>
               )}
 
               {/* Total Row */}
               <TableRow className="bg-muted/50 font-semibold border-t-2">
-                <TableCell colSpan={5} className="text-right">총 합계</TableCell>
+                <TableCell colSpan={5} className="text-right">{t('totalSum')}</TableCell>
                 <TableCell className="text-right">{formatCurrency(totalTargetExpense)}</TableCell>
                 <TableCell colSpan={3}></TableCell>
               </TableRow>
@@ -806,28 +806,28 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
             <TabsList>
               <TabsTrigger value="tax_invoice" className="gap-2">
                 <FileText className="w-4 h-4" />
-                세금계산서
+                {t('taxInvoice')}
               </TabsTrigger>
               <TabsTrigger value="withholding" className="gap-2">
                 <User className="w-4 h-4" />
-                원천징수
+                {t('withholdingTax')}
               </TabsTrigger>
               <TabsTrigger value="corporate_card" className="gap-2">
                 <CreditCard className="w-4 h-4" />
-                법인카드
+                {t('corporateCard')}
               </TabsTrigger>
               <TabsTrigger value="corporate_cash" className="gap-2">
                 <Building2 className="w-4 h-4" />
-                법인현금
+                {t('corporateCash')}
               </TabsTrigger>
               <TabsTrigger value="personal" className="gap-2">
                 <Wallet className="w-4 h-4" />
-                개인지출
+                {t('personalExpense')}
               </TabsTrigger>
             </TabsList>
             <Button variant="outline" size="sm" className="gap-2">
               <Download className="w-4 h-4" />
-              내보내기
+              {t('export')}
             </Button>
           </div>
 
@@ -839,14 +839,14 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
                   <TableHeader>
                     <TableRow>
                       <TableHead className="w-[50px]">No.</TableHead>
-                      <TableHead className="w-[100px]">입금약일</TableHead>
-                      <TableHead>내용</TableHead>
-                      <TableHead className="text-right w-[120px]">공급가</TableHead>
-                      <TableHead className="text-right w-[100px]">세액</TableHead>
-                      <TableHead className="text-right w-[120px]">총액</TableHead>
-                      <TableHead className="w-[150px]">회사명/대표자</TableHead>
-                      <TableHead className="w-[120px]">사업자번호</TableHead>
-                      <TableHead className="w-[100px]">진행단계</TableHead>
+                      <TableHead className="w-[100px]">{t('paymentDueDate')}</TableHead>
+                      <TableHead>{t('contentLabel')}</TableHead>
+                      <TableHead className="text-right w-[120px]">{t('supplyAmount')}</TableHead>
+                      <TableHead className="text-right w-[100px]">{t('taxAmountLabel')}</TableHead>
+                      <TableHead className="text-right w-[120px]">{t('totalAmountLabel')}</TableHead>
+                      <TableHead className="w-[150px]">{t('companyNameRep')}</TableHead>
+                      <TableHead className="w-[120px]">{t('businessNumber')}</TableHead>
+                      <TableHead className="w-[100px]">{t('progressStatus')}</TableHead>
                       <TableHead className="w-[50px]"></TableHead>
                     </TableRow>
                   </TableHeader>
@@ -936,9 +936,9 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="PENDING">대기중</SelectItem>
-                                <SelectItem value="INVOICE_ISSUED">계산서발행</SelectItem>
-                                <SelectItem value="PAYMENT_COMPLETE">입금완료</SelectItem>
+                                <SelectItem value="PENDING">{t('pendingStatusLabel')}</SelectItem>
+                                <SelectItem value="INVOICE_ISSUED">{t('invoiceIssued')}</SelectItem>
+                                <SelectItem value="PAYMENT_COMPLETE">{t('paymentComplete')}</SelectItem>
                               </SelectContent>
                             </Select>
                           </TableCell>
@@ -985,13 +985,13 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
                     {/* Add New Row */}
                     {isAddingTaxInvoice ? (
                       <TableRow className="bg-emerald-50/50">
-                        <TableCell>새 항목</TableCell>
+                        <TableCell>{t('newItem')}</TableCell>
                         <TableCell>
                           <Input
                             value={tempTaxInvoice.paymentDueDate || ''}
                             onChange={(e) => setTempTaxInvoice(prev => ({ ...prev, paymentDueDate: e.target.value }))}
                             className="h-8"
-                            placeholder="예: 25.12.31"
+                            placeholder={t('datePlaceholder')}
                           />
                         </TableCell>
                         <TableCell>
@@ -999,7 +999,7 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
                             value={tempTaxInvoice.description || ''}
                             onChange={(e) => setTempTaxInvoice(prev => ({ ...prev, description: e.target.value }))}
                             className="h-8"
-                            placeholder="내용"
+                            placeholder={t('contentLabel')}
                           />
                         </TableCell>
                         <TableCell>
@@ -1021,7 +1021,7 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
                             value={tempTaxInvoice.companyName || ''}
                             onChange={(e) => setTempTaxInvoice(prev => ({ ...prev, companyName: e.target.value }))}
                             className="h-8"
-                            placeholder="회사명"
+                            placeholder={t('companyNameLabel')}
                           />
                         </TableCell>
                         <TableCell>
@@ -1033,7 +1033,7 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
                           />
                         </TableCell>
                         <TableCell>
-                          <Badge className="bg-yellow-100 text-yellow-700">대기중</Badge>
+                          <Badge className="bg-yellow-100 text-yellow-700">{t('pendingStatusLabel')}</Badge>
                         </TableCell>
                         <TableCell>
                           <div className="flex gap-1">
@@ -1053,14 +1053,14 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
                       >
                         <TableCell colSpan={10} className="text-center text-muted-foreground py-3">
                           <Plus className="w-4 h-4 inline mr-2" />
-                          새 세금계산서 추가
+                          {t('addNewTaxInvoice')}
                         </TableCell>
                       </TableRow>
                     )}
 
                     {taxInvoices.length > 0 && (
                       <TableRow className="bg-muted/50 font-semibold">
-                        <TableCell colSpan={3} className="text-right">합계</TableCell>
+                        <TableCell colSpan={3} className="text-right">{t('subtotal')}</TableCell>
                         <TableCell className="text-right">{formatCurrency(taxInvoices.reduce((sum, i) => sum + i.supplyAmount, 0))}</TableCell>
                         <TableCell className="text-right">{formatCurrency(taxInvoices.reduce((sum, i) => sum + i.taxAmount, 0))}</TableCell>
                         <TableCell className="text-right">{formatCurrency(taxInvoices.reduce((sum, i) => sum + i.totalAmount, 0))}</TableCell>
@@ -1081,13 +1081,13 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
                   <TableHeader>
                     <TableRow>
                       <TableHead className="w-[50px]">No.</TableHead>
-                      <TableHead className="w-[100px]">입금약일</TableHead>
-                      <TableHead>성명</TableHead>
-                      <TableHead className="w-[100px]">역할</TableHead>
-                      <TableHead className="text-right w-[120px]">금액</TableHead>
-                      <TableHead className="text-right w-[100px]">세액(3.3%)</TableHead>
-                      <TableHead className="text-right w-[120px]">실지급액</TableHead>
-                      <TableHead className="w-[100px]">진행단계</TableHead>
+                      <TableHead className="w-[100px]">{t('paymentDueDate')}</TableHead>
+                      <TableHead>{t('personName')}</TableHead>
+                      <TableHead className="w-[100px]">{t('role')}</TableHead>
+                      <TableHead className="text-right w-[120px]">{t('amountLabel')}</TableHead>
+                      <TableHead className="text-right w-[100px]">{t('withholdingTaxRate')}</TableHead>
+                      <TableHead className="text-right w-[120px]">{t('netPayment')}</TableHead>
+                      <TableHead className="w-[100px]">{t('progressStatus')}</TableHead>
                       <TableHead className="w-[50px]"></TableHead>
                     </TableRow>
                   </TableHeader>
@@ -1106,7 +1106,7 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
                                 }));
                               }}
                               className="h-8"
-                              placeholder="예: 26.01.15"
+                              placeholder={t('datePlaceholderAlt')}
                             />
                           </TableCell>
                           <TableCell>
@@ -1166,9 +1166,9 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="PENDING">대기중</SelectItem>
-                                <SelectItem value="INVOICE_ISSUED">계산서발행</SelectItem>
-                                <SelectItem value="PAYMENT_COMPLETE">입금완료</SelectItem>
+                                <SelectItem value="PENDING">{t('pendingStatusLabel')}</SelectItem>
+                                <SelectItem value="INVOICE_ISSUED">{t('invoiceIssued')}</SelectItem>
+                                <SelectItem value="PAYMENT_COMPLETE">{t('paymentComplete')}</SelectItem>
                               </SelectContent>
                             </Select>
                           </TableCell>
@@ -1214,13 +1214,13 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
                     {/* Add New Row */}
                     {isAddingWithholding ? (
                       <TableRow className="bg-emerald-50/50">
-                        <TableCell>새 항목</TableCell>
+                        <TableCell>{t('newItem')}</TableCell>
                         <TableCell>
                           <Input
                             value={tempWithholding.paymentDueDate || ''}
                             onChange={(e) => setTempWithholding(prev => ({ ...prev, paymentDueDate: e.target.value }))}
                             className="h-8"
-                            placeholder="예: 26.01.15"
+                            placeholder={t('datePlaceholderAlt')}
                           />
                         </TableCell>
                         <TableCell>
@@ -1228,7 +1228,7 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
                             value={tempWithholding.personName || ''}
                             onChange={(e) => setTempWithholding(prev => ({ ...prev, personName: e.target.value }))}
                             className="h-8"
-                            placeholder="이름"
+                            placeholder={t('namePlaceholder')}
                           />
                         </TableCell>
                         <TableCell>
@@ -1236,7 +1236,7 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
                             value={tempWithholding.role || ''}
                             onChange={(e) => setTempWithholding(prev => ({ ...prev, role: e.target.value }))}
                             className="h-8"
-                            placeholder="역할"
+                            placeholder={t('rolePlaceholder')}
                           />
                         </TableCell>
                         <TableCell>
@@ -1254,7 +1254,7 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
                           {formatCurrency((tempWithholding.amount || 0) * 0.967)}
                         </TableCell>
                         <TableCell>
-                          <Badge className="bg-yellow-100 text-yellow-700">대기중</Badge>
+                          <Badge className="bg-yellow-100 text-yellow-700">{t('pendingStatusLabel')}</Badge>
                         </TableCell>
                         <TableCell>
                           <div className="flex gap-1">
@@ -1274,14 +1274,14 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
                       >
                         <TableCell colSpan={9} className="text-center text-muted-foreground py-3">
                           <Plus className="w-4 h-4 inline mr-2" />
-                          새 용역비 추가
+                          {t('addNewWithholdingPayment')}
                         </TableCell>
                       </TableRow>
                     )}
 
                     {(budget.withholdingPayments?.length || 0) > 0 && (
                       <TableRow className="bg-muted/50 font-semibold">
-                        <TableCell colSpan={4} className="text-right">합계</TableCell>
+                        <TableCell colSpan={4} className="text-right">{t('subtotal')}</TableCell>
                         <TableCell className="text-right">{formatCurrency((budget.withholdingPayments || []).reduce((sum, w) => sum + w.amount, 0))}</TableCell>
                         <TableCell className="text-right">{formatCurrency((budget.withholdingPayments || []).reduce((sum, w) => sum + w.withholdingTax, 0))}</TableCell>
                         <TableCell className="text-right">{formatCurrency((budget.withholdingPayments || []).reduce((sum, w) => sum + w.totalAmount, 0))}</TableCell>
@@ -1302,12 +1302,12 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
                   <TableHeader>
                     <TableRow>
                       <TableHead className="w-[50px]">No.</TableHead>
-                      <TableHead className="w-[100px]">사용날짜</TableHead>
-                      <TableHead>사용내용</TableHead>
-                      <TableHead className="w-[100px]">사용자</TableHead>
-                      <TableHead className="text-right w-[130px]">사용액(VAT포함)</TableHead>
-                      <TableHead className="w-[120px]">거래처명</TableHead>
-                      <TableHead className="w-[120px]">비고</TableHead>
+                      <TableHead className="w-[100px]">{t('usageDate')}</TableHead>
+                      <TableHead>{t('usageContent')}</TableHead>
+                      <TableHead className="w-[100px]">{t('usedByLabel')}</TableHead>
+                      <TableHead className="text-right w-[130px]">{t('amountWithVat')}</TableHead>
+                      <TableHead className="w-[120px]">{t('vendorName')}</TableHead>
+                      <TableHead className="w-[120px]">{t('note')}</TableHead>
                       <TableHead className="w-[50px]"></TableHead>
                     </TableRow>
                   </TableHeader>
@@ -1431,7 +1431,7 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
                     {/* Add New Row */}
                     {isAddingCardExpense ? (
                       <TableRow className="bg-emerald-50/50">
-                        <TableCell>새 항목</TableCell>
+                        <TableCell>{t('newItem')}</TableCell>
                         <TableCell>
                           <Input
                             type="date"
@@ -1445,7 +1445,7 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
                             value={tempCardExpense.description || ''}
                             onChange={(e) => setTempCardExpense(prev => ({ ...prev, description: e.target.value }))}
                             className="h-8"
-                            placeholder="사용내용"
+                            placeholder={t('usageContentPlaceholder')}
                           />
                         </TableCell>
                         <TableCell>
@@ -1453,7 +1453,7 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
                             value={tempCardExpense.usedBy || ''}
                             onChange={(e) => setTempCardExpense(prev => ({ ...prev, usedBy: e.target.value }))}
                             className="h-8"
-                            placeholder="사용자"
+                            placeholder={t('usedByPlaceholder')}
                           />
                         </TableCell>
                         <TableCell>
@@ -1469,7 +1469,7 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
                             value={tempCardExpense.vendor || ''}
                             onChange={(e) => setTempCardExpense(prev => ({ ...prev, vendor: e.target.value }))}
                             className="h-8"
-                            placeholder="거래처"
+                            placeholder={t('vendorPlaceholder')}
                           />
                         </TableCell>
                         <TableCell>
@@ -1477,7 +1477,7 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
                             value={tempCardExpense.note || ''}
                             onChange={(e) => setTempCardExpense(prev => ({ ...prev, note: e.target.value }))}
                             className="h-8"
-                            placeholder="비고"
+                            placeholder={t('note')}
                           />
                         </TableCell>
                         <TableCell>
@@ -1498,14 +1498,14 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
                       >
                         <TableCell colSpan={8} className="text-center text-muted-foreground py-3">
                           <Plus className="w-4 h-4 inline mr-2" />
-                          새 법인카드 내역 추가
+                          {t('addNewCorporateCardExpense')}
                         </TableCell>
                       </TableRow>
                     )}
 
                     {corporateCardExpenses.length > 0 && (
                       <TableRow className="bg-muted/50 font-semibold">
-                        <TableCell colSpan={4} className="text-right">합계 (VAT 포함)</TableCell>
+                        <TableCell colSpan={4} className="text-right">{t('totalVatIncluded')}</TableCell>
                         <TableCell className="text-right">{formatCurrency(corporateCardExpenses.reduce((sum, e) => sum + e.amountWithVat, 0))}</TableCell>
                         <TableCell colSpan={3}></TableCell>
                       </TableRow>
@@ -1520,8 +1520,8 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
           <TabsContent value="corporate_cash" className="mt-4">
             <Card className="p-8 text-center text-muted-foreground">
               <Wallet className="w-12 h-12 mx-auto mb-4 opacity-50" />
-              <p>등록된 법인현금 사용 내역이 없습니다</p>
-              <p className="text-sm mt-2">테이블에서 직접 추가할 수 있습니다</p>
+              <p>{t('noCorporateCashExpenses')}</p>
+              <p className="text-sm mt-2">{t('canAddDirectlyToTable')}</p>
             </Card>
           </TabsContent>
 
@@ -1529,8 +1529,8 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
           <TabsContent value="personal" className="mt-4">
             <Card className="p-8 text-center text-muted-foreground">
               <User className="w-12 h-12 mx-auto mb-4 opacity-50" />
-              <p>등록된 개인지출 내역이 없습니다</p>
-              <p className="text-sm mt-2">테이블에서 직접 추가할 수 있습니다</p>
+              <p>{t('noPersonalExpenses')}</p>
+              <p className="text-sm mt-2">{t('canAddDirectlyToTable')}</p>
             </Card>
           </TabsContent>
         </Tabs>
@@ -1539,7 +1539,7 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
       {/* Payment Schedule Summary */}
       <Card className="p-6 shadow-card">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="font-semibold text-foreground">입금 현황</h3>
+          <h3 className="font-semibold text-foreground">{t('depositStatusTitle')}</h3>
         </div>
         <div className="space-y-3">
           {paymentSchedules.map((schedule) => (
@@ -1554,7 +1554,7 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
                     }));
                   }}
                   className="h-8 w-[120px]"
-                  placeholder="차수"
+                  placeholder={t('installment')}
                 />
                 <Input
                   type="date"
@@ -1578,7 +1578,7 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
                       }));
                     }}
                     className="h-8 text-right"
-                    placeholder="예정금액"
+                    placeholder={t('expectedAmount')}
                   />
                 </div>
                 <div className="flex gap-1">
@@ -1601,7 +1601,7 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
                     {schedule.installment}
                   </Badge>
                   <span className="text-sm text-muted-foreground">
-                    예정일: {schedule.expectedDate || '미정'}
+                    {t('expectedDate')}: {schedule.expectedDate || t('undetermined')}
                   </span>
                 </div>
                 <div className="flex items-center gap-4">
@@ -1628,7 +1628,7 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
                 value={tempPayment.installment || ''}
                 onChange={(e) => setTempPayment(prev => ({ ...prev, installment: e.target.value }))}
                 className="h-8 w-[120px]"
-                placeholder={`${paymentSchedules.length + 1}차`}
+                placeholder={`${paymentSchedules.length + 1}${t('installmentSuffix')}`}
               />
               <Input
                 type="date"
@@ -1641,7 +1641,7 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
                   value={(tempPayment.expectedAmount || 0).toLocaleString('ko-KR')}
                   onChange={(e) => setTempPayment(prev => ({ ...prev, expectedAmount: parseCurrency(e.target.value) }))}
                   className="h-8 text-right"
-                  placeholder="예정금액"
+                  placeholder={t('expectedAmount')}
                 />
               </div>
               <div className="flex gap-1">
@@ -1659,12 +1659,12 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
               onClick={() => setIsAddingPayment(true)}
             >
               <Plus className="w-4 h-4 inline mr-2" />
-              입금 항목 추가
+              {t('addPaymentItem')}
             </button>
           )}
 
           <div className="flex items-center justify-between pt-2 font-semibold border-t">
-            <span>총 예정금액</span>
+            <span>{t('totalExpectedAmount')}</span>
             <span>{formatCurrency(paymentSchedules.reduce((sum, p) => sum + p.expectedAmount, 0))}</span>
           </div>
         </div>

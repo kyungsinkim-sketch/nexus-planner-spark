@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ArrowLeft, Plus, Check, X, Trash2, Banknote } from 'lucide-react';
 import { toast } from 'sonner';
+import { useTranslation } from '@/hooks/useTranslation';
 
 interface DepositItem {
   id: string;
@@ -14,17 +15,17 @@ interface DepositItem {
   expectedAmount: number;
 }
 
-// Mock data - would come from store/API in real app
-const initialDeposits: DepositItem[] = [
-  { id: 'ps-1', installment: '1차(선금)', expectedDate: '2025-09-30', expectedAmount: 100000000 },
-  { id: 'ps-2', installment: '2차(중도)', expectedDate: '2025-11-30', expectedAmount: 100000000 },
-  { id: 'ps-3', installment: '3차(잔액)', expectedDate: '2026-02-28', expectedAmount: 112059000 },
-];
-
 export default function DepositStatusPage() {
   const navigate = useNavigate();
   const { projectId } = useParams();
-  const [deposits, setDeposits] = useState<DepositItem[]>(initialDeposits);
+  const { t } = useTranslation();
+
+  // Mock data - would come from store/API in real app
+  const [deposits, setDeposits] = useState<DepositItem[]>([
+    { id: 'ps-1', installment: t('firstInstallmentAdvance'), expectedDate: '2025-09-30', expectedAmount: 100000000 },
+    { id: 'ps-2', installment: t('secondInstallmentInterim'), expectedDate: '2025-11-30', expectedAmount: 100000000 },
+    { id: 'ps-3', installment: t('thirdInstallmentBalance'), expectedDate: '2026-02-28', expectedAmount: 112059000 },
+  ]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isAdding, setIsAdding] = useState(false);
   const [tempDeposit, setTempDeposit] = useState<Partial<DepositItem>>({});
@@ -47,25 +48,25 @@ export default function DepositStatusPage() {
   const handleSave = (item: DepositItem) => {
     setDeposits(prev => prev.map(d => d.id === item.id ? item : d));
     setEditingId(null);
-    toast.success('입금 정보가 수정되었습니다.');
+    toast.success(t('depositInfoUpdated'));
   };
 
   const handleAdd = () => {
     const newItem: DepositItem = {
       id: `ps-${Date.now()}`,
-      installment: tempDeposit.installment || `${deposits.length + 1}차`,
+      installment: tempDeposit.installment || `${deposits.length + 1}${t('installmentSuffix')}`,
       expectedDate: tempDeposit.expectedDate || '',
       expectedAmount: tempDeposit.expectedAmount || 0,
     };
     setDeposits(prev => [...prev, newItem]);
     setIsAdding(false);
     setTempDeposit({});
-    toast.success('입금 항목이 추가되었습니다.');
+    toast.success(t('depositItemAdded'));
   };
 
   const handleDelete = (id: string) => {
     setDeposits(prev => prev.filter(d => d.id !== id));
-    toast.success('입금 항목이 삭제되었습니다.');
+    toast.success(t('depositItemDeleted'));
   };
 
   return (
@@ -77,9 +78,9 @@ export default function DepositStatusPage() {
             <ArrowLeft className="w-5 h-5" />
           </Button>
           <div>
-            <h1 className="page-title">입금 현황</h1>
+            <h1 className="page-title">{t('depositStatus')}</h1>
             <p className="text-sm text-muted-foreground mt-1">
-              프로젝트 입금 스케줄을 관리합니다
+              {t('depositStatusDescription')}
             </p>
           </div>
         </div>
@@ -92,9 +93,9 @@ export default function DepositStatusPage() {
             <Banknote className="w-7 h-7 text-primary" />
           </div>
           <div>
-            <p className="text-sm text-muted-foreground">총 계약금액 (VAT 포함)</p>
+            <p className="text-sm text-muted-foreground">{t('totalContractAmountVAT')}</p>
             <p className="text-3xl font-bold text-foreground">{formatCurrency(totalAmount)}</p>
-            <p className="text-sm text-primary mt-1">{deposits.length}회 분할 입금</p>
+            <p className="text-sm text-primary mt-1">{deposits.length} {t('installmentPayments')}</p>
           </div>
         </div>
       </Card>
@@ -102,17 +103,17 @@ export default function DepositStatusPage() {
       {/* Deposit Table */}
       <Card className="shadow-card overflow-hidden">
         <div className="p-4 border-b">
-          <h3 className="font-semibold">입금 스케줄</h3>
-          <p className="text-sm text-muted-foreground">각 항목을 클릭하여 수정하거나, 하단에서 새 항목을 추가하세요</p>
+          <h3 className="font-semibold">{t('paymentSchedule')}</h3>
+          <p className="text-sm text-muted-foreground">{t('paymentScheduleGuide')}</p>
         </div>
         <Table>
           <TableHeader>
             <TableRow>
               <TableHead className="w-[60px]">No.</TableHead>
-              <TableHead>차수</TableHead>
-              <TableHead className="w-[150px]">입금 예정일</TableHead>
-              <TableHead className="text-right w-[200px]">예정금액</TableHead>
-              <TableHead className="text-right w-[120px]">비율</TableHead>
+              <TableHead>{t('installment')}</TableHead>
+              <TableHead className="w-[150px]">{t('expectedPaymentDate')}</TableHead>
+              <TableHead className="text-right w-[200px]">{t('expectedAmount')}</TableHead>
+              <TableHead className="text-right w-[120px]">{t('ratio')}</TableHead>
               <TableHead className="w-[80px]"></TableHead>
             </TableRow>
           </TableHeader>
@@ -194,13 +195,13 @@ export default function DepositStatusPage() {
             {/* Add New Row */}
             {isAdding ? (
               <TableRow className="bg-emerald-50/50">
-                <TableCell>새 항목</TableCell>
+                <TableCell>{t('newItem')}</TableCell>
                 <TableCell>
                   <Input
                     value={tempDeposit.installment || ''}
                     onChange={(e) => setTempDeposit(prev => ({ ...prev, installment: e.target.value }))}
                     className="h-8"
-                    placeholder={`${deposits.length + 1}차`}
+                    placeholder={`${deposits.length + 1}${t('installmentSuffix')}`}
                   />
                 </TableCell>
                 <TableCell>
@@ -238,14 +239,14 @@ export default function DepositStatusPage() {
               >
                 <TableCell colSpan={6} className="text-center text-muted-foreground py-3">
                   <Plus className="w-4 h-4 inline mr-2" />
-                  새 입금 항목 추가
+                  {t('addNewPaymentItem')}
                 </TableCell>
               </TableRow>
             )}
 
             {/* Total Row */}
             <TableRow className="bg-muted/50 font-semibold border-t-2">
-              <TableCell colSpan={3} className="text-right">총 계약금액</TableCell>
+              <TableCell colSpan={3} className="text-right">{t('totalContractAmount')}</TableCell>
               <TableCell className="text-right text-lg">{formatCurrency(totalAmount)}</TableCell>
               <TableCell className="text-right">100%</TableCell>
               <TableCell></TableCell>

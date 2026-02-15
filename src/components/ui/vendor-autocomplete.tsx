@@ -3,6 +3,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Building2, User, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useTranslation } from '@/hooks/useTranslation';
 
 // Vendor types
 export type VendorType = 'company' | 'freelancer';
@@ -109,10 +110,11 @@ export function VendorAutocomplete({
   value,
   onChange,
   onSelect,
-  placeholder = '회사명 또는 이름 검색...',
+  placeholder,
   vendorType = 'all',
   className,
 }: VendorAutocompleteProps) {
+  const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const [filteredVendors, setFilteredVendors] = useState<VendorInfo[]>([]);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -172,14 +174,14 @@ export function VendorAutocomplete({
         onFocus={() => {
           if (filteredVendors.length > 0) setIsOpen(true);
         }}
-        placeholder={placeholder}
+        placeholder={placeholder || t('vendorSearchPlaceholder')}
       />
 
       {isOpen && (
         <div className="absolute z-50 w-full mt-1 bg-popover border border-border rounded-md shadow-lg max-h-60 overflow-auto">
           <div className="p-2 border-b border-border bg-muted/50">
             <p className="text-xs text-muted-foreground">
-              이전에 입력한 거래처/외주 정보
+              {t('previousVendorInfo')}
             </p>
           </div>
           {filteredVendors.map((vendor) => (
@@ -203,17 +205,17 @@ export function VendorAutocomplete({
                 <div className="flex items-center gap-2">
                   <p className="text-sm font-medium truncate">{vendor.name}</p>
                   <Badge variant="outline" className="text-[10px] shrink-0">
-                    {vendor.type === 'company' ? '회사' : '개인'}
+                    {vendor.type === 'company' ? t('vendorCompany') : t('vendorIndividual')}
                   </Badge>
                 </div>
                 {vendor.representative && vendor.representative !== '-' && (
-                  <p className="text-xs text-muted-foreground">대표: {vendor.representative}</p>
+                  <p className="text-xs text-muted-foreground">{t('vendorRepresentative')}: {vendor.representative}</p>
                 )}
                 {vendor.role && (
                   <p className="text-xs text-muted-foreground">{vendor.role}</p>
                 )}
                 {vendor.businessNumber && vendor.businessNumber !== '-' && (
-                  <p className="text-xs text-muted-foreground">사업자번호: {vendor.businessNumber}</p>
+                  <p className="text-xs text-muted-foreground">{t('businessNumber')}: {vendor.businessNumber}</p>
                 )}
               </div>
               {vendor.lastUsed && (

@@ -151,20 +151,20 @@ export function DiligenceTab() {
           <Select value={selectedMonth} onValueChange={setSelectedMonth}>
             <SelectTrigger className="w-[150px]">
               <Calendar className="w-4 h-4 mr-2" />
-              <SelectValue placeholder="월 선택" />
+              <SelectValue placeholder={t('diligenceSelectMonth')} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="2025-12">2025년 12월</SelectItem>
-              <SelectItem value="2025-11">2025년 11월</SelectItem>
+              <SelectItem value="2025-12">{t('diligenceMonth202512')}</SelectItem>
+              <SelectItem value="2025-11">{t('diligenceMonth202511')}</SelectItem>
             </SelectContent>
           </Select>
           <Select value={selectedDepartment} onValueChange={setSelectedDepartment}>
             <SelectTrigger className="w-[160px]">
               <Users className="w-4 h-4 mr-2" />
-              <SelectValue placeholder="부서 선택" />
+              <SelectValue placeholder={t('diligenceSelectDepartment')} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">전체 부서</SelectItem>
+              <SelectItem value="all">{t('diligenceAllDepartments')}</SelectItem>
               {departments.map(dept => (
                 <SelectItem key={dept} value={dept}>{dept}</SelectItem>
               ))}
@@ -178,42 +178,42 @@ export function DiligenceTab() {
         <Card className="p-4 shadow-card">
           <div className="flex items-center gap-2 mb-2 font-medium text-blue-600">
             <Plane className="w-4 h-4" />
-            해외촬영
+            {t('diligenceOverseasFilming')}
           </div>
-          <p className="text-2xl font-bold">18일</p>
-          <p className="text-xs text-muted-foreground mt-1">월간 합계</p>
+          <p className="text-2xl font-bold">18{t('diligenceDaySuffix')}</p>
+          <p className="text-xs text-muted-foreground mt-1">{t('diligenceMonthlyTotal')}</p>
         </Card>
         <Card className="p-4 shadow-card">
           <div className="flex items-center gap-2 mb-2 font-medium text-emerald-600">
             <Video className="w-4 h-4" />
-            현장촬영
+            {t('diligenceOnSiteFilming')}
           </div>
-          <p className="text-2xl font-bold">35일</p>
-          <p className="text-xs text-muted-foreground mt-1">월간 합계</p>
+          <p className="text-2xl font-bold">35{t('diligenceDaySuffix')}</p>
+          <p className="text-xs text-muted-foreground mt-1">{t('diligenceMonthlyTotal')}</p>
         </Card>
         <Card className="p-4 shadow-card">
           <div className="flex items-center gap-2 mb-2 font-medium text-violet-600">
             <Clock className="w-4 h-4" />
-            평균 야근
+            {t('diligenceAvgOvertime')}
           </div>
           <p className="text-2xl font-bold">42h</p>
-          <p className="text-xs text-muted-foreground mt-1">인당 평균</p>
+          <p className="text-xs text-muted-foreground mt-1">{t('diligencePerPersonAvg')}</p>
         </Card>
         <Card className="p-4 shadow-card">
           <div className="flex items-center gap-2 mb-2 font-medium text-orange-600">
             <Info className="w-4 h-4" />
-            특이 사항
+            {t('diligenceNotableIssues')}
           </div>
-          <p className="text-2xl font-bold">3건</p>
-          <p className="text-xs text-muted-foreground mt-1">지각/조퇴 합계</p>
+          <p className="text-2xl font-bold">3{t('diligenceCaseSuffix')}</p>
+          <p className="text-xs text-muted-foreground mt-1">{t('diligenceLateEarlyTotal')}</p>
         </Card>
       </div>
 
       {/* Main Data View */}
       <Card className="shadow-card">
         <CardHeader className="p-4 pb-0 border-b-0">
-          <CardTitle className="text-lg">근태 분석 리포트</CardTitle>
-          <p className="text-sm text-muted-foreground">기록을 클릭하면 상세 위치 정보를 확인할 수 있습니다.</p>
+          <CardTitle className="text-lg">{t('diligenceAnalysisReport')}</CardTitle>
+          <p className="text-sm text-muted-foreground">{t('diligenceClickForDetail')}</p>
         </CardHeader>
         <CardContent className="p-0">
           {isMobile ? (
@@ -227,23 +227,23 @@ export function DiligenceTab() {
                   <div className="flex items-start justify-between mb-3">
                     <div>
                       <h4 className="font-bold text-foreground">{stat.name}</h4>
-                      <p className="text-xs text-muted-foreground">{stat.department} · {stat.workDays}일 출근</p>
+                      <p className="text-xs text-muted-foreground">{stat.department} · {stat.workDays}{t('diligenceDaysAttended')}</p>
                     </div>
                     {(stat.overseasDays > 0 || stat.shootingDays > 0) && (
                       <Badge variant="secondary" className="gap-1 bg-primary/10 text-primary">
-                        <MapIcon className="w-3 h-3" /> 위치기록
+                        <MapIcon className="w-3 h-3" /> {t('diligenceLocationRecord')}
                       </Badge>
                     )}
                   </div>
 
                   <div className="grid grid-cols-2 gap-4 mb-3">
                     <div className="space-y-1">
-                      <span className="text-[10px] text-muted-foreground uppercase">근무/야근</span>
+                      <span className="text-[10px] text-muted-foreground uppercase">{t('diligenceWorkOvertime')}</span>
                       <p className="text-sm font-medium">{stat.totalHours}h / {stat.overtimeHours}h</p>
                     </div>
                     <div className="space-y-1">
-                      <span className="text-[10px] text-muted-foreground uppercase">해외/현장</span>
-                      <p className="text-sm font-medium">{stat.overseasDays}일 / {stat.shootingDays}일</p>
+                      <span className="text-[10px] text-muted-foreground uppercase">{t('diligenceOverseasField')}</span>
+                      <p className="text-sm font-medium">{stat.overseasDays}{t('diligenceDaySuffix')} / {stat.shootingDays}{t('diligenceDaySuffix')}</p>
                     </div>
                   </div>
 
@@ -262,13 +262,13 @@ export function DiligenceTab() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>이름</TableHead>
-                    <TableHead>부서</TableHead>
-                    <TableHead className="text-center">총 시간</TableHead>
-                    <TableHead className="text-center">야근</TableHead>
-                    <TableHead className="text-center">해외/현장</TableHead>
-                    <TableHead className="text-center">위치정보</TableHead>
-                    <TableHead>에너지</TableHead>
+                    <TableHead>{t('name')}</TableHead>
+                    <TableHead>{t('department')}</TableHead>
+                    <TableHead className="text-center">{t('diligenceTotalHours')}</TableHead>
+                    <TableHead className="text-center">{t('diligenceOvertime')}</TableHead>
+                    <TableHead className="text-center">{t('diligenceOverseasField')}</TableHead>
+                    <TableHead className="text-center">{t('diligenceLocationInfo')}</TableHead>
+                    <TableHead>{t('diligenceEnergy')}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -284,8 +284,8 @@ export function DiligenceTab() {
                       <TableCell className="text-center font-semibold text-violet-600">{stat.overtimeHours}h</TableCell>
                       <TableCell className="text-center">
                         <div className="flex items-center justify-center gap-1">
-                          {stat.overseasDays > 0 && <Badge variant="outline" className="bg-blue-50">해외 {stat.overseasDays}</Badge>}
-                          {stat.shootingDays > 0 && <Badge variant="outline" className="bg-emerald-50">촬영 {stat.shootingDays}</Badge>}
+                          {stat.overseasDays > 0 && <Badge variant="outline" className="bg-blue-50">{t('diligenceOverseas')} {stat.overseasDays}</Badge>}
+                          {stat.shootingDays > 0 && <Badge variant="outline" className="bg-emerald-50">{t('diligenceFilming')} {stat.shootingDays}</Badge>}
                         </div>
                       </TableCell>
                       <TableCell className="text-center">
@@ -315,10 +315,10 @@ export function DiligenceTab() {
         <CardHeader className="p-4 pb-0 border-b-0">
           <CardTitle className="text-lg flex items-center gap-2">
             <Moon className="w-5 h-5 text-violet-500" />
-            연장·야간·휴일 근무 수당 산정
+            {t('diligencePayrollTitle')}
           </CardTitle>
           <p className="text-sm text-muted-foreground">
-            선택근로제 2주 단위 기준 | 기본 80시간 초과 시 연장근로 적용
+            {t('diligencePayrollDesc')}
           </p>
         </CardHeader>
         <CardContent className="p-0">
@@ -326,17 +326,17 @@ export function DiligenceTab() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>이름</TableHead>
-                  <TableHead className="text-center">총 근무</TableHead>
-                  <TableHead className="text-center">연장근로</TableHead>
-                  <TableHead className="text-center">야간근로</TableHead>
-                  <TableHead className="text-center">야간+연장</TableHead>
-                  <TableHead className="text-center">휴일근무</TableHead>
-                  <TableHead className="text-center">대체휴무</TableHead>
-                  <TableHead className="text-right">연장수당</TableHead>
-                  <TableHead className="text-right">야간수당</TableHead>
-                  <TableHead className="text-right">휴일수당</TableHead>
-                  <TableHead className="text-right font-bold">추가수당 합계</TableHead>
+                  <TableHead>{t('name')}</TableHead>
+                  <TableHead className="text-center">{t('diligenceTotalWork')}</TableHead>
+                  <TableHead className="text-center">{t('diligenceOvertimeWork')}</TableHead>
+                  <TableHead className="text-center">{t('diligenceNightWork')}</TableHead>
+                  <TableHead className="text-center">{t('diligenceNightOvertime')}</TableHead>
+                  <TableHead className="text-center">{t('diligenceHolidayWork')}</TableHead>
+                  <TableHead className="text-center">{t('diligenceSubstituteLeave')}</TableHead>
+                  <TableHead className="text-right">{t('diligenceOvertimePay')}</TableHead>
+                  <TableHead className="text-right">{t('diligenceNightPay')}</TableHead>
+                  <TableHead className="text-right">{t('diligenceHolidayPay')}</TableHead>
+                  <TableHead className="text-right font-bold">{t('diligenceTotalAdditionalPay')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -371,8 +371,8 @@ export function DiligenceTab() {
                         {payroll.holidayMinutes > 0 ? formatMinutesToHM(payroll.holidayMinutes) : '-'}
                       </TableCell>
                       <TableCell className="text-center">
-                        {payroll.substituteFullDays > 0 && <Badge variant="secondary">{payroll.substituteFullDays}일</Badge>}
-                        {payroll.substituteHalfDays > 0 && <Badge variant="secondary" className="ml-1">반차 {payroll.substituteHalfDays}</Badge>}
+                        {payroll.substituteFullDays > 0 && <Badge variant="secondary">{payroll.substituteFullDays}{t('diligenceDaySuffix')}</Badge>}
+                        {payroll.substituteHalfDays > 0 && <Badge variant="secondary" className="ml-1">{t('diligenceHalfDay')} {payroll.substituteHalfDays}</Badge>}
                         {payroll.substituteFullDays === 0 && payroll.substituteHalfDays === 0 && '-'}
                       </TableCell>
                       <TableCell className="text-right text-orange-700 font-medium">
@@ -398,14 +398,14 @@ export function DiligenceTab() {
 
           {/* Legend */}
           <div className="p-4 border-t bg-muted/30 space-y-1.5">
-            <p className="text-xs font-medium text-muted-foreground">산정 기준 안내</p>
+            <p className="text-xs font-medium text-muted-foreground">{t('diligenceCalcGuidelines')}</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 text-xs text-muted-foreground">
-              <span>· 연장근로 (2주 80h 초과): 시급 × 1.5배</span>
-              <span>· 야간근로 (22:00~06:00): 시급 × 0.5배 추가</span>
-              <span>· 연장+야간 중첩: 시급 × 2.0배 (1.5 + 0.5)</span>
-              <span>· 주휴일/공휴일 (대체휴무 미제공): 시급 × 1.5배</span>
-              <span>· 대체휴무 제공 시: 4h→반차, 8h→1일 (가산 미적용)</span>
-              <span>· 휴게시간/PT시간 제외</span>
+              <span>{t('diligenceCalcOvertime')}</span>
+              <span>{t('diligenceCalcNight')}</span>
+              <span>{t('diligenceCalcNightOvertime')}</span>
+              <span>{t('diligenceCalcHoliday')}</span>
+              <span>{t('diligenceCalcSubstitute')}</span>
+              <span>{t('diligenceCalcBreakExclude')}</span>
             </div>
           </div>
         </CardContent>

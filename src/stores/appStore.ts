@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { User, Project, CalendarEvent, ChatMessage, ChatRoom, ChatMessageType, LocationShare, ScheduleShare, DecisionShare, FileGroup, FileItem, PerformanceSnapshot, PortfolioItem, PeerFeedback, ProjectContribution, ScoreSettings, UserWorkStatus, PersonalTodo } from '@/types/core';
 import { mockUsers, mockProjects, mockEvents, mockMessages, mockFileGroups, mockFiles, mockPerformanceSnapshots, mockPortfolioItems, mockPeerFeedback, mockProjectContributions, mockPersonalTodos, currentUser } from '@/mock/data';
-import { Language } from '@/lib/i18n';
+import { Language, getTranslation } from '@/lib/i18n';
 import { isSupabaseConfigured } from '@/lib/supabase';
 import * as projectService from '@/services/projectService';
 import * as eventService from '@/services/eventService';
@@ -645,7 +645,7 @@ export const useAppStore = create<AppState>()(
               const defaultRoom: ChatRoom = {
                 id: `room-default-${projectId}`,
                 projectId,
-                name: '전체',
+                name: getTranslation(get().language, 'allMembers'),
                 isDefault: true,
                 createdAt: new Date().toISOString(),
                 updatedAt: new Date().toISOString(),

@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useAppStore } from '@/stores/appStore';
+import { useTranslation } from '@/hooks/useTranslation';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
@@ -36,6 +37,7 @@ const mockProjectFinancials = [
 
 export function ProductivityTab() {
   const { projects, users, peerFeedback, getUserById, getProjectById } = useAppStore();
+  const { t } = useTranslation();
   const [selectedProject, setSelectedProject] = useState<string>('all');
   const [viewMode, setViewMode] = useState<'contribution' | 'feedback'>('contribution');
 
@@ -124,14 +126,14 @@ export function ProductivityTab() {
         <div className="flex items-center gap-4 flex-wrap">
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Filter className="w-4 h-4" />
-            필터:
+            {t('filter')}:
           </div>
           <Select value={selectedProject} onValueChange={setSelectedProject}>
             <SelectTrigger className="w-[250px]">
-              <SelectValue placeholder="프로젝트 선택" />
+              <SelectValue placeholder={t('selectProject')} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">전체 프로젝트</SelectItem>
+              <SelectItem value="all">{t('allProjects')}</SelectItem>
               {completedProjects.map(project => (
                 <SelectItem key={project.id} value={project.id}>
                   {project.title}
@@ -146,7 +148,7 @@ export function ProductivityTab() {
               onClick={() => setViewMode('contribution')}
             >
               <TrendingUp className="w-3 h-3 mr-1" />
-              기여도 분석
+              {t('contributionAnalysis')}
             </Badge>
             <Badge
               variant={viewMode === 'feedback' ? 'default' : 'outline'}
@@ -154,7 +156,7 @@ export function ProductivityTab() {
               onClick={() => setViewMode('feedback')}
             >
               <Star className="w-3 h-3 mr-1" />
-              동료 평가
+              {t('peerFeedback')}
             </Badge>
           </div>
         </div>
@@ -165,23 +167,23 @@ export function ProductivityTab() {
           {/* Contribution Summary Cards */}
           <div className="grid gap-4 sm:grid-cols-4">
             <Card className="p-5 shadow-card">
-              <p className="text-sm text-muted-foreground">총 내수율</p>
+              <p className="text-sm text-muted-foreground">{t('totalNetRevenue')}</p>
               <p className="text-2xl font-semibold text-foreground mt-1">{formatAmount(totalNetRevenue)}</p>
             </Card>
             <Card className="p-5 shadow-card">
-              <p className="text-sm text-muted-foreground">경상비 (25%)</p>
+              <p className="text-sm text-muted-foreground">{t('overheadCostPercent')}</p>
               <p className="text-2xl font-semibold text-orange-600 mt-1">
                 {formatAmount(Math.round(totalNetRevenue * 0.25))}
               </p>
             </Card>
             <Card className="p-5 shadow-card">
-              <p className="text-sm text-muted-foreground">순이익 (15%)</p>
+              <p className="text-sm text-muted-foreground">{t('netProfitPercent')}</p>
               <p className="text-2xl font-semibold text-green-600 mt-1">
                 {formatAmount(Math.round(totalNetRevenue * 0.15))}
               </p>
             </Card>
             <Card className="p-5 shadow-card">
-              <p className="text-sm text-muted-foreground">배분 가능 (60%)</p>
+              <p className="text-sm text-muted-foreground">{t('distributablePercent')}</p>
               <p className="text-2xl font-semibold text-primary mt-1">{formatAmount(totalDistributable)}</p>
             </Card>
           </div>
@@ -191,27 +193,27 @@ export function ProductivityTab() {
             <div className="p-4 border-b border-border">
               <h3 className="font-medium text-foreground flex items-center gap-2">
                 <Users className="w-4 h-4" />
-                인원별 기여도 종합
+                {t('contributionSummaryByMember')}
               </h3>
               <p className="text-sm text-muted-foreground">
-                연봉 비율 기반 기여도 산정 (내수율 - 경상비 25% - 순이익 15%)
+                {t('contributionCalcDescription')}
               </p>
             </div>
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>팀원</TableHead>
-                  <TableHead className="text-center">참여 프로젝트</TableHead>
-                  <TableHead className="text-center">평균 기여율</TableHead>
-                  <TableHead className="text-center">기여도</TableHead>
-                  <TableHead className="text-right">기여 금액</TableHead>
+                  <TableHead>{t('teamMember')}</TableHead>
+                  <TableHead className="text-center">{t('participatingProjects')}</TableHead>
+                  <TableHead className="text-center">{t('avgContributionRate')}</TableHead>
+                  <TableHead className="text-center">{t('contribution')}</TableHead>
+                  <TableHead className="text-right">{t('contributionAmount')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {userContributionSummary.map(({ userId, userName, totalAmount, projectCount, avgRate }) => (
                   <TableRow key={userId}>
                     <TableCell className="font-medium">{userName}</TableCell>
-                    <TableCell className="text-center">{projectCount}건</TableCell>
+                    <TableCell className="text-center">{projectCount}{t('projectCountSuffix')}</TableCell>
                     <TableCell className="text-center">
                       <Badge variant="secondary">{(avgRate * 100).toFixed(1)}%</Badge>
                     </TableCell>
@@ -231,7 +233,7 @@ export function ProductivityTab() {
                 {userContributionSummary.length === 0 && (
                   <TableRow>
                     <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
-                      데이터 없음
+                      {t('noData')}
                     </TableCell>
                   </TableRow>
                 )}
@@ -249,23 +251,23 @@ export function ProductivityTab() {
                     <p className="text-sm text-muted-foreground">{result.project.client}</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-sm text-muted-foreground">배분 가능</p>
+                    <p className="text-sm text-muted-foreground">{t('distributable')}</p>
                     <p className="font-semibold text-primary">{formatAmount(result.project.distributableAmount)}</p>
                   </div>
                 </div>
                 <div className="flex gap-4 mt-3 text-xs text-muted-foreground">
-                  <span>내수율: {formatAmount(result.project.netRevenue)}</span>
-                  <span>경상비: {formatAmount(Math.round(result.project.netRevenue * 0.25))}</span>
-                  <span>순이익: {formatAmount(Math.round(result.project.netRevenue * 0.15))}</span>
+                  <span>{t('netRevenueLabel')}: {formatAmount(result.project.netRevenue)}</span>
+                  <span>{t('overheadLabel')}: {formatAmount(Math.round(result.project.netRevenue * 0.25))}</span>
+                  <span>{t('netProfitLabel')}: {formatAmount(Math.round(result.project.netRevenue * 0.15))}</span>
                 </div>
               </div>
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>팀원</TableHead>
-                    <TableHead className="text-center">연봉</TableHead>
-                    <TableHead className="text-center">기여율</TableHead>
-                    <TableHead className="text-right">기여 금액</TableHead>
+                    <TableHead>{t('teamMember')}</TableHead>
+                    <TableHead className="text-center">{t('annualSalary')}</TableHead>
+                    <TableHead className="text-center">{t('contributionRate')}</TableHead>
+                    <TableHead className="text-right">{t('contributionAmount')}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -293,11 +295,11 @@ export function ProductivityTab() {
           {/* Feedback Summary Cards */}
           <div className="grid gap-4 sm:grid-cols-3">
             <Card className="p-5 shadow-card">
-              <p className="text-sm text-muted-foreground">총 피드백</p>
+              <p className="text-sm text-muted-foreground">{t('totalFeedback')}</p>
               <p className="text-3xl font-semibold text-foreground mt-1">{filteredFeedback.length}</p>
             </Card>
             <Card className="p-5 shadow-card">
-              <p className="text-sm text-muted-foreground">평균 점수</p>
+              <p className="text-sm text-muted-foreground">{t('averageScore')}</p>
               <p className="text-3xl font-semibold text-foreground mt-1">
                 {filteredFeedback.length > 0
                   ? (filteredFeedback.reduce((sum, f) => sum + f.rating, 0) / filteredFeedback.length).toFixed(1)
@@ -306,7 +308,7 @@ export function ProductivityTab() {
               </p>
             </Card>
             <Card className="p-5 shadow-card">
-              <p className="text-sm text-muted-foreground">평가된 프로젝트</p>
+              <p className="text-sm text-muted-foreground">{t('evaluatedProjects')}</p>
               <p className="text-3xl font-semibold text-foreground mt-1">
                 {new Set(filteredFeedback.map(f => f.projectId)).size}
               </p>
@@ -316,16 +318,16 @@ export function ProductivityTab() {
           {/* User Averages Table */}
           <Card className="shadow-card overflow-hidden">
             <div className="p-4 border-b border-border">
-              <h3 className="font-medium text-foreground">개인별 성과</h3>
-              <p className="text-sm text-muted-foreground">동료 평가 평균 점수</p>
+              <h3 className="font-medium text-foreground">{t('individualPerformance')}</h3>
+              <p className="text-sm text-muted-foreground">{t('peerFeedbackAvgScore')}</p>
             </div>
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>팀원</TableHead>
-                  <TableHead>피드백 수</TableHead>
-                  <TableHead>평균 점수</TableHead>
-                  <TableHead>점수</TableHead>
+                  <TableHead>{t('teamMember')}</TableHead>
+                  <TableHead>{t('feedbackCount')}</TableHead>
+                  <TableHead>{t('averageScore')}</TableHead>
+                  <TableHead>{t('score')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -342,7 +344,7 @@ export function ProductivityTab() {
                 {userAverages.length === 0 && (
                   <TableRow>
                     <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
-                      피드백 데이터 없음
+                      {t('noFeedbackData')}
                     </TableCell>
                   </TableRow>
                 )}
@@ -353,17 +355,17 @@ export function ProductivityTab() {
           {/* Detailed Feedback Table */}
           <Card className="shadow-card overflow-hidden">
             <div className="p-4 border-b border-border">
-              <h3 className="font-medium text-foreground">피드백 상세</h3>
-              <p className="text-sm text-muted-foreground">모든 동료 평가 기록</p>
+              <h3 className="font-medium text-foreground">{t('feedbackDetails')}</h3>
+              <p className="text-sm text-muted-foreground">{t('allPeerReviewRecords')}</p>
             </div>
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>프로젝트</TableHead>
-                  <TableHead>평가자</TableHead>
-                  <TableHead>대상</TableHead>
-                  <TableHead>점수</TableHead>
-                  <TableHead>코멘트</TableHead>
+                  <TableHead>{t('project')}</TableHead>
+                  <TableHead>{t('reviewer')}</TableHead>
+                  <TableHead>{t('reviewTarget')}</TableHead>
+                  <TableHead>{t('score')}</TableHead>
+                  <TableHead>{t('comment')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>

@@ -26,6 +26,7 @@ import { Upload, X, Image, Loader2 } from 'lucide-react';
 
 import { toast } from 'sonner';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
+import { useTranslation } from '@/hooks/useTranslation';
 
 interface NewProjectModalProps {
   open: boolean;
@@ -33,6 +34,7 @@ interface NewProjectModalProps {
 }
 
 export function NewProjectModal({ open, onOpenChange }: NewProjectModalProps) {
+  const { t } = useTranslation();
   const { users, addProject, currentUser } = useAppStore();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -91,7 +93,7 @@ export function NewProjectModal({ open, onOpenChange }: NewProjectModalProps) {
       };
 
       await addProject(newProject);
-      toast.success('프로젝트가 생성되었습니다');
+      toast.success(t('projectCreated'));
       onOpenChange(false);
       setFormData({
         title: '',
@@ -108,7 +110,7 @@ export function NewProjectModal({ open, onOpenChange }: NewProjectModalProps) {
         thumbnail: '',
       });
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : '프로젝트 생성 실패';
+      const message = error instanceof Error ? error.message : t('projectCreateFailed');
       toast.error(message);
     } finally {
       setIsSubmitting(false);
@@ -161,7 +163,7 @@ export function NewProjectModal({ open, onOpenChange }: NewProjectModalProps) {
         setFormData(prev => ({ ...prev, thumbnail: urlData.publicUrl }));
       } catch (err) {
         console.error('Thumbnail upload failed:', err);
-        toast.error('이미지 업로드에 실패했습니다');
+        toast.error(t('imageUploadFailed'));
       } finally {
         setIsUploadingThumb(false);
       }
@@ -374,7 +376,7 @@ export function NewProjectModal({ open, onOpenChange }: NewProjectModalProps) {
               Cancel
             </Button>
             <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? '생성 중...' : 'Create Project'}
+              {isSubmitting ? t('creatingProject') : t('createProject')}
             </Button>
           </DialogFooter>
         </form>

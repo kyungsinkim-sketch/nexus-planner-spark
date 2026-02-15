@@ -21,6 +21,7 @@ import {
   Trash2,
 } from 'lucide-react';
 import { useAppStore } from '@/stores/appStore';
+import { useTranslation } from '@/hooks/useTranslation';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import * as fileService from '@/services/fileService';
 import type { ChatMessage, FileItem } from '@/types/core';
@@ -118,6 +119,7 @@ function MessageWrapper({ children, isCurrentUser, onDelete, messageId }: {
 
 // Location bubble with map preview
 function LocationBubble({ data, isCurrentUser }: { data: NonNullable<ChatMessage['locationData']>; isCurrentUser: boolean }) {
+  const { t } = useTranslation();
   const providerLabel = { google: 'Google Maps', naver: 'Naver Map', kakao: 'Kakao Map', other: 'Map' }[data.provider];
 
   return (
@@ -137,7 +139,7 @@ function LocationBubble({ data, isCurrentUser }: { data: NonNullable<ChatMessage
           className="flex items-center gap-1.5 text-xs text-primary hover:underline"
         >
           <ExternalLink className="w-3 h-3" />
-          {providerLabel}에서 열기
+          {t('openInMap').replace('{provider}', providerLabel)}
         </a>
       </div>
       {/* Map preview iframe */}
@@ -167,6 +169,7 @@ function ScheduleBubble({ data, isCurrentUser, onAccept }: {
   onAccept: () => void;
 }) {
   const { getUserById } = useAppStore();
+  const { t } = useTranslation();
   const startDate = new Date(data.startAt);
   const endDate = new Date(data.endAt);
 
@@ -204,7 +207,7 @@ function ScheduleBubble({ data, isCurrentUser, onAccept }: {
         {!isCurrentUser && (
           <Button size="sm" variant="outline" className="w-full text-xs mt-1 gap-1" onClick={onAccept}>
             <CalendarDays className="w-3 h-3" />
-            캘린더에 추가
+            {t('addToCalendar')}
           </Button>
         )}
       </div>
@@ -390,6 +393,7 @@ function DecisionBubble({ data, messageId, isCurrentUser, onVote }: {
   onVote: (optionId: string, reason: string) => void;
 }) {
   const { currentUser, getUserById } = useAppStore();
+  const { t } = useTranslation();
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const [reason, setReason] = useState('');
   const [expanded, setExpanded] = useState(false);
@@ -416,7 +420,7 @@ function DecisionBubble({ data, messageId, isCurrentUser, onVote }: {
         </div>
 
         {isClosed && (
-          <Badge variant="secondary" className="text-xs">결정 완료</Badge>
+          <Badge variant="secondary" className="text-xs">{t('decisionClosed')}</Badge>
         )}
 
         {/* Options */}
@@ -438,9 +442,9 @@ function DecisionBubble({ data, messageId, isCurrentUser, onVote }: {
                   <div className="flex items-center gap-2">
                     {isSelected && <Check className="w-4 h-4 text-green-500" />}
                     <span className="text-sm font-medium">{option.title}</span>
-                    {isMyVote && <Badge variant="outline" className="text-[10px]">내 선택</Badge>}
+                    {isMyVote && <Badge variant="outline" className="text-[10px]">{t('myChoice')}</Badge>}
                   </div>
-                  <span className="text-xs text-muted-foreground">{optionVotes.length}표</span>
+                  <span className="text-xs text-muted-foreground">{optionVotes.length}{t('votesUnit')}</span>
                 </div>
                 {option.description && (
                   <p className="text-xs text-muted-foreground mt-1">{option.description}</p>
@@ -466,13 +470,13 @@ function DecisionBubble({ data, messageId, isCurrentUser, onVote }: {
         {selectedOption && !myVote && !isClosed && (
           <div className="space-y-2">
             <Input
-              placeholder="선택 이유를 입력하세요 (필수)"
+              placeholder={t('enterVoteReason')}
               value={reason}
               onChange={(e) => setReason(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleVote()}
             />
             <Button size="sm" className="w-full text-xs" onClick={handleVote} disabled={!reason.trim()}>
-              투표하기
+              {t('submitVote')}
             </Button>
           </div>
         )}
@@ -486,7 +490,7 @@ function DecisionBubble({ data, messageId, isCurrentUser, onVote }: {
             onClick={() => setExpanded(!expanded)}
           >
             {expanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-            {expanded ? '투표 접기' : `${data.votes.length}개 투표 보기`}
+            {expanded ? t('collapseVotes') : t('viewVotes').replace('{count}', String(data.votes.length))}
           </Button>
         )}
       </div>

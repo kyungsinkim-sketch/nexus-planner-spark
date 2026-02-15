@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { ListChecks, Plus, X } from 'lucide-react';
+import { useTranslation } from '@/hooks/useTranslation';
 import type { DecisionShare, DecisionOption } from '@/types/core';
 
 interface DecisionShareDialogProps {
@@ -20,6 +21,7 @@ interface DecisionShareDialogProps {
 }
 
 export function DecisionShareDialog({ open, onOpenChange, onSubmit }: DecisionShareDialogProps) {
+  const { t } = useTranslation();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [options, setOptions] = useState<{ title: string; description: string }[]>([
@@ -71,22 +73,22 @@ export function DecisionShareDialog({ open, onOpenChange, onSubmit }: DecisionSh
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <ListChecks className="w-5 h-5 text-violet-500" />
-            의사결정 요청
+            {t('requestDecision')}
           </DialogTitle>
         </DialogHeader>
         <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-1">
           <div className="space-y-2">
-            <Label>결정 주제</Label>
+            <Label>{t('decisionTopic')}</Label>
             <Input
-              placeholder="예: 촬영 장소 선정"
+              placeholder={t('decisionTopicExample')}
               value={title}
               onChange={(e) => setTitle(e.target.value)}
             />
           </div>
           <div className="space-y-2">
-            <Label>설명 (선택)</Label>
+            <Label>{t('descriptionOptional')}</Label>
             <Textarea
-              placeholder="의사결정이 필요한 배경을 설명하세요"
+              placeholder={t('decisionDescriptionPlaceholder')}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={2}
@@ -94,15 +96,15 @@ export function DecisionShareDialog({ open, onOpenChange, onSubmit }: DecisionSh
           </div>
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <Label>선택지 (최소 2개)</Label>
+              <Label>{t('optionsMinTwo')}</Label>
               <Button variant="ghost" size="sm" onClick={addOption} className="gap-1 text-xs">
-                <Plus className="w-3 h-3" /> 추가
+                <Plus className="w-3 h-3" /> {t('add')}
               </Button>
             </div>
             {options.map((option, index) => (
               <div key={index} className="rounded-lg border p-3 space-y-2 relative">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-medium text-muted-foreground">옵션 {index + 1}</span>
+                  <span className="text-xs font-medium text-muted-foreground">{t('optionNumber').replace('{n}', String(index + 1))}</span>
                   {options.length > 2 && (
                     <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => removeOption(index)}>
                       <X className="w-3 h-3" />
@@ -110,12 +112,12 @@ export function DecisionShareDialog({ open, onOpenChange, onSubmit }: DecisionSh
                   )}
                 </div>
                 <Input
-                  placeholder="옵션 제목 (예: 성수동 스튜디오)"
+                  placeholder={t('optionTitlePlaceholder')}
                   value={option.title}
                   onChange={(e) => updateOption(index, 'title', e.target.value)}
                 />
                 <Input
-                  placeholder="상세 설명 (선택)"
+                  placeholder={t('optionDescriptionPlaceholder')}
                   value={option.description}
                   onChange={(e) => updateOption(index, 'description', e.target.value)}
                 />
@@ -124,9 +126,9 @@ export function DecisionShareDialog({ open, onOpenChange, onSubmit }: DecisionSh
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>취소</Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>{t('cancel')}</Button>
           <Button onClick={handleSubmit} disabled={!title.trim() || validCount < 2}>
-            공유 ({validCount}개 옵션)
+            {t('shareWithOptions').replace('{count}', String(validCount))}
           </Button>
         </DialogFooter>
       </DialogContent>

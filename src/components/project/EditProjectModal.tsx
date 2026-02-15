@@ -25,6 +25,7 @@ import { UserSearchInput } from '@/components/ui/user-search-input';
 import { X, Image, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
+import { useTranslation } from '@/hooks/useTranslation';
 
 interface EditProjectModalProps {
   open: boolean;
@@ -46,6 +47,7 @@ const KEY_COLORS = [
 ];
 
 export function EditProjectModal({ open, onOpenChange, project }: EditProjectModalProps) {
+  const { t } = useTranslation();
   const { users, updateProject } = useAppStore();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [formData, setFormData] = useState({
@@ -174,7 +176,7 @@ export function EditProjectModal({ open, onOpenChange, project }: EditProjectMod
         setFormData(prev => ({ ...prev, thumbnail: urlData.publicUrl }));
       } catch (err) {
         console.error('Thumbnail upload failed:', err);
-        toast.error('이미지 업로드에 실패했습니다');
+        toast.error(t('imageUploadFailed'));
       } finally {
         setIsUploadingThumb(false);
       }

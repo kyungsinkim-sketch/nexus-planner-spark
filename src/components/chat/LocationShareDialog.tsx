@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { MapPin } from 'lucide-react';
+import { useTranslation } from '@/hooks/useTranslation';
 import type { LocationShare } from '@/types/core';
 
 interface LocationShareDialogProps {
@@ -28,14 +29,14 @@ function detectProvider(url: string): LocationShare['provider'] {
   return 'other';
 }
 
-const providerLabels: Record<LocationShare['provider'], string> = {
-  google: 'Google Maps',
-  naver: 'Naver Map',
-  kakao: 'Kakao Map',
-  other: '기타',
-};
-
 export function LocationShareDialog({ open, onOpenChange, onSubmit }: LocationShareDialogProps) {
+  const { t } = useTranslation();
+  const providerLabels: Record<LocationShare['provider'], string> = {
+    google: 'Google Maps',
+    naver: 'Naver Map',
+    kakao: 'Kakao Map',
+    other: t('otherProvider'),
+  };
   const [title, setTitle] = useState('');
   const [address, setAddress] = useState('');
   const [url, setUrl] = useState('');
@@ -68,45 +69,45 @@ export function LocationShareDialog({ open, onOpenChange, onSubmit }: LocationSh
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <MapPin className="w-5 h-5 text-blue-500" />
-            장소 공유
+            {t('shareLocation')}
           </DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label>장소명</Label>
+            <Label>{t('locationName')}</Label>
             <Input
-              placeholder="예: 성수동 스튜디오 A"
+              placeholder={t('locationNameExample')}
               value={title}
               onChange={(e) => setTitle(e.target.value)}
             />
           </div>
           <div className="space-y-2">
-            <Label>주소 (선택)</Label>
+            <Label>{t('addressOptional')}</Label>
             <Input
-              placeholder="예: 서울시 성동구 성수동2가 300-5"
+              placeholder={t('addressExample')}
               value={address}
               onChange={(e) => setAddress(e.target.value)}
             />
           </div>
           <div className="space-y-2">
-            <Label>지도 링크</Label>
+            <Label>{t('mapLink')}</Label>
             <Input
-              placeholder="Google Maps / Naver Map / Kakao Map URL 붙여넣기"
+              placeholder={t('mapLinkPlaceholder')}
               value={url}
               onChange={(e) => setUrl(e.target.value)}
             />
             {url.trim() && (
               <div className="flex items-center gap-2">
                 <Badge variant="secondary" className="text-xs">
-                  {providerLabels[provider]} 감지됨
+                  {t('providerDetected').replace('{provider}', providerLabels[provider])}
                 </Badge>
               </div>
             )}
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>취소</Button>
-          <Button onClick={handleSubmit} disabled={!title.trim() || !url.trim()}>공유</Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>{t('cancel')}</Button>
+          <Button onClick={handleSubmit} disabled={!title.trim() || !url.trim()}>{t('share')}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

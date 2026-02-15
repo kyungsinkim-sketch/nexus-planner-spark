@@ -41,7 +41,7 @@ const departments = [
 ];
 
 const teams: Record<string, string[]> = {
-  'Management': ['경영기획실'],
+  'Management': ['Management Planning'],
   'Creative Solution': ['Team A', 'Team B'],
   'Production': ['Directing', 'Production', 'NEXT', 'Post Edit'],
   'Renatus': [],
@@ -150,7 +150,7 @@ export function OrganizationChart() {
       position: tempMember.position || 'Employee',
       team: tempMember.team || '',
       category: 'Junior',
-      status: '재직중',
+      status: t('employeeActive'),
       join_date: new Date().toISOString().split('T')[0],
       employee_no: Math.floor(Math.random() * 9000) + 1000,
       level: 'P1',

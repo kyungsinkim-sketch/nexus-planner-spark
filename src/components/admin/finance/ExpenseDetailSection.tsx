@@ -19,8 +19,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { 
-  Search, 
+import {
+  Search,
   ArrowUpDown,
   FileText,
   CreditCard,
@@ -29,6 +29,7 @@ import {
 } from 'lucide-react';
 import { formatKRW } from '@/lib/format';
 import { mockProjects, projectFinancials } from '@/mock/data';
+import { useTranslation } from '@/hooks/useTranslation';
 
 interface ExpenseItem {
   id: string;
@@ -127,6 +128,7 @@ interface ExpenseDetailSectionProps {
 }
 
 export function ExpenseDetailSection({ year }: ExpenseDetailSectionProps) {
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState('tax');
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState<SortBy>('date');
@@ -161,11 +163,11 @@ export function ExpenseDetailSection({ year }: ExpenseDetailSectionProps) {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'PAYMENT_COMPLETE':
-        return <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">지급완료</Badge>;
+        return <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">{t('statusPaymentComplete')}</Badge>;
       case 'INVOICE_ISSUED':
-        return <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100">계산서발행</Badge>;
+        return <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100">{t('statusInvoiceIssued')}</Badge>;
       default:
-        return <Badge variant="outline">대기</Badge>;
+        return <Badge variant="outline">{t('statusPending')}</Badge>;
     }
   };
 
@@ -176,12 +178,12 @@ export function ExpenseDetailSection({ year }: ExpenseDetailSectionProps) {
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead>지급일</TableHead>
-          <TableHead>프로젝트</TableHead>
-          <TableHead>내용</TableHead>
-          {showVendor && <TableHead>거래처/대상</TableHead>}
-          <TableHead className="text-right">금액</TableHead>
-          <TableHead className="text-center">상태</TableHead>
+          <TableHead>{t('paymentDate')}</TableHead>
+          <TableHead>{t('projectColumn')}</TableHead>
+          <TableHead>{t('contentColumnDetail')}</TableHead>
+          {showVendor && <TableHead>{t('vendorTarget')}</TableHead>}
+          <TableHead className="text-right">{t('amountColumn')}</TableHead>
+          <TableHead className="text-center">{t('statusColumn')}</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -200,7 +202,7 @@ export function ExpenseDetailSection({ year }: ExpenseDetailSectionProps) {
           </TableRow>
         ))}
         <TableRow className="bg-muted/50 font-bold">
-          <TableCell colSpan={showVendor ? 4 : 3} className="text-right">합계</TableCell>
+          <TableCell colSpan={showVendor ? 4 : 3} className="text-right">{t('totalSumDetail')}</TableCell>
           <TableCell className="text-right font-mono">{formatKRW(calculateTotal(filterAndSort(items)))}</TableCell>
           <TableCell></TableCell>
         </TableRow>
@@ -222,42 +224,42 @@ export function ExpenseDetailSection({ year }: ExpenseDetailSectionProps) {
         <Card className="p-3 sm:p-4 shadow-card overflow-hidden">
           <div className="flex items-center gap-1.5">
             <FileText className="w-4 h-4 sm:w-5 sm:h-5 text-blue-500 shrink-0" />
-            <p className="text-xs sm:text-sm text-muted-foreground">세금계산서</p>
+            <p className="text-xs sm:text-sm text-muted-foreground">{t('typeTaxInvoice')}</p>
           </div>
           <AutoFitText className="text-lg sm:text-xl font-bold text-foreground mt-1">{formatKRW(totalTaxInvoice)}</AutoFitText>
-          <p className="text-[10px] sm:text-xs text-muted-foreground">{mockTaxInvoices.length}건</p>
+          <p className="text-[10px] sm:text-xs text-muted-foreground">{mockTaxInvoices.length}{t('itemCountSuffix')}</p>
         </Card>
         <Card className="p-3 sm:p-4 shadow-card overflow-hidden">
           <div className="flex items-center gap-1.5">
             <FileText className="w-4 h-4 sm:w-5 sm:h-5 text-violet-500 shrink-0" />
-            <p className="text-xs sm:text-sm text-muted-foreground">원천징수</p>
+            <p className="text-xs sm:text-sm text-muted-foreground">{t('typeWithholding')}</p>
           </div>
           <AutoFitText className="text-lg sm:text-xl font-bold text-foreground mt-1">{formatKRW(totalWithholding)}</AutoFitText>
-          <p className="text-[10px] sm:text-xs text-muted-foreground">{mockWithholding.length}건</p>
+          <p className="text-[10px] sm:text-xs text-muted-foreground">{mockWithholding.length}{t('itemCountSuffix')}</p>
         </Card>
         <Card className="p-3 sm:p-4 shadow-card overflow-hidden">
           <div className="flex items-center gap-1.5">
             <CreditCard className="w-4 h-4 sm:w-5 sm:h-5 text-orange-500 shrink-0" />
-            <p className="text-xs sm:text-sm text-muted-foreground">법인카드</p>
+            <p className="text-xs sm:text-sm text-muted-foreground">{t('typeCorporateCard')}</p>
           </div>
           <AutoFitText className="text-lg sm:text-xl font-bold text-foreground mt-1">{formatKRW(totalCard)}</AutoFitText>
-          <p className="text-[10px] sm:text-xs text-muted-foreground">{mockCorporateCard.length}건</p>
+          <p className="text-[10px] sm:text-xs text-muted-foreground">{mockCorporateCard.length}{t('itemCountSuffix')}</p>
         </Card>
         <Card className="p-3 sm:p-4 shadow-card overflow-hidden">
           <div className="flex items-center gap-1.5">
             <User className="w-4 h-4 sm:w-5 sm:h-5 text-gray-500 shrink-0" />
-            <p className="text-xs sm:text-sm text-muted-foreground">개인비용</p>
+            <p className="text-xs sm:text-sm text-muted-foreground">{t('typePersonalExpense')}</p>
           </div>
           <AutoFitText className="text-lg sm:text-xl font-bold text-foreground mt-1">{formatKRW(totalPersonal)}</AutoFitText>
-          <p className="text-[10px] sm:text-xs text-muted-foreground">{mockPersonalExpense.length}건</p>
+          <p className="text-[10px] sm:text-xs text-muted-foreground">{mockPersonalExpense.length}{t('itemCountSuffix')}</p>
         </Card>
         <Card className="p-3 sm:p-4 shadow-card bg-primary/5 overflow-hidden">
           <div className="flex items-center gap-1.5">
             <Wallet className="w-4 h-4 sm:w-5 sm:h-5 text-primary shrink-0" />
-            <p className="text-xs sm:text-sm text-muted-foreground">전체 합계</p>
+            <p className="text-xs sm:text-sm text-muted-foreground">{t('totalExpenseAll')}</p>
           </div>
           <AutoFitText className="text-lg sm:text-xl font-bold text-primary mt-1">{formatKRW(grandTotal)}</AutoFitText>
-          <p className="text-[10px] sm:text-xs text-muted-foreground">{mockTaxInvoices.length + mockWithholding.length + mockCorporateCard.length + mockPersonalExpense.length}건</p>
+          <p className="text-[10px] sm:text-xs text-muted-foreground">{mockTaxInvoices.length + mockWithholding.length + mockCorporateCard.length + mockPersonalExpense.length}{t('itemCountSuffix')}</p>
         </Card>
       </div>
 
@@ -267,7 +269,7 @@ export function ExpenseDetailSection({ year }: ExpenseDetailSectionProps) {
           <div className="relative flex-1 min-w-[200px] max-w-sm">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
-              placeholder="내용, 프로젝트, 거래처 검색..."
+              placeholder={t('searchContentProjectVendor')}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-9"
@@ -275,10 +277,10 @@ export function ExpenseDetailSection({ year }: ExpenseDetailSectionProps) {
           </div>
           <Select value={filterProject} onValueChange={setFilterProject}>
             <SelectTrigger className="w-[240px]">
-              <SelectValue placeholder="프로젝트 선택" />
+              <SelectValue placeholder={t('selectProject')} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">전체 프로젝트</SelectItem>
+              <SelectItem value="all">{t('allProjectsFilter')}</SelectItem>
               {projects.map(p => (
                 <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
               ))}
@@ -290,9 +292,9 @@ export function ExpenseDetailSection({ year }: ExpenseDetailSectionProps) {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="date">지급일순</SelectItem>
-              <SelectItem value="project">프로젝트순</SelectItem>
-              <SelectItem value="amount">금액순</SelectItem>
+              <SelectItem value="date">{t('sortByDate')}</SelectItem>
+              <SelectItem value="project">{t('sortByProject')}</SelectItem>
+              <SelectItem value="amount">{t('sortByAmount')}</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -305,22 +307,22 @@ export function ExpenseDetailSection({ year }: ExpenseDetailSectionProps) {
             <TabsList className="h-12 bg-transparent">
               <TabsTrigger value="tax" className="gap-2 data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none">
                 <FileText className="w-4 h-4" />
-                세금계산서
+                {t('typeTaxInvoice')}
                 <Badge variant="secondary" className="ml-1">{mockTaxInvoices.length}</Badge>
               </TabsTrigger>
               <TabsTrigger value="withholding" className="gap-2 data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none">
                 <FileText className="w-4 h-4" />
-                원천징수
+                {t('typeWithholding')}
                 <Badge variant="secondary" className="ml-1">{mockWithholding.length}</Badge>
               </TabsTrigger>
               <TabsTrigger value="card" className="gap-2 data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none">
                 <CreditCard className="w-4 h-4" />
-                법인카드
+                {t('typeCorporateCard')}
                 <Badge variant="secondary" className="ml-1">{mockCorporateCard.length}</Badge>
               </TabsTrigger>
               <TabsTrigger value="personal" className="gap-2 data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none">
                 <User className="w-4 h-4" />
-                개인비용
+                {t('typePersonalExpense')}
                 <Badge variant="secondary" className="ml-1">{mockPersonalExpense.length}</Badge>
               </TabsTrigger>
             </TabsList>

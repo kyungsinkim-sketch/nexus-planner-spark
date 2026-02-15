@@ -36,20 +36,21 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { UserWorkStatus } from '@/types/core';
 import { useTranslation } from '@/hooks/useTranslation';
+import { TranslationKey } from '@/lib/i18n';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { isSupabaseConfigured } from '@/lib/supabase';
 import { toast } from 'sonner';
 
-const workStatusConfig: Record<UserWorkStatus, { label: string; icon: typeof Building2; colorClass: string }> = {
-  AT_WORK: { label: '사무실', icon: Building2, colorClass: 'text-emerald-500' },
-  REMOTE: { label: '재택', icon: HomeIcon, colorClass: 'text-blue-500' },
-  OVERSEAS: { label: '출장', icon: Plane, colorClass: 'text-violet-500' },
-  FILMING: { label: '촬영중', icon: Film, colorClass: 'text-orange-500' },
-  FIELD: { label: '현장', icon: MapPinned, colorClass: 'text-teal-500' },
-  LUNCH: { label: '식사중', icon: Coffee, colorClass: 'text-amber-500' },
-  TRAINING: { label: '운동중', icon: Dumbbell, colorClass: 'text-pink-500' },
-  NOT_AT_WORK: { label: '오프라인', icon: LogOut, colorClass: 'text-muted-foreground' },
+const workStatusConfig: Record<UserWorkStatus, { labelKey: TranslationKey; icon: typeof Building2; colorClass: string }> = {
+  AT_WORK: { labelKey: 'statusOffice', icon: Building2, colorClass: 'text-emerald-500' },
+  REMOTE: { labelKey: 'statusRemote', icon: HomeIcon, colorClass: 'text-blue-500' },
+  OVERSEAS: { labelKey: 'statusOverseas', icon: Plane, colorClass: 'text-violet-500' },
+  FILMING: { labelKey: 'statusFilming', icon: Film, colorClass: 'text-orange-500' },
+  FIELD: { labelKey: 'statusField', icon: MapPinned, colorClass: 'text-teal-500' },
+  LUNCH: { labelKey: 'statusLunch', icon: Coffee, colorClass: 'text-amber-500' },
+  TRAINING: { labelKey: 'statusTraining', icon: Dumbbell, colorClass: 'text-pink-500' },
+  NOT_AT_WORK: { labelKey: 'statusOffline', icon: LogOut, colorClass: 'text-muted-foreground' },
 };
 
 export function Sidebar() {
@@ -138,7 +139,7 @@ export function Sidebar() {
                   <div className="flex items-center gap-2">
                     {theme === 'dark' ? <Moon className="w-4 h-4 text-sidebar-muted" /> : <Sun className="w-4 h-4 text-sidebar-muted" />}
                     <span className="text-xs font-medium text-sidebar-muted">
-                      {theme === 'dark' ? 'Dark' : 'Light'}
+                      {theme === 'dark' ? t('darkMode') : t('lightMode')}
                     </span>
                   </div>
                   <div className="relative inline-flex h-6 w-12 items-center rounded-full bg-sidebar-accent border border-sidebar-border">
@@ -156,7 +157,7 @@ export function Sidebar() {
             </button>
           </TooltipTrigger>
           <TooltipContent side="right">
-            {theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+            {theme === 'dark' ? t('switchToLightMode') : t('switchToDarkMode')}
           </TooltipContent>
         </Tooltip>
       </div>
@@ -179,7 +180,7 @@ export function Sidebar() {
                   <div className="flex items-center gap-2">
                     <Languages className="w-4 h-4 text-sidebar-muted" />
                     <span className="text-xs font-medium text-sidebar-muted">
-                      {language === 'ko' ? '언어' : 'Language'}
+                      {t('language')}
                     </span>
                   </div>
                   {/* Toggle Switch */}
@@ -204,7 +205,7 @@ export function Sidebar() {
             </button>
           </TooltipTrigger>
           <TooltipContent side="right">
-            {language === 'ko' ? 'Switch to English' : '한국어로 변경'}
+            {language === 'ko' ? t('switchToEnglish') : t('switchToKorean')}
           </TooltipContent>
         </Tooltip>
       </div>
@@ -245,7 +246,7 @@ export function Sidebar() {
                     {currentUser?.name || ''}
                   </p>
                   <p className={cn('text-xs truncate', currentStatus.colorClass)}>
-                    {currentStatus.label}
+                    {t(currentStatus.labelKey)}
                   </p>
                 </div>
               )}
@@ -266,7 +267,7 @@ export function Sidebar() {
                   className="gap-3"
                 >
                   <Icon className={cn('w-4 h-4', config.colorClass)} />
-                  <span className="flex-1">{config.label}</span>
+                  <span className="flex-1">{t(config.labelKey)}</span>
                   {isSelected && <Check className="w-4 h-4 text-primary" />}
                 </DropdownMenuItem>
               );
@@ -277,7 +278,7 @@ export function Sidebar() {
               onClick={async () => {
                 try {
                   await signOut();
-                  toast.success('로그아웃 되었습니다');
+                  toast.success(t('loggedOut'));
                 } catch (error: unknown) {
                   toast.error(error instanceof Error ? error.message : 'Failed to log out');
                 }
@@ -285,7 +286,7 @@ export function Sidebar() {
               className="gap-3 text-destructive focus:text-destructive"
             >
               <LogOut className="w-4 h-4" />
-              <span>Log Out</span>
+              <span>{t('logOut')}</span>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

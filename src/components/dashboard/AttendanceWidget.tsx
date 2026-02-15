@@ -117,10 +117,10 @@ export function AttendanceWidget() {
         try {
             const pos = await getCurrentPosition();
             setPosition(pos);
-            toast.success('위치 정보를 가져왔습니다');
+            toast.success(t('locationFetched'));
         } catch (error) {
             console.error('GPS error:', error);
-            toast.error(error instanceof Error ? error.message : '위치 정보를 가져올 수 없습니다');
+            toast.error(error instanceof Error ? error.message : t('failedToGetLocation'));
         } finally {
             setGpsLoading(false);
         }
@@ -136,7 +136,7 @@ export function AttendanceWidget() {
     // Handle check-in
     const handleCheckIn = async () => {
         if (requiresGps && !position) {
-            toast.error('GPS 위치 정보가 필요합니다');
+            toast.error(t('gpsLocationRequired'));
             return;
         }
 
@@ -154,10 +154,10 @@ export function AttendanceWidget() {
             // Sync work status with sidebar
             const workStatus = ATTENDANCE_TO_WORK_STATUS[selectedType] || 'AT_WORK';
             setUserWorkStatus(workStatus);
-            toast.success('출근 처리되었습니다!');
+            toast.success(t('checkInSuccess'));
         } catch (error) {
             console.error('Check-in error:', error);
-            toast.error('출근 처리에 실패했습니다');
+            toast.error(t('checkInFailed'));
         } finally {
             setActionLoading(false);
         }
@@ -184,10 +184,10 @@ export function AttendanceWidget() {
             });
             setAttendance(result);
             setUserWorkStatus('NOT_AT_WORK');
-            toast.success('퇴근 처리되었습니다! 수고하셨습니다');
+            toast.success(t('checkOutSuccess'));
         } catch (error) {
             console.error('Check-out error:', error);
-            toast.error('퇴근 처리에 실패했습니다');
+            toast.error(t('checkOutFailed'));
         } finally {
             setActionLoading(false);
         }
@@ -201,10 +201,10 @@ export function AttendanceWidget() {
 
     // Format working hours
     const formatWorkingTime = (minutes: number | null) => {
-        if (!minutes) return '--시간 --분';
+        if (!minutes) return `--${t('hoursUnit')} --${t('minutesUnit')}`;
         const hours = Math.floor(minutes / 60);
         const mins = minutes % 60;
-        return `${hours}시간 ${mins}분`;
+        return `${hours}${t('hoursUnit')} ${mins}${t('minutesUnit')}`;
     };
 
     // Loading state
@@ -231,7 +231,7 @@ export function AttendanceWidget() {
                     <div className="flex items-center justify-between">
                         <CardTitle className="text-base flex items-center gap-2">
                             <Clock className="w-4 h-4" />
-                            {language === 'ko' ? '오늘의 근태' : "Today's Attendance"}
+                            {t('todayAttendance')}
                         </CardTitle>
                         {attendance?.check_in_type && (
                             <Badge className={TYPE_COLORS[attendance.check_in_type]}>
@@ -245,7 +245,7 @@ export function AttendanceWidget() {
                     <div className="flex items-center gap-4">
                         {/* Check-in time */}
                         <div className="flex-1 text-center">
-                            <p className="text-xs text-muted-foreground mb-1">출근</p>
+                            <p className="text-xs text-muted-foreground mb-1">{t('checkIn')}</p>
                             <p className={`text-lg font-bold ${isCheckedIn ? 'text-emerald-600' : 'text-muted-foreground'}`}>
                                 {formatTime(attendance?.check_in_at ?? null)}
                             </p>
@@ -265,7 +265,7 @@ export function AttendanceWidget() {
 
                         {/* Check-out time */}
                         <div className="flex-1 text-center">
-                            <p className="text-xs text-muted-foreground mb-1">퇴근</p>
+                            <p className="text-xs text-muted-foreground mb-1">{t('checkOut')}</p>
                             <p className={`text-lg font-bold ${isCheckedOut ? 'text-emerald-600' : 'text-muted-foreground'}`}>
                                 {formatTime(attendance?.check_out_at ?? null)}
                             </p>
@@ -275,7 +275,7 @@ export function AttendanceWidget() {
                     {/* Working time (if completed) */}
                     {isCheckedOut && attendance?.working_minutes && (
                         <div className="text-center py-2 bg-muted/50 rounded-lg">
-                            <p className="text-sm text-muted-foreground">오늘 근무시간</p>
+                            <p className="text-sm text-muted-foreground">{t('todayWorkingHours')}</p>
                             <p className="text-lg font-semibold text-foreground">
                                 {formatWorkingTime(attendance.working_minutes)}
                             </p>
@@ -304,7 +304,7 @@ export function AttendanceWidget() {
                                 ) : (
                                     <LogIn className="w-4 h-4" />
                                 )}
-                                출근하기
+                                {t('doCheckIn')}
                             </Button>
                         ) : !isCheckedOut ? (
                             <Button
@@ -319,12 +319,12 @@ export function AttendanceWidget() {
                                 ) : (
                                     <LogOut className="w-4 h-4" />
                                 )}
-                                퇴근하기
+                                {t('doCheckOut')}
                             </Button>
                         ) : (
                             <div className="flex-1 text-center py-3 text-emerald-600 font-medium flex items-center justify-center gap-2">
                                 <CheckCircle2 className="w-5 h-5" />
-                                오늘 근무 완료
+                                {t('workCompleted')}
                             </div>
                         )}
                     </div>
@@ -337,17 +337,17 @@ export function AttendanceWidget() {
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2">
                             <LogIn className="w-5 h-5" />
-                            출근하기
+                            {t('doCheckIn')}
                         </DialogTitle>
                         <DialogDescription>
-                            출근 유형을 선택하고 출근 버튼을 눌러주세요.
+                            {t('checkInDialogDesc')}
                         </DialogDescription>
                     </DialogHeader>
 
                     <div className="space-y-4 py-4">
                         {/* Type Selection */}
                         <div className="space-y-2">
-                            <Label>출근 유형</Label>
+                            <Label>{t('attendanceType')}</Label>
                             <Select value={selectedType} onValueChange={(v) => setSelectedType(v as AttendanceType)}>
                                 <SelectTrigger>
                                     <SelectValue />
@@ -376,13 +376,13 @@ export function AttendanceWidget() {
                             <div className="space-y-2">
                                 <Label className="flex items-center gap-1">
                                     <MapPin className="w-4 h-4" />
-                                    현재 위치
+                                    {t('currentLocation')}
                                 </Label>
                                 <div className="rounded-lg border p-3 bg-muted/30">
                                     {gpsLoading ? (
                                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
                                             <Loader2 className="w-4 h-4 animate-spin" />
-                                            위치 정보를 가져오는 중...
+                                            {t('gettingLocation')}
                                         </div>
                                     ) : position ? (
                                         <div className="space-y-1">
@@ -390,17 +390,17 @@ export function AttendanceWidget() {
                                                 {position.address || `${position.latitude.toFixed(6)}, ${position.longitude.toFixed(6)}`}
                                             </p>
                                             <p className="text-xs text-muted-foreground">
-                                                정확도: ±{Math.round(position.accuracy)}m
+                                                {t('gpsAccuracy')}: ±{Math.round(position.accuracy)}m
                                             </p>
                                         </div>
                                     ) : (
                                         <div className="flex items-center justify-between">
                                             <span className="text-sm text-muted-foreground flex items-center gap-1">
                                                 <AlertCircle className="w-4 h-4" />
-                                                위치 정보 없음
+                                                {t('locationNotAvailable')}
                                             </span>
                                             <Button size="sm" variant="outline" onClick={handleGetLocation}>
-                                                위치 가져오기
+                                                {t('getLocation')}
                                             </Button>
                                         </div>
                                     )}
@@ -410,9 +410,9 @@ export function AttendanceWidget() {
 
                         {/* Note */}
                         <div className="space-y-2">
-                            <Label>메모 (선택)</Label>
+                            <Label>{t('memoOptional')}</Label>
                             <Textarea
-                                placeholder="오늘의 업무 내용이나 특이사항을 입력하세요..."
+                                placeholder={t('memoPlaceholder')}
                                 value={note}
                                 onChange={(e) => setNote(e.target.value)}
                                 rows={3}
@@ -422,7 +422,7 @@ export function AttendanceWidget() {
 
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setShowCheckInDialog(false)}>
-                            취소
+                            {t('cancel')}
                         </Button>
                         <Button
                             onClick={handleCheckIn}
@@ -434,7 +434,7 @@ export function AttendanceWidget() {
                             ) : (
                                 <LogIn className="w-4 h-4" />
                             )}
-                            출근 확인
+                            {t('confirmCheckIn')}
                         </Button>
                     </DialogFooter>
                 </DialogContent>

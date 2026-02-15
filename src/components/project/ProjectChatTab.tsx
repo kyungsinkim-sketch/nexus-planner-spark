@@ -14,12 +14,14 @@ import { toast } from 'sonner';
 import * as chatService from '@/services/chatService';
 import * as fileService from '@/services/fileService';
 import { isSupabaseConfigured } from '@/lib/supabase';
+import { useTranslation } from '@/hooks/useTranslation';
 
 interface ProjectChatTabProps {
   projectId: string;
 }
 
 export function ProjectChatTab({ projectId }: ProjectChatTabProps) {
+  const { t } = useTranslation();
   const { getMessagesByProject, getMessagesByRoom, getUserById, currentUser, addMessage, sendProjectMessage, loadChatRooms, getChatRoomsByProject, sendRoomMessage, addFile, addFileGroup, getFileGroupsByProject } = useAppStore();
   const chatRooms = getChatRoomsByProject(projectId);
   const defaultRoom = chatRooms.find(r => r.isDefault);
@@ -114,7 +116,7 @@ export function ProjectChatTab({ projectId }: ProjectChatTabProps) {
       }
     } catch (error) {
       console.error('Failed to send message:', error);
-      toast.error('메시지 전송에 실패했습니다');
+      toast.error(t('failedToSendMessage'));
       setNewMessage(content); // Restore the message
     } finally {
       setIsSending(false);

@@ -65,40 +65,40 @@ export function MobileAdminPage() {
         {
             id: 'hr' as const,
             icon: Users,
-            label: '인사관리',
-            description: '직원 현황 및 조직도',
+            label: t('hrManagement'),
+            description: t('hrManagementDesc'),
             color: 'text-blue-600',
             bgColor: 'bg-blue-100',
         },
         {
             id: 'finance' as const,
             icon: TrendingUp,
-            label: '재무관리',
-            description: '매출, 지출, 손익현황',
+            label: t('financeManagement'),
+            description: t('financeManagementDesc'),
             color: 'text-emerald-600',
             bgColor: 'bg-emerald-100',
         },
         {
             id: 'ga' as const,
             icon: FolderKanban,
-            label: '총무관리',
-            description: '시설, 자산, 비품관리',
+            label: t('gaManagement'),
+            description: t('gaManagementDesc'),
             color: 'text-violet-600',
             bgColor: 'bg-violet-100',
         },
         {
             id: 'welfare' as const,
             icon: Dumbbell,
-            label: '복지관리',
-            description: 'Renatus 운동 프로그램',
+            label: t('welfareManagement'),
+            description: t('welfareManagementDesc'),
             color: 'text-pink-600',
             bgColor: 'bg-pink-100',
         },
         {
             id: 'settings' as const,
             icon: Settings,
-            label: '설정',
-            description: '시스템 설정 및 알림',
+            label: t('settings'),
+            description: t('settingsDesc'),
             color: 'text-orange-600',
             bgColor: 'bg-orange-100',
         },
@@ -108,16 +108,16 @@ export function MobileAdminPage() {
         switch (section) {
             case 'hr':
             case 'hr-full':
-                return '인사관리';
+                return t('hrManagement');
             case 'finance':
             case 'finance-full':
-                return '재무관리';
+                return t('financeManagement');
             case 'ga':
-                return '총무관리';
+                return t('gaManagement');
             case 'welfare':
-                return '복지관리';
+                return t('welfareManagement');
             case 'settings':
-                return '설정';
+                return t('settings');
             default:
                 return t('adminDashboard');
         }

@@ -11,8 +11,8 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { 
-  ChevronLeft, 
+import {
+  ChevronLeft,
   ChevronRight,
   TrendingDown,
   Wallet,
@@ -20,6 +20,7 @@ import {
   FileText
 } from 'lucide-react';
 import { formatKRW } from '@/lib/format';
+import { useTranslation } from '@/hooks/useTranslation';
 
 interface DailyExpense {
   date: string;
@@ -113,6 +114,7 @@ interface ExpenseScheduleSectionProps {
 }
 
 export function ExpenseScheduleSection({ year }: ExpenseScheduleSectionProps) {
+  const { t } = useTranslation();
   const [currentMonth, setCurrentMonth] = useState(new Date(year, 0));
   
   const expenses = generateMockExpenseSchedule();
@@ -140,15 +142,15 @@ export function ExpenseScheduleSection({ year }: ExpenseScheduleSectionProps) {
   const getTypeBadge = (type: string) => {
     switch (type) {
       case 'TAX_INVOICE':
-        return <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100 text-xs">세금계산서</Badge>;
+        return <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100 text-xs">{t('typeTaxInvoice')}</Badge>;
       case 'WITHHOLDING':
-        return <Badge className="bg-violet-100 text-violet-700 hover:bg-violet-100 text-xs">원천징수</Badge>;
+        return <Badge className="bg-violet-100 text-violet-700 hover:bg-violet-100 text-xs">{t('typeWithholding')}</Badge>;
       case 'CORPORATE_CARD':
-        return <Badge className="bg-orange-100 text-orange-700 hover:bg-orange-100 text-xs">법인카드</Badge>;
+        return <Badge className="bg-orange-100 text-orange-700 hover:bg-orange-100 text-xs">{t('typeCorporateCard')}</Badge>;
       case 'CORPORATE_CASH':
-        return <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100 text-xs">법인현금</Badge>;
+        return <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100 text-xs">{t('typeCorporateCash')}</Badge>;
       case 'PERSONAL':
-        return <Badge className="bg-gray-100 text-gray-700 hover:bg-gray-100 text-xs">개인비용</Badge>;
+        return <Badge className="bg-gray-100 text-gray-700 hover:bg-gray-100 text-xs">{t('typePersonalExpense')}</Badge>;
       default:
         return <Badge variant="outline" className="text-xs">{type}</Badge>;
     }
@@ -161,21 +163,21 @@ export function ExpenseScheduleSection({ year }: ExpenseScheduleSectionProps) {
       {/* Summary Cards */}
       <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
         <Card className="p-3 sm:p-4 shadow-card overflow-hidden">
-          <p className="text-xs sm:text-sm text-muted-foreground truncate">주거래계좌 출금가능금액</p>
+          <p className="text-xs sm:text-sm text-muted-foreground truncate">{t('mainAccountBalance')}</p>
           <AutoFitText className="text-lg sm:text-2xl font-bold text-foreground">{formatKRW(165434699)}</AutoFitText>
         </Card>
         <Card className="p-3 sm:p-4 shadow-card overflow-hidden">
-          <p className="text-xs sm:text-sm text-muted-foreground truncate">그 외 출금가능금액</p>
+          <p className="text-xs sm:text-sm text-muted-foreground truncate">{t('otherAccountBalance')}</p>
           <AutoFitText className="text-lg sm:text-2xl font-bold text-foreground">{formatKRW(280000497)}</AutoFitText>
         </Card>
         <Card className="p-3 sm:p-4 shadow-card bg-yellow-50 border-yellow-200 overflow-hidden">
-          <p className="text-xs sm:text-sm text-muted-foreground">총 가용자금</p>
+          <p className="text-xs sm:text-sm text-muted-foreground">{t('totalAvailableFunds')}</p>
           <AutoFitText className="text-lg sm:text-2xl font-bold text-yellow-700">{formatKRW(startingBalance)}</AutoFitText>
         </Card>
         <Card className="p-3 sm:p-4 shadow-card overflow-hidden">
           <div className="flex items-center gap-1.5">
             <TrendingDown className="w-4 h-4 sm:w-5 sm:h-5 text-red-500 shrink-0" />
-            <p className="text-xs sm:text-sm text-muted-foreground truncate">이번 달 예상 지출</p>
+            <p className="text-xs sm:text-sm text-muted-foreground truncate">{t('monthlyExpectedExpense')}</p>
           </div>
           <AutoFitText className="text-lg sm:text-2xl font-bold text-red-600">{formatKRW(totalExpenses)}</AutoFitText>
         </Card>
@@ -186,11 +188,11 @@ export function ExpenseScheduleSection({ year }: ExpenseScheduleSectionProps) {
         <div className="flex items-center justify-between">
           <Button variant="ghost" size="sm" onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1))}>
             <ChevronLeft className="w-4 h-4 mr-1" />
-            이전 달
+            {t('previousMonth')}
           </Button>
-          <h3 className="text-lg font-semibold text-foreground">{monthStr} 지출 예정</h3>
+          <h3 className="text-lg font-semibold text-foreground">{monthStr} {t('expenseScheduleTitle')}</h3>
           <Button variant="ghost" size="sm" onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1))}>
-            다음 달
+            {t('nextMonth')}
             <ChevronRight className="w-4 h-4 ml-1" />
           </Button>
         </div>
@@ -202,13 +204,13 @@ export function ExpenseScheduleSection({ year }: ExpenseScheduleSectionProps) {
           <Table>
             <TableHeader className="bg-muted/50">
               <TableRow>
-                <TableHead className="w-20 text-xs">이체일정</TableHead>
-                <TableHead className="text-xs min-w-[120px]">내용</TableHead>
-                <TableHead className="w-24 text-center text-xs hidden sm:table-cell">유형</TableHead>
-                <TableHead className="text-right w-28 text-xs">지출액</TableHead>
-                <TableHead className="text-right w-28 text-xs hidden md:table-cell">일일 지출금액</TableHead>
-                <TableHead className="text-right w-32 text-xs hidden md:table-cell">잔액</TableHead>
-                <TableHead className="w-24 text-xs hidden lg:table-cell">비고</TableHead>
+                <TableHead className="w-20 text-xs">{t('transferSchedule')}</TableHead>
+                <TableHead className="text-xs min-w-[120px]">{t('contentColumn')}</TableHead>
+                <TableHead className="w-24 text-center text-xs hidden sm:table-cell">{t('typeColumn')}</TableHead>
+                <TableHead className="text-right w-28 text-xs">{t('expenseAmount')}</TableHead>
+                <TableHead className="text-right w-28 text-xs hidden md:table-cell">{t('dailyExpenseAmount')}</TableHead>
+                <TableHead className="text-right w-32 text-xs hidden md:table-cell">{t('balanceColumn')}</TableHead>
+                <TableHead className="w-24 text-xs hidden lg:table-cell">{t('remarkColumn')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -251,7 +253,7 @@ export function ExpenseScheduleSection({ year }: ExpenseScheduleSectionProps) {
               ))}
               {/* Total Row */}
               <TableRow className="bg-yellow-50 font-bold border-t-2">
-                <TableCell colSpan={2} className="text-right text-xs sm:text-sm">총 합계</TableCell>
+                <TableCell colSpan={2} className="text-right text-xs sm:text-sm">{t('totalSumLabel')}</TableCell>
                 <TableCell className="hidden sm:table-cell"></TableCell>
                 <TableCell className="text-right font-mono text-xs sm:text-sm tabular-nums">{formatKRW(totalExpenses)}</TableCell>
                 <TableCell className="text-right font-mono text-xs sm:text-sm tabular-nums hidden md:table-cell">{formatKRW(totalExpenses)}</TableCell>

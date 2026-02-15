@@ -336,9 +336,9 @@ export default function ChatPage() {
     try {
       const { deleteMessage } = useAppStore.getState();
       await deleteMessage(messageId);
-      toast.success('Message deleted');
+      toast.success(t('messageDeleted'));
     } catch {
-      toast.error('Failed to delete message');
+      toast.error(t('failedToDeleteMessage'));
     }
   };
 
@@ -473,10 +473,10 @@ export default function ChatPage() {
         });
       }
 
-      toast.success(`${fileName} 업로드 완료`);
+      toast.success(`${fileName} ${t('uploadComplete')}`);
     } catch (error) {
       console.error('Failed to upload file:', error);
-      toast.error('파일 업로드에 실패했습니다');
+      toast.error(t('failedToUploadFile'));
     }
   };
 
@@ -694,7 +694,7 @@ export default function ChatPage() {
                                     <Hash className="w-3.5 h-3.5 shrink-0" />
                                     <span className="truncate">{room.name}</span>
                                     {room.isDefault && (
-                                      <span className="text-[10px] bg-muted px-1.5 py-0.5 rounded-full shrink-0">기본</span>
+                                      <span className="text-[10px] bg-muted px-1.5 py-0.5 rounded-full shrink-0">{t('defaultRoom')}</span>
                                     )}
                                   </button>
                                 );
@@ -706,7 +706,7 @@ export default function ChatPage() {
                                 className="w-full flex items-center gap-2 px-4 py-2.5 pl-14 hover:bg-muted/50 transition-colors text-left text-sm text-muted-foreground/70"
                               >
                                 <Plus className="w-3.5 h-3.5" />
-                                <span>새 채팅방</span>
+                                <span>{t('newChatRoom')}</span>
                               </button>
                             </div>
                           )}
@@ -761,7 +761,7 @@ export default function ChatPage() {
                               </p>
                             ) : (
                               <p className="text-xs text-muted-foreground/50 italic mt-0.5">
-                                대화 없음
+                                {t('noConversation')}
                               </p>
                             )}
                           </div>
@@ -964,30 +964,30 @@ export default function ChatPage() {
       <Dialog open={showCreateRoom} onOpenChange={setShowCreateRoom}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>새 채팅방 만들기</DialogTitle>
+            <DialogTitle>{t('createNewChatRoom')}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="roomName">채팅방 이름</Label>
+              <Label htmlFor="roomName">{t('chatRoomName')}</Label>
               <Input
                 id="roomName"
                 value={newRoomName}
                 onChange={(e) => setNewRoomName(e.target.value)}
-                placeholder="예: 촬영 준비, 후반작업"
+                placeholder={t('chatRoomNamePlaceholder')}
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="roomDesc">설명 (선택)</Label>
+              <Label htmlFor="roomDesc">{t('descriptionOptional')}</Label>
               <Input
                 id="roomDesc"
                 value={newRoomDescription}
                 onChange={(e) => setNewRoomDescription(e.target.value)}
-                placeholder="채팅방 설명..."
+                placeholder={t('chatRoomDescriptionPlaceholder')}
               />
             </div>
             {expandedProjectMembers.length > 0 && (
               <div className="space-y-2">
-                <Label>멤버 선택</Label>
+                <Label>{t('selectMembers')}</Label>
                 <div className="space-y-2 max-h-[200px] overflow-y-auto">
                   {expandedProjectMembers.map((user) => user && (
                     <div key={user.id} className="flex items-center gap-2">
@@ -1013,10 +1013,10 @@ export default function ChatPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowCreateRoom(false)}>
-              취소
+              {t('cancel')}
             </Button>
             <Button onClick={handleCreateRoom} disabled={!newRoomName.trim()}>
-              만들기
+              {t('create')}
             </Button>
           </DialogFooter>
         </DialogContent>

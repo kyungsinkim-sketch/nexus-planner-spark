@@ -136,7 +136,7 @@ export function WelfareTab() {
 
         // Check if slot is already occupied (1 person per hour limit)
         if (sessions.length >= 1) {
-            toast.error('이 시간대는 이미 예약되어 있습니다 (1시간당 1명 제한)');
+            toast.error(t('slotAlreadyBooked'));
             return;
         }
 
@@ -149,7 +149,7 @@ export function WelfareTab() {
     // Handle booking creation
     const handleCreateBooking = async () => {
         if (!selectedUserId) {
-            toast.error('사용자를 선택해주세요');
+            toast.error(t('selectUser'));
             return;
         }
 
@@ -177,16 +177,16 @@ export function WelfareTab() {
 
         try {
             await addEvent({
-                title: 'Renatus 트레이닝',
+                title: t('renatusTrainingEvent'),
                 type: 'MEETING',
                 startAt: startDate.toISOString(),
                 endAt: endDate.toISOString(),
                 ownerId: selectedUserId,
                 source: 'PAULUS',
             });
-            toast.success(`${user.name}님의 예약이 생성되고 개인 캘린더에 추가되었습니다`);
+            toast.success(`${user.name}${t('bookingCreatedWithCalendar')}`);
         } catch (error) {
-            toast.success('예약이 생성되었습니다');
+            toast.success(t('bookingCreated'));
         }
 
         setIsBookingDialogOpen(false);
@@ -199,9 +199,9 @@ export function WelfareTab() {
 
         if (assignment) {
             // Show confirmation to remove
-            if (confirm(`사물함 ${lockerNumber}번의 배정을 해제하시겠습니까?\n현재 사용자: ${assignment.userName}`)) {
+            if (confirm(t('confirmLockerRelease').replace('{n}', String(lockerNumber)).replace('{user}', assignment.userName))) {
                 setLockerAssignments(prev => prev.filter(l => l.lockerNumber !== lockerNumber));
-                toast.success('사물함 배정이 해제되었습니다');
+                toast.success(t('lockerReleased'));
             }
         } else {
             // Open dialog to assign
@@ -214,7 +214,7 @@ export function WelfareTab() {
     // Handle locker assignment
     const handleAssignLocker = () => {
         if (!selectedUserId) {
-            toast.error('사용자를 선택해주세요');
+            toast.error(t('selectUser'));
             return;
         }
 
@@ -229,7 +229,7 @@ export function WelfareTab() {
         };
 
         setLockerAssignments([...lockerAssignments, newAssignment]);
-        toast.success(`사물함 ${selectedLockerNumber}번이 ${user.name}님에게 배정되었습니다`);
+        toast.success(t('lockerAssigned').replace('{n}', String(selectedLockerNumber)).replace('{user}', user.name));
         setIsLockerDialogOpen(false);
         setSelectedUserId('');
     };
@@ -247,7 +247,7 @@ export function WelfareTab() {
                     : s
             )
         );
-        toast.success(`${type === 'trainer' ? 'Trainer' : 'Trainee'} 확인 완료`);
+        toast.success(`${type === 'trainer' ? 'Trainer' : 'Trainee'} ${t('confirmationComplete')}`);
     };
 
     // Update exercise content
@@ -303,15 +303,15 @@ export function WelfareTab() {
                 <TabsList className="grid w-full grid-cols-3">
                     <TabsTrigger value="calendar">
                         <Calendar className="w-4 h-4 mr-2" />
-                        주차별 예약 캘린더
+                        {t('weeklyBookingCalendar')}
                     </TabsTrigger>
                     <TabsTrigger value="records">
                         <Dumbbell className="w-4 h-4 mr-2" />
-                        트레이닝 기록
+                        {t('trainingRecords')}
                     </TabsTrigger>
                     <TabsTrigger value="lockers">
                         <Users className="w-4 h-4 mr-2" />
-                        사물함 관리
+                        {t('lockerManagement')}
                     </TabsTrigger>
                 </TabsList>
 
@@ -321,9 +321,9 @@ export function WelfareTab() {
                         <CardHeader>
                             <div className="flex items-center justify-between">
                                 <div>
-                                    <CardTitle>주차별 예약 현황</CardTitle>
+                                    <CardTitle>{t('weeklyBookingStatus')}</CardTitle>
                                     <CardDescription>
-                                        캘린더 셀을 클릭하여 예약을 추가하세요 (1시간당 1명)
+                                        {t('clickCellToBook')}
                                     </CardDescription>
                                 </div>
                                 <div className="flex gap-2">
@@ -331,7 +331,7 @@ export function WelfareTab() {
                                         <ChevronLeft className="w-4 h-4" />
                                     </Button>
                                     <div className="px-4 py-2 text-sm font-medium">
-                                        {currentWeekStart.toLocaleDateString('ko-KR', { month: 'long', day: 'numeric' })} 주간
+                                        {currentWeekStart.toLocaleDateString('ko-KR', { month: 'long', day: 'numeric' })} {t('weekLabel')}
                                     </div>
                                     <Button variant="outline" size="sm" onClick={goToNextWeek}>
                                         <ChevronRight className="w-4 h-4" />
@@ -344,7 +344,7 @@ export function WelfareTab() {
                                 <table className="w-full border-collapse">
                                     <thead>
                                         <tr className="bg-muted/50">
-                                            <th className="border p-2 text-sm font-semibold">시간</th>
+                                            <th className="border p-2 text-sm font-semibold">{t('timeLabel')}</th>
                                             {weekDates.map((date, idx) => (
                                                 <th key={idx} className="border p-2 text-sm font-semibold">
                                                     <div>{date.toLocaleDateString('ko-KR', { month: '2-digit', day: '2-digit' })}</div>
@@ -405,7 +405,7 @@ export function WelfareTab() {
                         {/* Left: Today's Sessions by Time */}
                         <Card className="col-span-3">
                             <CardHeader>
-                                <CardTitle className="text-base">오늘의 예약</CardTitle>
+                                <CardTitle className="text-base">{t('todayBookings')}</CardTitle>
                                 <CardDescription className="text-xs">
                                     {new Date(currentRecordsDate).toLocaleDateString('ko-KR', {
                                         year: 'numeric',
@@ -435,7 +435,7 @@ export function WelfareTab() {
                                         ))
                                     ) : (
                                         <div className="text-center py-8 text-muted-foreground text-sm">
-                                            오늘 예약이 없습니다
+                                            {t('noBookingsToday')}
                                         </div>
                                     )}
                                 </div>
@@ -447,10 +447,10 @@ export function WelfareTab() {
                             <CardHeader>
                                 <CardTitle>
                                     {selectedSession
-                                        ? `${selectedSession.userName}님의 트레이닝`
-                                        : '트레이닝 상세'}
+                                        ? `${selectedSession.userName}${t('userTraining')}`
+                                        : t('trainingDetail')}
                                 </CardTitle>
-                                <CardDescription>운동 내용 및 상호 확인 현황</CardDescription>
+                                <CardDescription>{t('exerciseContentAndConfirmation')}</CardDescription>
                             </CardHeader>
                             <CardContent>
                                 {selectedSession ? (
@@ -466,7 +466,7 @@ export function WelfareTab() {
                                             <Textarea
                                                 value={selectedSession.exerciseContent || ''}
                                                 onChange={(e) => handleUpdateExerciseContent(selectedSession.id, e.target.value)}
-                                                placeholder="오늘 진행한 운동 내용을 입력하세요..."
+                                                placeholder={t('exerciseContentPlaceholder')}
                                                 rows={3}
                                                 className="text-sm"
                                             />
@@ -474,7 +474,7 @@ export function WelfareTab() {
                                                 {selectedSession.trainerConfirmed ? (
                                                     <Badge variant="default" className="text-xs whitespace-nowrap">
                                                         <CheckCircle className="w-3 h-3 mr-1" />
-                                                        Trainer 확인
+                                                        {t('trainerConfirm')}
                                                     </Badge>
                                                 ) : (
                                                     <Button
@@ -483,13 +483,13 @@ export function WelfareTab() {
                                                         onClick={() => handleConfirm(selectedSession.id, 'trainer')}
                                                         className="whitespace-nowrap"
                                                     >
-                                                        Trainer 확인
+                                                        {t('trainerConfirm')}
                                                     </Button>
                                                 )}
                                                 {selectedSession.traineeConfirmed ? (
                                                     <Badge variant="default" className="text-xs whitespace-nowrap">
                                                         <CheckCircle className="w-3 h-3 mr-1" />
-                                                        Trainee 확인
+                                                        {t('traineeConfirm')}
                                                     </Badge>
                                                 ) : (
                                                     <Button
@@ -498,7 +498,7 @@ export function WelfareTab() {
                                                         onClick={() => handleConfirm(selectedSession.id, 'trainee')}
                                                         className="whitespace-nowrap"
                                                     >
-                                                        Trainee 확인
+                                                        {t('traineeConfirm')}
                                                     </Button>
                                                 )}
                                             </div>
@@ -510,23 +510,23 @@ export function WelfareTab() {
                                                 <div className="p-4 border rounded-lg bg-muted/30">
                                                     <div className="flex items-center gap-2 mb-2">
                                                         <TrendingUp className="w-4 h-4 text-primary" />
-                                                        <span className="text-sm font-medium">이번 달 운동 횟수</span>
+                                                        <span className="text-sm font-medium">{t('monthlyExerciseCount')}</span>
                                                     </div>
-                                                    <div className="text-2xl font-bold">{monthlyStats.monthlyCount}회</div>
+                                                    <div className="text-2xl font-bold">{monthlyStats.monthlyCount}{t('exerciseCountSuffix')}</div>
                                                 </div>
                                                 <div className="p-4 border rounded-lg bg-muted/30">
                                                     <div className="flex items-center gap-2 mb-2">
                                                         <Dumbbell className="w-4 h-4 text-primary" />
-                                                        <span className="text-sm font-medium">총 누적 횟수</span>
+                                                        <span className="text-sm font-medium">{t('totalAccumulatedCount')}</span>
                                                     </div>
-                                                    <div className="text-2xl font-bold">{monthlyStats.totalCount}회</div>
+                                                    <div className="text-2xl font-bold">{monthlyStats.totalCount}{t('exerciseCountSuffix')}</div>
                                                 </div>
                                             </div>
                                         )}
 
                                         {/* Previous Training Records */}
                                         <div>
-                                            <h4 className="font-semibold mb-3">이전 트레이닝 기록</h4>
+                                            <h4 className="font-semibold mb-3">{t('previousTrainingRecords')}</h4>
                                             {previousRecords.length > 0 ? (
                                                 <div className="space-y-2">
                                                     {previousRecords.map((record) => (
@@ -563,14 +563,14 @@ export function WelfareTab() {
                                                 </div>
                                             ) : (
                                                 <div className="text-center py-6 text-muted-foreground text-sm">
-                                                    이전 기록이 없습니다
+                                                    {t('noPreviousRecords')}
                                                 </div>
                                             )}
                                         </div>
                                     </div>
                                 ) : (
                                     <div className="text-center py-12 text-muted-foreground">
-                                        좌측에서 세션을 선택하여 트레이닝 기록을 확인하세요
+                                        {t('selectSessionToView')}
                                     </div>
                                 )}
                             </CardContent>
@@ -583,8 +583,8 @@ export function WelfareTab() {
                     <Card>
                         <CardHeader>
                             <div>
-                                <CardTitle>사물함 관리</CardTitle>
-                                <CardDescription>사물함을 클릭하여 배정하거나 해제하세요</CardDescription>
+                                <CardTitle>{t('lockerManagement')}</CardTitle>
+                                <CardDescription>{t('clickLockerToManage')}</CardDescription>
                             </div>
                         </CardHeader>
                         <CardContent>
@@ -604,7 +604,7 @@ export function WelfareTab() {
                                             {assignment ? (
                                                 <div className="text-sm font-medium">{assignment.userName}</div>
                                             ) : (
-                                                <div className="text-xs text-muted-foreground">비어있음</div>
+                                                <div className="text-xs text-muted-foreground">{t('lockerEmpty')}</div>
                                             )}
                                         </div>
                                     );
@@ -619,17 +619,17 @@ export function WelfareTab() {
             <Dialog open={isBookingDialogOpen} onOpenChange={setIsBookingDialogOpen}>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>트레이닝 예약</DialogTitle>
+                        <DialogTitle>{t('trainingBooking')}</DialogTitle>
                         <DialogDescription>
                             {selectedDate} {selectedTimeSlot}
                         </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4">
                         <div>
-                            <label className="text-sm font-medium">사용자 선택</label>
+                            <label className="text-sm font-medium">{t('selectUserLabel')}</label>
                             <Select value={selectedUserId} onValueChange={setSelectedUserId}>
                                 <SelectTrigger>
-                                    <SelectValue placeholder="사용자 선택" />
+                                    <SelectValue placeholder={t('selectUserLabel')} />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {users.map((user) => (
@@ -643,9 +643,9 @@ export function WelfareTab() {
                     </div>
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setIsBookingDialogOpen(false)}>
-                            취소
+                            {t('cancel')}
                         </Button>
-                        <Button onClick={handleCreateBooking}>예약 생성</Button>
+                        <Button onClick={handleCreateBooking}>{t('createBooking')}</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
@@ -654,15 +654,15 @@ export function WelfareTab() {
             <Dialog open={isLockerDialogOpen} onOpenChange={setIsLockerDialogOpen}>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>사물함 {selectedLockerNumber}번 배정</DialogTitle>
-                        <DialogDescription>사용자를 선택하여 사물함을 배정하세요</DialogDescription>
+                        <DialogTitle>{t('lockerAssignment').replace('{n}', String(selectedLockerNumber))}</DialogTitle>
+                        <DialogDescription>{t('selectUserForLocker')}</DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4">
                         <div>
-                            <label className="text-sm font-medium">사용자 선택</label>
+                            <label className="text-sm font-medium">{t('selectUserLabel')}</label>
                             <Select value={selectedUserId} onValueChange={setSelectedUserId}>
                                 <SelectTrigger>
-                                    <SelectValue placeholder="사용자 선택" />
+                                    <SelectValue placeholder={t('selectUserLabel')} />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {users.map((user) => (
@@ -676,9 +676,9 @@ export function WelfareTab() {
                     </div>
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setIsLockerDialogOpen(false)}>
-                            취소
+                            {t('cancel')}
                         </Button>
-                        <Button onClick={handleAssignLocker}>배정</Button>
+                        <Button onClick={handleAssignLocker}>{t('assign')}</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

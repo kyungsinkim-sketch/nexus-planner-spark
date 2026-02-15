@@ -7,6 +7,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Plus, MapPin, CalendarPlus, ListChecks } from 'lucide-react';
+import { useTranslation } from '@/hooks/useTranslation';
 import { LocationShareDialog } from './LocationShareDialog';
 import { ScheduleShareDialog } from './ScheduleShareDialog';
 import { DecisionShareDialog } from './DecisionShareDialog';
@@ -20,6 +21,7 @@ interface ChatShareMenuProps {
 }
 
 export function ChatShareMenu({ onShareLocation, onShareSchedule, onShareDecision, chatMemberIds }: ChatShareMenuProps) {
+  const { t } = useTranslation();
   const [locationOpen, setLocationOpen] = useState(false);
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const [decisionOpen, setDecisionOpen] = useState(false);
@@ -35,15 +37,15 @@ export function ChatShareMenu({ onShareLocation, onShareSchedule, onShareDecisio
         <DropdownMenuContent align="start" side="top" className="w-52">
           <DropdownMenuItem onClick={() => setLocationOpen(true)} className="gap-2">
             <MapPin className="w-4 h-4 text-blue-500" />
-            장소 공유
+            {t('shareLocation')}
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => setScheduleOpen(true)} className="gap-2">
             <CalendarPlus className="w-4 h-4 text-green-500" />
-            일정 공유
+            {t('shareSchedule')}
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => setDecisionOpen(true)} className="gap-2">
             <ListChecks className="w-4 h-4 text-violet-500" />
-            의사결정 요청
+            {t('requestDecision')}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

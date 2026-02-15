@@ -12,8 +12,8 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { 
-  Search, 
+import {
+  Search,
   Calendar,
   ArrowUpDown,
   ChevronDown,
@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { formatKRW } from '@/lib/format';
 import { mockProjects, projectFinancials } from '@/mock/data';
+import { useTranslation } from '@/hooks/useTranslation';
 
 interface ContractRecord {
   id: string;
@@ -85,6 +86,7 @@ interface ContractStatusSectionProps {
 }
 
 export function ContractStatusSection({ year }: ContractStatusSectionProps) {
+  const { t } = useTranslation();
   const [searchTerm, setSearchTerm] = useState('');
   const [expandedProjects, setExpandedProjects] = useState<string[]>([contractData[0]?.id]);
   const [sortBy, setSortBy] = useState<'date' | 'amount'>('date');
@@ -117,11 +119,11 @@ export function ContractStatusSection({ year }: ContractStatusSectionProps) {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'RECEIVED':
-        return <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">입금완료</Badge>;
+        return <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">{t('statusReceived')}</Badge>;
       case 'OVERDUE':
-        return <Badge className="bg-red-100 text-red-700 hover:bg-red-100">연체</Badge>;
+        return <Badge className="bg-red-100 text-red-700 hover:bg-red-100">{t('statusOverdue')}</Badge>;
       default:
-        return <Badge variant="outline">대기</Badge>;
+        return <Badge variant="outline">{t('statusWaiting')}</Badge>;
     }
   };
 
@@ -130,22 +132,22 @@ export function ContractStatusSection({ year }: ContractStatusSectionProps) {
       {/* Summary Cards */}
       <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
         <Card className="p-3 sm:p-4 shadow-card overflow-hidden">
-          <p className="text-xs sm:text-sm text-muted-foreground truncate">총 계약금액</p>
+          <p className="text-xs sm:text-sm text-muted-foreground truncate">{t('totalContractAmountCS')}</p>
           <AutoFitText className="text-lg sm:text-2xl font-bold text-foreground">{formatKRW(totalContract)}</AutoFitText>
-          <p className="text-[10px] sm:text-xs text-muted-foreground">{contractData.length}건</p>
+          <p className="text-[10px] sm:text-xs text-muted-foreground">{contractData.length}{t('itemCountSuffix')}</p>
         </Card>
         <Card className="p-3 sm:p-4 shadow-card overflow-hidden">
-          <p className="text-xs sm:text-sm text-muted-foreground">입금완료</p>
+          <p className="text-xs sm:text-sm text-muted-foreground">{t('depositCompleted')}</p>
           <AutoFitText className="text-lg sm:text-2xl font-bold text-emerald-600">{formatKRW(totalReceived)}</AutoFitText>
         </Card>
         <Card className="p-3 sm:p-4 shadow-card overflow-hidden">
-          <p className="text-xs sm:text-sm text-muted-foreground">총 실지출</p>
+          <p className="text-xs sm:text-sm text-muted-foreground">{t('totalActualExpense')}</p>
           <AutoFitText className="text-lg sm:text-2xl font-bold text-amber-600">{formatKRW(totalExpenses)}</AutoFitText>
         </Card>
         <Card className="p-3 sm:p-4 shadow-card overflow-hidden">
-          <p className="text-xs sm:text-sm text-muted-foreground">순이익</p>
+          <p className="text-xs sm:text-sm text-muted-foreground">{t('netProfit')}</p>
           <AutoFitText className="text-lg sm:text-2xl font-bold text-primary">{formatKRW(netProfit)}</AutoFitText>
-          <p className="text-[10px] sm:text-xs text-emerald-600">{((netProfit / totalContract) * 100).toFixed(1)}% 수익률</p>
+          <p className="text-[10px] sm:text-xs text-emerald-600">{((netProfit / totalContract) * 100).toFixed(1)}% {t('profitRatePercent')}</p>
         </Card>
       </div>
 
@@ -153,7 +155,7 @@ export function ContractStatusSection({ year }: ContractStatusSectionProps) {
       <Card className="p-4 sm:p-6 shadow-card">
         <div className="flex items-center gap-2 mb-4">
           <Calendar className="w-5 h-5 text-primary" />
-          <h3 className="font-semibold text-foreground text-sm sm:text-base">주요 프로젝트 (계약금액 상위)</h3>
+          <h3 className="font-semibold text-foreground text-sm sm:text-base">{t('topProjectsByAmount')}</h3>
         </div>
         <div className="space-y-2 sm:space-y-3">
           {contractData
@@ -170,7 +172,7 @@ export function ContractStatusSection({ year }: ContractStatusSectionProps) {
               </div>
               <div className="text-right shrink-0 min-w-0 max-w-[140px] sm:max-w-[200px]">
                 <AutoFitText className="font-semibold text-foreground text-xs sm:text-sm font-mono tabular-nums">{formatKRW(contract.totalAmount)}</AutoFitText>
-                <p className="text-[10px] sm:text-xs text-emerald-600">수익률 {contract.profitRate}%</p>
+                <p className="text-[10px] sm:text-xs text-emerald-600">{t('profitRatePercent')} {contract.profitRate}%</p>
               </div>
               <div className="shrink-0 hidden sm:block">
                 {getStatusBadge('RECEIVED')}
@@ -186,7 +188,7 @@ export function ContractStatusSection({ year }: ContractStatusSectionProps) {
           <div className="relative flex-1 max-w-sm">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
-              placeholder="프로젝트 또는 클라이언트 검색..."
+              placeholder={t('searchProjectOrClient')}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-9 text-sm"
@@ -194,7 +196,7 @@ export function ContractStatusSection({ year }: ContractStatusSectionProps) {
           </div>
           <Button variant="outline" size="sm" onClick={() => setSortBy(sortBy === 'date' ? 'amount' : 'date')}>
             <ArrowUpDown className="w-4 h-4 mr-1" />
-            <span className="hidden sm:inline">{sortBy === 'date' ? '날짜순' : '금액순'}</span>
+            <span className="hidden sm:inline">{sortBy === 'date' ? t('sortByDateLabel') : t('sortByAmountLabel')}</span>
           </Button>
         </div>
 
@@ -203,12 +205,12 @@ export function ContractStatusSection({ year }: ContractStatusSectionProps) {
             <TableHeader>
               <TableRow>
                 <TableHead className="w-8"></TableHead>
-                <TableHead className="min-w-[120px]">프로젝트</TableHead>
-                <TableHead className="hidden sm:table-cell">클라이언트</TableHead>
-                <TableHead className="text-right min-w-[100px]">계약금액</TableHead>
-                <TableHead className="text-right min-w-[100px] hidden md:table-cell">실지출</TableHead>
-                <TableHead className="text-right min-w-[100px] hidden md:table-cell">순이익</TableHead>
-                <TableHead className="text-center w-20">수익률</TableHead>
+                <TableHead className="min-w-[120px]">{t('projectColumnCS')}</TableHead>
+                <TableHead className="hidden sm:table-cell">{t('clientColumn')}</TableHead>
+                <TableHead className="text-right min-w-[100px]">{t('contractAmountColumn')}</TableHead>
+                <TableHead className="text-right min-w-[100px] hidden md:table-cell">{t('actualExpenseColumn')}</TableHead>
+                <TableHead className="text-right min-w-[100px] hidden md:table-cell">{t('netProfitColumn')}</TableHead>
+                <TableHead className="text-center w-20">{t('profitRateColumn')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -257,12 +259,12 @@ export function ContractStatusSection({ year }: ContractStatusSectionProps) {
                             <Table>
                               <TableHeader>
                                 <TableRow className="hover:bg-transparent">
-                                  <TableHead className="text-xs">회차</TableHead>
-                                  <TableHead className="text-xs hidden sm:table-cell">예정일</TableHead>
-                                  <TableHead className="text-right text-xs">예정금액</TableHead>
-                                  <TableHead className="text-xs hidden sm:table-cell">입금일</TableHead>
-                                  <TableHead className="text-right text-xs">입금금액</TableHead>
-                                  <TableHead className="text-center text-xs">상태</TableHead>
+                                  <TableHead className="text-xs">{t('installmentColumn')}</TableHead>
+                                  <TableHead className="text-xs hidden sm:table-cell">{t('expectedDateColumn')}</TableHead>
+                                  <TableHead className="text-right text-xs">{t('expectedAmountColumn')}</TableHead>
+                                  <TableHead className="text-xs hidden sm:table-cell">{t('depositDateColumn')}</TableHead>
+                                  <TableHead className="text-right text-xs">{t('depositAmountColumn')}</TableHead>
+                                  <TableHead className="text-center text-xs">{t('statusColumnCS')}</TableHead>
                                 </TableRow>
                               </TableHeader>
                               <TableBody>

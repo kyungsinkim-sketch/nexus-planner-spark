@@ -21,8 +21,8 @@ import {
 import { annualFinancials } from '@/mock/data';
 import { useTranslation } from '@/hooks/useTranslation';
 
-// 억 단위 포맷
-const formatBillions = (v: number) => `${(v / 100000000).toFixed(1)}억`;
+// Format large numbers
+const formatBillions = (v: number, suffix: string) => `${(v / 100000000).toFixed(1)}${suffix}`;
 
 interface MobileFinanceSummaryProps {
     onViewDetails?: () => void;
@@ -46,21 +46,21 @@ export function MobileFinanceSummary({ onViewDetails }: MobileFinanceSummaryProp
 
     const expenseCategories = [
         {
-            label: '경상비',
+            label: t('overheadCost'),
             value: currentData.overhead.total,
             icon: Building2,
             color: 'text-red-500',
             bgColor: 'bg-red-50',
         },
         {
-            label: '인건비',
+            label: t('laborCost'),
             value: currentData.productionPayroll.total,
             icon: Users,
             color: 'text-orange-500',
             bgColor: 'bg-orange-50',
         },
         {
-            label: '촬영진행비',
+            label: t('productionCost'),
             value: currentData.productionCost.total,
             icon: Film,
             color: 'text-amber-500',
@@ -80,12 +80,12 @@ export function MobileFinanceSummary({ onViewDetails }: MobileFinanceSummaryProp
                         className="shrink-0"
                         onClick={() => setSelectedYear(f.year)}
                     >
-                        {f.year}년
+                        {f.year}{t('yearSuffix')}
                         <Badge
                             variant={f.isTarget ? 'outline' : 'secondary'}
                             className="ml-1.5 text-[10px] px-1.5 py-0"
                         >
-                            {f.isTarget ? '목표' : '실적'}
+                            {f.isTarget ? t('target') : t('actual')}
                         </Badge>
                     </Button>
                 ))}
@@ -95,7 +95,7 @@ export function MobileFinanceSummary({ onViewDetails }: MobileFinanceSummaryProp
             <Card className="overflow-hidden">
                 <CardHeader className="pb-2 bg-gradient-to-r from-emerald-500/10 to-emerald-600/5">
                     <CardTitle className="text-sm font-medium text-muted-foreground">
-                        {selectedYear}년 {currentData.isTarget ? '목표' : '실적'}
+                        {selectedYear}{t('yearSuffix')} {currentData.isTarget ? t('target') : t('actual')}
                     </CardTitle>
                 </CardHeader>
                 <CardContent className="pt-4">
@@ -106,8 +106,8 @@ export function MobileFinanceSummary({ onViewDetails }: MobileFinanceSummaryProp
                                 <TrendingUp className="w-5 h-5 text-emerald-600" />
                             </div>
                             <div>
-                                <p className="text-xs text-muted-foreground">연 매출</p>
-                                <p className="text-2xl font-bold text-foreground">{formatBillions(currentData.revenue)}</p>
+                                <p className="text-xs text-muted-foreground">{t('annualRevenue')}</p>
+                                <p className="text-2xl font-bold text-foreground">{formatBillions(currentData.revenue, t('billionUnit'))}</p>
                             </div>
                         </div>
                         {revenueChange && (
@@ -129,18 +129,18 @@ export function MobileFinanceSummary({ onViewDetails }: MobileFinanceSummaryProp
                                 <PiggyBank className="w-5 h-5 text-blue-600" />
                             </div>
                             <div>
-                                <p className="text-xs text-muted-foreground">순이익</p>
-                                <p className="text-2xl font-bold text-foreground">{formatBillions(netProfit)}</p>
+                                <p className="text-xs text-muted-foreground">{t('netProfit')}</p>
+                                <p className="text-2xl font-bold text-foreground">{formatBillions(netProfit, t('billionUnit'))}</p>
                             </div>
                         </div>
                         <Badge variant="secondary" className="text-sm">
-                            수익률 {profitRate}%
+                            {t('profitRate')} {profitRate}%
                         </Badge>
                     </div>
 
                     {/* Expense Breakdown */}
                     <div className="space-y-3">
-                        <p className="text-xs font-medium text-muted-foreground">지출 내역</p>
+                        <p className="text-xs font-medium text-muted-foreground">{t('expenseDetails')}</p>
 
                         {/* Expense Bar */}
                         <div className="h-3 rounded-full bg-muted overflow-hidden flex">
@@ -165,7 +165,7 @@ export function MobileFinanceSummary({ onViewDetails }: MobileFinanceSummaryProp
                                         <cat.icon className={`w-3.5 h-3.5 ${cat.color}`} />
                                         <span className="text-[10px] text-muted-foreground truncate">{cat.label}</span>
                                     </div>
-                                    <p className="text-sm font-bold text-foreground">{formatBillions(cat.value)}</p>
+                                    <p className="text-sm font-bold text-foreground">{formatBillions(cat.value, t('billionUnit'))}</p>
                                     <p className="text-[10px] text-muted-foreground">
                                         {((cat.value / totalExpense) * 100).toFixed(0)}%
                                     </p>
@@ -183,7 +183,7 @@ export function MobileFinanceSummary({ onViewDetails }: MobileFinanceSummaryProp
                     className="w-full gap-2"
                     onClick={onViewDetails}
                 >
-                    상세 재무 정보 보기
+                    {t('viewDetailedFinance')}
                     <ChevronRight className="w-4 h-4" />
                 </Button>
             )}

@@ -14,6 +14,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Star, ExternalLink, CheckCircle2 } from 'lucide-react';
 import { useAppStore } from '@/stores/appStore';
+import { useTranslation } from '@/hooks/useTranslation';
 import type { Project, CompletionReview } from '@/types/core';
 import { toast } from 'sonner';
 
@@ -25,6 +26,7 @@ interface ProjectCompletionDialogProps {
 
 export function ProjectCompletionDialog({ project, open, onOpenChange }: ProjectCompletionDialogProps) {
   const { currentUser, updateProject, getUserById, users, peerFeedback } = useAppStore();
+  const { t } = useTranslation();
   const [step, setStep] = useState<'url' | 'review'>('url');
   const [videoUrl, setVideoUrl] = useState(project.finalVideoUrl || '');
   const [reviews, setReviews] = useState<Record<string, { rating: number; comment: string }>>({});
@@ -38,14 +40,14 @@ export function ProjectCompletionDialog({ project, open, onOpenChange }: Project
 
   const handleSubmitUrl = () => {
     if (!videoUrl.trim()) {
-      toast.error('최종 영상 URL을 입력해주세요');
+      toast.error(t('enterFinalVideoUrl'));
       return;
     }
     updateProject(project.id, {
       finalVideoUrl: videoUrl.trim(),
       completionApprovedBy: currentUser?.id,
     });
-    toast.success('최종 영상 URL이 등록되었습니다');
+    toast.success(t('finalVideoUrlRegistered'));
     setStep('review');
   };
 
@@ -66,7 +68,7 @@ export function ProjectCompletionDialog({ project, open, onOpenChange }: Project
   const handleSubmitReviews = () => {
     const validReviews = Object.entries(reviews).filter(([_, r]) => r.rating > 0);
     if (validReviews.length === 0) {
-      toast.error('최소 1명 이상 평가해주세요');
+      toast.error(t('rateAtLeastOne'));
       return;
     }
 
@@ -94,7 +96,7 @@ export function ProjectCompletionDialog({ project, open, onOpenChange }: Project
       feedbackStatus: 'COMPLETED',
     });
 
-    toast.success('프로젝트가 완료되었습니다!');
+    toast.success(t('projectCompleted'));
     onOpenChange(false);
   };
 
@@ -104,7 +106,7 @@ export function ProjectCompletionDialog({ project, open, onOpenChange }: Project
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <CheckCircle2 className="w-5 h-5 text-emerald-500" />
-            프로젝트 완료 처리
+            {t('projectCompletion')}
           </DialogTitle>
           <DialogDescription>{project.title}</DialogDescription>
         </DialogHeader>
@@ -112,35 +114,35 @@ export function ProjectCompletionDialog({ project, open, onOpenChange }: Project
         {step === 'url' ? (
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label>최종 영상 공개 URL</Label>
+              <Label>{t('finalVideoPublicUrl')}</Label>
               <Input
-                placeholder="https://youtube.com/watch?v=... 또는 Vimeo URL"
+                placeholder={t('videoUrlPlaceholder')}
                 value={videoUrl}
                 onChange={(e) => setVideoUrl(e.target.value)}
               />
               <p className="text-xs text-muted-foreground">
-                유튜브, 비메오 등 최종 공개된 영상 URL을 입력해주세요
+                {t('videoUrlHelp')}
               </p>
             </div>
             {project.finalVideoUrl && (
               <div className="flex items-center gap-2 text-sm text-primary">
                 <ExternalLink className="w-4 h-4" />
                 <a href={project.finalVideoUrl} target="_blank" rel="noopener noreferrer" className="hover:underline">
-                  기등록된 URL 확인
+                  {t('viewRegisteredUrl')}
                 </a>
               </div>
             )}
             <DialogFooter>
-              <Button variant="outline" onClick={() => onOpenChange(false)}>취소</Button>
+              <Button variant="outline" onClick={() => onOpenChange(false)}>{t('cancel')}</Button>
               <Button onClick={handleSubmitUrl} disabled={!videoUrl.trim()}>
-                URL 등록 후 팀원 평가
+                {t('registerUrlAndReview')}
               </Button>
             </DialogFooter>
           </div>
         ) : (
           <div className="space-y-4 max-h-[60vh] overflow-y-auto">
             <p className="text-sm text-muted-foreground">
-              함께한 팀원들의 기여도를 평가해주세요 (5점 만점)
+              {t('rateTeamMembers')}
             </p>
             {teamMembers.map((member) => {
               if (!member) return null;
@@ -172,7 +174,7 @@ export function ProjectCompletionDialog({ project, open, onOpenChange }: Project
                     )}
                   </div>
                   <Textarea
-                    placeholder="코멘트 (선택)"
+                    placeholder={t('commentOptional')}
                     value={review.comment}
                     onChange={(e) => setComment(member.id, e.target.value)}
                     rows={2}
@@ -182,9 +184,9 @@ export function ProjectCompletionDialog({ project, open, onOpenChange }: Project
               );
             })}
             <DialogFooter>
-              <Button variant="outline" onClick={() => setStep('url')}>이전</Button>
+              <Button variant="outline" onClick={() => setStep('url')}>{t('previous')}</Button>
               <Button onClick={handleSubmitReviews}>
-                평가 완료 & 프로젝트 마감
+                {t('completeReviewAndClose')}
               </Button>
             </DialogFooter>
           </div>

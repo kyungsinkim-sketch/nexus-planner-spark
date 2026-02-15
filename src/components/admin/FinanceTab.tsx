@@ -3,8 +3,8 @@ import { Card } from '@/components/ui/card';
 import { AutoFitText } from '@/components/ui/auto-fit-text';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { 
-  TrendingUp, 
+import {
+  TrendingUp,
   PiggyBank,
   BarChart3,
   FileCheck,
@@ -23,6 +23,7 @@ import { AnnualPLSection } from './finance/AnnualPLSection';
 import { ProfitDistributionSection } from './finance/ProfitDistributionSection';
 import { annualFinancials } from '@/mock/data';
 import { formatKRW } from '@/lib/format';
+import { useTranslation } from '@/hooks/useTranslation';
 
 // 억 단위 포맷
 const formatBillions = (v: number) => `${(v / 100000000).toFixed(1)}억`;
@@ -31,6 +32,7 @@ const formatBillions = (v: number) => `${(v / 100000000).toFixed(1)}억`;
 const availableYears = annualFinancials.map(f => f.year);
 
 export function FinanceTab() {
+  const { t } = useTranslation();
   const [selectedYear, setSelectedYear] = useState(availableYears[0].toString());
   
   const yearNum = parseInt(selectedYear);
@@ -42,53 +44,53 @@ export function FinanceTab() {
   const profitRate = ((netProfit / totalIncome) * 100).toFixed(1);
 
   const stats = [
-    { 
-      label: '연 매출 (공급가)', 
-      value: formatBillions(currentData.revenue), 
+    {
+      label: t('annualRevenueSupply'),
+      value: formatBillions(currentData.revenue),
       sub: formatKRW(currentData.revenue),
-      icon: TrendingUp, 
-      color: 'text-emerald-500', 
-      bgColor: 'bg-emerald-100' 
+      icon: TrendingUp,
+      color: 'text-emerald-500',
+      bgColor: 'bg-emerald-100'
     },
-    { 
-      label: '경상비', 
-      value: formatBillions(currentData.overhead.total), 
-      sub: `매출 대비 ${((currentData.overhead.total / currentData.revenue) * 100).toFixed(1)}%`,
-      icon: Building2, 
-      color: 'text-red-500', 
-      bgColor: 'bg-red-100' 
+    {
+      label: t('overheadCost'),
+      value: formatBillions(currentData.overhead.total),
+      sub: `${t('vsRevenue')} ${((currentData.overhead.total / currentData.revenue) * 100).toFixed(1)}%`,
+      icon: Building2,
+      color: 'text-red-500',
+      bgColor: 'bg-red-100'
     },
-    { 
-      label: '인건비', 
-      value: formatBillions(currentData.productionPayroll.total), 
-      sub: `매출 대비 ${((currentData.productionPayroll.total / currentData.revenue) * 100).toFixed(1)}%`,
-      icon: Users, 
-      color: 'text-orange-500', 
-      bgColor: 'bg-orange-100' 
+    {
+      label: t('laborCost'),
+      value: formatBillions(currentData.productionPayroll.total),
+      sub: `${t('vsRevenue')} ${((currentData.productionPayroll.total / currentData.revenue) * 100).toFixed(1)}%`,
+      icon: Users,
+      color: 'text-orange-500',
+      bgColor: 'bg-orange-100'
     },
-    { 
-      label: '촬영진행비', 
-      value: formatBillions(currentData.productionCost.total), 
-      sub: `매출 대비 ${((currentData.productionCost.total / currentData.revenue) * 100).toFixed(1)}%`,
-      icon: Film, 
-      color: 'text-amber-500', 
-      bgColor: 'bg-amber-100' 
+    {
+      label: t('productionCost'),
+      value: formatBillions(currentData.productionCost.total),
+      sub: `${t('vsRevenue')} ${((currentData.productionCost.total / currentData.revenue) * 100).toFixed(1)}%`,
+      icon: Film,
+      color: 'text-amber-500',
+      bgColor: 'bg-amber-100'
     },
-    { 
-      label: '순이익', 
-      value: formatBillions(netProfit), 
+    {
+      label: t('netProfit'),
+      value: formatBillions(netProfit),
       sub: formatKRW(netProfit),
-      icon: PiggyBank, 
-      color: 'text-blue-500', 
-      bgColor: 'bg-blue-100' 
+      icon: PiggyBank,
+      color: 'text-blue-500',
+      bgColor: 'bg-blue-100'
     },
-    { 
-      label: '수익률', 
-      value: `${profitRate}%`, 
-      sub: currentData.isTarget ? '목표' : '실적 확정',
-      icon: BarChart3, 
-      color: 'text-violet-500', 
-      bgColor: 'bg-violet-100' 
+    {
+      label: t('profitRate'),
+      value: `${profitRate}%`,
+      sub: currentData.isTarget ? t('target') : t('actualConfirmed'),
+      icon: BarChart3,
+      color: 'text-violet-500',
+      bgColor: 'bg-violet-100'
     },
   ];
 
@@ -111,12 +113,12 @@ export function FinanceTab() {
                 }
               `}
             >
-              <span className="text-base font-bold">{year}년</span>
-              <Badge 
+              <span className="text-base font-bold">{year}{t('yearSuffix')}</span>
+              <Badge
                 variant={fy.isTarget ? 'outline' : 'default'}
                 className={`text-xs ${isActive ? '' : 'opacity-70'}`}
               >
-                {fy.isTarget ? '목표' : '실적'}
+                {fy.isTarget ? t('target') : t('actual')}
               </Badge>
             </button>
           );
@@ -146,28 +148,28 @@ export function FinanceTab() {
         <TabsList className="grid grid-cols-5 w-full max-w-3xl">
           <TabsTrigger value="contract" className="gap-1.5 text-xs sm:text-sm">
             <FileCheck className="w-4 h-4" />
-            <span className="hidden sm:inline">계약현황</span>
-            <span className="sm:hidden">계약</span>
+            <span className="hidden sm:inline">{t('contractStatusTab')}</span>
+            <span className="sm:hidden">{t('contractShort')}</span>
           </TabsTrigger>
           <TabsTrigger value="schedule" className="gap-1.5 text-xs sm:text-sm">
             <Calendar className="w-4 h-4" />
-            <span className="hidden sm:inline">지출 예정</span>
-            <span className="sm:hidden">예정</span>
+            <span className="hidden sm:inline">{t('expenseScheduleTab')}</span>
+            <span className="sm:hidden">{t('scheduleShort')}</span>
           </TabsTrigger>
           <TabsTrigger value="detail" className="gap-1.5 text-xs sm:text-sm">
             <FileText className="w-4 h-4" />
-            <span className="hidden sm:inline">지출 세부</span>
-            <span className="sm:hidden">세부</span>
+            <span className="hidden sm:inline">{t('expenseDetailTab')}</span>
+            <span className="sm:hidden">{t('detailShort')}</span>
           </TabsTrigger>
           <TabsTrigger value="pl" className="gap-1.5 text-xs sm:text-sm">
             <LineChart className="w-4 h-4" />
-            <span className="hidden sm:inline">연간 P&L</span>
+            <span className="hidden sm:inline">{t('annualPLTab')}</span>
             <span className="sm:hidden">P&L</span>
           </TabsTrigger>
           <TabsTrigger value="distribution" className="gap-1.5 text-xs sm:text-sm">
             <Coins className="w-4 h-4" />
-            <span className="hidden sm:inline">이익배분</span>
-            <span className="sm:hidden">배분</span>
+            <span className="hidden sm:inline">{t('profitDistributionTab')}</span>
+            <span className="sm:hidden">{t('distributionShort')}</span>
           </TabsTrigger>
         </TabsList>
 
