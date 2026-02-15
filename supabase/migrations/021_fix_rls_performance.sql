@@ -54,13 +54,16 @@ CREATE POLICY "Users can send messages" ON chat_messages
 DROP POLICY IF EXISTS "Users can view project messages" ON chat_messages;
 CREATE POLICY "Users can view project messages" ON chat_messages
     FOR SELECT USING (
-        EXISTS (
-            SELECT 1 FROM chat_room_members crm
-            WHERE crm.room_id = chat_messages.room_id
-            AND crm.user_id = (select auth.uid())
-        )
-        OR user_id = (select auth.uid())
+        -- Direct messages: sender or recipient
+        user_id = (select auth.uid())
         OR direct_chat_user_id = (select auth.uid())
+        -- Project messages: team member, PM, or admin
+        OR project_id IN (
+            SELECT id FROM projects
+            WHERE (select auth.uid())::uuid = ANY(team_member_ids)
+               OR pm_id = (select auth.uid())
+               OR EXISTS (SELECT 1 FROM profiles WHERE id = (select auth.uid()) AND role = 'ADMIN')
+        )
     );
 
 DROP POLICY IF EXISTS "Users can delete own messages" ON chat_messages;
@@ -203,20 +206,22 @@ CREATE POLICY "Creator or admin can delete non-default rooms" ON chat_rooms
 DROP POLICY IF EXISTS "Team members can view project chat rooms" ON chat_rooms;
 CREATE POLICY "Team members can view project chat rooms" ON chat_rooms
     FOR SELECT USING (
-        EXISTS (
-            SELECT 1 FROM projects p
-            WHERE p.id = chat_rooms.project_id
-            AND (select auth.uid()) = ANY(p.team_member_ids)
+        project_id IN (
+            SELECT id FROM projects
+            WHERE (select auth.uid())::uuid = ANY(team_member_ids)
+               OR pm_id = (select auth.uid())
+               OR EXISTS (SELECT 1 FROM profiles WHERE id = (select auth.uid()) AND role = 'ADMIN')
         )
     );
 
 DROP POLICY IF EXISTS "Team members can create chat rooms" ON chat_rooms;
 CREATE POLICY "Team members can create chat rooms" ON chat_rooms
     FOR INSERT WITH CHECK (
-        EXISTS (
-            SELECT 1 FROM projects p
-            WHERE p.id = chat_rooms.project_id
-            AND (select auth.uid()) = ANY(p.team_member_ids)
+        project_id IN (
+            SELECT id FROM projects
+            WHERE (select auth.uid())::uuid = ANY(team_member_ids)
+               OR pm_id = (select auth.uid())
+               OR EXISTS (SELECT 1 FROM profiles WHERE id = (select auth.uid()) AND role = 'ADMIN')
         )
     );
 
@@ -228,7 +233,11 @@ CREATE POLICY "Team members can add room members" ON chat_room_members
             SELECT 1 FROM chat_rooms cr
             JOIN projects p ON p.id = cr.project_id
             WHERE cr.id = chat_room_members.room_id
-            AND (select auth.uid()) = ANY(p.team_member_ids)
+            AND (
+                (select auth.uid())::uuid = ANY(p.team_member_ids)
+                OR p.pm_id = (select auth.uid())
+                OR EXISTS (SELECT 1 FROM profiles WHERE id = (select auth.uid()) AND role = 'ADMIN')
+            )
         )
     );
 
@@ -246,7 +255,11 @@ CREATE POLICY "Team members can view room members" ON chat_room_members
             SELECT 1 FROM chat_rooms cr
             JOIN projects p ON p.id = cr.project_id
             WHERE cr.id = chat_room_members.room_id
-            AND (select auth.uid()) = ANY(p.team_member_ids)
+            AND (
+                (select auth.uid())::uuid = ANY(p.team_member_ids)
+                OR p.pm_id = (select auth.uid())
+                OR EXISTS (SELECT 1 FROM profiles WHERE id = (select auth.uid()) AND role = 'ADMIN')
+            )
         )
     );
 
