@@ -27,24 +27,24 @@ CREATE POLICY "Users can update own or attending events" ON calendar_events
 DROP POLICY IF EXISTS "Users can view todos assigned to them" ON personal_todos;
 CREATE POLICY "Users can view todos assigned to them" ON personal_todos
     FOR SELECT USING (
-        user_id = (select auth.uid())
-        OR assigned_to = (select auth.uid())
+        requested_by_id = (select auth.uid())
+        OR (select auth.uid()) = ANY(assignee_ids)
     );
 
 DROP POLICY IF EXISTS "Assignees can update their todos" ON personal_todos;
 CREATE POLICY "Assignees can update their todos" ON personal_todos
     FOR UPDATE USING (
-        user_id = (select auth.uid())
-        OR assigned_to = (select auth.uid())
+        requested_by_id = (select auth.uid())
+        OR (select auth.uid()) = ANY(assignee_ids)
     );
 
 DROP POLICY IF EXISTS "Creators can delete todos" ON personal_todos;
 CREATE POLICY "Creators can delete todos" ON personal_todos
-    FOR DELETE USING (user_id = (select auth.uid()));
+    FOR DELETE USING (requested_by_id = (select auth.uid()));
 
 DROP POLICY IF EXISTS "Users can create own todos" ON personal_todos;
 CREATE POLICY "Users can create own todos" ON personal_todos
-    FOR INSERT WITH CHECK ((select auth.uid()) = user_id);
+    FOR INSERT WITH CHECK ((select auth.uid()) = requested_by_id);
 
 -- ---- chat_messages ----
 DROP POLICY IF EXISTS "Users can send messages" ON chat_messages;
@@ -71,7 +71,7 @@ CREATE POLICY "Users can delete own messages" ON chat_messages
 -- ---- peer_feedback ----
 DROP POLICY IF EXISTS "Users can give feedback" ON peer_feedback;
 CREATE POLICY "Users can give feedback" ON peer_feedback
-    FOR INSERT WITH CHECK (reviewer_id = (select auth.uid()));
+    FOR INSERT WITH CHECK (from_user_id = (select auth.uid()));
 
 -- ---- training_sessions (merge user + admin into single policies) ----
 DROP POLICY IF EXISTS "Users can create own training sessions" ON training_sessions;
