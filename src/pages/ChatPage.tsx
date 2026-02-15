@@ -332,6 +332,16 @@ export default function ChatPage() {
     });
   };
 
+  const handleDeleteMessage = async (messageId: string) => {
+    try {
+      const { deleteMessage } = useAppStore.getState();
+      await deleteMessage(messageId);
+      toast.success('Message deleted');
+    } catch {
+      toast.error('Failed to delete message');
+    }
+  };
+
   // File upload handler for chat
   const handleFileUploadConfirm = async (category: FileCategory, isImportant: boolean, comment: string, file?: File) => {
     if (!currentUser || !selectedChat || selectedChat.type !== 'project') return;
@@ -827,6 +837,7 @@ export default function ChatPage() {
                                     isCurrentUser={isCurrentUser}
                                     onVoteDecision={handleVoteDecision}
                                     onAcceptSchedule={handleAcceptSchedule}
+                                    onDelete={handleDeleteMessage}
                                   />
                                 </div>
                               </div>

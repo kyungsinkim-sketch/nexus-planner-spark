@@ -80,6 +80,7 @@ interface AppState {
 
   // Message Actions
   addMessage: (message: ChatMessage) => void;
+  deleteMessage: (messageId: string) => Promise<void>;
   sendProjectMessage: (projectId: string, content: string, attachmentId?: string) => Promise<void>;
   sendDirectMessage: (toUserId: string, content: string) => Promise<void>;
 
@@ -539,6 +540,20 @@ export const useAppStore = create<AppState>()(
         if (state.messages.some(m => m.id === message.id)) return state;
         return { messages: [...state.messages, message] };
       }),
+
+      deleteMessage: async (messageId) => {
+        if (isSupabaseConfigured()) {
+          try {
+            await chatService.deleteMessage(messageId);
+          } catch (error) {
+            console.error('Failed to delete message:', error);
+            throw error;
+          }
+        }
+        set((state) => ({
+          messages: state.messages.filter((m) => m.id !== messageId),
+        }));
+      },
 
       sendProjectMessage: async (projectId, content, attachmentId?) => {
         const { currentUser } = get();

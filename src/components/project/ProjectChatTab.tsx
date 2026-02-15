@@ -9,6 +9,7 @@ import { Separator } from '@/components/ui/separator';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Send, Paperclip, Smile } from 'lucide-react';
 import { FileUploadModal } from './FileUploadModal';
+import { ChatMessageBubble } from '@/components/chat/ChatMessageBubble';
 import { toast } from 'sonner';
 import * as chatService from '@/services/chatService';
 import * as fileService from '@/services/fileService';
@@ -237,6 +238,16 @@ export function ProjectChatTab({ projectId }: ProjectChatTabProps) {
     }
   };
 
+  const handleDeleteMessage = async (messageId: string) => {
+    try {
+      const { deleteMessage } = useAppStore.getState();
+      await deleteMessage(messageId);
+      toast.success('Message deleted');
+    } catch {
+      toast.error('Failed to delete message');
+    }
+  };
+
   // Group messages by date
   const groupedMessages = messages.reduce((groups, message) => {
     const date = formatDate(message.createdAt);
@@ -275,7 +286,6 @@ export function ProjectChatTab({ projectId }: ProjectChatTabProps) {
                       const user = getUserById(message.userId);
                       const isCurrentUser = message.userId === currentUser.id;
                       const showAvatar = index === 0 || dateMessages[index - 1].userId !== message.userId;
-                      const isFileMessage = message.content.startsWith('📎');
 
                       return (
                         <div
@@ -306,21 +316,11 @@ export function ProjectChatTab({ projectId }: ProjectChatTabProps) {
                                 </span>
                               </div>
                             )}
-                            <div
-                              className={`inline-block rounded-2xl px-4 py-2 text-sm ${isFileMessage
-                                ? 'bg-muted/80 text-foreground border border-border'
-                                : isCurrentUser
-                                  ? 'bg-primary text-primary-foreground'
-                                  : 'bg-muted text-foreground'
-                                }`}
-                            >
-                              {message.content}
-                              {isFileMessage && message.attachmentId && (
-                                <span className="text-xs text-muted-foreground block mt-1">
-                                  From Chat
-                                </span>
-                              )}
-                            </div>
+                            <ChatMessageBubble
+                              message={message}
+                              isCurrentUser={isCurrentUser}
+                              onDelete={handleDeleteMessage}
+                            />
                           </div>
                         </div>
                       );

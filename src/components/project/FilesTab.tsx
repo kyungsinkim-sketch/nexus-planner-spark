@@ -323,12 +323,25 @@ export function FilesTab({ projectId }: FilesTabProps) {
   };
 
   // Download file
-  const handleDownload = (fileId: string) => {
+  const handleDownload = async (fileId: string) => {
     const file = allProjectFiles.find(f => f.id === fileId);
     if (!file) return;
     if (file.storagePath) {
       const url = fileService.getFileDownloadUrl(file.storagePath);
-      window.open(url, '_blank');
+      try {
+        const response = await fetch(url);
+        const blob = await response.blob();
+        const blobUrl = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = blobUrl;
+        a.download = file.name;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(blobUrl);
+      } catch {
+        window.open(url, '_blank');
+      }
     } else {
       toast.error('No download URL available for this file');
     }

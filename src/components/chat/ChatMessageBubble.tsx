@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -18,60 +18,100 @@ import {
   FileType,
   Eye,
   X,
+  Trash2,
 } from 'lucide-react';
 import { useAppStore } from '@/stores/appStore';
+import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import * as fileService from '@/services/fileService';
-import type { ChatMessage, DecisionVote } from '@/types/core';
+import type { ChatMessage, FileItem } from '@/types/core';
 
 interface ChatMessageBubbleProps {
   message: ChatMessage;
   isCurrentUser: boolean;
   onVoteDecision?: (messageId: string, optionId: string, reason: string) => void;
   onAcceptSchedule?: (messageId: string) => void;
+  onDelete?: (messageId: string) => void;
 }
 
-export function ChatMessageBubble({ message, isCurrentUser, onVoteDecision, onAcceptSchedule }: ChatMessageBubbleProps) {
+export function ChatMessageBubble({ message, isCurrentUser, onVoteDecision, onAcceptSchedule, onDelete }: ChatMessageBubbleProps) {
   const { messageType } = message;
 
   if (messageType === 'location' && message.locationData) {
-    return <LocationBubble data={message.locationData} isCurrentUser={isCurrentUser} />;
+    return (
+      <MessageWrapper isCurrentUser={isCurrentUser} onDelete={onDelete} messageId={message.id}>
+        <LocationBubble data={message.locationData} isCurrentUser={isCurrentUser} />
+      </MessageWrapper>
+    );
   }
 
   if (messageType === 'schedule' && message.scheduleData) {
     return (
-      <ScheduleBubble
-        data={message.scheduleData}
-        isCurrentUser={isCurrentUser}
-        onAccept={() => onAcceptSchedule?.(message.id)}
-      />
+      <MessageWrapper isCurrentUser={isCurrentUser} onDelete={onDelete} messageId={message.id}>
+        <ScheduleBubble
+          data={message.scheduleData}
+          isCurrentUser={isCurrentUser}
+          onAccept={() => onAcceptSchedule?.(message.id)}
+        />
+      </MessageWrapper>
     );
   }
 
   if (messageType === 'decision' && message.decisionData) {
     return (
-      <DecisionBubble
-        data={message.decisionData}
-        messageId={message.id}
-        isCurrentUser={isCurrentUser}
-        onVote={(optionId, reason) => onVoteDecision?.(message.id, optionId, reason)}
-      />
+      <MessageWrapper isCurrentUser={isCurrentUser} onDelete={onDelete} messageId={message.id}>
+        <DecisionBubble
+          data={message.decisionData}
+          messageId={message.id}
+          isCurrentUser={isCurrentUser}
+          onVote={(optionId, reason) => onVoteDecision?.(message.id, optionId, reason)}
+        />
+      </MessageWrapper>
     );
   }
 
   if (messageType === 'file') {
-    return <FileBubble message={message} isCurrentUser={isCurrentUser} />;
+    return (
+      <MessageWrapper isCurrentUser={isCurrentUser} onDelete={onDelete} messageId={message.id}>
+        <FileBubble message={message} isCurrentUser={isCurrentUser} />
+      </MessageWrapper>
+    );
   }
 
   // Default text message
   return (
-    <div
-      className={`inline-block rounded-2xl px-4 py-2 text-sm ${
-        isCurrentUser
-          ? 'bg-primary text-primary-foreground'
-          : 'bg-muted text-foreground'
-      }`}
-    >
-      {message.content}
+    <MessageWrapper isCurrentUser={isCurrentUser} onDelete={onDelete} messageId={message.id}>
+      <div
+        className={`inline-block rounded-2xl px-4 py-2 text-sm ${
+          isCurrentUser
+            ? 'bg-primary text-primary-foreground'
+            : 'bg-muted text-foreground'
+        }`}
+      >
+        {message.content}
+      </div>
+    </MessageWrapper>
+  );
+}
+
+// Wrapper that adds hover delete button
+function MessageWrapper({ children, isCurrentUser, onDelete, messageId }: {
+  children: React.ReactNode;
+  isCurrentUser: boolean;
+  onDelete?: (messageId: string) => void;
+  messageId: string;
+}) {
+  if (!isCurrentUser || !onDelete) return <>{children}</>;
+
+  return (
+    <div className="group/msg relative inline-block">
+      {children}
+      <button
+        onClick={() => onDelete(messageId)}
+        className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover/msg:opacity-100 transition-opacity shadow-sm hover:bg-destructive/90"
+        title="Delete message"
+      >
+        <Trash2 className="w-3 h-3" />
+      </button>
     </div>
   );
 }
@@ -176,12 +216,43 @@ function ScheduleBubble({ data, isCurrentUser, onAccept }: {
 function FileBubble({ message, isCurrentUser }: { message: ChatMessage; isCurrentUser: boolean }) {
   const { files } = useAppStore();
   const [showPreview, setShowPreview] = useState(false);
+  const [dbFileItem, setDbFileItem] = useState<FileItem | null>(null);
 
   // Extract filename from message content "📎 Uploaded file: filename.ext"
   const fileNameFromContent = message.content.replace(/^📎\s*Uploaded file:\s*/i, '').trim();
 
-  // Find the actual file item by attachmentId
-  const fileItem = message.attachmentId ? files.find(f => f.id === message.attachmentId) : null;
+  // Find the actual file item: first from store, then from DB lookup
+  const storeFileItem = message.attachmentId ? files.find(f => f.id === message.attachmentId) : null;
+  const fileItem = storeFileItem || dbFileItem;
+
+  // If not in store, fetch from DB
+  useEffect(() => {
+    if (message.attachmentId && !storeFileItem && isSupabaseConfigured()) {
+      supabase
+        .from('file_items')
+        .select('*')
+        .eq('id', message.attachmentId)
+        .single()
+        .then(({ data }) => {
+          if (data) {
+            setDbFileItem({
+              id: data.id,
+              fileGroupId: data.file_group_id,
+              name: data.name,
+              uploadedBy: data.uploaded_by,
+              createdAt: data.created_at,
+              size: data.size || undefined,
+              type: data.type || undefined,
+              isImportant: data.is_important || false,
+              source: (data.source as 'UPLOAD' | 'CHAT') || 'UPLOAD',
+              comment: data.comment || undefined,
+              storagePath: data.storage_path || undefined,
+            });
+          }
+        });
+    }
+  }, [message.attachmentId, storeFileItem]);
+
   const fileName = fileItem?.name || fileNameFromContent || 'Unknown file';
   const fileExt = fileName.split('.').pop()?.toLowerCase() || '';
   const fileSize = fileItem?.size;
@@ -192,8 +263,21 @@ function FileBubble({ message, isCurrentUser }: { message: ChatMessage; isCurren
 
   const downloadUrl = fileItem?.storagePath ? fileService.getFileDownloadUrl(fileItem.storagePath) : null;
 
-  const handleDownload = () => {
-    if (downloadUrl) {
+  const handleDownload = async () => {
+    if (!downloadUrl) return;
+    try {
+      const response = await fetch(downloadUrl);
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch {
+      // Fallback to opening in new tab
       window.open(downloadUrl, '_blank');
     }
   };
