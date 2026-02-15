@@ -12,8 +12,15 @@ import {
   Check,
   ChevronDown,
   ChevronUp,
+  FileText,
+  Download,
+  Image as ImageIcon,
+  FileType,
+  Eye,
+  X,
 } from 'lucide-react';
 import { useAppStore } from '@/stores/appStore';
+import * as fileService from '@/services/fileService';
 import type { ChatMessage, DecisionVote } from '@/types/core';
 
 interface ChatMessageBubbleProps {
@@ -49,6 +56,10 @@ export function ChatMessageBubble({ message, isCurrentUser, onVoteDecision, onAc
         onVote={(optionId, reason) => onVoteDecision?.(message.id, optionId, reason)}
       />
     );
+  }
+
+  if (messageType === 'file') {
+    return <FileBubble message={message} isCurrentUser={isCurrentUser} />;
   }
 
   // Default text message
@@ -158,6 +169,132 @@ function ScheduleBubble({ data, isCurrentUser, onAccept }: {
         )}
       </div>
     </div>
+  );
+}
+
+// File bubble with download and preview
+function FileBubble({ message, isCurrentUser }: { message: ChatMessage; isCurrentUser: boolean }) {
+  const { files } = useAppStore();
+  const [showPreview, setShowPreview] = useState(false);
+
+  // Extract filename from message content "📎 Uploaded file: filename.ext"
+  const fileNameFromContent = message.content.replace(/^📎\s*Uploaded file:\s*/i, '').trim();
+
+  // Find the actual file item by attachmentId
+  const fileItem = message.attachmentId ? files.find(f => f.id === message.attachmentId) : null;
+  const fileName = fileItem?.name || fileNameFromContent || 'Unknown file';
+  const fileExt = fileName.split('.').pop()?.toLowerCase() || '';
+  const fileSize = fileItem?.size;
+
+  const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp'].includes(fileExt);
+  const isPdf = fileExt === 'pdf';
+  const isPreviewable = isImage || isPdf;
+
+  const downloadUrl = fileItem?.storagePath ? fileService.getFileDownloadUrl(fileItem.storagePath) : null;
+
+  const handleDownload = () => {
+    if (downloadUrl) {
+      window.open(downloadUrl, '_blank');
+    }
+  };
+
+  const getFileIcon = () => {
+    if (isImage) return <ImageIcon className="w-5 h-5 text-green-500" />;
+    if (isPdf) return <FileType className="w-5 h-5 text-red-500" />;
+    return <FileText className="w-5 h-5 text-blue-500" />;
+  };
+
+  return (
+    <>
+      <div className={`rounded-2xl overflow-hidden border max-w-[320px] ${isCurrentUser ? 'bg-primary/5 border-primary/20' : 'bg-muted border-border'}`}>
+        {/* Image preview thumbnail */}
+        {isImage && downloadUrl && (
+          <div
+            className="w-full max-h-48 overflow-hidden cursor-pointer bg-black/5"
+            onClick={() => setShowPreview(true)}
+          >
+            <img
+              src={downloadUrl}
+              alt={fileName}
+              className="w-full h-full object-cover hover:opacity-90 transition-opacity"
+              loading="lazy"
+            />
+          </div>
+        )}
+
+        <div className="p-3">
+          <div className="flex items-center gap-3">
+            <div className="shrink-0">
+              {getFileIcon()}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium truncate">{fileName}</p>
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                {fileSize && <span>{fileSize}</span>}
+                <span className="uppercase">{fileExt}</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 mt-2">
+            {downloadUrl && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="flex-1 text-xs gap-1.5"
+                onClick={handleDownload}
+              >
+                <Download className="w-3.5 h-3.5" />
+                Download
+              </Button>
+            )}
+            {isPreviewable && downloadUrl && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="flex-1 text-xs gap-1.5"
+                onClick={() => setShowPreview(true)}
+              >
+                <Eye className="w-3.5 h-3.5" />
+                Preview
+              </Button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Full-screen preview modal */}
+      {showPreview && downloadUrl && (
+        <div
+          className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4"
+          onClick={() => setShowPreview(false)}
+        >
+          <Button
+            variant="ghost"
+            size="icon"
+            className="absolute top-4 right-4 text-white hover:bg-white/20 z-10"
+            onClick={() => setShowPreview(false)}
+          >
+            <X className="w-6 h-6" />
+          </Button>
+          <div
+            className="max-w-[90vw] max-h-[90vh] overflow-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {isImage && (
+              <img src={downloadUrl} alt={fileName} className="max-w-full max-h-[85vh] object-contain rounded-lg" />
+            )}
+            {isPdf && (
+              <iframe
+                src={downloadUrl}
+                className="w-[80vw] h-[85vh] rounded-lg bg-white"
+                title={`Preview: ${fileName}`}
+              />
+            )}
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 

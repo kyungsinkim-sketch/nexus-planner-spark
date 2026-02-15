@@ -436,45 +436,55 @@ export function FilesTab({ projectId }: FilesTabProps) {
                     return (
                       <div
                         key={file.id}
-                        className="flex items-center gap-3 p-3 rounded-lg bg-background border border-amber-500/20 hover:border-amber-500/40 transition-colors group"
+                        className="flex flex-col p-3 rounded-lg bg-background border border-amber-500/20 hover:border-amber-500/40 transition-colors group"
                       >
-                        <Star className="w-5 h-5 text-amber-500 shrink-0" />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-foreground truncate">
-                            {file.name}
-                          </p>
-                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                            <span>{uploader?.name}</span>
-                            <span>·</span>
-                            <span>{formatDate(file.createdAt)}</span>
-                            {file.comment && (
-                              <>
-                                <span>·</span>
-                                <span className="flex items-center gap-1 text-primary">
-                                  <MessageCircle className="w-3 h-3" />
-                                  Has comment
-                                </span>
-                              </>
-                            )}
-                            {file.source === 'CHAT' && (
-                              <>
-                                <span>·</span>
-                                <span className="flex items-center gap-1">
-                                  <MessageSquare className="w-3 h-3" />
-                                  From Chat
-                                </span>
-                              </>
-                            )}
+                        <div className="flex items-center gap-3">
+                          <button onClick={() => handleToggleImportant(file.id)} className="shrink-0 hover:scale-110 transition-transform" title="Remove from important">
+                            <Star className="w-5 h-5 text-amber-500 fill-amber-500" />
+                          </button>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-foreground truncate">
+                              {file.name}
+                            </p>
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                              <span>{uploader?.name}</span>
+                              <span>·</span>
+                              <span>{formatDate(file.createdAt)}</span>
+                              {file.size && (
+                                <>
+                                  <span>·</span>
+                                  <span>{file.size}</span>
+                                </>
+                              )}
+                              {file.source === 'CHAT' && (
+                                <>
+                                  <span>·</span>
+                                  <span className="flex items-center gap-1 text-primary">
+                                    <MessageSquare className="w-3 h-3" />
+                                    From Chat
+                                  </span>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleOpenComment(file.id, file.comment)} aria-label="Add or edit comment">
+                              <MessageCircle className={`w-4 h-4 ${file.comment ? 'text-primary' : ''}`} />
+                            </Button>
+                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleDownload(file.id)} aria-label="Download file">
+                              <Download className="w-4 h-4" />
+                            </Button>
                           </div>
                         </div>
-                        <div className="flex items-center gap-1">
-                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleOpenComment(file.id, file.comment)} aria-label="Add or edit comment">
-                            <MessageCircle className="w-4 h-4" />
-                          </Button>
-                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleDownload(file.id)} aria-label="Download file">
-                            <Download className="w-4 h-4" />
-                          </Button>
-                        </div>
+                        {file.comment && (
+                          <div className="mt-2 ml-8 px-3 py-2 bg-muted/50 rounded text-xs text-muted-foreground border-l-2 border-primary/30">
+                            <span className="flex items-center gap-1 mb-1 text-primary font-medium">
+                              <MessageCircle className="w-3 h-3" />
+                              Comment
+                            </span>
+                            {file.comment}
+                          </div>
+                        )}
                       </div>
                     );
                   })}
