@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { FileCategory } from '@/types/core';
 import { useAppStore } from '@/stores/appStore';
 import { Card } from '@/components/ui/card';
@@ -81,11 +81,16 @@ const categoryColors: Record<FileCategory, string> = {
 };
 
 export function FilesTab({ projectId }: FilesTabProps) {
-  const { getFileGroupsByProject, getFilesByGroup, getUserById, files, addFile, addFileGroup, currentUser } = useAppStore();
+  const { getFileGroupsByProject, getFilesByGroup, getUserById, files, addFile, addFileGroup, loadFileGroups, currentUser } = useAppStore();
   const fileGroups = getFileGroupsByProject(projectId);
   const [selectedCategory, setSelectedCategory] = useState<FileCategory | 'ALL' | 'IMPORTANT'>('ALL');
   const [showUploadModal, setShowUploadModal] = useState(false);
-  
+
+  // Load files from Supabase when component mounts or projectId changes
+  useEffect(() => {
+    loadFileGroups(projectId);
+  }, [projectId, loadFileGroups]);
+
   // Local state for file management
   const [localFiles, setLocalFiles] = useState<typeof files>([]);
   
