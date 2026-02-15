@@ -31,14 +31,6 @@ export const isSupabaseConfigured = () => {
   return Boolean(supabaseUrl && supabaseAnonKey && supabaseUrl !== 'https://placeholder.supabase.co');
 };
 
-// Admin client (bypasses RLS) — only use for operations where RLS policies are restrictive
-const serviceRoleKey = import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY || '';
-export const supabaseAdmin = serviceRoleKey && supabaseUrl
-  ? createClient(supabaseUrl, serviceRoleKey, {
-      auth: { persistSession: false, autoRefreshToken: false },
-    })
-  : null;
-
 // Helper function to handle Supabase errors
 export const handleSupabaseError = (error: { message?: string } | null) => {
   console.error('Supabase error:', error);

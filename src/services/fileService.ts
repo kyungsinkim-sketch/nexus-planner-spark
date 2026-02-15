@@ -1,4 +1,4 @@
-import { supabase, supabaseAdmin, isSupabaseConfigured, handleSupabaseError } from '@/lib/supabase';
+import { supabase, isSupabaseConfigured, handleSupabaseError } from '@/lib/supabase';
 import type { FileGroup, FileItem } from '@/types/core';
 import type { Database } from '@/types/database';
 
@@ -52,7 +52,7 @@ export const getFileGroupsByProject = async (projectId: string): Promise<FileGro
     return data.map(transformFileGroup);
 };
 
-// Create file group (uses admin client to bypass RLS if available)
+// Create file group
 export const createFileGroup = async (fileGroup: Partial<FileGroup>): Promise<FileGroup> => {
     if (!isSupabaseConfigured()) {
         throw new Error('Supabase not configured');
@@ -64,10 +64,7 @@ export const createFileGroup = async (fileGroup: Partial<FileGroup>): Promise<Fi
         title: fileGroup.title!,
     };
 
-    // Use admin client to bypass RLS for file_groups INSERT
-    const client = supabaseAdmin || supabase;
-
-    const { data, error } = await client
+    const { data, error } = await supabase
         .from('file_groups')
         .insert(insertData as unknown as Record<string, unknown>)
         .select()
@@ -99,7 +96,7 @@ export const getFilesByGroup = async (fileGroupId: string): Promise<FileItem[]> 
     return data.map(transformFileItem);
 };
 
-// Upload file metadata (uses admin client to bypass RLS if available)
+// Upload file metadata
 export const createFileItem = async (fileItem: Partial<FileItem>): Promise<FileItem> => {
     if (!isSupabaseConfigured()) {
         throw new Error('Supabase not configured');
@@ -116,10 +113,7 @@ export const createFileItem = async (fileItem: Partial<FileItem>): Promise<FileI
         comment: fileItem.comment || null,
     };
 
-    // Use admin client to bypass RLS for file_items INSERT
-    const client = supabaseAdmin || supabase;
-
-    const { data, error } = await client
+    const { data, error } = await supabase
         .from('file_items')
         .insert(insertData as unknown as Record<string, unknown>)
         .select()
