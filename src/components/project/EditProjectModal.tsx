@@ -86,27 +86,38 @@ export function EditProjectModal({ open, onOpenChange, project }: EditProjectMod
   const selectedPM = users.find(u => u.id === formData.pmId);
   const selectedTeamMembers = users.filter(u => formData.teamMemberIds.includes(u.id));
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    updateProject(project.id, {
-      title: formData.title,
-      client: formData.client,
-      description: formData.description,
-      type: formData.type,
-      priority: formData.priority,
-      startDate: new Date(formData.startDate).toISOString(),
-      endDate: new Date(formData.endDate).toISOString(),
-      budget: parseInt(formData.budget) || 0,
-      currency: formData.currency,
-      pmId: formData.pmId,
-      teamMemberIds: formData.teamMemberIds,
-      thumbnail: formData.thumbnail,
-      keyColor: formData.keyColor,
-    });
+  const [isSaving, setIsSaving] = useState(false);
 
-    toast.success('Project updated successfully');
-    onOpenChange(false);
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (isSaving) return;
+
+    setIsSaving(true);
+    try {
+      await updateProject(project.id, {
+        title: formData.title,
+        client: formData.client,
+        description: formData.description,
+        type: formData.type,
+        priority: formData.priority,
+        startDate: new Date(formData.startDate).toISOString(),
+        endDate: new Date(formData.endDate).toISOString(),
+        budget: parseInt(formData.budget) || 0,
+        currency: formData.currency,
+        pmId: formData.pmId,
+        teamMemberIds: formData.teamMemberIds,
+        thumbnail: formData.thumbnail,
+        keyColor: formData.keyColor,
+      });
+
+      toast.success('Project updated successfully');
+      onOpenChange(false);
+    } catch (error) {
+      console.error('Failed to update project:', error);
+      toast.error('Failed to update project. Please try again.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleSelectPM = (user: User) => {
@@ -358,7 +369,9 @@ export function EditProjectModal({ open, onOpenChange, project }: EditProjectMod
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button type="submit">Save Changes</Button>
+            <Button type="submit" disabled={isSaving}>
+              {isSaving ? 'Saving...' : 'Save Changes'}
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>

@@ -1,9 +1,10 @@
 import { CalendarEvent, EventType } from '@/types/core';
 import { useAppStore } from '@/stores/appStore';
-import { X, Calendar, Clock, User, FolderKanban, Edit, Trash2 } from 'lucide-react';
+import { X, Calendar, Clock, User, FolderKanban, Edit, Trash2, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { format } from 'date-fns';
 import { useTranslation } from '@/hooks/useTranslation';
@@ -52,15 +53,20 @@ export function EventSidePanel({ event, isOpen, onClose }: EventSidePanelProps) 
   const project = event.projectId ? getProjectById(event.projectId) : null;
   const owner = getUserById(event.ownerId);
   const isGoogleEvent = event.source === 'GOOGLE';
+  const attendees = event.attendeeIds?.map(id => getUserById(id)).filter(Boolean) || [];
+
+  const getInitials = (name: string) => {
+    return name.split(' ').map(n => n[0]).join('').toUpperCase();
+  };
 
   return (
     <>
       {/* Backdrop */}
-      <div 
+      <div
         className="fixed inset-0 bg-black/20 z-40 animate-fade-in"
         onClick={onClose}
       />
-      
+
       {/* Panel */}
       <div className="fixed right-0 top-0 h-screen w-96 bg-card border-l border-border shadow-lg z-50 animate-slide-in-right">
         {/* Header */}
@@ -73,11 +79,11 @@ export function EventSidePanel({ event, isOpen, onClose }: EventSidePanelProps) 
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Badge 
-                    variant="outline" 
+                  <Badge
+                    variant="outline"
                     className={`gap-1 text-[10px] px-1.5 py-0 ${
-                      isGoogleEvent 
-                        ? 'border-blue-500/30 text-blue-600 bg-blue-500/10' 
+                      isGoogleEvent
+                        ? 'border-blue-500/30 text-blue-600 bg-blue-500/10'
                         : 'border-primary/30 text-primary bg-primary/10'
                     }`}
                   >
@@ -163,6 +169,36 @@ export function EventSidePanel({ event, isOpen, onClose }: EventSidePanelProps) 
             )}
           </div>
 
+          {/* Attendees */}
+          {attendees.length > 0 && (
+            <>
+              <Separator />
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <Users className="w-4 h-4 text-muted-foreground" />
+                  <p className="text-sm font-medium text-foreground">
+                    Attendees ({attendees.length})
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  {attendees.map((user) => user && (
+                    <div key={user.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50">
+                      <Avatar className="w-7 h-7">
+                        <AvatarFallback className="text-[10px]">
+                          {getInitials(user.name)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <p className="text-sm font-medium text-foreground">{user.name}</p>
+                        <p className="text-xs text-muted-foreground capitalize">{user.role.toLowerCase()}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
+
           <Separator />
 
           {/* Source Info */}
@@ -200,17 +236,6 @@ export function EventSidePanel({ event, isOpen, onClose }: EventSidePanelProps) 
               </Button>
             </div>
           </div>
-
-          {/* Project Link */}
-          {project && (
-            <div className="pt-4">
-              <Button variant="secondary" className="w-full" asChild>
-                <a href={`/projects/${project.id}`}>
-                  View Project Details
-                </a>
-              </Button>
-            </div>
-          )}
         </div>
       </div>
     </>

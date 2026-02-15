@@ -177,6 +177,7 @@ export interface Database {
                     google_event_id: string | null
                     todo_id: string | null
                     deliverable_id: string | null
+                    attendee_ids: string[] | null
                     created_at: string
                     updated_at: string
                 }
@@ -193,6 +194,7 @@ export interface Database {
                     google_event_id?: string | null
                     todo_id?: string | null
                     deliverable_id?: string | null
+                    attendee_ids?: string[] | null
                     created_at?: string
                     updated_at?: string
                 }
@@ -209,6 +211,7 @@ export interface Database {
                     google_event_id?: string | null
                     todo_id?: string | null
                     deliverable_id?: string | null
+                    attendee_ids?: string[] | null
                     created_at?: string
                     updated_at?: string
                 }

@@ -11,6 +11,7 @@ import { Send, Paperclip, Smile } from 'lucide-react';
 import { FileUploadModal } from './FileUploadModal';
 import { toast } from 'sonner';
 import * as chatService from '@/services/chatService';
+import * as fileService from '@/services/fileService';
 import { isSupabaseConfigured } from '@/lib/supabase';
 
 interface ProjectChatTabProps {
@@ -119,66 +120,118 @@ export function ProjectChatTab({ projectId }: ProjectChatTabProps) {
   };
 
   const handleFileUpload = () => {
-    // Mock file selection - in real app would use file input
-    const mockFileName = `Document_${Date.now().toString().slice(-6)}.pdf`;
-    setPendingFileName(mockFileName);
+    setPendingFileName('');
     setShowUploadModal(true);
   };
 
-  const handleConfirmUpload = (category: FileCategory, isImportant: boolean) => {
-    const fileGroups = getFileGroupsByProject(projectId);
+  const handleConfirmUpload = async (category: FileCategory, isImportant: boolean, comment: string, file?: File) => {
+    if (!currentUser) return;
 
-    // Find or create file group for the category
-    let fileGroup = fileGroups.find(fg => fg.category === category);
+    const categoryTitles: Record<FileCategory, string> = {
+      DECK: 'Presentations',
+      FINAL: 'Final Deliverables',
+      REFERENCE: 'References',
+      CONTRACT: 'Contracts',
+      ETC: 'Others',
+    };
 
-    if (!fileGroup) {
-      const newGroupId = `fg${Date.now()}`;
-      const categoryTitles: Record<FileCategory, string> = {
-        DECK: 'Presentations',
-        FINAL: 'Final Deliverables',
-        REFERENCE: 'References',
-        CONTRACT: 'Contracts',
-        ETC: 'Others',
-      };
+    try {
+      const fileGroups = getFileGroupsByProject(projectId);
+      let fileGroup = fileGroups.find(fg => fg.category === category);
+      const fileName = file?.name || `Document_${Date.now().toString().slice(-6)}.pdf`;
 
-      addFileGroup({
-        id: newGroupId,
-        projectId,
-        category,
-        title: categoryTitles[category],
+      if (isSupabaseConfigured() && file) {
+        // Real upload
+        if (!fileGroup) {
+          fileGroup = await fileService.createFileGroup({
+            projectId,
+            category,
+            title: categoryTitles[category],
+          });
+          addFileGroup(fileGroup);
+        }
+
+        await fileService.uploadFile(file, projectId, currentUser.id);
+
+        const fileExt = file.name.split('.').pop() || '';
+        const fileSize = file.size < 1024 * 1024
+          ? `${(file.size / 1024).toFixed(1)} KB`
+          : `${(file.size / (1024 * 1024)).toFixed(1)} MB`;
+
+        const fileItem = await fileService.createFileItem({
+          fileGroupId: fileGroup.id,
+          name: file.name,
+          uploadedBy: currentUser.id,
+          size: fileSize,
+          type: fileExt,
+          isImportant,
+          source: 'CHAT',
+          comment,
+        });
+
+        addFile(fileItem);
+
+        // Send chat message about the file upload
+        if (defaultRoom) {
+          await sendRoomMessage(defaultRoom.id, projectId, `📎 Uploaded file: ${file.name}`, {
+            messageType: 'file',
+          });
+        } else {
+          addMessage({
+            id: `m${Date.now()}`,
+            projectId,
+            userId: currentUser.id,
+            content: `📎 Uploaded file: ${file.name}`,
+            createdAt: new Date().toISOString(),
+            attachmentId: fileItem.id,
+            messageType: 'file',
+          });
+        }
+      } else {
+        // Mock mode
+        if (!fileGroup) {
+          const newGroupId = `fg${Date.now()}`;
+          addFileGroup({
+            id: newGroupId,
+            projectId,
+            category,
+            title: categoryTitles[category],
+          });
+          fileGroup = { id: newGroupId, projectId, category, title: categoryTitles[category] };
+        }
+
+        const newFileId = `f${Date.now()}`;
+        addFile({
+          id: newFileId,
+          fileGroupId: fileGroup.id,
+          name: fileName,
+          uploadedBy: currentUser.id,
+          createdAt: new Date().toISOString(),
+          size: file ? `${(file.size / (1024 * 1024)).toFixed(1)} MB` : '2.3 MB',
+          type: file?.name.split('.').pop() || 'pdf',
+          isImportant,
+          source: 'CHAT',
+          comment,
+        });
+
+        addMessage({
+          id: `m${Date.now()}`,
+          projectId,
+          userId: currentUser.id,
+          content: `📎 Uploaded file: ${fileName}`,
+          createdAt: new Date().toISOString(),
+          attachmentId: newFileId,
+          messageType: 'file',
+        });
+      }
+
+      toast.success('File uploaded', {
+        description: `${fileName} added to ${category} files${isImportant ? ' (marked as important)' : ''}`,
       });
-
-      fileGroup = { id: newGroupId, projectId, category, title: categoryTitles[category] };
+    } catch (error) {
+      console.error('Failed to upload file:', error);
+      toast.error('Failed to upload file. Please try again.');
     }
-
-    // Add the file
-    const newFileId = `f${Date.now()}`;
-    addFile({
-      id: newFileId,
-      fileGroupId: fileGroup.id,
-      name: pendingFileName,
-      uploadedBy: currentUser.id,
-      createdAt: new Date().toISOString(),
-      size: '2.3 MB',
-      type: 'pdf',
-      isImportant,
-      source: 'CHAT',
-    });
-
-    // Add message about file upload
-    addMessage({
-      id: `m${Date.now()}`,
-      projectId,
-      userId: currentUser.id,
-      content: `📎 Uploaded file: ${pendingFileName}`,
-      createdAt: new Date().toISOString(),
-      attachmentId: newFileId,
-      messageType: 'file',
-    });
-
-    toast.success('File uploaded', {
-      description: `${pendingFileName} added to ${category} files${isImportant ? ' (marked as important)' : ''}`,
-    });
   };
 
   // Group messages by date

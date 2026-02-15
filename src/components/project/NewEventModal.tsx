@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { EventType, CalendarEvent } from '@/types/core';
+import { EventType, CalendarEvent, User } from '@/types/core';
 import { useAppStore } from '@/stores/appStore';
 import {
   Dialog,
@@ -19,6 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { UserSearchInput } from '@/components/ui/user-search-input';
 import { CalendarPlus } from 'lucide-react';
 import { toast } from 'sonner';
 import { useTranslation } from '@/hooks/useTranslation';
@@ -42,17 +43,17 @@ const eventTypeOptions: { value: EventType; labelKey: TranslationKey }[] = [
   { value: 'R_TRAINING', labelKey: 'renatus' },
 ];
 
-export function NewEventModal({ 
-  open, 
-  onClose, 
+export function NewEventModal({
+  open,
+  onClose,
   projectId,
   defaultDate,
   defaultStartTime,
   defaultEndTime,
 }: NewEventModalProps) {
-  const { addEvent, currentUser } = useAppStore();
+  const { addEvent, currentUser, users } = useAppStore();
   const { t } = useTranslation();
-  
+
   const getDefaultDate = () => {
     if (defaultDate) return defaultDate;
     return new Date().toISOString().split('T')[0];
@@ -63,10 +64,21 @@ export function NewEventModal({
   const [date, setDate] = useState(getDefaultDate());
   const [startTime, setStartTime] = useState(defaultStartTime || '09:00');
   const [endTime, setEndTime] = useState(defaultEndTime || '10:00');
+  const [attendeeIds, setAttendeeIds] = useState<string[]>([]);
+
+  const selectedAttendees = users.filter(u => attendeeIds.includes(u.id));
+
+  const handleSelectAttendee = (user: User) => {
+    setAttendeeIds(prev => [...prev, user.id]);
+  };
+
+  const handleRemoveAttendee = (userId: string) => {
+    setAttendeeIds(prev => prev.filter(id => id !== userId));
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!title.trim()) {
       toast.error('Please enter an event title');
       return;
@@ -84,6 +96,7 @@ export function NewEventModal({
       projectId,
       ownerId: currentUser.id,
       source: 'PAULUS',
+      attendeeIds: attendeeIds.length > 0 ? attendeeIds : undefined,
     };
 
     addEvent(newEvent);
@@ -97,6 +110,7 @@ export function NewEventModal({
     setDate(getDefaultDate());
     setStartTime('09:00');
     setEndTime('10:00');
+    setAttendeeIds([]);
     onClose();
   };
 
@@ -180,6 +194,19 @@ export function NewEventModal({
                 onChange={(e) => setEndTime(e.target.value)}
               />
             </div>
+          </div>
+
+          {/* Attendees */}
+          <div className="space-y-2">
+            <Label>Attendees</Label>
+            <UserSearchInput
+              users={users.filter(u => u.id !== currentUser?.id)}
+              selectedUsers={selectedAttendees}
+              onSelect={handleSelectAttendee}
+              onRemove={handleRemoveAttendee}
+              placeholder="Type a name to invite..."
+              multiple
+            />
           </div>
 
           <DialogFooter className="pt-4">

@@ -140,6 +140,7 @@ export interface CalendarEvent {
   googleEventId?: string;
   todoId?: string; // Link to PersonalTodo
   deliverableId?: string; // Link to Deliverable
+  attendeeIds?: string[]; // Invited user IDs
 }
 
 // Chat message types for rich content sharing

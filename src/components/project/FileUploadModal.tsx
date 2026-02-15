@@ -1,6 +1,5 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { FileCategory } from '@/types/core';
-import { useAppStore } from '@/stores/appStore';
 import {
   Dialog,
   DialogContent,
@@ -20,14 +19,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { FileText, Upload, Star } from 'lucide-react';
+import { FileText, Upload, Star, X } from 'lucide-react';
 
 interface FileUploadModalProps {
   open: boolean;
   onClose: () => void;
   projectId: string;
   fileName?: string;
-  onUpload: (category: FileCategory, isImportant: boolean, comment: string) => void;
+  onUpload: (category: FileCategory, isImportant: boolean, comment: string, file?: File) => void;
 }
 
 const categoryOptions: { value: FileCategory; label: string }[] = [
@@ -38,46 +37,109 @@ const categoryOptions: { value: FileCategory; label: string }[] = [
   { value: 'ETC', label: 'Other' },
 ];
 
-export function FileUploadModal({ 
-  open, 
-  onClose, 
-  projectId, 
-  fileName = 'document.pdf',
-  onUpload 
+const formatFileSize = (bytes: number): string => {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+};
+
+export function FileUploadModal({
+  open,
+  onClose,
+  projectId,
+  fileName,
+  onUpload
 }: FileUploadModalProps) {
   const [category, setCategory] = useState<FileCategory>('ETC');
   const [isImportant, setIsImportant] = useState(false);
   const [comment, setComment] = useState('');
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const displayName = selectedFile?.name || fileName || 'No file selected';
+  const displaySize = selectedFile ? formatFileSize(selectedFile.size) : '';
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setSelectedFile(file);
+    }
+  };
+
+  const handleRemoveFile = () => {
+    setSelectedFile(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
 
   const handleUpload = () => {
-    onUpload(category, isImportant, comment);
+    onUpload(category, isImportant, comment, selectedFile || undefined);
     setCategory('ETC');
     setIsImportant(false);
     setComment('');
+    setSelectedFile(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+    onClose();
+  };
+
+  const handleClose = () => {
+    setSelectedFile(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
     onClose();
   };
 
   return (
-    <Dialog open={open} onOpenChange={onClose}>
+    <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Upload File</DialogTitle>
           <DialogDescription>
-            Choose a category for your file and set its importance.
+            Choose a file, select its category and set importance.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6 py-4">
-          {/* File Preview */}
-          <div className="flex items-center gap-3 p-4 rounded-lg bg-muted/50 border border-border">
-            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-              <FileText className="w-5 h-5 text-primary" />
+          {/* File Selection */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            onChange={handleFileSelect}
+            className="hidden"
+          />
+
+          {selectedFile ? (
+            <div className="flex items-center gap-3 p-4 rounded-lg bg-muted/50 border border-border">
+              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                <FileText className="w-5 h-5 text-primary" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-foreground truncate">{displayName}</p>
+                <p className="text-xs text-muted-foreground">{displaySize}</p>
+              </div>
+              <button
+                type="button"
+                onClick={handleRemoveFile}
+                className="p-1 hover:bg-muted rounded-full transition-colors"
+              >
+                <X className="w-4 h-4 text-muted-foreground" />
+              </button>
             </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-foreground truncate">{fileName}</p>
-              <p className="text-xs text-muted-foreground">Ready to upload</p>
-            </div>
-          </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="w-full flex flex-col items-center gap-2 p-6 rounded-lg border-2 border-dashed border-border hover:border-primary/50 hover:bg-muted/50 transition-colors"
+            >
+              <Upload className="w-8 h-8 text-muted-foreground" />
+              <span className="text-sm font-medium text-foreground">Click to select a file</span>
+              <span className="text-xs text-muted-foreground">PDF, images, documents, etc.</span>
+            </button>
+          )}
 
           {/* Category Selection */}
           <div className="space-y-2">
@@ -120,8 +182,8 @@ export function FileUploadModal({
               onCheckedChange={(checked) => setIsImportant(checked as boolean)}
             />
             <div className="flex-1">
-              <Label 
-                htmlFor="important" 
+              <Label
+                htmlFor="important"
                 className="text-sm font-medium text-foreground cursor-pointer flex items-center gap-2"
               >
                 <Star className="w-4 h-4 text-amber-500" />
@@ -135,10 +197,10 @@ export function FileUploadModal({
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>
+          <Button variant="outline" onClick={handleClose}>
             Cancel
           </Button>
-          <Button onClick={handleUpload} className="gap-2">
+          <Button onClick={handleUpload} disabled={!selectedFile} className="gap-2">
             <Upload className="w-4 h-4" />
             Upload File
           </Button>

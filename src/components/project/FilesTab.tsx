@@ -49,6 +49,8 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { FileUploadModal } from './FileUploadModal';
 import { toast } from 'sonner';
+import { isSupabaseConfigured } from '@/lib/supabase';
+import * as fileService from '@/services/fileService';
 
 interface FilesTabProps {
   projectId: string;
@@ -181,7 +183,7 @@ export function FilesTab({ projectId }: FilesTabProps) {
     setCommentValue('');
   };
 
-  const handleUploadConfirm = (category: FileCategory, isImportant: boolean, comment: string) => {
+  const handleUploadConfirm = async (category: FileCategory, isImportant: boolean, comment: string, file?: File) => {
     if (!currentUser) return;
 
     const categoryTitles: Record<FileCategory, string> = {
@@ -192,34 +194,80 @@ export function FilesTab({ projectId }: FilesTabProps) {
       ETC: 'Others',
     };
 
-    let fileGroup = fileGroups.find(fg => fg.category === category);
+    try {
+      if (isSupabaseConfigured() && file) {
+        // Real Supabase upload
+        let fileGroup = fileGroups.find(fg => fg.category === category);
 
-    if (!fileGroup) {
-      const newGroupId = `fg${Date.now()}`;
-      addFileGroup({
-        id: newGroupId,
-        projectId,
-        category,
-        title: categoryTitles[category],
-      });
-      fileGroup = { id: newGroupId, projectId, category, title: categoryTitles[category] };
+        if (!fileGroup) {
+          fileGroup = await fileService.createFileGroup({
+            projectId,
+            category,
+            title: categoryTitles[category],
+          });
+          addFileGroup(fileGroup);
+        }
+
+        // Upload file to storage
+        await fileService.uploadFile(file, projectId, currentUser.id);
+
+        // Create file item metadata
+        const fileExt = file.name.split('.').pop() || '';
+        const fileSize = file.size < 1024 * 1024
+          ? `${(file.size / 1024).toFixed(1)} KB`
+          : `${(file.size / (1024 * 1024)).toFixed(1)} MB`;
+
+        const fileItem = await fileService.createFileItem({
+          fileGroupId: fileGroup.id,
+          name: file.name,
+          uploadedBy: currentUser.id,
+          size: fileSize,
+          type: fileExt,
+          isImportant,
+          source: 'UPLOAD',
+          comment,
+        });
+
+        addFile(fileItem);
+        toast.success('File uploaded successfully');
+      } else {
+        // Mock mode fallback
+        let fileGroup = fileGroups.find(fg => fg.category === category);
+
+        if (!fileGroup) {
+          const newGroupId = `fg${Date.now()}`;
+          addFileGroup({
+            id: newGroupId,
+            projectId,
+            category,
+            title: categoryTitles[category],
+          });
+          fileGroup = { id: newGroupId, projectId, category, title: categoryTitles[category] };
+        }
+
+        const fileName = file?.name || `Uploaded_File_${Date.now().toString().slice(-6)}.pdf`;
+        const fileSize = file ? (file.size < 1024 * 1024
+          ? `${(file.size / 1024).toFixed(1)} KB`
+          : `${(file.size / (1024 * 1024)).toFixed(1)} MB`) : '3.1 MB';
+
+        addFile({
+          id: `f${Date.now()}`,
+          fileGroupId: fileGroup.id,
+          name: fileName,
+          uploadedBy: currentUser.id,
+          createdAt: new Date().toISOString(),
+          size: fileSize,
+          type: file?.name.split('.').pop() || 'pdf',
+          isImportant,
+          source: 'UPLOAD',
+          comment,
+        });
+        toast.success('File uploaded successfully');
+      }
+    } catch (error) {
+      console.error('Failed to upload file:', error);
+      toast.error('Failed to upload file. Please try again.');
     }
-
-    const fileName = `Uploaded_File_${Date.now().toString().slice(-6)}.pdf`;
-    addFile({
-      id: `f${Date.now()}`,
-      fileGroupId: fileGroup.id,
-      name: fileName,
-      uploadedBy: currentUser.id,
-      createdAt: new Date().toISOString(),
-      size: '3.1 MB',
-      type: 'pdf',
-      isImportant,
-      source: 'UPLOAD',
-      comment,
-    });
-
-    toast.success('File uploaded successfully');
   };
 
   // Filter files by search (including comments)

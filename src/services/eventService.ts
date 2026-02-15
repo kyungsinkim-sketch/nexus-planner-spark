@@ -21,6 +21,7 @@ const transformEvent = (row: EventRow): CalendarEvent => {
         googleEventId: row.google_event_id || undefined,
         todoId: row.todo_id || undefined,
         deliverableId: row.deliverable_id || undefined,
+        attendeeIds: row.attendee_ids || undefined,
     };
 };
 
@@ -38,6 +39,7 @@ const transformToInsert = (event: Partial<CalendarEvent>): EventInsert => {
         google_event_id: event.googleEventId || null,
         todo_id: event.todoId || null,
         deliverable_id: event.deliverableId || null,
+        attendee_ids: event.attendeeIds || null,
     };
 };
 
@@ -163,6 +165,7 @@ export const updateEvent = async (
     if (updates.googleEventId !== undefined) updateData.google_event_id = updates.googleEventId;
     if (updates.todoId !== undefined) updateData.todo_id = updates.todoId;
     if (updates.deliverableId !== undefined) updateData.deliverable_id = updates.deliverableId;
+    if (updates.attendeeIds !== undefined) updateData.attendee_ids = updates.attendeeIds;
 
     const { data, error } = await supabase
         .from('calendar_events')
