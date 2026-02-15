@@ -414,6 +414,9 @@ export const sendDirectMessage = async (
 };
 
 // Subscribe to direct messages (realtime)
+// Note: Supabase postgres_changes only supports single-column filters,
+// so we filter by direct_chat_user_id for one direction and user_id for the other,
+// then do client-side filtering to match the exact conversation pair.
 export const subscribeToDirectMessages = (
     userId1: string,
     userId2: string,
@@ -424,6 +427,13 @@ export const subscribeToDirectMessages = (
         return () => { };
     }
 
+    const isRelevantDM = (row: MessageRow): boolean => {
+        return (
+            (row.user_id === userId1 && row.direct_chat_user_id === userId2) ||
+            (row.user_id === userId2 && row.direct_chat_user_id === userId1)
+        );
+    };
+
     const channel = supabase
         .channel(`direct_messages_${userId1}_${userId2}`)
         .on(
@@ -432,10 +442,13 @@ export const subscribeToDirectMessages = (
                 event: 'INSERT',
                 schema: 'public',
                 table: 'chat_messages',
-                filter: `user_id=eq.${userId1},direct_chat_user_id=eq.${userId2}`,
+                filter: `direct_chat_user_id=eq.${userId1}`,
             },
             (payload) => {
-                callback(transformMessage(payload.new as MessageRow));
+                const row = payload.new as MessageRow;
+                if (isRelevantDM(row)) {
+                    callback(transformMessage(row));
+                }
             }
         )
         .on(
@@ -444,10 +457,13 @@ export const subscribeToDirectMessages = (
                 event: 'INSERT',
                 schema: 'public',
                 table: 'chat_messages',
-                filter: `user_id=eq.${userId2},direct_chat_user_id=eq.${userId1}`,
+                filter: `direct_chat_user_id=eq.${userId2}`,
             },
             (payload) => {
-                callback(transformMessage(payload.new as MessageRow));
+                const row = payload.new as MessageRow;
+                if (isRelevantDM(row)) {
+                    callback(transformMessage(row));
+                }
             }
         )
         .subscribe();

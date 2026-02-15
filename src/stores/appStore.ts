@@ -85,6 +85,8 @@ interface AppState {
 
   // Chat Room Actions
   loadChatRooms: (projectId: string) => Promise<void>;
+  loadMessages: () => Promise<void>;
+  loadRoomMessages: (roomId: string) => Promise<void>;
   createChatRoom: (projectId: string, name: string, memberIds: string[], description?: string) => Promise<ChatRoom | null>;
   sendRoomMessage: (roomId: string, projectId: string, content: string, options?: {
     messageType?: ChatMessageType;
@@ -166,6 +168,7 @@ export const useAppStore = create<AppState>()(
           await get().loadProjects();
           await get().loadEvents();
           await get().loadUsers();
+          await get().loadMessages();
         } finally {
           set({ isLoading: false });
         }
@@ -225,6 +228,7 @@ export const useAppStore = create<AppState>()(
             await get().loadProjects();
             await get().loadEvents();
             await get().loadUsers();
+            await get().loadMessages();
           }
         } finally {
           set({ isInitializing: false });
@@ -268,6 +272,50 @@ export const useAppStore = create<AppState>()(
           set({ users });
         } catch (error) {
           console.error('Failed to load users:', error);
+        }
+      },
+
+      loadMessages: async () => {
+        if (!isSupabaseConfigured()) {
+          return;
+        }
+
+        const { currentUser } = get();
+        if (!currentUser) return;
+
+        try {
+          // Load recent conversations to get initial messages
+          const conversations = await chatService.getRecentConversations(currentUser.id);
+          const allMessages: ChatMessage[] = [];
+
+          // Load project messages for each conversation
+          for (const chat of conversations.projectChats) {
+            try {
+              const msgs = await chatService.getMessagesByProject(chat.projectId);
+              allMessages.push(...msgs);
+            } catch (e) {
+              console.error(`Failed to load messages for project ${chat.projectId}:`, e);
+            }
+          }
+
+          // Load direct messages
+          for (const chat of conversations.directChats) {
+            try {
+              const msgs = await chatService.getDirectMessages(currentUser.id, chat.userId);
+              allMessages.push(...msgs);
+            } catch (e) {
+              console.error(`Failed to load direct messages with ${chat.userId}:`, e);
+            }
+          }
+
+          // Deduplicate by id
+          const uniqueMessages = Array.from(
+            new Map(allMessages.map(m => [m.id, m])).values()
+          );
+
+          set({ messages: uniqueMessages });
+        } catch (error) {
+          console.error('Failed to load messages:', error);
         }
       },
 
@@ -484,7 +532,11 @@ export const useAppStore = create<AppState>()(
       },
 
       // Message Actions
-      addMessage: (message) => set((state) => ({ messages: [...state.messages, message] })),
+      addMessage: (message) => set((state) => {
+        // Prevent duplicate messages (realtime subscription + local add race condition)
+        if (state.messages.some(m => m.id === message.id)) return state;
+        return { messages: [...state.messages, message] };
+      }),
 
       sendProjectMessage: async (projectId, content) => {
         const { currentUser } = get();
@@ -548,6 +600,21 @@ export const useAppStore = create<AppState>()(
               const otherRooms = state.chatRooms.filter(r => r.projectId !== projectId);
               return { chatRooms: [...otherRooms, ...rooms] };
             });
+
+            // Also load messages for all rooms in this project
+            for (const room of rooms) {
+              try {
+                const msgs = await chatService.getMessagesByRoom(room.id);
+                set((state) => {
+                  // Merge with existing messages, avoiding duplicates
+                  const existingIds = new Set(state.messages.map(m => m.id));
+                  const newMsgs = msgs.filter(m => !existingIds.has(m.id));
+                  return { messages: [...state.messages, ...newMsgs] };
+                });
+              } catch (e) {
+                console.error(`Failed to load messages for room ${room.id}:`, e);
+              }
+            }
           } catch (error) {
             console.error('Failed to load chat rooms:', error);
           }
@@ -568,6 +635,21 @@ export const useAppStore = create<AppState>()(
             }
             return state;
           });
+        }
+      },
+
+      loadRoomMessages: async (roomId) => {
+        if (!isSupabaseConfigured()) return;
+
+        try {
+          const msgs = await chatService.getMessagesByRoom(roomId);
+          set((state) => {
+            const existingIds = new Set(state.messages.map(m => m.id));
+            const newMsgs = msgs.filter(m => !existingIds.has(m.id));
+            return { messages: [...state.messages, ...newMsgs] };
+          });
+        } catch (error) {
+          console.error(`Failed to load room messages:`, error);
         }
       },
 

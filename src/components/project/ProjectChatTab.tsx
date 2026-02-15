@@ -10,18 +10,45 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Send, Paperclip, Smile } from 'lucide-react';
 import { FileUploadModal } from './FileUploadModal';
 import { toast } from 'sonner';
+import * as chatService from '@/services/chatService';
+import { isSupabaseConfigured } from '@/lib/supabase';
 
 interface ProjectChatTabProps {
   projectId: string;
 }
 
 export function ProjectChatTab({ projectId }: ProjectChatTabProps) {
-  const { getMessagesByProject, getUserById, currentUser, addMessage, addFile, addFileGroup, getFileGroupsByProject } = useAppStore();
+  const { getMessagesByProject, getUserById, currentUser, addMessage, sendProjectMessage, loadChatRooms, getChatRoomsByProject, sendRoomMessage, addFile, addFileGroup, getFileGroupsByProject } = useAppStore();
   const messages = getMessagesByProject(projectId);
+  const chatRooms = getChatRoomsByProject(projectId);
+  const defaultRoom = chatRooms.find(r => r.isDefault);
   const [newMessage, setNewMessage] = useState('');
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [pendingFileName, setPendingFileName] = useState('');
+  const [isSending, setIsSending] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Load chat rooms (and their messages) on mount
+  useEffect(() => {
+    loadChatRooms(projectId);
+  }, [projectId, loadChatRooms]);
+
+  // Subscribe to realtime messages
+  useEffect(() => {
+    if (!isSupabaseConfigured() || !defaultRoom) return;
+
+    const unsubscribe = chatService.subscribeToRoomMessages(defaultRoom.id, (message) => {
+      // Avoid adding duplicates (message might already be in state from sendRoomMessage)
+      const exists = useAppStore.getState().messages.some(m => m.id === message.id);
+      if (!exists) {
+        addMessage(message);
+      }
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, [defaultRoom?.id, addMessage]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -56,18 +83,39 @@ export function ProjectChatTab({ projectId }: ProjectChatTabProps) {
     }
   };
 
-  const handleSendMessage = () => {
-    if (!newMessage.trim()) return;
-    
-    addMessage({
-      id: `m${Date.now()}`,
-      projectId,
-      userId: currentUser.id,
-      content: newMessage.trim(),
-      createdAt: new Date().toISOString(),
-    });
-    
+  const handleSendMessage = async () => {
+    if (!newMessage.trim() || !currentUser || isSending) return;
+
+    const content = newMessage.trim();
     setNewMessage('');
+    setIsSending(true);
+
+    try {
+      if (isSupabaseConfigured()) {
+        // Send via Supabase — use room if available, otherwise project-level
+        if (defaultRoom) {
+          await sendRoomMessage(defaultRoom.id, projectId, content);
+        } else {
+          await sendProjectMessage(projectId, content);
+        }
+      } else {
+        // Mock mode — local only
+        addMessage({
+          id: `m${Date.now()}`,
+          projectId,
+          userId: currentUser.id,
+          content,
+          createdAt: new Date().toISOString(),
+          messageType: 'text',
+        });
+      }
+    } catch (error) {
+      console.error('Failed to send message:', error);
+      toast.error('메시지 전송에 실패했습니다');
+      setNewMessage(content); // Restore the message
+    } finally {
+      setIsSending(false);
+    }
   };
 
   const handleFileUpload = () => {
@@ -79,10 +127,10 @@ export function ProjectChatTab({ projectId }: ProjectChatTabProps) {
 
   const handleConfirmUpload = (category: FileCategory, isImportant: boolean) => {
     const fileGroups = getFileGroupsByProject(projectId);
-    
+
     // Find or create file group for the category
     let fileGroup = fileGroups.find(fg => fg.category === category);
-    
+
     if (!fileGroup) {
       const newGroupId = `fg${Date.now()}`;
       const categoryTitles: Record<FileCategory, string> = {
@@ -92,14 +140,14 @@ export function ProjectChatTab({ projectId }: ProjectChatTabProps) {
         CONTRACT: 'Contracts',
         ETC: 'Others',
       };
-      
+
       addFileGroup({
         id: newGroupId,
         projectId,
         category,
         title: categoryTitles[category],
       });
-      
+
       fileGroup = { id: newGroupId, projectId, category, title: categoryTitles[category] };
     }
 
@@ -125,6 +173,7 @@ export function ProjectChatTab({ projectId }: ProjectChatTabProps) {
       content: `📎 Uploaded file: ${pendingFileName}`,
       createdAt: new Date().toISOString(),
       attachmentId: newFileId,
+      messageType: 'file',
     });
 
     toast.success('File uploaded', {
@@ -171,19 +220,18 @@ export function ProjectChatTab({ projectId }: ProjectChatTabProps) {
                       const isCurrentUser = message.userId === currentUser.id;
                       const showAvatar = index === 0 || dateMessages[index - 1].userId !== message.userId;
                       const isFileMessage = message.content.startsWith('📎');
-                      
+
                       return (
-                        <div 
-                          key={message.id} 
+                        <div
+                          key={message.id}
                           className={`flex gap-3 ${isCurrentUser ? 'flex-row-reverse' : ''}`}
                         >
                           {showAvatar ? (
                             <Avatar className="w-8 h-8 shrink-0">
-                              <AvatarFallback className={`text-xs ${
-                                isCurrentUser 
-                                  ? 'bg-primary text-primary-foreground' 
-                                  : 'bg-muted text-muted-foreground'
-                              }`}>
+                              <AvatarFallback className={`text-xs ${isCurrentUser
+                                ? 'bg-primary text-primary-foreground'
+                                : 'bg-muted text-muted-foreground'
+                                }`}>
                                 {user?.name.split(' ').map(n => n[0]).join('')}
                               </AvatarFallback>
                             </Avatar>
@@ -201,14 +249,13 @@ export function ProjectChatTab({ projectId }: ProjectChatTabProps) {
                                 </span>
                               </div>
                             )}
-                            <div 
-                              className={`inline-block rounded-2xl px-4 py-2 text-sm ${
-                                isFileMessage
-                                  ? 'bg-muted/80 text-foreground border border-border'
-                                  : isCurrentUser 
-                                    ? 'bg-primary text-primary-foreground' 
-                                    : 'bg-muted text-foreground'
-                              }`}
+                            <div
+                              className={`inline-block rounded-2xl px-4 py-2 text-sm ${isFileMessage
+                                ? 'bg-muted/80 text-foreground border border-border'
+                                : isCurrentUser
+                                  ? 'bg-primary text-primary-foreground'
+                                  : 'bg-muted text-foreground'
+                                }`}
                             >
                               {message.content}
                               {isFileMessage && message.attachmentId && (
@@ -234,9 +281,9 @@ export function ProjectChatTab({ projectId }: ProjectChatTabProps) {
         {/* Message Input */}
         <div className="p-4 bg-background">
           <div className="flex items-center gap-2">
-            <Button 
-              variant="ghost" 
-              size="icon" 
+            <Button
+              variant="ghost"
+              size="icon"
               className="shrink-0"
               onClick={handleFileUpload}
             >
@@ -246,18 +293,23 @@ export function ProjectChatTab({ projectId }: ProjectChatTabProps) {
               placeholder="Type a message..."
               value={newMessage}
               onChange={(e) => setNewMessage(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSendMessage()}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+                  e.preventDefault();
+                  handleSendMessage();
+                }
+              }}
               className="flex-1"
             />
-            <Button 
-              variant="ghost" 
-              size="icon" 
+            <Button
+              variant="ghost"
+              size="icon"
               className="shrink-0"
             >
               <Smile className="w-5 h-5" />
             </Button>
-            <Button 
-              size="icon" 
+            <Button
+              size="icon"
               onClick={handleSendMessage}
               disabled={!newMessage.trim()}
             >

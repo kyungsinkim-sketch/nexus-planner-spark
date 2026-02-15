@@ -32,6 +32,8 @@ import { useTranslation } from '@/hooks/useTranslation';
 import { ChatShareMenu } from '@/components/chat/ChatShareMenu';
 import { ChatMessageBubble } from '@/components/chat/ChatMessageBubble';
 import type { LocationShare, ScheduleShare, DecisionShare, ChatMessage, ChatRoom } from '@/types/core';
+import * as chatService from '@/services/chatService';
+import { isSupabaseConfigured } from '@/lib/supabase';
 
 type ChatType = 'project' | 'direct';
 
@@ -47,7 +49,7 @@ export default function ChatPage() {
     projects, users, currentUser, messages, chatRooms,
     sendProjectMessage, sendDirectMessage, sendRoomMessage,
     loadChatRooms, createChatRoom, getChatRoomsByProject,
-    getUserById,
+    getUserById, addMessage,
   } = useAppStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTab, setSelectedTab] = useState<'projects' | 'direct'>('projects');
@@ -178,6 +180,34 @@ export default function ChatPage() {
   useEffect(() => {
     scrollToBottom();
   }, [chatMessages]);
+
+  // Subscribe to realtime messages when selecting a room
+  useEffect(() => {
+    if (!isSupabaseConfigured() || !selectedChat) return;
+
+    let unsubscribe: (() => void) | null = null;
+
+    if (selectedChat.type === 'project' && selectedChat.roomId) {
+      unsubscribe = chatService.subscribeToRoomMessages(selectedChat.roomId, (message) => {
+        const exists = useAppStore.getState().messages.some(m => m.id === message.id);
+        if (!exists) addMessage(message);
+      });
+    } else if (selectedChat.type === 'project') {
+      unsubscribe = chatService.subscribeToProjectMessages(selectedChat.id, (message) => {
+        const exists = useAppStore.getState().messages.some(m => m.id === message.id);
+        if (!exists) addMessage(message);
+      });
+    } else if (selectedChat.type === 'direct' && currentUser) {
+      unsubscribe = chatService.subscribeToDirectMessages(currentUser.id, selectedChat.id, (message) => {
+        const exists = useAppStore.getState().messages.some(m => m.id === message.id);
+        if (!exists) addMessage(message);
+      });
+    }
+
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
+  }, [selectedChat?.type, selectedChat?.id, selectedChat?.roomId, currentUser?.id, addMessage]);
 
   const handleSendMessage = () => {
     if (!newMessage.trim() || !selectedChat || !currentUser) return;
@@ -601,8 +631,8 @@ export default function ChatPage() {
                                 {showAvatar ? (
                                   <Avatar className="w-8 h-8 shrink-0">
                                     <AvatarFallback className={`text-xs ${isCurrentUser
-                                        ? 'bg-primary text-primary-foreground'
-                                        : 'bg-muted text-muted-foreground'
+                                      ? 'bg-primary text-primary-foreground'
+                                      : 'bg-muted text-muted-foreground'
                                       }`}>
                                       {user?.name.split(' ').map(n => n[0]).join('')}
                                     </AvatarFallback>
@@ -657,7 +687,12 @@ export default function ChatPage() {
                     placeholder={t('typeMessage')}
                     value={newMessage}
                     onChange={(e) => setNewMessage(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSendMessage()}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+                        e.preventDefault();
+                        handleSendMessage();
+                      }
+                    }}
                     className="flex-1"
                   />
                   <Button
