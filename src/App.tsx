@@ -5,20 +5,14 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { AppLayout } from "@/components/layout";
+import { TabLayout } from "@/components/layout";
 import { useAppStore } from "@/stores/appStore";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import { Loader2 } from "lucide-react";
 
 // Lazy-loaded page components for code splitting
-const DashboardPage = lazy(() => import("./pages/DashboardPage"));
-const CalendarPage = lazy(() => import("./pages/CalendarPage"));
-const ProjectsPage = lazy(() => import("./pages/ProjectsPage"));
-const ProjectDetailPage = lazy(() => import("./pages/ProjectDetailPage"));
 const AdminPage = lazy(() => import("./pages/AdminPage"));
-const ProfilePage = lazy(() => import("./pages/ProfilePage"));
 const SettingsPage = lazy(() => import("./pages/SettingsPage"));
-const InboxPage = lazy(() => import("./pages/InboxPage"));
 const DepositStatusPage = lazy(() => import("./pages/DepositStatusPage"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const AuthPage = lazy(() => import("./pages/AuthPage").then(m => ({ default: m.AuthPage })));
@@ -100,25 +94,29 @@ const App = () => {
                 {/* Auth Route */}
                 <Route path="/auth" element={<AuthPage />} />
 
-                {/* Protected Routes */}
+                {/* Main Layout — Widget-based tab system */}
                 <Route
                   element={
                     <ProtectedRoute>
-                      <AppLayout />
+                      <TabLayout />
                     </ProtectedRoute>
                   }
                 >
-                  <Route path="/" element={<DashboardPage />} />
-                  <Route path="/calendar" element={<CalendarPage />} />
-                  <Route path="/projects" element={<ProjectsPage />} />
-                  <Route path="/projects/:projectId" element={<ProjectDetailPage />} />
-                  <Route path="/projects/:projectId/deposits" element={<DepositStatusPage />} />
-                  {/* /chat redirects to / — Chat is now always visible in the split-screen layout */}
-                  <Route path="/chat" element={<Navigate to="/" replace />} />
-                  <Route path="/inbox" element={<InboxPage />} />
+                  {/* Root renders WidgetGrid (handled by TabLayout) */}
+                  <Route path="/" element={null} />
+
+                  {/* Sub-routes that render via Outlet inside TabLayout */}
                   <Route path="/admin" element={<AdminRoute><AdminPage /></AdminRoute>} />
-                  <Route path="/profile" element={<ProfilePage />} />
                   <Route path="/settings" element={<SettingsPage />} />
+                  <Route path="/projects/:projectId/deposits" element={<DepositStatusPage />} />
+
+                  {/* Legacy routes redirect to root (now widget-based) */}
+                  <Route path="/calendar" element={<Navigate to="/" replace />} />
+                  <Route path="/projects" element={<Navigate to="/" replace />} />
+                  <Route path="/projects/:projectId" element={<Navigate to="/" replace />} />
+                  <Route path="/chat" element={<Navigate to="/" replace />} />
+                  <Route path="/inbox" element={<Navigate to="/" replace />} />
+                  <Route path="/profile" element={<Navigate to="/settings" replace />} />
                 </Route>
 
                 <Route path="*" element={<NotFound />} />

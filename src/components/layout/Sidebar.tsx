@@ -1,14 +1,10 @@
-import { NavLink, useLocation } from 'react-router-dom';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import {
   Home,
-  Calendar,
-  FolderKanban,
-  User,
   ChevronLeft,
   ChevronRight,
   Sparkles,
   Crown,
-  Inbox,
   Building2,
   Coffee,
   Dumbbell,
@@ -21,8 +17,10 @@ import {
   Plane,
   Film,
   MapPinned,
+  Settings,
 } from 'lucide-react';
 import { useAppStore } from '@/stores/appStore';
+import { useWidgetStore } from '@/stores/widgetStore';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
@@ -54,17 +52,16 @@ const workStatusConfig: Record<UserWorkStatus, { labelKey: TranslationKey; icon:
 
 export function Sidebar() {
   const { currentUser, sidebarCollapsed, toggleSidebar, userWorkStatus, setUserWorkStatus, signOut, theme, toggleTheme } = useAppStore();
+  const { setActiveTab } = useWidgetStore();
   const location = useLocation();
+  const navigate = useNavigate();
   const { t, language, toggleLanguage } = useTranslation();
 
-  // Menu items - Admin only visible to ADMIN role
+  // Simplified nav — Calendar, Projects, Inbox, Profile are now widgets
   const navItems = [
     { path: '/', icon: Home, labelKey: 'dashboard' as const, visible: true, pro: false },
-    { path: '/projects', icon: FolderKanban, labelKey: 'projects' as const, visible: true, pro: false },
-    { path: '/calendar', icon: Calendar, labelKey: 'calendar' as const, visible: true, pro: false },
-    { path: '/inbox', icon: Inbox, labelKey: 'inbox' as const, visible: true, pro: false },
-    { path: '/profile', icon: User, labelKey: 'myProfile' as const, visible: true, pro: false },
     { path: '/admin', icon: Crown, labelKey: 'admin' as const, visible: currentUser?.role === 'ADMIN', pro: true },
+    { path: '/settings', icon: Settings, labelKey: 'settings' as const, visible: true, pro: false },
   ].filter(item => item.visible);
 
   const currentStatus = workStatusConfig[userWorkStatus];
@@ -73,7 +70,7 @@ export function Sidebar() {
   return (
     <aside
       className={cn(
-        'fixed left-0 top-0 z-40 h-screen bg-sidebar transition-all duration-300 flex flex-col',
+        'fixed left-0 top-0 z-40 h-screen glass-sidebar transition-all duration-300 flex flex-col',
         sidebarCollapsed ? 'w-16' : 'w-60'
       )}
     >
@@ -99,6 +96,14 @@ export function Sidebar() {
             <NavLink
               key={item.path}
               to={item.path}
+              onClick={(e) => {
+                // Dashboard link: switch to dashboard tab and navigate to /
+                if (item.path === '/') {
+                  e.preventDefault();
+                  setActiveTab('dashboard');
+                  navigate('/');
+                }
+              }}
               className={cn(
                 'nav-link',
                 isActive && 'active',

@@ -1,0 +1,170 @@
+/**
+ * Widget Registry — maps WidgetType to component + metadata.
+ *
+ * Lazy-loaded components for code splitting.
+ * Default layouts for Dashboard and Project contexts.
+ */
+
+import { lazy, type ComponentType } from 'react';
+import {
+  Calendar,
+  MessageSquare,
+  ListTodo,
+  FolderOpen,
+  DollarSign,
+  Activity,
+  BarChart3,
+  LineChart,
+  Clock,
+  Bell,
+  FolderKanban,
+  Brain,
+  Lightbulb,
+  Users,
+  Zap,
+} from 'lucide-react';
+import type { WidgetDefinition, WidgetType, WidgetDataContext } from '@/types/widget';
+
+// Lazy-loaded widget components
+export const WIDGET_COMPONENTS: Record<WidgetType, ComponentType<{ context: WidgetDataContext }>> = {
+  calendar:       lazy(() => import('./CalendarWidget')),
+  chat:           lazy(() => import('./ChatWidget')),
+  todos:          lazy(() => import('./TodosWidget')),
+  files:          lazy(() => import('./FilesWidget')),
+  budget:         lazy(() => import('./BudgetWidget')),
+  health:         lazy(() => import('./HealthWidget')),
+  actions:        lazy(() => import('./ActionsWidget')),
+  teamLoad:       lazy(() => import('./TeamLoadWidget')),
+  progressChart:  lazy(() => import('./ProgressChartWidget')),
+  activityChart:  lazy(() => import('./ActivityChartWidget')),
+  attendance:     lazy(() => import('./AttendanceWidget')),
+  notifications:  lazy(() => import('./NotificationsWidget')),
+  projects:       lazy(() => import('./ProjectsWidget')),
+  brainChat:      lazy(() => import('./BrainChatWidget')),
+  brainInsights:  lazy(() => import('./BrainInsightsWidget')),
+};
+
+// Widget definitions (metadata)
+export const WIDGET_DEFINITIONS: Record<WidgetType, WidgetDefinition> = {
+  calendar: {
+    type: 'calendar',
+    titleKey: 'calendar',
+    icon: Calendar,
+    defaultSize: { w: 6, h: 4 },
+    minSize: { w: 3, h: 3 },
+    contexts: ['dashboard', 'project'],
+  },
+  chat: {
+    type: 'chat',
+    titleKey: 'chat',
+    icon: MessageSquare,
+    defaultSize: { w: 3, h: 5 },
+    minSize: { w: 3, h: 3 },
+    contexts: ['dashboard', 'project'],
+  },
+  todos: {
+    type: 'todos',
+    titleKey: 'todos',
+    icon: ListTodo,
+    defaultSize: { w: 3, h: 3 },
+    minSize: { w: 2, h: 2 },
+    contexts: ['dashboard', 'project'],
+  },
+  files: {
+    type: 'files',
+    titleKey: 'files',
+    icon: FolderOpen,
+    defaultSize: { w: 6, h: 3 },
+    minSize: { w: 3, h: 2 },
+    contexts: ['dashboard', 'project'],
+  },
+  budget: {
+    type: 'budget',
+    titleKey: 'budget',
+    icon: DollarSign,
+    defaultSize: { w: 4, h: 3 },
+    minSize: { w: 3, h: 2 },
+    contexts: ['project'],
+    adminOnly: true,
+  },
+  health: {
+    type: 'health',
+    titleKey: 'projectHealth',
+    icon: Activity,
+    defaultSize: { w: 4, h: 2 },
+    minSize: { w: 3, h: 2 },
+    contexts: ['project'],
+  },
+  actions: {
+    type: 'actions',
+    titleKey: 'nextActions',
+    icon: Zap,
+    defaultSize: { w: 4, h: 2 },
+    minSize: { w: 3, h: 2 },
+    contexts: ['project'],
+  },
+  teamLoad: {
+    type: 'teamLoad',
+    titleKey: 'teamLoad',
+    icon: Users,
+    defaultSize: { w: 4, h: 2 },
+    minSize: { w: 3, h: 2 },
+    contexts: ['project'],
+  },
+  progressChart: {
+    type: 'progressChart',
+    titleKey: 'projectProgress',
+    icon: BarChart3,
+    defaultSize: { w: 4, h: 3 },
+    minSize: { w: 3, h: 2 },
+    contexts: ['dashboard'],
+  },
+  activityChart: {
+    type: 'activityChart',
+    titleKey: 'weeklyActivity',
+    icon: LineChart,
+    defaultSize: { w: 4, h: 3 },
+    minSize: { w: 3, h: 2 },
+    contexts: ['dashboard'],
+  },
+  attendance: {
+    type: 'attendance',
+    titleKey: 'attendance',
+    icon: Clock,
+    defaultSize: { w: 4, h: 2 },
+    minSize: { w: 2, h: 2 },
+    contexts: ['dashboard'],
+  },
+  notifications: {
+    type: 'notifications',
+    titleKey: 'notifications',
+    icon: Bell,
+    defaultSize: { w: 3, h: 2 },
+    minSize: { w: 2, h: 2 },
+    contexts: ['dashboard', 'project'],
+  },
+  projects: {
+    type: 'projects',
+    titleKey: 'projects',
+    icon: FolderKanban,
+    defaultSize: { w: 6, h: 4 },
+    minSize: { w: 3, h: 3 },
+    contexts: ['dashboard'],
+  },
+  brainChat: {
+    type: 'brainChat',
+    titleKey: 'brainAI',
+    icon: Brain,
+    defaultSize: { w: 6, h: 2 },
+    minSize: { w: 3, h: 2 },
+    contexts: ['dashboard'],
+  },
+  brainInsights: {
+    type: 'brainInsights',
+    titleKey: 'brainInsights',
+    icon: Lightbulb,
+    defaultSize: { w: 4, h: 3 },
+    minSize: { w: 3, h: 2 },
+    contexts: ['project'],
+  },
+};
