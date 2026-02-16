@@ -98,7 +98,7 @@ export function EventSidePanel({ event, isOpen, onClose, onEdit, onDelete }: Eve
                   </Badge>
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p>Source: {isGoogleEvent ? 'Google Calendar' : 'Paulus.ai'}</p>
+                  <p>{t('sourceLabel')}: {isGoogleEvent ? 'Google Calendar' : 'Paulus.ai'}</p>
                   {event.googleEventId && (
                     <p className="text-xs text-muted-foreground">
                       ID: {event.googleEventId}
@@ -200,7 +200,7 @@ export function EventSidePanel({ event, isOpen, onClose, onEdit, onDelete }: Eve
                 <div className="flex items-center gap-2">
                   <Users className="w-4 h-4 text-muted-foreground" />
                   <p className="text-sm font-medium text-foreground">
-                    Attendees ({attendees.length})
+                    {t('attendees')} ({attendees.length})
                   </p>
                 </div>
                 <div className="space-y-2">
@@ -233,12 +233,12 @@ export function EventSidePanel({ event, isOpen, onClose, onEdit, onDelete }: Eve
                 <Calendar className="w-4 h-4 text-primary" />
               )}
               <p className="text-xs font-medium text-foreground">
-                {isGoogleEvent ? 'Synced from Google Calendar' : 'Created in Paulus.ai'}
+                {isGoogleEvent ? t('syncedFromGoogle') : t('createdInPaulus')}
               </p>
             </div>
             {isGoogleEvent && event.googleEventId && (
               <p className="text-[10px] text-muted-foreground font-mono">
-                Event ID: {event.googleEventId}
+                {t('eventIdLabel')}: {event.googleEventId}
               </p>
             )}
           </div>

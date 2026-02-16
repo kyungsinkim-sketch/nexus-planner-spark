@@ -230,6 +230,7 @@ function ActionCard({
   onConfirm?: (actionId: string) => void;
   onReject?: (actionId: string) => void;
 }) {
+  const { t } = useTranslation();
   const [processing, setProcessing] = useState(false);
   const status = action.status || 'pending';
   const actionId = action.id;
@@ -267,9 +268,9 @@ function ActionCard({
         <div className="flex items-center gap-2">
           <ActionIcon type={action.type} />
           <span className="text-xs font-semibold">
-            {action.type === 'create_todo' && 'Todo'}
-            {action.type === 'create_event' && 'Event'}
-            {action.type === 'share_location' && 'Location'}
+            {action.type === 'create_todo' && t('todo')}
+            {action.type === 'create_event' && t('event')}
+            {action.type === 'share_location' && t('location')}
           </span>
         </div>
         <StatusBadge status={status} />
@@ -305,7 +306,7 @@ function ActionCard({
             ) : (
               <Check className="w-3.5 h-3.5" />
             )}
-            {actionId ? 'Confirm' : 'Loading...'}
+            {actionId ? t('brainConfirm') : t('brainLoading')}
           </Button>
           <Button
             size="sm"
@@ -315,7 +316,7 @@ function ActionCard({
             disabled={processing || !actionId}
           >
             <X className="w-3.5 h-3.5" />
-            Reject
+            {t('brainReject')}
           </Button>
         </div>
       )}
@@ -337,40 +338,41 @@ function ActionIcon({ type }: { type: string }) {
 }
 
 function StatusBadge({ status }: { status: string }) {
+  const { t } = useTranslation();
   switch (status) {
     case 'pending':
       return (
         <Badge variant="outline" className="text-[10px] gap-1 text-amber-600 border-amber-300">
           <Clock className="w-2.5 h-2.5" />
-          Pending
+          {t('brainPending')}
         </Badge>
       );
     case 'confirmed':
       return (
         <Badge variant="outline" className="text-[10px] gap-1 text-blue-600 border-blue-300">
           <Loader2 className="w-2.5 h-2.5 animate-spin" />
-          Processing
+          {t('brainProcessing')}
         </Badge>
       );
     case 'executed':
       return (
         <Badge variant="outline" className="text-[10px] gap-1 text-green-600 border-green-300">
           <CheckCircle2 className="w-2.5 h-2.5" />
-          Done
+          {t('brainDone')}
         </Badge>
       );
     case 'rejected':
       return (
         <Badge variant="outline" className="text-[10px] gap-1 text-gray-500 border-gray-300">
           <XCircle className="w-2.5 h-2.5" />
-          Rejected
+          {t('brainRejected')}
         </Badge>
       );
     case 'failed':
       return (
         <Badge variant="outline" className="text-[10px] gap-1 text-red-600 border-red-300">
           <AlertTriangle className="w-2.5 h-2.5" />
-          Failed
+          {t('brainFailed')}
         </Badge>
       );
     default:
@@ -466,6 +468,7 @@ function EventActionBody({ data }: { data: BrainExtractedEvent }) {
 }
 
 function LocationActionBody({ data }: { data: BrainExtractedLocation }) {
+  const { t } = useTranslation();
   const searchUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
     data.searchQuery || data.title,
   )}`;
@@ -486,7 +489,7 @@ function LocationActionBody({ data }: { data: BrainExtractedLocation }) {
         className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
       >
         <MapPin className="w-3 h-3" />
-        Open in Maps
+        {t('openInMaps')}
       </a>
     </div>
   );

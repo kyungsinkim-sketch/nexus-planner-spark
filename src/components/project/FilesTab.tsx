@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { FileCategory } from '@/types/core';
 import { useAppStore } from '@/stores/appStore';
+import { useTranslation } from '@/hooks/useTranslation';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -82,6 +83,7 @@ const categoryColors: Record<FileCategory, string> = {
 
 export function FilesTab({ projectId }: FilesTabProps) {
   const { getFileGroupsByProject, getFilesByGroup, getUserById, files, addFile, addFileGroup, loadFileGroups, updateFileItem, deleteFileItem, currentUser } = useAppStore();
+  const { t } = useTranslation();
   const fileGroups = getFileGroupsByProject(projectId);
   const [selectedCategory, setSelectedCategory] = useState<FileCategory | 'ALL' | 'IMPORTANT'>('ALL');
   const [showUploadModal, setShowUploadModal] = useState(false);
@@ -137,10 +139,10 @@ export function FilesTab({ projectId }: FilesTabProps) {
     if (!file) return;
     try {
       await updateFileItem(fileId, { isImportant: !file.isImportant });
-      toast.success(file.isImportant ? 'Removed from important files' : 'Added to important files');
+      toast.success(file.isImportant ? t('removedFromImportant') : t('addedToImportant'));
     } catch (error) {
       console.error('Failed to toggle important:', error);
-      toast.error('Failed to update file');
+      toast.error(t('failedToUpdateFile'));
     }
   };
 
@@ -155,10 +157,10 @@ export function FilesTab({ projectId }: FilesTabProps) {
     if (!renameValue.trim() || !selectedFileId) return;
     try {
       await updateFileItem(selectedFileId, { name: renameValue.trim() });
-      toast.success(`File renamed to "${renameValue.trim()}"`);
+      toast.success(t('fileRenamed'));
     } catch (error) {
       console.error('Failed to rename file:', error);
-      toast.error('Failed to rename file');
+      toast.error(t('failedToRenameFile'));
     }
     setShowRenameModal(false);
     setSelectedFileId(null);
@@ -188,10 +190,10 @@ export function FilesTab({ projectId }: FilesTabProps) {
         addFileGroup(targetGroup);
       }
       await updateFileItem(selectedFileId, { fileGroupId: targetGroup.id });
-      toast.success(`File moved to ${categoryLabels[moveToCategory]}`);
+      toast.success(t('fileMovedTo'));
     } catch (error) {
       console.error('Failed to move file:', error);
-      toast.error('Failed to move file');
+      toast.error(t('failedToMoveFile'));
     }
     setShowMoveModal(false);
     setSelectedFileId(null);
@@ -206,10 +208,10 @@ export function FilesTab({ projectId }: FilesTabProps) {
         await fileService.deleteFile(file.storagePath);
       }
       await deleteFileItem(fileId);
-      toast.success('File deleted');
+      toast.success(t('fileDeleted'));
     } catch (error) {
       console.error('Failed to delete file:', error);
-      toast.error('Failed to delete file');
+      toast.error(t('failedToDeleteFile'));
     }
   };
 
@@ -224,10 +226,10 @@ export function FilesTab({ projectId }: FilesTabProps) {
     if (!selectedFileId) return;
     try {
       await updateFileItem(selectedFileId, { comment: commentValue.trim() || undefined });
-      toast.success('Comment saved');
+      toast.success(t('commentSaved'));
     } catch (error) {
       console.error('Failed to save comment:', error);
-      toast.error('Failed to save comment');
+      toast.error(t('failedToSaveComment'));
     }
     setShowCommentModal(false);
     setSelectedFileId(null);
@@ -281,7 +283,7 @@ export function FilesTab({ projectId }: FilesTabProps) {
         });
 
         addFile(fileItem);
-        toast.success('File uploaded successfully');
+        toast.success(t('fileUploadedSuccessfully'));
       } else {
         // Mock mode fallback
         let fileGroup = fileGroups.find(fg => fg.category === category);
@@ -314,11 +316,11 @@ export function FilesTab({ projectId }: FilesTabProps) {
           source: 'UPLOAD',
           comment,
         });
-        toast.success('File uploaded successfully');
+        toast.success(t('fileUploadedSuccessfully'));
       }
     } catch (error) {
       console.error('Failed to upload file:', error);
-      const message = error instanceof Error ? error.message : 'Failed to upload file. Please try again.';
+      const message = error instanceof Error ? error.message : t('failedToUploadFileGeneric');
       toast.error(message);
     }
   };
@@ -344,7 +346,7 @@ export function FilesTab({ projectId }: FilesTabProps) {
         window.open(url, '_blank');
       }
     } else {
-      toast.error('No download URL available for this file');
+      toast.error(t('noDownloadUrl'));
     }
   };
 
@@ -355,7 +357,7 @@ export function FilesTab({ projectId }: FilesTabProps) {
     <div className="flex gap-6 h-[600px]">
       {/* Categories Sidebar */}
       <Card className="w-64 shrink-0 p-4 shadow-card">
-        <h3 className="font-semibold text-foreground mb-4">Categories</h3>
+        <h3 className="font-semibold text-foreground mb-4">{t('categories')}</h3>
         <div className="space-y-1">
           {/* Important Files */}
           <button
@@ -367,7 +369,7 @@ export function FilesTab({ projectId }: FilesTabProps) {
             }`}
           >
             <Star className="w-4 h-4" />
-            Important Files
+            {t('importantFiles')}
             <Badge variant="secondary" className="ml-auto text-xs bg-amber-500/20 text-amber-700">
               {importantFiles.length}
             </Badge>
@@ -383,7 +385,7 @@ export function FilesTab({ projectId }: FilesTabProps) {
             }`}
           >
             <FolderOpen className="w-4 h-4" />
-            All Files
+            {t('allFiles')}
             <Badge variant="secondary" className="ml-auto text-xs">
               {allProjectFiles.length}
             </Badge>
@@ -422,15 +424,15 @@ export function FilesTab({ projectId }: FilesTabProps) {
       <div className="flex-1 flex flex-col">
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-semibold text-foreground">
-            {selectedCategory === 'ALL' 
-              ? 'All Files' 
+            {selectedCategory === 'ALL'
+              ? t('allFiles')
               : selectedCategory === 'IMPORTANT'
-                ? 'Important Files'
+                ? t('importantFiles')
                 : categoryLabels[selectedCategory]}
           </h3>
           <Button size="sm" className="gap-2" onClick={() => setShowUploadModal(true)}>
             <Upload className="w-4 h-4" />
-            Upload Files
+            {t('uploadFiles')}
           </Button>
         </div>
 
@@ -441,7 +443,7 @@ export function FilesTab({ projectId }: FilesTabProps) {
               <div className="p-4 border-b border-border bg-amber-500/5">
                 <div className="flex items-center gap-2 mb-3">
                   <Star className="w-4 h-4 text-amber-600" />
-                  <h4 className="text-sm font-medium text-foreground">Important Files</h4>
+                  <h4 className="text-sm font-medium text-foreground">{t('importantFiles')}</h4>
                 </div>
                 <div className="space-y-2">
                   {importantFiles.map((file) => {
@@ -475,7 +477,7 @@ export function FilesTab({ projectId }: FilesTabProps) {
                                   <span>·</span>
                                   <span className="flex items-center gap-1 text-primary">
                                     <MessageSquare className="w-3 h-3" />
-                                    From Chat
+                                    {t('fromChat')}
                                   </span>
                                 </>
                               )}
@@ -494,7 +496,7 @@ export function FilesTab({ projectId }: FilesTabProps) {
                           <div className="mt-2 ml-8 px-3 py-2 bg-muted/50 rounded text-xs text-muted-foreground border-l-2 border-primary/30">
                             <span className="flex items-center gap-1 mb-1 text-primary font-medium">
                               <MessageCircle className="w-3 h-3" />
-                              Comment
+                              {t('comment')}
                             </span>
                             {file.comment}
                           </div>
@@ -511,14 +513,14 @@ export function FilesTab({ projectId }: FilesTabProps) {
               importantFiles.length === 0 && (
                 <div className="flex flex-col items-center justify-center h-full py-12">
                   <Star className="w-12 h-12 text-muted-foreground mb-3" />
-                  <p className="text-muted-foreground">No important files yet</p>
-                  <p className="text-xs text-muted-foreground mt-1">Mark files as important to pin them here</p>
+                  <p className="text-muted-foreground">{t('noImportantFiles')}</p>
+                  <p className="text-xs text-muted-foreground mt-1">{t('markAsImportantHint')}</p>
                 </div>
               )
             ) : filteredGroups.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full py-12">
                 <FolderOpen className="w-12 h-12 text-muted-foreground mb-3" />
-                <p className="text-muted-foreground">No files in this category</p>
+                <p className="text-muted-foreground">{t('noFilesInCategory')}</p>
               </div>
             ) : (
               <div className="p-4 space-y-6">
@@ -538,7 +540,7 @@ export function FilesTab({ projectId }: FilesTabProps) {
                         </div>
                         <div>
                           <h4 className="text-sm font-medium text-foreground">{group.title}</h4>
-                          <p className="text-xs text-muted-foreground">{groupFiles.length} files</p>
+                          <p className="text-xs text-muted-foreground">{groupFiles.length} {t('filesCount')}</p>
                         </div>
                       </div>
 
@@ -568,7 +570,7 @@ export function FilesTab({ projectId }: FilesTabProps) {
                                         <span>·</span>
                                         <span className="flex items-center gap-1 text-primary">
                                           <MessageSquare className="w-3 h-3" />
-                                          From Chat
+                                          {t('fromChat')}
                                         </span>
                                       </>
                                     )}
@@ -612,20 +614,20 @@ export function FilesTab({ projectId }: FilesTabProps) {
                                     <DropdownMenuContent align="end">
                                       <DropdownMenuItem onClick={() => handleToggleImportant(file.id)}>
                                         <Star className="w-4 h-4 mr-2" />
-                                        {file.isImportant ? 'Remove from Important' : 'Add to Important Files'}
+                                        {file.isImportant ? t('removeFromImportant') : t('addToImportant')}
                                       </DropdownMenuItem>
                                       <DropdownMenuItem onClick={() => handleOpenComment(file.id, file.comment)}>
                                         <MessageCircle className="w-4 h-4 mr-2" />
-                                        {file.comment ? 'Edit Comment' : 'Add Comment'}
+                                        {file.comment ? t('editComment') : t('addComment')}
                                       </DropdownMenuItem>
                                       <DropdownMenuSeparator />
                                       <DropdownMenuItem onClick={() => handleOpenRename(file.id, file.name)}>
                                         <Pencil className="w-4 h-4 mr-2" />
-                                        Rename
+                                        {t('renameFile')}
                                       </DropdownMenuItem>
                                       <DropdownMenuItem onClick={() => handleOpenMove(file.id, group.category)}>
                                         <FolderInput className="w-4 h-4 mr-2" />
-                                        Move to...
+                                        {t('moveTo')}
                                       </DropdownMenuItem>
                                       <DropdownMenuSeparator />
                                       <DropdownMenuItem 
@@ -633,7 +635,7 @@ export function FilesTab({ projectId }: FilesTabProps) {
                                         onClick={() => handleDelete(file.id)}
                                       >
                                         <Trash2 className="w-4 h-4 mr-2" />
-                                        Delete
+                                        {t('delete')}
                                       </DropdownMenuItem>
                                     </DropdownMenuContent>
                                   </DropdownMenu>
@@ -644,7 +646,7 @@ export function FilesTab({ projectId }: FilesTabProps) {
                                 <div className="mt-2 ml-8 px-3 py-2 bg-background/60 rounded text-xs text-muted-foreground border-l-2 border-primary/30">
                                   <span className="flex items-center gap-1 mb-1 text-primary font-medium">
                                     <MessageCircle className="w-3 h-3" />
-                                    Comment
+                                    {t('comment')}
                                   </span>
                                   {file.comment}
                                 </div>
@@ -674,21 +676,21 @@ export function FilesTab({ projectId }: FilesTabProps) {
       <Dialog open={showRenameModal} onOpenChange={setShowRenameModal}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Rename File</DialogTitle>
-            <DialogDescription>Enter a new name for this file.</DialogDescription>
+            <DialogTitle>{t('renameFileTitle')}</DialogTitle>
+            <DialogDescription>{t('renameFileDesc')}</DialogDescription>
           </DialogHeader>
           <div className="py-4">
             <Input
               value={renameValue}
               onChange={(e) => setRenameValue(e.target.value)}
-              placeholder="File name"
+              placeholder={t('fileName')}
             />
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowRenameModal(false)}>
-              Cancel
+              {t('cancel')}
             </Button>
-            <Button onClick={handleRename}>Rename</Button>
+            <Button onClick={handleRename}>{t('rename')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -697,13 +699,13 @@ export function FilesTab({ projectId }: FilesTabProps) {
       <Dialog open={showMoveModal} onOpenChange={setShowMoveModal}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Move File</DialogTitle>
-            <DialogDescription>Select a category to move this file to.</DialogDescription>
+            <DialogTitle>{t('moveFileTitle')}</DialogTitle>
+            <DialogDescription>{t('moveFileDesc')}</DialogDescription>
           </DialogHeader>
           <div className="py-4">
             <Select value={moveToCategory} onValueChange={(v) => setMoveToCategory(v as FileCategory)}>
               <SelectTrigger>
-                <SelectValue placeholder="Select category" />
+                <SelectValue placeholder={t('selectCategory')} />
               </SelectTrigger>
               <SelectContent>
                 {allCategories.map((cat) => (
@@ -716,9 +718,9 @@ export function FilesTab({ projectId }: FilesTabProps) {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowMoveModal(false)}>
-              Cancel
+              {t('cancel')}
             </Button>
-            <Button onClick={handleMove}>Move</Button>
+            <Button onClick={handleMove}>{t('move')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -727,22 +729,22 @@ export function FilesTab({ projectId }: FilesTabProps) {
       <Dialog open={showCommentModal} onOpenChange={setShowCommentModal}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>File Comment</DialogTitle>
-            <DialogDescription>Add a comment to help find this file later.</DialogDescription>
+            <DialogTitle>{t('fileCommentTitle')}</DialogTitle>
+            <DialogDescription>{t('fileCommentDesc')}</DialogDescription>
           </DialogHeader>
           <div className="py-4">
             <Textarea
               value={commentValue}
               onChange={(e) => setCommentValue(e.target.value)}
-              placeholder="Add a description or notes about this file..."
+              placeholder={t('fileCommentPlaceholder')}
               rows={3}
             />
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowCommentModal(false)}>
-              Cancel
+              {t('cancel')}
             </Button>
-            <Button onClick={handleSaveComment}>Save Comment</Button>
+            <Button onClick={handleSaveComment}>{t('saveComment')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

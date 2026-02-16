@@ -9,6 +9,7 @@ import { NextActionsSection } from './NextActionsSection';
 import { BrainInsightsPanel } from './BrainInsightsPanel';
 import { TeamLoadSnapshot } from './TeamLoadSnapshot';
 import { ProjectCompleteModal } from './ProjectCompleteModal';
+import { useTranslation } from '@/hooks/useTranslation';
 
 interface OverviewTabProps {
   project: Project;
@@ -17,10 +18,12 @@ interface OverviewTabProps {
 }
 
 export function OverviewTab({ project, onCompleteProject, onNavigateToTab }: OverviewTabProps) {
+  const { t, language } = useTranslation();
   const [showCompleteModal, setShowCompleteModal] = useState(false);
 
+  const localeMap: Record<string, string> = { en: 'en-US', ko: 'ko-KR' };
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
+    return new Date(dateString).toLocaleDateString(localeMap[language] || 'en-US', {
       month: 'short',
       day: 'numeric',
       year: 'numeric',
@@ -57,14 +60,14 @@ export function OverviewTab({ project, onCompleteProject, onNavigateToTab }: Ove
       <Card className="p-6 shadow-card">
         <div className="flex items-start justify-between mb-6">
           <div>
-            <h3 className="text-lg font-semibold text-foreground">Project Information</h3>
-            <p className="text-sm text-muted-foreground mt-1">Overview and key details</p>
+            <h3 className="text-lg font-semibold text-foreground">{t('projectInformation')}</h3>
+            <p className="text-sm text-muted-foreground mt-1">{t('overviewAndKeyDetails')}</p>
           </div>
           <div className="flex items-center gap-2">
             {project.isLocked && (
               <Badge variant="secondary" className="gap-1">
                 <Lock className="w-3 h-3" />
-                Locked
+                {t('locked')}
               </Badge>
             )}
             {project.feedbackStatus && (
@@ -77,7 +80,7 @@ export function OverviewTab({ project, onCompleteProject, onNavigateToTab }: Ove
                 }`}
               >
                 <Mail className="w-3 h-3" />
-                Feedback: {project.feedbackStatus}
+                {t('feedback')}: {project.feedbackStatus}
               </Badge>
             )}
             <Badge 
@@ -93,14 +96,14 @@ export function OverviewTab({ project, onCompleteProject, onNavigateToTab }: Ove
           <div className="flex items-start gap-3 p-4 rounded-lg bg-muted/50">
             <Building2 className="w-5 h-5 text-primary mt-0.5" />
             <div>
-              <p className="text-xs text-muted-foreground">Client</p>
+              <p className="text-xs text-muted-foreground">{t('client')}</p>
               <p className="text-sm font-medium text-foreground">{project.client}</p>
             </div>
           </div>
           <div className="flex items-start gap-3 p-4 rounded-lg bg-muted/50">
             <Calendar className="w-5 h-5 text-primary mt-0.5" />
             <div>
-              <p className="text-xs text-muted-foreground">Duration</p>
+              <p className="text-xs text-muted-foreground">{t('duration')}</p>
               <p className="text-sm font-medium text-foreground">
                 {formatDate(project.startDate)} - {formatDate(project.endDate)}
               </p>
@@ -109,9 +112,9 @@ export function OverviewTab({ project, onCompleteProject, onNavigateToTab }: Ove
           <div className="flex items-start gap-3 p-4 rounded-lg bg-muted/50">
             <Clock className="w-5 h-5 text-primary mt-0.5" />
             <div>
-              <p className="text-xs text-muted-foreground">Remaining</p>
+              <p className="text-xs text-muted-foreground">{t('remaining')}</p>
               <p className="text-sm font-medium text-foreground">
-                {remainingDays > 0 ? `${remainingDays} days left` : 'Overdue'}
+                {remainingDays > 0 ? `${remainingDays} ${t('daysLeft')}` : t('overdueLabel')}
               </p>
             </div>
           </div>
@@ -119,7 +122,7 @@ export function OverviewTab({ project, onCompleteProject, onNavigateToTab }: Ove
 
         {project.description && (
           <div className="mt-6 pt-6 border-t border-border">
-            <p className="text-sm text-muted-foreground">Description</p>
+            <p className="text-sm text-muted-foreground">{t('description')}</p>
             <p className="text-sm text-foreground mt-2">{project.description}</p>
           </div>
         )}
@@ -139,14 +142,14 @@ export function OverviewTab({ project, onCompleteProject, onNavigateToTab }: Ove
         <Card className="p-6 shadow-card">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="font-semibold text-foreground">Ready to Complete?</h3>
+              <h3 className="font-semibold text-foreground">{t('readyToComplete')}</h3>
               <p className="text-sm text-muted-foreground mt-1">
-                Mark this project as complete and request feedback
+                {t('markProjectComplete')}
               </p>
             </div>
             <Button onClick={handleCompleteClick} className="gap-2">
               <CheckCircle2 className="w-4 h-4" />
-              Project Complete
+              {t('projectComplete')}
             </Button>
           </div>
         </Card>

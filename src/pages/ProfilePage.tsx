@@ -26,11 +26,11 @@ export default function ProfilePage() {
     if (!file || !currentUser) return;
 
     if (!file.type.startsWith('image/')) {
-      toast.error('Please select an image file');
+      toast.error(t('pleaseSelectImage'));
       return;
     }
     if (file.size > 5 * 1024 * 1024) {
-      toast.error('Image must be less than 5MB');
+      toast.error(t('imageSizeLimit'));
       return;
     }
 
@@ -54,20 +54,20 @@ export default function ProfilePage() {
         const avatarUrl = `${publicUrl}?t=${Date.now()}`;
         await authService.updateUserProfile(currentUser.id, { avatar: avatarUrl });
         setCurrentUser({ ...currentUser, avatar: avatarUrl });
-        toast.success('Profile photo updated');
+        toast.success(t('profilePhotoUpdated'));
       } else {
         // Mock mode: use object URL
         const objectUrl = URL.createObjectURL(file);
         setCurrentUser({ ...currentUser, avatar: objectUrl });
-        toast.success('Profile photo updated (mock mode)');
+        toast.success(t('profilePhotoUpdatedMock'));
       }
     } catch (error) {
       console.error('Avatar upload failed:', error);
       const errMsg = error instanceof Error ? error.message : '';
       if (errMsg.includes('row-level security')) {
-        toast.error('Upload permission denied. Please sign out and sign back in.');
+        toast.error(t('uploadPermissionDenied'));
       } else {
-        toast.error('Failed to upload photo');
+        toast.error(t('failedToUploadPhoto'));
       }
     } finally {
       setIsUploading(false);
@@ -80,7 +80,7 @@ export default function ProfilePage() {
     return (
       <div className="page-container animate-fade-in">
         <div className="flex items-center justify-center min-h-[400px]">
-          <p className="text-muted-foreground">Loading...</p>
+          <p className="text-muted-foreground">{t('brainLoading')}</p>
         </div>
       </div>
     );
@@ -172,7 +172,7 @@ export default function ProfilePage() {
             </TabsTrigger>
             <TabsTrigger value="settings" className="gap-2">
               <Settings className="w-4 h-4" />
-              Settings
+              {t('settings')}
             </TabsTrigger>
           </TabsList>
 

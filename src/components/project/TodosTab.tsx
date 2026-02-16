@@ -108,7 +108,7 @@ export function TodosTab({ projectId }: TodosTabProps) {
         return todo;
       })
     );
-    toast.success('To-do updated');
+    toast.success(t('todoUpdated'));
   };
 
   const handleAddAssignee = (user: User) => {
@@ -125,7 +125,7 @@ export function TodosTab({ projectId }: TodosTabProps) {
     e.preventDefault();
     
     if (!newTitle.trim()) {
-      toast.error('Please enter a title');
+      toast.error(t('pleaseEnterTitle'));
       return;
     }
 
@@ -169,9 +169,9 @@ export function TodosTab({ projectId }: TodosTabProps) {
     }
 
     const assigneeNames = newAssignees.map(u => u.name).join(', ');
-    toast.success('To-do created', {
-      description: newAssignees.length > 0 
-        ? `Assigned to: ${assigneeNames}` 
+    toast.success(t('todoCreated'), {
+      description: newAssignees.length > 0
+        ? `${t('assignedTo')} ${assigneeNames}`
         : undefined,
     });
 

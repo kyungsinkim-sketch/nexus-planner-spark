@@ -16,9 +16,11 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { NewProjectModal } from '@/components/project';
 import { formatCurrency } from '@/lib/format';
+import { useTranslation } from '@/hooks/useTranslation';
 
 export default function ProjectsPage() {
   const { projects } = useAppStore();
+  const { t } = useTranslation();
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'COMPLETED' | 'ARCHIVED'>('ALL');
   const [showNewProjectModal, setShowNewProjectModal] = useState(false);
@@ -41,14 +43,14 @@ export default function ProjectsPage() {
       {/* Header */}
       <div className="page-header">
         <div>
-          <h1 className="page-title">Projects</h1>
+          <h1 className="page-title">{t('projects')}</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            {activeProjects.length} active · {completedProjects.length} completed · {archivedProjects} archived
+            {activeProjects.length} {t('active')} · {completedProjects.length} {t('completed')} · {archivedProjects} {t('archived')}
           </p>
         </div>
         <Button size="sm" className="gap-2" onClick={() => setShowNewProjectModal(true)}>
           <Plus className="w-4 h-4" />
-          New Project
+          {t('newProject')}
         </Button>
       </div>
 
@@ -59,7 +61,7 @@ export default function ProjectsPage() {
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
-            placeholder="Search projects..."
+            placeholder={t('searchProjects')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-9"
@@ -69,25 +71,25 @@ export default function ProjectsPage() {
           <DropdownMenuTrigger asChild>
             <Button variant="outline" size="default" className="gap-2">
               <Filter className="w-4 h-4" />
-              {statusFilter === 'ALL' ? 'All Status' : statusFilter}
+              {statusFilter === 'ALL' ? t('allStatus') : statusFilter}
               <ChevronDown className="w-3 h-3" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuItem onClick={() => setStatusFilter('ALL')}>
-              All Status
+              {t('allStatus')}
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => setStatusFilter('ACTIVE')}>
               <span className="w-2 h-2 rounded-full bg-emerald-500 mr-2"></span>
-              Active
+              {t('active')}
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => setStatusFilter('COMPLETED')}>
               <span className="w-2 h-2 rounded-full bg-amber-500 mr-2"></span>
-              Completed
+              {t('completed')}
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => setStatusFilter('ARCHIVED')}>
               <span className="w-2 h-2 rounded-full bg-red-500 mr-2"></span>
-              Archived
+              {t('archived')}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -102,7 +104,7 @@ export default function ProjectsPage() {
 
       {filteredProjects.length === 0 && (
         <div className="text-center py-12">
-          <p className="text-muted-foreground">No projects found</p>
+          <p className="text-muted-foreground">{t('noProjectsFound')}</p>
         </div>
       )}
     </div>
@@ -110,6 +112,7 @@ export default function ProjectsPage() {
 }
 
 function ProjectCard({ project }: { project: Project }) {
+  const { t } = useTranslation();
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
       month: 'short',
@@ -157,9 +160,9 @@ function ProjectCard({ project }: { project: Project }) {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem>Edit Project</DropdownMenuItem>
-                <DropdownMenuItem>Archive</DropdownMenuItem>
-                <DropdownMenuItem className="text-destructive">Delete</DropdownMenuItem>
+                <DropdownMenuItem>{t('editProject')}</DropdownMenuItem>
+                <DropdownMenuItem>{t('archiveProject')}</DropdownMenuItem>
+                <DropdownMenuItem className="text-destructive">{t('delete')}</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -173,7 +176,7 @@ function ProjectCard({ project }: { project: Project }) {
           {/* Budget */}
           {project.budget && project.budget > 0 && (
             <div className="mb-3">
-              <p className="text-xs text-muted-foreground">Budget</p>
+              <p className="text-xs text-muted-foreground">{t('budget')}</p>
               <p className="text-sm font-medium text-foreground">
                 {formatCurrency(project.budget, project.currency || 'KRW')}
               </p>
@@ -183,7 +186,7 @@ function ProjectCard({ project }: { project: Project }) {
           {/* Progress */}
           <div className="mb-4">
             <div className="flex items-center justify-between text-xs mb-1.5">
-              <span className="text-muted-foreground">Progress</span>
+              <span className="text-muted-foreground">{t('progress')}</span>
               <span className="font-medium text-foreground">{project.progress || 0}%</span>
             </div>
             <Progress value={project.progress || 0} className="h-1.5" />
@@ -199,7 +202,7 @@ function ProjectCard({ project }: { project: Project }) {
             </div>
             <div className="flex items-center gap-2">
               {project.status === 'ACTIVE' && daysRemaining > 0 && (
-                <span className="text-xs text-muted-foreground">{daysRemaining}d left</span>
+                <span className="text-xs text-muted-foreground">{daysRemaining}{t('daysLeftShort')}</span>
               )}
               <Badge 
                 variant="secondary"

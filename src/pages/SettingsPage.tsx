@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAppStore } from '@/stores/appStore';
+import { useTranslation } from '@/hooks/useTranslation';
 
 // Mock initial settings
 const initialSettings: GoogleCalendarSettings = {
@@ -28,6 +29,7 @@ const initialSettings: GoogleCalendarSettings = {
 
 export function SettingsPage() {
   const { currentUser } = useAppStore();
+  const { t } = useTranslation();
   const [settings, setSettings] = useState<GoogleCalendarSettings>(initialSettings);
   const [isSyncing, setIsSyncing] = useState(false);
 
@@ -36,32 +38,32 @@ export function SettingsPage() {
     icon: typeof Check; 
     className: string;
   }> = {
-    DISCONNECTED: { 
-      label: 'Disconnected', 
-      icon: X, 
-      className: 'bg-muted text-muted-foreground' 
+    DISCONNECTED: {
+      label: t('disconnected'),
+      icon: X,
+      className: 'bg-muted text-muted-foreground'
     },
-    CONNECTED: { 
-      label: 'Connected', 
-      icon: Check, 
-      className: 'bg-emerald-500/10 text-emerald-600 border-emerald-500/30' 
+    CONNECTED: {
+      label: t('connected'),
+      icon: Check,
+      className: 'bg-emerald-500/10 text-emerald-600 border-emerald-500/30'
     },
-    SYNCING: { 
-      label: 'Syncing...', 
-      icon: RefreshCw, 
-      className: 'bg-blue-500/10 text-blue-600 border-blue-500/30' 
+    SYNCING: {
+      label: t('syncing'),
+      icon: RefreshCw,
+      className: 'bg-blue-500/10 text-blue-600 border-blue-500/30'
     },
-    ERROR: { 
-      label: 'Sync Error', 
-      icon: AlertCircle, 
-      className: 'bg-destructive/10 text-destructive border-destructive/30' 
+    ERROR: {
+      label: t('syncError'),
+      icon: AlertCircle,
+      className: 'bg-destructive/10 text-destructive border-destructive/30'
     },
   };
 
   const handleConnect = () => {
     // Mock OAuth flow
-    toast.info('Opening Google Sign-in...', {
-      description: 'Please authorize access to your calendar.',
+    toast.info(t('openingGoogleSignIn'), {
+      description: t('pleaseAuthorize'),
     });
 
     // Simulate connection — use current user's email as default
@@ -73,8 +75,8 @@ export function SettingsPage() {
         connectedEmail: currentUser?.email || `${currentUser?.name || 'user'}@paulus.pro`,
         autoSync: true,
       });
-      toast.success('Google Calendar Connected', {
-        description: 'Your calendar is now synced with Paulus.ai',
+      toast.success(t('googleCalendarConnected'), {
+        description: t('calendarSyncedWithPaulus'),
       });
     }, 1500);
   };
@@ -85,8 +87,8 @@ export function SettingsPage() {
       syncStatus: 'DISCONNECTED',
       autoSync: true,
     });
-    toast.success('Disconnected', {
-      description: 'Google Calendar has been disconnected.',
+    toast.success(t('googleCalendarDisconnected'), {
+      description: t('googleCalendarDisconnectedDesc'),
     });
   };
 
@@ -102,15 +104,15 @@ export function SettingsPage() {
         syncStatus: 'CONNECTED',
         lastSyncAt: new Date().toISOString(),
       }));
-      toast.success('Sync Complete', {
-        description: '3 new events imported from Google Calendar.',
+      toast.success(t('syncComplete'), {
+        description: t('syncCompleteDesc'),
       });
     }, 2000);
   };
 
   const handleAutoSyncToggle = (enabled: boolean) => {
     setSettings((prev) => ({ ...prev, autoSync: enabled }));
-    toast.success(enabled ? 'Auto-sync enabled' : 'Auto-sync disabled');
+    toast.success(enabled ? t('autoSyncEnabled') : t('autoSyncDisabled'));
   };
 
   const formatLastSync = (dateString?: string) => {
@@ -132,9 +134,9 @@ export function SettingsPage() {
     <div className="page-container animate-fade-in">
       <div className="page-header">
         <div>
-          <h1 className="page-title">Settings</h1>
+          <h1 className="page-title">{t('settings')}</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Manage your integrations and preferences
+            {t('manageIntegrations')}
           </p>
         </div>
       </div>
@@ -153,7 +155,7 @@ export function SettingsPage() {
                 <div>
                   <h3 className="text-lg font-semibold text-foreground">Google Calendar</h3>
                   <p className="text-sm text-muted-foreground mt-0.5">
-                    Sync events between Paulus.ai and Google Calendar
+                    {t('syncEventsBetween')}
                   </p>
                 </div>
                 <Badge 
@@ -178,7 +180,7 @@ export function SettingsPage() {
                       <p className="text-sm font-medium text-foreground">
                         {settings.connectedEmail}
                       </p>
-                      <p className="text-xs text-muted-foreground">Connected account</p>
+                      <p className="text-xs text-muted-foreground">{t('connectedAccount')}</p>
                     </div>
                   </div>
 
@@ -186,7 +188,7 @@ export function SettingsPage() {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
                       <Clock className="w-4 h-4" />
-                      Last synced: {formatLastSync(settings.lastSyncAt)}
+                      {t('lastSynced')}: {formatLastSync(settings.lastSyncAt)}
                     </div>
                     <Button
                       variant="outline"
@@ -196,7 +198,7 @@ export function SettingsPage() {
                       className="gap-2"
                     >
                       <RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} />
-                      {isSyncing ? 'Syncing...' : 'Sync Now'}
+                      {isSyncing ? t('syncing') : t('syncNow')}
                     </Button>
                   </div>
 
@@ -204,10 +206,10 @@ export function SettingsPage() {
                   <div className="flex items-center justify-between p-3 rounded-lg border border-border">
                     <div>
                       <Label htmlFor="auto-sync" className="text-sm font-medium">
-                        Auto-sync
+                        {t('autoSync')}
                       </Label>
                       <p className="text-xs text-muted-foreground mt-0.5">
-                        Automatically sync events every 15 minutes
+                        {t('autoSyncDescription')}
                       </p>
                     </div>
                     <Switch
@@ -225,7 +227,7 @@ export function SettingsPage() {
                       onClick={handleDisconnect}
                       className="text-destructive hover:text-destructive hover:bg-destructive/10"
                     >
-                      Disconnect Google Calendar
+                      {t('disconnectGoogleCalendar')}
                     </Button>
                   </div>
                 </div>
@@ -233,22 +235,20 @@ export function SettingsPage() {
                 <div className="space-y-4">
                   <div className="p-4 rounded-lg bg-muted/30 border border-border">
                     <p className="text-sm text-muted-foreground">
-                      Connect your Google Calendar to sync events bidirectionally. 
-                      Google events will appear in Paulus.ai, and you can export 
-                      Paulus.ai events to Google Calendar.
+                      {t('syncCalendarDescription')}
                     </p>
                     <ul className="mt-3 space-y-1.5 text-xs text-muted-foreground">
                       <li className="flex items-center gap-2">
                         <Check className="w-3 h-3 text-emerald-500" />
-                        View Google events in Paulus.ai
+                        {t('viewGoogleEvents')}
                       </li>
                       <li className="flex items-center gap-2">
                         <Check className="w-3 h-3 text-emerald-500" />
-                        Automatic two-way sync
+                        {t('autoTwoWaySync')}
                       </li>
                       <li className="flex items-center gap-2">
                         <Check className="w-3 h-3 text-emerald-500" />
-                        Real-time updates
+                        {t('realTimeUpdates')}
                       </li>
                     </ul>
                   </div>
@@ -272,7 +272,7 @@ export function SettingsPage() {
                         d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
                       />
                     </svg>
-                    Connect Google Calendar
+                    {t('connectGoogleCalendar')}
                   </Button>
                 </div>
               )}
@@ -287,9 +287,9 @@ export function SettingsPage() {
               <ExternalLink className="w-6 h-6 text-muted-foreground" />
             </div>
             <div>
-              <h3 className="text-lg font-semibold text-foreground">More Integrations</h3>
+              <h3 className="text-lg font-semibold text-foreground">{t('moreIntegrations')}</h3>
               <p className="text-sm text-muted-foreground mt-0.5">
-                Coming soon: Slack, Notion, and more
+                {t('comingSoonIntegrations')}
               </p>
             </div>
           </div>
