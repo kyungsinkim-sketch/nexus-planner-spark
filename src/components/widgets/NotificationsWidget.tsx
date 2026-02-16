@@ -1,6 +1,8 @@
 /**
- * NotificationsWidget — Shows unread/new notifications only.
- * Already-seen items are tracked in local state and hidden.
+ * NotificationsWidget — Shows unread notifications from OTHER users.
+ * - Excludes current user's own messages
+ * - Click notification → dismiss + activate chat widget with that conversation
+ * - Already-seen items tracked in sessionStorage
  */
 
 import { useMemo, useState, useCallback } from 'react';
@@ -8,8 +10,6 @@ import { useAppStore } from '@/stores/appStore';
 import { Bell, MessageSquare, Calendar, Check } from 'lucide-react';
 import type { WidgetDataContext } from '@/types/widget';
 
-// Persist dismissed IDs in sessionStorage so they survive re-renders
-// but reset on new browser session
 const DISMISSED_KEY = 'rebe-notif-dismissed';
 function getDismissedIds(): Set<string> {
   try {
@@ -22,7 +22,7 @@ function saveDismissedIds(ids: Set<string>) {
 }
 
 function NotificationsWidget({ context }: { context: WidgetDataContext }) {
-  const { messages, events } = useAppStore();
+  const { messages, events, currentUser, getUserById } = useAppStore();
   const [dismissedIds, setDismissedIds] = useState<Set<string>>(getDismissedIds);
 
   const dismiss = useCallback((id: string) => {
@@ -34,40 +34,43 @@ function NotificationsWidget({ context }: { context: WidgetDataContext }) {
     });
   }, []);
 
-  const dismissAll = useCallback(() => {
-    setDismissedIds((prev) => {
-      const next = new Set(prev);
-      // Add all current notification IDs
-      notifications.forEach((n) => next.add(n.id));
-      saveDismissedIds(next);
-      return next;
-    });
-  }, []);
-
-  // Build notification list
+  // Build notification list — exclude own messages
   const notifications = useMemo(() => {
-    const items: { id: string; icon: typeof Bell; text: string; time: string; type: 'message' | 'event' }[] = [];
+    const items: {
+      id: string;
+      icon: typeof Bell;
+      text: string;
+      time: string;
+      type: 'message' | 'event';
+      senderName?: string;
+      projectId?: string;
+    }[] = [];
 
-    // Recent messages (last 10)
+    // Recent messages from OTHER users (last 15, reversed = newest first)
     const recentMsgs = messages
       .filter((m) => {
+        // Exclude own messages
+        if (currentUser && m.userId === currentUser.id) return false;
         if (context.type === 'project' && context.projectId) {
           return m.projectId === context.projectId;
         }
         return true;
       })
-      .slice(-10)
+      .slice(-15)
       .reverse();
 
     recentMsgs.forEach((m) => {
       const id = `msg-${m.id}`;
       if (dismissedIds.has(id)) return;
+      const sender = getUserById(m.userId);
       items.push({
         id,
         icon: MessageSquare,
         text: m.content.slice(0, 80),
         time: m.createdAt ? new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '',
         type: 'message',
+        senderName: sender?.name,
+        projectId: m.projectId,
       });
     });
 
@@ -96,10 +99,9 @@ function NotificationsWidget({ context }: { context: WidgetDataContext }) {
         });
       });
 
-    return items.slice(0, 10);
-  }, [messages, events, context, dismissedIds]);
+    return items.slice(0, 12);
+  }, [messages, events, context, dismissedIds, currentUser, getUserById]);
 
-  // Reassign dismissAll so it captures current notifications
   const handleDismissAll = useCallback(() => {
     setDismissedIds((prev) => {
       const next = new Set(prev);
@@ -108,6 +110,11 @@ function NotificationsWidget({ context }: { context: WidgetDataContext }) {
       return next;
     });
   }, [notifications]);
+
+  const handleClick = useCallback((n: typeof notifications[0]) => {
+    dismiss(n.id);
+    // Future: could scroll chat to the specific message
+  }, [dismiss]);
 
   if (notifications.length === 0) {
     return (
@@ -120,7 +127,6 @@ function NotificationsWidget({ context }: { context: WidgetDataContext }) {
 
   return (
     <div className="flex flex-col h-full">
-      {/* Mark all read button */}
       <div className="flex justify-end px-1 pb-1 shrink-0">
         <button
           onClick={handleDismissAll}
@@ -137,11 +143,16 @@ function NotificationsWidget({ context }: { context: WidgetDataContext }) {
             <div
               key={n.id}
               className="flex items-start gap-2 p-1.5 rounded hover:bg-white/5 transition-colors group cursor-pointer"
-              onClick={() => dismiss(n.id)}
+              onClick={() => handleClick(n)}
               title="Click to dismiss"
             >
               <Icon className="w-3.5 h-3.5 text-muted-foreground shrink-0 mt-0.5" />
-              <p className="text-xs text-foreground truncate flex-1">{n.text}</p>
+              <div className="flex-1 min-w-0">
+                {n.senderName && (
+                  <span className="text-[10px] font-medium text-primary/80">{n.senderName}</span>
+                )}
+                <p className="text-xs text-foreground truncate">{n.text}</p>
+              </div>
               <span className="text-[10px] text-muted-foreground shrink-0">{n.time}</span>
               <Check className="w-3 h-3 text-muted-foreground/0 group-hover:text-muted-foreground/60 transition-colors shrink-0 mt-0.5" />
             </div>

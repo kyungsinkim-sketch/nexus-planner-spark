@@ -6,7 +6,7 @@
  * (drag/resize stop), NOT on automatic compaction during mount.
  */
 
-import { useMemo, useCallback, useState } from 'react';
+import { useMemo, useCallback, useState, useEffect, useRef } from 'react';
 import { ResponsiveGridLayout, useContainerWidth, verticalCompactor } from 'react-grid-layout';
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
@@ -16,7 +16,7 @@ import { useTranslation } from '@/hooks/useTranslation';
 import { WidgetContainer } from './WidgetContainer';
 import { WIDGET_COMPONENTS, WIDGET_DEFINITIONS } from './widgetRegistry';
 import type { WidgetDataContext, WidgetLayoutItem, WidgetType } from '@/types/widget';
-import { GRID_BREAKPOINTS, GRID_COLS, GRID_ROW_HEIGHT, GRID_MARGIN } from '@/types/widget';
+import { GRID_BREAKPOINTS, GRID_COLS, GRID_MARGIN } from '@/types/widget';
 
 interface WidgetGridProps {
   context: WidgetDataContext;
@@ -57,6 +57,29 @@ export function WidgetGrid({ context }: WidgetGridProps) {
     measureBeforeMount: false,
     initialWidth: 1280,
   });
+
+  // Dynamically compute rowHeight so grid fills the container vertically
+  const [containerHeight, setContainerHeight] = useState(0);
+  const heightObserverRef = useRef<ResizeObserver | null>(null);
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const measure = () => setContainerHeight(el.clientHeight);
+    measure();
+    heightObserverRef.current = new ResizeObserver(measure);
+    heightObserverRef.current.observe(el);
+    return () => heightObserverRef.current?.disconnect();
+  }, [containerRef]);
+
+  // Calculate row height: target 10 rows to fill viewport
+  // Formula: (containerHeight - padding*2 - margin*(rows-1)) / rows
+  const TARGET_ROWS = 10;
+  const computedRowHeight = useMemo(() => {
+    if (!containerHeight) return 60;
+    const pad = 16 * 2; // containerPadding top+bottom
+    const gaps = 12 * (TARGET_ROWS - 1); // margin between rows
+    return Math.max(30, Math.floor((containerHeight - pad - gaps) / TARGET_ROWS));
+  }, [containerHeight]);
 
   /**
    * Save layout on user interaction ONLY (drag/resize stop).
@@ -116,8 +139,8 @@ export function WidgetGrid({ context }: WidgetGridProps) {
     [layout, isAdmin],
   );
 
-  // Chat widget uses a special frameless container
-  const isChatWidget = (widgetType: string) => widgetType === 'chat';
+  // Frameless widgets: rendered without WidgetContainer, just glass-widget + minimal drag handle
+  const isFramelessWidget = (widgetType: string) => widgetType === 'chat' || widgetType === 'calendar';
 
   return (
     <div ref={containerRef} className="h-full w-full">
@@ -128,7 +151,7 @@ export function WidgetGrid({ context }: WidgetGridProps) {
           layouts={gridLayouts}
           breakpoints={GRID_BREAKPOINTS}
           cols={GRID_COLS}
-          rowHeight={GRID_ROW_HEIGHT}
+          rowHeight={computedRowHeight}
           margin={GRID_MARGIN}
           containerPadding={[16, 16]}
           compactor={verticalCompactor}
@@ -172,10 +195,9 @@ export function WidgetGrid({ context }: WidgetGridProps) {
                 key={item.i}
                 className={isActive ? 'widget-item-active' : 'widget-item-idle'}
               >
-                {isChatWidget(widgetType) ? (
-                  // Chat: frameless — no WidgetContainer, direct embed
+                {isFramelessWidget(widgetType) ? (
+                  // Frameless: no WidgetContainer, direct embed with minimal drag handle
                   <div className="glass-widget flex flex-col h-full" data-widget-id={item.i}>
-                    {/* Minimal drag handle + close button overlay */}
                     <div className="widget-drag-handle chat-widget-handle">
                       <span className="text-xs font-medium text-foreground/70 truncate flex items-center gap-1.5">
                         <def.icon className="w-3.5 h-3.5" />

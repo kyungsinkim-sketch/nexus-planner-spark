@@ -1,17 +1,40 @@
 /**
- * CalendarWidget — Shows calendar events.
- * Dashboard: all events. Project: project-specific events.
+ * CalendarWidget — Full-featured calendar with event interactions.
+ * Frameless: rendered directly inside widget glass (no WidgetContainer).
+ *
+ * Features:
+ * - Event click → EventSidePanel popup
+ * - Date select → NewEventModal
+ * - Drag & drop to reschedule events
+ * - Event resize to adjust duration
  */
 
-import { useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
+import timeGridPlugin from '@fullcalendar/timegrid';
+import interactionPlugin from '@fullcalendar/interaction';
 import listPlugin from '@fullcalendar/list';
 import { useAppStore } from '@/stores/appStore';
+import { EventSidePanel } from '@/components/calendar/EventSidePanel';
+import { NewEventModal } from '@/components/project/NewEventModal';
+import { toast } from 'sonner';
+import type { CalendarEvent } from '@/types/core';
 import type { WidgetDataContext } from '@/types/widget';
 
 function CalendarWidget({ context }: { context: WidgetDataContext }) {
-  const { events, getProjectById } = useAppStore();
+  const { events, getProjectById, updateEvent, deleteEvent } = useAppStore();
+
+  // Event detail panel
+  const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
+  const [isPanelOpen, setIsPanelOpen] = useState(false);
+
+  // New/edit event modal
+  const [showEventModal, setShowEventModal] = useState(false);
+  const [editingEvent, setEditingEvent] = useState<CalendarEvent | undefined>(undefined);
+  const [newEventDate, setNewEventDate] = useState<string | undefined>();
+  const [newEventStartTime, setNewEventStartTime] = useState<string | undefined>();
+  const [newEventEndTime, setNewEventEndTime] = useState<string | undefined>();
 
   const filteredEvents = useMemo(() => {
     if (context.type === 'project' && context.projectId) {
@@ -36,22 +59,125 @@ function CalendarWidget({ context }: { context: WidgetDataContext }) {
     [filteredEvents, getProjectById],
   );
 
+  // Event click → open side panel
+  const handleEventClick = (info: { event: { id: string } }) => {
+    const event = events.find((e) => e.id === info.event.id);
+    if (event) {
+      setSelectedEvent(event);
+      setIsPanelOpen(true);
+    }
+  };
+
+  // Date range select → open new event modal
+  const handleSelect = (info: { start: Date; end: Date }) => {
+    setEditingEvent(undefined);
+    setNewEventDate(info.start.toISOString().split('T')[0]);
+    setNewEventStartTime(info.start.toTimeString().slice(0, 5));
+    setNewEventEndTime(info.end.toTimeString().slice(0, 5));
+    setShowEventModal(true);
+  };
+
+  // Drag & drop → reschedule
+  const handleEventDrop = (info: { event: { id: string; title: string; start: Date | null; end: Date | null }; view: { type: string } }) => {
+    const originalEvent = events.find((e) => e.id === info.event.id);
+    const newStart = info.event.start;
+    if (!newStart || !originalEvent) return;
+
+    if (info.view.type === 'dayGridMonth') {
+      const origStart = new Date(originalEvent.startAt);
+      const origEnd = new Date(originalEvent.endAt);
+      const duration = origEnd.getTime() - origStart.getTime();
+      const updatedStart = new Date(newStart);
+      updatedStart.setHours(origStart.getHours(), origStart.getMinutes(), origStart.getSeconds());
+      const updatedEnd = new Date(updatedStart.getTime() + duration);
+
+      updateEvent(info.event.id, {
+        startAt: updatedStart.toISOString(),
+        endAt: updatedEnd.toISOString(),
+      });
+      toast.success(`"${info.event.title}" → ${updatedStart.toLocaleDateString()}`);
+    } else {
+      updateEvent(info.event.id, {
+        startAt: newStart.toISOString(),
+        endAt: (info.event.end || newStart).toISOString(),
+      });
+      toast.success(`"${info.event.title}" rescheduled`);
+    }
+  };
+
+  // Resize → change duration
+  const handleEventResize = (info: { event: { id: string; title: string; start: Date | null; end: Date | null } }) => {
+    const newStart = info.event.start?.toISOString();
+    const newEnd = info.event.end?.toISOString();
+    if (newStart) {
+      updateEvent(info.event.id, { startAt: newStart, endAt: newEnd || newStart });
+      toast.success(`"${info.event.title}" duration updated`);
+    }
+  };
+
+  // Edit from side panel
+  const handleEditEvent = (event: CalendarEvent) => {
+    setIsPanelOpen(false);
+    setEditingEvent(event);
+    setNewEventDate(event.startAt.split('T')[0]);
+    setNewEventStartTime(new Date(event.startAt).toTimeString().slice(0, 5));
+    setNewEventEndTime(new Date(event.endAt).toTimeString().slice(0, 5));
+    setShowEventModal(true);
+  };
+
+  // Delete from side panel
+  const handleDeleteEvent = (event: CalendarEvent) => {
+    deleteEvent(event.id);
+    setIsPanelOpen(false);
+    setSelectedEvent(null);
+    toast.success(`"${event.title}" deleted`);
+  };
+
   return (
-    <div className="h-full overflow-auto text-xs">
-      <FullCalendar
-        plugins={[dayGridPlugin, listPlugin]}
-        initialView="dayGridMonth"
-        headerToolbar={{
-          left: 'prev,next',
-          center: 'title',
-          right: 'dayGridMonth,listWeek',
-        }}
-        events={calendarEvents}
-        height="100%"
-        dayMaxEvents={2}
-        titleFormat={{ year: 'numeric', month: 'short' }}
+    <>
+      <div className="h-full overflow-auto text-xs calendar-widget-content">
+        <FullCalendar
+          plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin, listPlugin]}
+          initialView="dayGridMonth"
+          headerToolbar={{
+            left: 'prev,next',
+            center: 'title',
+            right: 'dayGridMonth,listWeek',
+          }}
+          events={calendarEvents}
+          height="100%"
+          dayMaxEvents={2}
+          titleFormat={{ year: 'numeric', month: 'short' }}
+          editable={true}
+          selectable={true}
+          selectMirror={true}
+          eventClick={handleEventClick}
+          select={handleSelect}
+          eventDrop={handleEventDrop}
+          eventResize={handleEventResize}
+        />
+      </div>
+
+      {/* Event Detail Panel */}
+      <EventSidePanel
+        event={selectedEvent}
+        isOpen={isPanelOpen}
+        onClose={() => { setIsPanelOpen(false); setSelectedEvent(null); }}
+        onEdit={handleEditEvent}
+        onDelete={handleDeleteEvent}
       />
-    </div>
+
+      {/* New/Edit Event Modal */}
+      <NewEventModal
+        open={showEventModal}
+        onClose={() => { setShowEventModal(false); setEditingEvent(undefined); }}
+        projectId={context.projectId || ''}
+        defaultDate={newEventDate}
+        defaultStartTime={newEventStartTime}
+        defaultEndTime={newEventEndTime}
+        editEvent={editingEvent}
+      />
+    </>
   );
 }
 
