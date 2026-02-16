@@ -1,11 +1,9 @@
 /**
  * Brain AI Service — Client-side API for @ai mention processing
  *
- * Two processing modes:
- * 1. **Local Regex** (processMessageLocally) — Korean pattern matching for CRUD.
- *    No LLM call. Uses koreanParser.ts + brain-create-action Edge Function.
- * 2. **LLM** (processMessageWithLLM) — Reserved for future passive intelligence.
- *    Calls brain-process Edge Function → Claude Haiku.
+ * Processing modes:
+ * 1. **LLM** (processMessageWithLLM) — Primary. Claude Haiku via brain-process Edge Function.
+ * 2. **Local Regex** (processMessageLocally) — Legacy fallback. Korean pattern matching.
  *
  * Execution:
  * - brain-execute: Executes a confirmed action (create todo/event/location)

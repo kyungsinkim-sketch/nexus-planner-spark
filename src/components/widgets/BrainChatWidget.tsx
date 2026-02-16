@@ -19,10 +19,11 @@ function BrainChatWidget({ context }: { context: WidgetDataContext }) {
   const [input, setInput] = useState('');
   const [processing, setProcessing] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
-  const { currentUser, users, loadEvents, loadTodos } = useAppStore();
+  const { currentUser, users, projects, loadEvents, loadTodos } = useAppStore();
   const { t } = useTranslation();
 
   const projectId = context.type === 'project' ? context.projectId : undefined;
+  const project = projectId ? projects.find(p => p.id === projectId) : undefined;
 
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,25 +34,64 @@ function BrainChatWidget({ context }: { context: WidgetDataContext }) {
     setProcessing(true);
 
     try {
-      const chatMembers = users.map((u) => ({ id: u.id, name: u.name }));
+      // Build chat members from project team or all users
+      const memberIds = project?.teamMemberIds || [];
+      const chatMembers = memberIds.length > 0
+        ? memberIds
+            .map(id => users.find(u => u.id === id))
+            .filter(Boolean)
+            .map(u => ({ id: u!.id, name: u!.name }))
+        : users.map(u => ({ id: u.id, name: u.name }));
 
-      await brainService.processMessageWithLLM({
+      // Ensure current user is included
+      if (!chatMembers.find(m => m.id === currentUser.id)) {
+        chatMembers.push({ id: currentUser.id, name: currentUser.name });
+      }
+
+      // Send to LLM for intelligent parsing
+      const result = await brainService.processMessageWithLLM({
         messageContent: message,
-        roomId: '',
         projectId: projectId || '',
         userId: currentUser.id,
         chatMembers,
-        projectTitle: undefined,
+        projectTitle: project?.title,
       });
 
-      toast.success('Brain AI processed. Check notifications to confirm.');
+      // Auto-execute all pending actions from widget (skip manual confirm)
+      const actions = result.actions || [];
+      let createdEvent = false;
+      let createdTodo = false;
 
-      // Brain actions are in 'pending' state — user confirms via notification/chat.
-      // Refresh data after a delay in case realtime is slow.
-      setTimeout(async () => {
-        await loadEvents();
-        await loadTodos();
-      }, 1000);
+      for (const action of actions) {
+        const actionId = (action as { id?: string }).id;
+        if (!actionId) continue;
+
+        try {
+          await brainService.updateActionStatus(actionId, 'confirmed', currentUser.id);
+          const execResult = await brainService.executeAction(actionId, currentUser.id);
+          const dataType = (execResult.executedData as { type?: string })?.type;
+          if (dataType === 'event') createdEvent = true;
+          if (dataType === 'todo') createdTodo = true;
+        } catch (err) {
+          console.error('[BrainWidget] Failed to auto-execute action:', actionId, err);
+        }
+      }
+
+      // Show result
+      if (createdEvent || createdTodo) {
+        const parts: string[] = [];
+        if (createdEvent) parts.push('Event');
+        if (createdTodo) parts.push('Todo');
+        toast.success(`${parts.join(' & ')} created!`);
+      } else if (result.llmResponse?.replyMessage) {
+        toast.info(result.llmResponse.replyMessage.slice(0, 100));
+      } else {
+        toast.success('Brain AI processed.');
+      }
+
+      // Refresh data immediately
+      if (createdEvent) await loadEvents();
+      if (createdTodo) await loadTodos();
     } catch (error) {
       console.error('Brain AI processing failed:', error);
       toast.error('Brain AI processing failed');
@@ -59,7 +99,7 @@ function BrainChatWidget({ context }: { context: WidgetDataContext }) {
       setProcessing(false);
       inputRef.current?.focus();
     }
-  }, [input, processing, currentUser, users, projectId, loadEvents, loadTodos]);
+  }, [input, processing, currentUser, users, projects, project, projectId, loadEvents, loadTodos]);
 
   return (
     <div className="flex items-center h-full w-full px-3 gap-2.5
