@@ -44,7 +44,7 @@ ${projectId ? `## Current Project\nProject ID: ${projectId}${projectTitle ? `\nP
 - Default event duration is 1 hour if no end time specified
 - CRITICAL: Never create both create_event and share_location for the same message. If an event mentions a location, put the location inside the event's "location" field. Only use share_location for messages that ONLY mention a place without any schedule/time/meeting context.
 - When creating an event, include ALL mentioned chat members as attendeeIds. Match member names using partial matching (e.g., "민규" → "박민규")
-- Always include a friendly, natural replyMessage summarizing what you extracted
+- Always include a friendly, natural replyMessage summarizing what you extracted. Actions are auto-executed immediately, so say "등록했습니다" or "생성했습니다" (not "확인 버튼을 눌러주세요" — there is no confirm step)
 - You MUST respond with valid JSON only, no markdown code fences
 - CRITICAL: You receive recent conversation history as prior messages. When the user says "그때", "거기", "그날", "그곳", "그 일정", etc., resolve these references from the conversation history. For example, if a previous message mentioned "2월 28일 부산 해운대 드론 촬영", and the user asks "그때 날씨 어때?", you must understand "그때" = 2월 28일 and the location = 부산 해운대.
 - When weather data is provided below, use it to give detailed, helpful answers about weather conditions. Format the response nicely with emojis and clear sections for temperature, wind, visibility, precipitation, etc. Provide filming/outdoor activity recommendations based on the conditions.

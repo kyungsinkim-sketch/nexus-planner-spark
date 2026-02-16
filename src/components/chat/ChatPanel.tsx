@@ -335,7 +335,7 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
         }
 
         // Always use Claude LLM for intelligent parsing (replaces regex parser)
-        await brainService.processMessageWithLLM({
+        const brainResult = await brainService.processMessageWithLLM({
           messageContent: cleanContent,
           roomId: selectedChat.roomId,
           projectId: selectedChat.id,
@@ -344,7 +344,30 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
           projectTitle: project?.title,
         });
 
-        // Bot message will arrive via realtime subscription (only if action found)
+        // Auto-execute all pending actions (same as BrainChatWidget)
+        // This ensures todos/events are created immediately without manual "Confirm"
+        const brainActions = brainResult.actions || [];
+        for (const action of brainActions) {
+          const actionId = (action as { id?: string }).id;
+          if (!actionId) continue;
+          try {
+            await brainService.updateActionStatus(actionId, 'confirmed', currentUser.id);
+            const execResult = await brainService.executeAction(actionId, currentUser.id);
+            const dataType = (execResult.executedData as { type?: string })?.type;
+            if (dataType === 'event') {
+              await loadEvents();
+              console.log('[Brain] Auto-executed event from chat, refreshed');
+            }
+            if (dataType === 'todo') {
+              await loadTodos();
+              console.log('[Brain] Auto-executed todo from chat, refreshed');
+            }
+          } catch (execErr) {
+            console.error('[Brain] Auto-execute failed for action:', actionId, execErr);
+          }
+        }
+
+        // Bot message will arrive via realtime subscription
       } catch (error) {
         console.error('Brain AI processing failed:', error);
         // Show error only if user explicitly triggered brain (Cmd+Enter)
