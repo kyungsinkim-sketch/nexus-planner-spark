@@ -201,8 +201,10 @@ export const deleteEvent = async (id: string): Promise<void> => {
 };
 
 // Subscribe to event changes (realtime)
+// Accepts a callback that fires on any INSERT/UPDATE/DELETE.
+// The CalendarPage simply calls loadEvents() to refresh the full list.
 export const subscribeToEvents = (
-    callback: (event: CalendarEvent) => void
+    callback: (event: CalendarEvent | null, eventType: string) => void
 ) => {
     if (!isSupabaseConfigured()) {
         console.warn('Supabase not configured, realtime disabled');
@@ -219,9 +221,10 @@ export const subscribeToEvents = (
                 table: 'calendar_events',
             },
             (payload) => {
-                if (payload.new) {
-                    callback(transformEvent(payload.new as EventRow));
-                }
+                const transformed = payload.new
+                    ? transformEvent(payload.new as EventRow)
+                    : null;
+                callback(transformed, payload.eventType);
             }
         )
         .subscribe();

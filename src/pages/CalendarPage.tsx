@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
@@ -24,6 +24,7 @@ import { NewEventModal } from '@/components/project/NewEventModal';
 import { toast } from 'sonner';
 import { useTranslation } from '@/hooks/useTranslation';
 import { TranslationKey } from '@/lib/i18n';
+import { subscribeToEvents } from '@/services/eventService';
 
 // Event type icons (pictograms)
 const eventTypeIcons: Record<EventType, React.ComponentType<{ className?: string }>> = {
@@ -72,7 +73,7 @@ function GoogleCalendarIcon({ className }: { className?: string }) {
 }
 
 export default function CalendarPage() {
-  const { events, getProjectById, deleteEvent, updateEvent } = useAppStore();
+  const { events, getProjectById, deleteEvent, updateEvent, loadEvents } = useAppStore();
   const calendarRef = useRef<FullCalendar>(null);
   const { t } = useTranslation();
   const [selectedTypes, setSelectedTypes] = useState<EventType[]>(['TASK', 'DEADLINE', 'MEETING', 'PT', 'DELIVERY', 'TODO', 'DELIVERABLE', 'R_TRAINING']);
@@ -80,6 +81,17 @@ export default function CalendarPage() {
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [isPanelOpen, setIsPanelOpen] = useState(false);
   const [currentView, setCurrentView] = useState<string>('dayGridMonth');
+
+  // Realtime subscription — refresh events when calendar_events table changes
+  useEffect(() => {
+    const unsubscribe = subscribeToEvents(() => {
+      // When any calendar event is inserted/updated/deleted, reload all events
+      loadEvents();
+    });
+    return () => {
+      unsubscribe();
+    };
+  }, [loadEvents]);
 
   // New event modal state
   const [showNewEventModal, setShowNewEventModal] = useState(false);

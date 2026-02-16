@@ -69,6 +69,7 @@ export function ChatPanel() {
     getUserById, addMessage,
     addFileGroup, addFile, getFileGroupsByProject,
     brainIntelligenceEnabled,
+    loadEvents, loadTodos,
   } = useAppStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTab, setSelectedTab] = useState<'projects' | 'direct'>('projects');
@@ -329,6 +330,15 @@ export function ChatPanel() {
             ? 'Event created successfully!'
             : 'Action completed!',
       );
+
+      // Refresh calendar events so new events appear immediately
+      if (result.executedData?.type === 'event') {
+        loadEvents();
+      }
+      // Refresh todos if a todo was created
+      if (result.executedData?.type === 'todo') {
+        loadTodos();
+      }
     } catch (error) {
       console.error('Failed to execute brain action:', error);
       toast.error('Failed to execute action. Please try again.');
