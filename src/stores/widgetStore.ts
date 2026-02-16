@@ -179,7 +179,14 @@ export const useWidgetStore = create<WidgetState>()(
     }),
     {
       name: 're-be-widget-layout',
-      version: 2, // bump to reset layouts with new defaults
+      version: 3, // bump to force reset with corrected layouts
+      migrate: () => ({
+        // On version mismatch, reset everything to defaults
+        openTabs: [DASHBOARD_TAB],
+        activeTabId: 'dashboard',
+        dashboardWidgetLayout: DEFAULT_DASHBOARD_LAYOUT,
+        projectWidgetLayout: DEFAULT_PROJECT_LAYOUT,
+      }),
       partialize: (state) => ({
         openTabs: state.openTabs,
         activeTabId: state.activeTabId,

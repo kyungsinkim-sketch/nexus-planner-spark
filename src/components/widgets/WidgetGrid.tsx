@@ -1,12 +1,18 @@
 /**
- * WidgetGrid — react-grid-layout based draggable/resizable widget grid.
+ * WidgetGrid — react-grid-layout v2 based draggable/resizable widget grid.
  *
  * Renders all widgets for a given context (dashboard or project).
  * Layout changes are debounced and persisted to widgetStore.
+ *
+ * Key v2 changes:
+ * - `width` is required — provided via `useContainerWidth` hook
+ * - `resizeConfig` replaces `resizeHandles` prop
+ * - `dragConfig` replaces `draggableHandle` prop
+ * - `onLayoutChange` signature: (layout, layouts) => void
  */
 
-import { useMemo, useCallback, useRef } from 'react';
-import { ResponsiveGridLayout } from 'react-grid-layout';
+import { useMemo, useCallback, useRef, useState } from 'react';
+import { ResponsiveGridLayout, useContainerWidth, verticalCompactor } from 'react-grid-layout';
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
 import { useWidgetStore } from '@/stores/widgetStore';
@@ -36,6 +42,9 @@ export function WidgetGrid({ context }: WidgetGridProps) {
   const currentUser = useAppStore((s) => s.currentUser);
   const isAdmin = currentUser?.role === 'ADMIN';
 
+  // Track which widget is actively being interacted with
+  const [activeWidgetId, setActiveWidgetId] = useState<string | null>(null);
+
   const {
     dashboardWidgetLayout,
     projectWidgetLayout,
@@ -48,7 +57,13 @@ export function WidgetGrid({ context }: WidgetGridProps) {
   const layout = context.type === 'dashboard' ? dashboardWidgetLayout : projectWidgetLayout;
   const updateLayout = context.type === 'dashboard' ? updateDashboardLayout : updateProjectLayout;
 
-  // Debounce layout changes
+  // Use the v2 useContainerWidth hook for responsive width detection
+  const { width, containerRef, mounted } = useContainerWidth({
+    measureBeforeMount: false,
+    initialWidth: 1280,
+  });
+
+  // Debounce layout changes for auto-save
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const handleLayoutChange = useCallback(
     (newLayout: LayoutItem[]) => {
@@ -107,45 +122,69 @@ export function WidgetGrid({ context }: WidgetGridProps) {
   );
 
   return (
-    <ResponsiveGridLayout
-      className="widget-grid"
-      layouts={gridLayouts}
-      breakpoints={GRID_BREAKPOINTS}
-      cols={GRID_COLS}
-      rowHeight={GRID_ROW_HEIGHT}
-      margin={GRID_MARGIN}
-      containerPadding={[16, 16]}
-      compactType="vertical"
-      draggableHandle=".widget-drag-handle"
-      resizeHandles={['s', 'w', 'e', 'n', 'se', 'sw', 'ne', 'nw']}
-      useCSSTransforms
-      onLayoutChange={(currentLayout: LayoutItem[]) => handleLayoutChange(currentLayout)}
-    >
-      {visibleWidgets.map((item) => {
-        const widgetType = item.i as WidgetType;
-        const def = WIDGET_DEFINITIONS[widgetType];
-        const WidgetComponent = WIDGET_COMPONENTS[widgetType];
+    <div ref={containerRef} className="h-full w-full">
+      {mounted && (
+        <ResponsiveGridLayout
+          className="widget-grid"
+          width={width}
+          layouts={gridLayouts}
+          breakpoints={GRID_BREAKPOINTS}
+          cols={GRID_COLS}
+          rowHeight={GRID_ROW_HEIGHT}
+          margin={GRID_MARGIN}
+          containerPadding={[16, 16]}
+          compactor={verticalCompactor}
+          dragConfig={{
+            enabled: true,
+            handle: '.widget-drag-handle',
+            threshold: 3,
+            bounded: false,
+          }}
+          resizeConfig={{
+            enabled: true,
+            handles: ['s', 'w', 'e', 'n', 'se', 'sw', 'ne', 'nw'],
+          }}
+          onLayoutChange={(currentLayout: LayoutItem[], _allLayouts: Record<string, LayoutItem[]>) => handleLayoutChange(currentLayout)}
+          onDragStart={(_layout, _oldItem, newItem) => {
+            if (newItem) setActiveWidgetId(newItem.i);
+          }}
+          onDragStop={() => setActiveWidgetId(null)}
+          onResizeStart={(_layout, _oldItem, newItem) => {
+            if (newItem) setActiveWidgetId(newItem.i);
+          }}
+          onResizeStop={() => setActiveWidgetId(null)}
+        >
+          {visibleWidgets.map((item) => {
+            const widgetType = item.i as WidgetType;
+            const def = WIDGET_DEFINITIONS[widgetType];
+            const WidgetComponent = WIDGET_COMPONENTS[widgetType];
 
-        if (!def || !WidgetComponent) return null;
+            if (!def || !WidgetComponent) return null;
 
-        // Get translated title, fallback to titleKey
-        const title = t(def.titleKey as Parameters<typeof t>[0]) || def.titleKey;
+            // Get translated title, fallback to titleKey
+            const title = t(def.titleKey as Parameters<typeof t>[0]) || def.titleKey;
+            const isActive = activeWidgetId === item.i;
 
-        return (
-          <div key={item.i}>
-            <WidgetContainer
-              widgetId={item.i}
-              title={title}
-              icon={def.icon}
-              collapsed={item.collapsed}
-              onCollapse={() => toggleWidgetCollapsed(context.type, widgetType)}
-              onRemove={() => removeWidget(context.type, widgetType)}
-            >
-              <WidgetComponent context={context} />
-            </WidgetContainer>
-          </div>
-        );
-      })}
-    </ResponsiveGridLayout>
+            return (
+              <div
+                key={item.i}
+                className={isActive ? 'widget-item-active' : 'widget-item-idle'}
+              >
+                <WidgetContainer
+                  widgetId={item.i}
+                  title={title}
+                  icon={def.icon}
+                  collapsed={item.collapsed}
+                  onCollapse={() => toggleWidgetCollapsed(context.type, widgetType)}
+                  onRemove={() => removeWidget(context.type, widgetType)}
+                >
+                  <WidgetComponent context={context} />
+                </WidgetContainer>
+              </div>
+            );
+          })}
+        </ResponsiveGridLayout>
+      )}
+    </div>
   );
 }
