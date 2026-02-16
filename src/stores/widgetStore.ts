@@ -179,7 +179,7 @@ export const useWidgetStore = create<WidgetState>()(
     }),
     {
       name: 're-be-widget-layout',
-      version: 3, // bump to force reset with corrected layouts
+      version: 4, // bump to force reset — fix layout persistence
       migrate: () => ({
         // On version mismatch, reset everything to defaults
         openTabs: [DASHBOARD_TAB],
