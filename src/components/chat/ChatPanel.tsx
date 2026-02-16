@@ -387,17 +387,21 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
             : 'Action completed!',
       );
 
-      // Refresh calendar events so new events appear immediately
-      // Small delay to ensure DB write has propagated before querying
+      // Refresh data so new events/todos appear immediately
+      // Multiple retries with delays to handle DB propagation lag
       if (result.executedData?.type === 'event') {
-        await loadEvents();
-        // Retry after a short delay in case of DB propagation lag
-        setTimeout(() => loadEvents(), 1000);
+        // Small delay to ensure edge function DB write is committed
+        setTimeout(async () => {
+          await loadEvents();
+          // Second retry for safety
+          setTimeout(() => loadEvents(), 1500);
+        }, 300);
       }
-      // Refresh todos if a todo was created
       if (result.executedData?.type === 'todo') {
-        await loadTodos();
-        setTimeout(() => loadTodos(), 1000);
+        setTimeout(async () => {
+          await loadTodos();
+          setTimeout(() => loadTodos(), 1500);
+        }, 300);
       }
     } catch (error) {
       console.error('Failed to execute brain action:', error);
@@ -984,7 +988,7 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
                             ) : (
                               <div className="w-7" />
                             )}
-                            <div className={`flex-1 min-w-0 max-w-[80%] ${isCurrentUser ? 'text-right' : ''}`}>
+                            <div className={`flex-1 min-w-0 max-w-[80%] overflow-hidden ${isCurrentUser ? 'text-right' : ''}`}>
                               {showAvatar && (
                                 <div className={`flex items-center gap-1.5 mb-0.5 ${isCurrentUser ? 'flex-row-reverse' : ''}`}>
                                   <span className="text-xs font-medium text-foreground">

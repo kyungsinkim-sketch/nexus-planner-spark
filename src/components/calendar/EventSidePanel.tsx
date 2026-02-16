@@ -1,6 +1,6 @@
 import { CalendarEvent, EventType } from '@/types/core';
 import { useAppStore } from '@/stores/appStore';
-import { X, Calendar, User, FolderKanban, Edit, Trash2, Users } from 'lucide-react';
+import { X, Calendar, User, FolderKanban, Edit, Trash2, Users, MapPin, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
@@ -147,6 +147,27 @@ export function EventSidePanel({ event, isOpen, onClose, onEdit, onDelete }: Eve
                 </p>
               </div>
             </div>
+
+            {/* Location */}
+            {event.location && (
+              <div className="flex items-start gap-3">
+                <MapPin className="w-5 h-5 text-muted-foreground mt-0.5" />
+                <div>
+                  <p className="text-sm font-medium text-foreground">{event.location}</p>
+                  {event.locationUrl && (
+                    <a
+                      href={event.locationUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sm text-primary hover:underline flex items-center gap-1 mt-0.5"
+                    >
+                      {t('openMap')}
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* Project */}
             {project && (

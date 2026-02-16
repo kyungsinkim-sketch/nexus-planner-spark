@@ -22,6 +22,8 @@ const transformEvent = (row: EventRow): CalendarEvent => {
         todoId: row.todo_id || undefined,
         deliverableId: row.deliverable_id || undefined,
         attendeeIds: row.attendee_ids || undefined,
+        location: row.location || undefined,
+        locationUrl: row.location_url || undefined,
     };
 };
 
@@ -40,6 +42,8 @@ const transformToInsert = (event: Partial<CalendarEvent>): EventInsert => {
         todo_id: event.todoId || null,
         deliverable_id: event.deliverableId || null,
         attendee_ids: event.attendeeIds || null,
+        location: event.location || null,
+        location_url: event.locationUrl || null,
     };
 };
 
@@ -166,6 +170,8 @@ export const updateEvent = async (
     if (updates.todoId !== undefined) updateData.todo_id = updates.todoId;
     if (updates.deliverableId !== undefined) updateData.deliverable_id = updates.deliverableId;
     if (updates.attendeeIds !== undefined) updateData.attendee_ids = updates.attendeeIds;
+    if (updates.location !== undefined) updateData.location = updates.location;
+    if (updates.locationUrl !== undefined) updateData.location_url = updates.locationUrl;
 
     const { data, error } = await supabase
         .from('calendar_events')

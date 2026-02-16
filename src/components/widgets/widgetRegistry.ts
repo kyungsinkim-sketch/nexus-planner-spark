@@ -155,9 +155,9 @@ export const WIDGET_DEFINITIONS: Record<WidgetType, WidgetDefinition> = {
     type: 'brainChat',
     titleKey: 'brainAI',
     icon: Brain,
-    defaultSize: { w: 6, h: 2 },
-    minSize: { w: 3, h: 2 },
-    contexts: ['dashboard'],
+    defaultSize: { w: 6, h: 1 },
+    minSize: { w: 3, h: 1 },
+    contexts: ['dashboard', 'project'],
   },
   brainInsights: {
     type: 'brainInsights',

@@ -142,6 +142,8 @@ export interface CalendarEvent {
   todoId?: string; // Link to PersonalTodo
   deliverableId?: string; // Link to Deliverable
   attendeeIds?: string[]; // Invited user IDs
+  location?: string; // Location text (e.g., "강남역 9번출구")
+  locationUrl?: string; // Map URL for the location
 }
 
 // Chat message types for rich content sharing

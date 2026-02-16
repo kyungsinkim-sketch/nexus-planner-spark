@@ -178,6 +178,8 @@ export interface Database {
                     todo_id: string | null
                     deliverable_id: string | null
                     attendee_ids: string[] | null
+                    location: string | null
+                    location_url: string | null
                     created_at: string
                     updated_at: string
                 }
@@ -195,6 +197,8 @@ export interface Database {
                     todo_id?: string | null
                     deliverable_id?: string | null
                     attendee_ids?: string[] | null
+                    location?: string | null
+                    location_url?: string | null
                     created_at?: string
                     updated_at?: string
                 }
@@ -212,6 +216,8 @@ export interface Database {
                     todo_id?: string | null
                     deliverable_id?: string | null
                     attendee_ids?: string[] | null
+                    location?: string | null
+                    location_url?: string | null
                     created_at?: string
                     updated_at?: string
                 }

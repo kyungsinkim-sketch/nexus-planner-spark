@@ -626,6 +626,7 @@ export const translations = {
     endDate: '종료 날짜',
     locationOptional: '장소 (선택)',
     locationExample: '예: 성수동 스튜디오',
+    openMap: '지도에서 보기',
     scheduleDescriptionPlaceholder: '일정에 대한 설명을 입력하세요',
     inviteParticipants: '참여자 초대',
     deselectAll: '전체 해제',
@@ -984,6 +985,7 @@ export const translations = {
 
     // Brain AI Settings
     brainAI: 'Brain AI',
+    brainAIPlaceholder: 'Brain AI에게 일정, 할일 등을 요청하세요...',
     brainAISettings: 'Brain AI 설정',
     brainAISettingsDesc: 'AI 기능을 관리합니다.',
     brainCRUD: '채팅 CRUD 분석',
@@ -1636,6 +1638,7 @@ export const translations = {
     endDate: 'End Date',
     locationOptional: 'Location (optional)',
     locationExample: 'e.g. Seongsu Studio',
+    openMap: 'View on map',
     scheduleDescriptionPlaceholder: 'Enter a description for the schedule',
     inviteParticipants: 'Invite Participants',
     deselectAll: 'Deselect All',
@@ -1994,6 +1997,7 @@ export const translations = {
 
     // Brain AI Settings
     brainAI: 'Brain AI',
+    brainAIPlaceholder: 'Ask Brain AI to create events, todos...',
     brainAISettings: 'Brain AI Settings',
     brainAISettingsDesc: 'Manage AI features.',
     brainCRUD: 'Chat CRUD Analysis',

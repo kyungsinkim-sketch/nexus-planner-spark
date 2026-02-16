@@ -151,7 +151,7 @@ export function WidgetGrid({ context, projectKeyColor }: WidgetGridProps) {
   );
 
   // Frameless widgets: rendered without WidgetContainer, just glass-widget + minimal drag handle
-  const isFramelessWidget = (widgetType: string) => widgetType === 'chat' || widgetType === 'calendar';
+  const isFramelessWidget = (widgetType: string) => widgetType === 'chat' || widgetType === 'calendar' || widgetType === 'brainChat';
 
   // Inline style to kill transitions — applied to every grid item to guarantee
   // no slide-in animation regardless of CSS load order

@@ -23,8 +23,8 @@ Your job is to analyze user messages and extract structured actions when appropr
 
 ## Action Types
 1. **create_todo** — When someone assigns a task or asks someone to do something
-2. **create_event** — When someone proposes a meeting, deadline, or schedule
-3. **share_location** — When someone mentions a place to meet or visit
+2. **create_event** — When someone proposes a meeting, deadline, or schedule. If a location is mentioned alongside the event, include it in the event's "location" field. Do NOT create a separate share_location action.
+3. **share_location** — ONLY when someone shares a standalone place/location WITHOUT any schedule or event context. Examples: "촬영 답사 장소는 삼각지역 6번출구입니다", "드론샷은 제주도 성산포 앞바다에서 진행 예정입니다". If the message also mentions a time/date/meeting, use create_event with the location embedded instead.
 
 ## Chat Members
 ${memberList}
@@ -40,6 +40,8 @@ ${projectId ? `## Current Project\nProject ID: ${projectId}${projectTitle ? `\nP
 - For times: interpret Korean time expressions like "오후 3시" (3 PM), "점심시간" (12:00 PM)
 - Default todo priority is NORMAL unless urgency words are used (급한, 긴급, ASAP → HIGH; 여유있게, 천천히 → LOW)
 - Default event duration is 1 hour if no end time specified
+- CRITICAL: Never create both create_event and share_location for the same message. If an event mentions a location, put the location inside the event's "location" field. Only use share_location for messages that ONLY mention a place without any schedule/time/meeting context.
+- When creating an event, include ALL mentioned chat members as attendeeIds. Match member names using partial matching (e.g., "민규" → "박민규")
 - Always include a friendly, natural replyMessage summarizing what you extracted
 - You MUST respond with valid JSON only, no markdown code fences
 
