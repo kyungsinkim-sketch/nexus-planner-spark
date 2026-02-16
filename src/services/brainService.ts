@@ -1,5 +1,5 @@
 /**
- * Brain AI Service — Client-side API for @brain mention processing
+ * Brain AI Service — Client-side API for @ai mention processing
  *
  * Calls Supabase Edge Functions:
  * - brain-process: Sends message to LLM for action extraction
@@ -41,6 +41,23 @@ interface BrainExecuteResponse {
 }
 
 /**
+ * Extract a readable error message from Supabase FunctionsHttpError.
+ */
+async function extractFunctionError(error: unknown): Promise<string> {
+  try {
+    // FunctionsHttpError has a context property with the Response
+    const ctx = (error as { context?: Response })?.context;
+    if (ctx && typeof ctx.json === 'function') {
+      const body = await ctx.json();
+      return body?.error || body?.message || JSON.stringify(body);
+    }
+  } catch {
+    // ignore
+  }
+  return (error as Error)?.message || 'Unknown error';
+}
+
+/**
  * Send a message to the Brain AI for analysis.
  * This triggers the brain-process Edge Function which:
  * 1. Calls Claude LLM to analyze the message
@@ -61,8 +78,9 @@ export async function processMessage(
   });
 
   if (error) {
-    console.error('brain-process invocation error:', error);
-    throw new Error(`Brain process failed: ${error.message}`);
+    const detail = await extractFunctionError(error);
+    console.error('brain-process error detail:', detail);
+    throw new Error(`Brain AI failed: ${detail}`);
   }
 
   if (!data?.success) {
@@ -92,8 +110,9 @@ export async function executeAction(
   });
 
   if (error) {
-    console.error('brain-execute invocation error:', error);
-    throw new Error(`Brain execute failed: ${error.message}`);
+    const detail = await extractFunctionError(error);
+    console.error('brain-execute error detail:', detail);
+    throw new Error(`Brain execute failed: ${detail}`);
   }
 
   if (!data?.success) {
@@ -171,15 +190,15 @@ export async function getActionsByMessage(
 }
 
 /**
- * Detect if a message content contains @brain mention.
- * Returns the message content without the @brain prefix.
+ * Detect if a message content contains @ai mention.
+ * Returns the message content without the @ai prefix.
  */
 export function detectBrainMention(content: string): {
   isBrainMention: boolean;
   cleanContent: string;
 } {
-  // Match @brain or @Brain at the start of the message
-  const brainPattern = /^@brain\s+/i;
+  // Match @ai or @AI at the start of the message
+  const brainPattern = /^@ai\s+/i;
   const match = content.match(brainPattern);
 
   if (match) {

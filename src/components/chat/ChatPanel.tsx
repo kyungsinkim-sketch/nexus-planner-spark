@@ -258,7 +258,7 @@ export function ChatPanel() {
 
     const trimmed = newMessage.trim();
 
-    // Check for @brain mention
+    // Check for @ai mention
     const { isBrainMention, cleanContent } = brainService.detectBrainMention(trimmed);
 
     // Send the user's message first
@@ -274,7 +274,7 @@ export function ChatPanel() {
 
     setNewMessage('');
 
-    // If @brain mention detected, trigger Brain AI processing
+    // If @ai mention detected, trigger Brain AI processing
     if (isBrainMention && cleanContent) {
       setBrainProcessing(true);
       try {

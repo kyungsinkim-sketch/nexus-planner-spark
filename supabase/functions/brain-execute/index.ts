@@ -8,7 +8,7 @@
 //   4. Updates brain_action status to 'executed'
 //   5. Returns the created entity
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1';
 import type { ExecuteRequest } from '../_shared/brain-types.ts';
 
 const corsHeaders = {

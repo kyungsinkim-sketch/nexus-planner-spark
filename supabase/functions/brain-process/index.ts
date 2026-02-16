@@ -8,9 +8,9 @@
 //   4. Creates brain_actions rows for each extracted action
 //   5. Returns the bot message + actions to client
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1';
 import { analyzeMessage } from '../_shared/llm-client.ts';
-import type { ProcessRequest, LLMExtractedAction } from '../_shared/brain-types.ts';
+import type { ProcessRequest } from '../_shared/brain-types.ts';
 
 const BRAIN_BOT_USER_ID = '00000000-0000-0000-0000-000000000099';
 
@@ -29,11 +29,25 @@ Deno.serve(async (req) => {
     // 1. Validate API key
     const anthropicKey = Deno.env.get('ANTHROPIC_API_KEY');
     if (!anthropicKey) {
-      throw new Error('ANTHROPIC_API_KEY not configured');
+      console.error('ANTHROPIC_API_KEY not found in env');
+      return new Response(
+        JSON.stringify({ error: 'ANTHROPIC_API_KEY not configured' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      );
     }
 
     // 2. Parse request
-    const body: ProcessRequest = await req.json();
+    let body: ProcessRequest;
+    try {
+      body = await req.json();
+    } catch (parseErr) {
+      console.error('Failed to parse request body:', parseErr);
+      return new Response(
+        JSON.stringify({ error: 'Invalid request body' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      );
+    }
+
     const { messageContent, roomId, projectId, userId, chatMembers, projectTitle } = body;
 
     if (!messageContent || !userId || !chatMembers) {
@@ -43,19 +57,38 @@ Deno.serve(async (req) => {
       );
     }
 
+    console.log(`Processing @ai message from user ${userId}: "${messageContent.substring(0, 100)}"`);
+
     // 3. Call Claude LLM
-    const llmResponse = await analyzeMessage(body, anthropicKey);
+    let llmResponse;
+    try {
+      llmResponse = await analyzeMessage(body, anthropicKey);
+      console.log('LLM response:', JSON.stringify({ hasAction: llmResponse.hasAction, actionCount: llmResponse.actions?.length }));
+    } catch (llmErr) {
+      console.error('LLM call failed:', llmErr);
+      return new Response(
+        JSON.stringify({ error: `LLM call failed: ${(llmErr as Error).message}` }),
+        { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      );
+    }
 
     // 4. Create Supabase service client (bypasses RLS)
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    if (!supabaseUrl || !supabaseServiceKey) {
+      console.error('Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY');
+      return new Response(
+        JSON.stringify({ error: 'Supabase not configured' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      );
+    }
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // 5. Build brain_action_data for the bot message
     const brainActionData = {
       hasAction: llmResponse.hasAction,
       replyMessage: llmResponse.replyMessage,
-      actions: llmResponse.actions,
+      actions: llmResponse.actions || [],
     };
 
     // 6. Insert bot chat message
@@ -69,7 +102,6 @@ Deno.serve(async (req) => {
     // Set room or project context
     if (roomId) {
       messageInsert.room_id = roomId;
-      // We need the project_id too for room-based messages
       if (projectId) {
         messageInsert.project_id = projectId;
       } else {
@@ -87,6 +119,8 @@ Deno.serve(async (req) => {
       messageInsert.project_id = projectId;
     }
 
+    console.log('Inserting bot message with keys:', Object.keys(messageInsert));
+
     const { data: botMessage, error: msgError } = await supabase
       .from('chat_messages')
       .insert(messageInsert)
@@ -94,14 +128,17 @@ Deno.serve(async (req) => {
       .single();
 
     if (msgError) {
-      console.error('Failed to insert bot message:', msgError);
-      throw new Error(`Failed to insert bot message: ${msgError.message}`);
+      console.error('Failed to insert bot message:', JSON.stringify(msgError));
+      return new Response(
+        JSON.stringify({ error: `Failed to insert bot message: ${msgError.message}` }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      );
     }
 
     // 7. Insert brain_actions rows (one per extracted action)
     const insertedActions: Array<Record<string, unknown>> = [];
 
-    if (llmResponse.hasAction && llmResponse.actions.length > 0) {
+    if (llmResponse.hasAction && llmResponse.actions && llmResponse.actions.length > 0) {
       for (const action of llmResponse.actions) {
         const { data: actionRow, error: actionError } = await supabase
           .from('brain_actions')
@@ -109,13 +146,13 @@ Deno.serve(async (req) => {
             message_id: botMessage.id,
             action_type: action.type,
             status: 'pending',
-            extracted_data: action.data,
+            extracted_data: action.data || {},
           })
           .select()
           .single();
 
         if (actionError) {
-          console.error('Failed to insert brain_action:', actionError);
+          console.error('Failed to insert brain_action:', JSON.stringify(actionError));
         } else {
           insertedActions.push(actionRow);
         }
@@ -131,7 +168,7 @@ Deno.serve(async (req) => {
         llmResponse: {
           hasAction: llmResponse.hasAction,
           replyMessage: llmResponse.replyMessage,
-          actionCount: llmResponse.actions.length,
+          actionCount: llmResponse.actions?.length || 0,
         },
       }),
       {
@@ -140,10 +177,11 @@ Deno.serve(async (req) => {
       },
     );
   } catch (error) {
-    console.error('brain-process error:', error);
+    console.error('brain-process unexpected error:', error);
     return new Response(
       JSON.stringify({
         error: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined,
       }),
       {
         status: 500,
