@@ -390,10 +390,17 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
       // Refresh data so new events/todos appear immediately
       // The edge function uses service_role key so the insert is instant,
       // but we add retries for safety (realtime subscription also picks this up)
+      console.log('[Brain] Action executed:', result.executedData?.type, result.executedData);
+
       const refreshWithRetry = async (loadFn: () => Promise<void>, retries = 3) => {
         for (let i = 0; i < retries; i++) {
           await new Promise(r => setTimeout(r, i === 0 ? 200 : 1000));
-          await loadFn();
+          try {
+            await loadFn();
+            console.log(`[Brain] Refresh attempt ${i + 1} succeeded`);
+          } catch (err) {
+            console.error(`[Brain] Refresh attempt ${i + 1} failed:`, err);
+          }
         }
       };
 

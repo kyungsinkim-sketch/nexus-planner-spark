@@ -28,7 +28,7 @@ import type { WidgetDataContext } from '@/types/widget';
 
 export function TabLayout() {
   const { openTabs, activeTabId } = useWidgetStore();
-  const { getProjectById } = useAppStore();
+  const { getProjectById, projects } = useAppStore();
   const location = useLocation();
 
   // If we're on a sub-route (admin, settings), show Outlet instead of widget grid
@@ -46,7 +46,7 @@ export function TabLayout() {
       }
     });
     return map;
-  }, [openTabs, getProjectById]);
+  }, [openTabs, getProjectById, projects]);
 
   return (
     <div className="h-screen flex flex-col bg-background overflow-hidden">

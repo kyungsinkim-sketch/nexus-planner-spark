@@ -20,7 +20,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { UserSearchInput } from '@/components/ui/user-search-input';
-import { CalendarPlus, Save } from 'lucide-react';
+import { CalendarPlus, Save, MapPin } from 'lucide-react';
 import { toast } from 'sonner';
 import { useTranslation } from '@/hooks/useTranslation';
 import { TranslationKey } from '@/lib/i18n';
@@ -68,6 +68,7 @@ export function NewEventModal({
   const [date, setDate] = useState(getDefaultDate());
   const [startTime, setStartTime] = useState(defaultStartTime || '09:00');
   const [endTime, setEndTime] = useState(defaultEndTime || '10:00');
+  const [location, setLocation] = useState('');
   const [attendeeIds, setAttendeeIds] = useState<string[]>([]);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -87,6 +88,7 @@ export function NewEventModal({
       setDate(`${sy}-${sm}-${sd}`);
       setStartTime(startDate.toTimeString().slice(0, 5));
       setEndTime(endDate.toTimeString().slice(0, 5));
+      setLocation(editEvent.location || '');
       setAttendeeIds(editEvent.attendeeIds || []);
     } else if (open && !editEvent) {
       // Reset for new event
@@ -95,6 +97,7 @@ export function NewEventModal({
       setDate(getDefaultDate());
       setStartTime(defaultStartTime || '09:00');
       setEndTime(defaultEndTime || '10:00');
+      setLocation('');
       setAttendeeIds([]);
     }
   }, [open, editEvent]);
@@ -133,6 +136,7 @@ export function NewEventModal({
           type,
           startAt,
           endAt,
+          location: location.trim() || undefined,
           attendeeIds: attendeeIds.length > 0 ? attendeeIds : undefined,
         });
         toast.success('Event updated', {
@@ -149,6 +153,7 @@ export function NewEventModal({
           projectId,
           ownerId: currentUser.id,
           source: 'PAULUS',
+          location: location.trim() || undefined,
           attendeeIds: attendeeIds.length > 0 ? attendeeIds : undefined,
         };
 
@@ -238,6 +243,20 @@ export function NewEventModal({
                 onChange={(e) => setEndTime(e.target.value)}
               />
             </div>
+          </div>
+
+          {/* Location */}
+          <div className="space-y-2">
+            <Label htmlFor="location" className="flex items-center gap-1.5">
+              <MapPin className="w-3.5 h-3.5" />
+              {t('location')}
+            </Label>
+            <Input
+              id="location"
+              value={location}
+              onChange={(e) => setLocation(e.target.value)}
+              placeholder={t('enterLocation')}
+            />
           </div>
 
           {/* Attendees */}

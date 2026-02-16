@@ -29,10 +29,19 @@ function CalendarWidget({ context }: { context: WidgetDataContext }) {
   // Subscribe to realtime calendar_events changes so brain-created events
   // appear without page refresh
   useEffect(() => {
-    const unsubscribe = subscribeToEvents(() => {
+    const unsubscribe = subscribeToEvents((event, eventType) => {
+      console.log('[CalendarWidget] Realtime event:', eventType, event?.id, event?.title);
       loadEvents();
     });
     return () => unsubscribe();
+  }, [loadEvents]);
+
+  // Also refresh events periodically when the widget mounts or regains focus
+  useEffect(() => {
+    loadEvents();
+    const onFocus = () => loadEvents();
+    window.addEventListener('focus', onFocus);
+    return () => window.removeEventListener('focus', onFocus);
   }, [loadEvents]);
 
   // Event detail panel
