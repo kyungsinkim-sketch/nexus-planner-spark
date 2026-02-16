@@ -233,7 +233,16 @@ export function WidgetGrid({ context, projectKeyColor }: WidgetGridProps) {
                 className={isActive ? 'widget-item-active' : 'widget-item-idle'}
                 style={noTransitionStyle}
               >
-                {isFramelessWidget(widgetType) ? (
+                {widgetType === 'brainChat' ? (
+                  // Brain AI: completely borderless — just the search bar, entire widget is drag handle
+                  <div
+                    className="widget-drag-handle h-full"
+                    data-widget-id={item.i}
+                    onMouseDown={() => setActiveWidgetId(item.i)}
+                  >
+                    <WidgetComponent context={context} />
+                  </div>
+                ) : isFramelessWidget(widgetType) ? (
                   // Frameless: no WidgetContainer, direct embed with minimal drag handle
                   <div className="glass-widget flex flex-col h-full" data-widget-id={item.i} style={activeGlassStyle}>
                     <div

@@ -491,19 +491,25 @@
 
 /* Chat widget — constrain ALL content to widget width */
 [data-widget-id="chat"] .widget-content,
-[data-widget-id="chat"] > div,
-[data-widget-id="brainChat"] .widget-content,
-[data-widget-id="brainChat"] > div {
+[data-widget-id="chat"] > div {
   overflow: hidden;
   max-width: 100%;
   min-width: 0;
 }
+/* Chat ScrollArea viewport: prevent horizontal expansion */
+[data-widget-id="chat"] [data-radix-scroll-area-viewport] {
+  overflow-x: hidden !important;
+}
+[data-widget-id="chat"] [data-radix-scroll-area-viewport] > div {
+  max-width: 100% !important;
+  min-width: 0 !important;
+}
 /* Chat messages: enforce max-width on all chat bubble containers */
 [data-widget-id="chat"] .group\/msg,
-[data-widget-id="chat"] [class*="max-w-[80%]"],
+[data-widget-id="chat"] [class*="max-w-"],
 [data-widget-id="chat"] [class*="inline-block"] {
   max-width: 100%;
-  overflow: hidden;
+  overflow-wrap: break-word;
   word-break: break-word;
 }
 

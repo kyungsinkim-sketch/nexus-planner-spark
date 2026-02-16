@@ -1,9 +1,10 @@
 /**
  * BrainChatWidget — Minimal Brain AI search bar widget.
- * Frameless: just a search input + send button. No widget frame needed.
+ * Completely frameless: no glass container, no title bar.
+ * Just a search input bar with Brain icon + send button.
  *
- * Sends messages to Brain AI (brain-process) via Cmd+Enter logic.
- * Works in both dashboard and project contexts.
+ * The widget's outer div is the drag handle (set by WidgetGrid).
+ * The form area stops propagation so input interaction works normally.
  */
 
 import { useState, useRef, useCallback } from 'react';
@@ -32,13 +33,11 @@ function BrainChatWidget({ context }: { context: WidgetDataContext }) {
     setProcessing(true);
 
     try {
-      // Gather chat members (all users for dashboard, project members for project context)
       const chatMembers = users.map((u) => ({ id: u.id, name: u.name }));
 
-      // Use LLM path (same as Cmd+Enter in chat)
       await brainService.processMessageWithLLM({
         messageContent: message,
-        roomId: '', // No specific chat room
+        roomId: '',
         projectId: projectId || '',
         userId: currentUser.id,
         chatMembers,
@@ -47,7 +46,6 @@ function BrainChatWidget({ context }: { context: WidgetDataContext }) {
 
       toast.success('Brain AI processed your request');
 
-      // Refresh data
       setTimeout(async () => {
         await loadEvents();
         await loadTodos();
@@ -62,9 +60,15 @@ function BrainChatWidget({ context }: { context: WidgetDataContext }) {
   }, [input, processing, currentUser, users, projectId, loadEvents, loadTodos]);
 
   return (
-    <div className="flex items-center h-full px-2 py-1 gap-2">
+    <div className="flex items-center h-full w-full px-3 gap-2.5
+                    glass-widget rounded-xl">
       <Brain className="w-4 h-4 text-violet-500 shrink-0" />
-      <form onSubmit={handleSubmit} className="flex flex-1 items-center gap-1.5 min-w-0">
+      {/* Stop mousedown propagation so input/button clicks don't trigger drag */}
+      <form
+        onSubmit={handleSubmit}
+        onMouseDown={(e) => e.stopPropagation()}
+        className="flex flex-1 items-center gap-1.5 min-w-0"
+      >
         <input
           ref={inputRef}
           type="text"
@@ -72,11 +76,11 @@ function BrainChatWidget({ context }: { context: WidgetDataContext }) {
           onChange={(e) => setInput(e.target.value)}
           placeholder={t('brainAIPlaceholder')}
           disabled={processing}
-          className="flex-1 min-w-0 px-3 py-1.5 rounded-lg bg-white/10 dark:bg-white/5
-                     border border-border/50 text-sm
+          className="flex-1 min-w-0 px-3 py-1.5 rounded-lg
+                     bg-transparent border-0 text-sm
                      placeholder:text-muted-foreground/50
-                     focus:outline-none focus:ring-1 focus:ring-violet-500/50 focus:border-violet-500/50
-                     disabled:opacity-50 transition-colors"
+                     focus:outline-none
+                     disabled:opacity-50"
         />
         <button
           type="submit"
