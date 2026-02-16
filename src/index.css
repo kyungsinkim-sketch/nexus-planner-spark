@@ -338,71 +338,6 @@
     @apply p-3 h-full overflow-auto;
   }
 
-  /* Project accent color — applied via --project-accent CSS variable */
-  /* When a project has a keyColor, tint widget borders and title bars */
-  [style*="--project-accent"] .glass-widget {
-    border-color: var(--project-accent, hsl(var(--glass-border)));
-    border-width: 1.5px;
-  }
-  [style*="--project-accent"] .widget-titlebar {
-    background: color-mix(in srgb, var(--project-accent) 15%, hsl(var(--glass-border)));
-  }
-  [style*="--project-accent"] .chat-widget-handle {
-    background: color-mix(in srgb, var(--project-accent) 15%, hsl(var(--glass-border)));
-  }
-  [style*="--project-accent"] .widget-item-active .glass-widget {
-    box-shadow: 0 8px 32px rgba(0,0,0,0.18), 0 0 0 2px var(--project-accent) !important;
-    border-color: var(--project-accent) !important;
-  }
-  .dark [style*="--project-accent"] .widget-titlebar {
-    background: color-mix(in srgb, var(--project-accent) 10%, hsl(222 47% 11%));
-  }
-  .dark [style*="--project-accent"] .chat-widget-handle {
-    background: color-mix(in srgb, var(--project-accent) 10%, hsl(222 47% 11%));
-  }
-
-  /* Widget active / idle states */
-  .widget-item-idle {
-    height: 100%;
-  }
-  .widget-item-idle .glass-widget {
-    opacity: 0.82;
-    transition: opacity 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
-  }
-  .widget-item-idle:hover .glass-widget {
-    opacity: 0.92;
-  }
-  .widget-item-active {
-    height: 100%;
-    z-index: 20 !important;
-  }
-  .widget-item-active .glass-widget {
-    opacity: 1 !important;
-    background: hsl(0 0% 100%) !important;
-    backdrop-filter: none !important;
-    -webkit-backdrop-filter: none !important;
-    border-color: hsl(var(--primary) / 0.35) !important;
-    box-shadow: 0 8px 32px rgba(0,0,0,0.18), 0 0 0 2px hsl(var(--primary) / 0.35) !important;
-    transition: none !important;
-  }
-  .dark .widget-item-active .glass-widget {
-    background: hsl(222 47% 11%) !important;
-  }
-
-  /* Calendar widget — compact toolbar for widget */
-  .calendar-widget-content .fc .fc-toolbar {
-    @apply gap-1 mb-1;
-  }
-  .calendar-widget-content .fc .fc-toolbar-title {
-    @apply text-xs sm:text-sm;
-  }
-  .calendar-widget-content .fc .fc-button {
-    @apply text-[10px] px-1.5 py-0.5;
-  }
-  .calendar-widget-content .fc .fc-today-button {
-    @apply text-[10px] px-1.5 py-0.5;
-  }
-
   /* Chat widget — frameless, minimal drag handle */
   .chat-widget-handle {
     @apply flex items-center justify-between px-3 py-1.5
@@ -412,25 +347,6 @@
   }
   .chat-widget-handle:active {
     cursor: grabbing;
-  }
-
-  /* Disable react-grid-layout mount/tab-switch transition animation.
-     Widgets should appear instantly without sliding into position. */
-  .react-grid-item {
-    transition: none !important;
-  }
-  .react-grid-item.cssTransforms {
-    transition: none !important;
-  }
-  .react-grid-layout {
-    transition: none !important;
-  }
-  /* Only allow transition during active drag/resize */
-  .react-grid-item.react-draggable-dragging {
-    transition: none !important;
-  }
-  .react-grid-item.resizing {
-    transition: none !important;
   }
 
   /* Widget resize handles (react-grid-layout v2) */
@@ -475,6 +391,106 @@
     @apply absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/10 to-transparent;
     animation: shimmer 2s infinite;
   }
+}
+
+/* ==========================================================================
+   WIDGET GRID OVERRIDES — outside @layer for higher CSS specificity.
+   These MUST override react-grid-layout/css/styles.css and html * rules.
+   ========================================================================== */
+
+/* Kill all react-grid-layout transitions — widgets appear instantly */
+.react-grid-layout {
+  transition: none !important;
+}
+.react-grid-item {
+  transition: none !important;
+}
+.react-grid-item.cssTransforms {
+  transition: none !important;
+}
+.react-grid-item.react-draggable-dragging {
+  transition: none !important;
+}
+.react-grid-item.resizing {
+  transition: none !important;
+}
+
+/* Exclude widget elements from the global html * transition-colors rule */
+.glass-widget,
+.glass-widget *,
+.widget-item-idle,
+.widget-item-active,
+.react-grid-item,
+.react-grid-layout {
+  transition-property: none !important;
+  transition-duration: 0s !important;
+}
+
+/* Widget idle: semi-transparent glass */
+.widget-item-idle {
+  height: 100%;
+}
+.widget-item-idle .glass-widget {
+  opacity: 0.82;
+}
+.widget-item-idle:hover .glass-widget {
+  opacity: 0.92;
+}
+
+/* Widget active (drag/resize): completely opaque, solid background, NO transparency */
+.widget-item-active {
+  height: 100%;
+  z-index: 20 !important;
+}
+.widget-item-active .glass-widget {
+  opacity: 1 !important;
+  background: #ffffff !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border-color: hsl(var(--primary) / 0.35) !important;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.18), 0 0 0 2px hsl(var(--primary) / 0.35) !important;
+}
+.dark .widget-item-active .glass-widget {
+  background: #0e1629 !important;
+}
+
+/* Project accent color — applied via --project-accent CSS variable */
+[style*="--project-accent"] .glass-widget {
+  border-color: var(--project-accent, hsl(var(--glass-border)));
+  border-width: 1.5px;
+}
+[style*="--project-accent"] .widget-titlebar {
+  background: color-mix(in srgb, var(--project-accent) 15%, hsl(var(--glass-border)));
+}
+[style*="--project-accent"] .chat-widget-handle {
+  background: color-mix(in srgb, var(--project-accent) 15%, hsl(var(--glass-border)));
+}
+[style*="--project-accent"] .widget-item-active .glass-widget {
+  box-shadow: 0 8px 32px rgba(0,0,0,0.18), 0 0 0 2px var(--project-accent) !important;
+  border-color: var(--project-accent) !important;
+}
+.dark [style*="--project-accent"] .widget-titlebar {
+  background: color-mix(in srgb, var(--project-accent) 10%, hsl(222 47% 11%));
+}
+.dark [style*="--project-accent"] .chat-widget-handle {
+  background: color-mix(in srgb, var(--project-accent) 10%, hsl(222 47% 11%));
+}
+
+/* Calendar widget — compact toolbar for widget context */
+.calendar-widget-content .fc .fc-toolbar {
+  gap: 0.25rem;
+  margin-bottom: 0.25rem;
+}
+.calendar-widget-content .fc .fc-toolbar-title {
+  font-size: 0.75rem;
+}
+.calendar-widget-content .fc .fc-button {
+  font-size: 10px;
+  padding: 2px 6px;
+}
+.calendar-widget-content .fc .fc-today-button {
+  font-size: 10px;
+  padding: 2px 6px;
 }
 
 /* FullCalendar Custom Styles */
@@ -778,12 +794,13 @@
   @apply border-border/50;
 }
 
-/* Smooth theme transition */
+/* Smooth theme transition — exclude widget grid elements to prevent
+   transparent flickering on active widgets and animation on tab switch */
 html {
   @apply transition-colors duration-300;
 }
 
-html * {
+html *:not(.react-grid-item):not(.react-grid-layout):not(.glass-widget):not(.widget-item-idle):not(.widget-item-active) {
   @apply transition-colors duration-200;
 }
 
