@@ -148,6 +148,10 @@ export function WidgetGrid({ context, projectKeyColor }: WidgetGridProps) {
   // no slide-in animation regardless of CSS load order
   const noTransitionStyle: React.CSSProperties = { transition: 'none' };
 
+  // Check dark mode for active widget bg color
+  const theme = useAppStore((s) => s.theme);
+  const isDark = theme === 'dark';
+
   return (
     <div
       ref={containerRef}
@@ -203,6 +207,17 @@ export function WidgetGrid({ context, projectKeyColor }: WidgetGridProps) {
             const title = t(def.titleKey as Parameters<typeof t>[0]) || def.titleKey;
             const isActive = activeWidgetId === item.i;
 
+            // When active: apply solid opaque background via inline style
+            // This guarantees no transparency regardless of CSS specificity
+            const activeGlassStyle: React.CSSProperties | undefined = isActive
+              ? {
+                  background: isDark ? '#0e1629' : '#ffffff',
+                  opacity: 1,
+                  backdropFilter: 'none',
+                  WebkitBackdropFilter: 'none',
+                }
+              : undefined;
+
             return (
               <div
                 key={item.i}
@@ -211,7 +226,7 @@ export function WidgetGrid({ context, projectKeyColor }: WidgetGridProps) {
               >
                 {isFramelessWidget(widgetType) ? (
                   // Frameless: no WidgetContainer, direct embed with minimal drag handle
-                  <div className="glass-widget flex flex-col h-full" data-widget-id={item.i}>
+                  <div className="glass-widget flex flex-col h-full" data-widget-id={item.i} style={activeGlassStyle}>
                     <div className="widget-drag-handle chat-widget-handle">
                       <span className="text-xs font-medium text-foreground/70 truncate flex items-center gap-1.5">
                         <def.icon className="w-3.5 h-3.5" />
@@ -238,6 +253,7 @@ export function WidgetGrid({ context, projectKeyColor }: WidgetGridProps) {
                     collapsed={item.collapsed}
                     onCollapse={() => toggleWidgetCollapsed(context.type, widgetType)}
                     onRemove={() => removeWidget(context.type, widgetType)}
+                    style={activeGlassStyle}
                   >
                     <WidgetComponent context={context} />
                   </WidgetContainer>

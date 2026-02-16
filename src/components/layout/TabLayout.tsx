@@ -94,8 +94,18 @@ export function TabLayout() {
             return (
               <div
                 key={tab.id}
-                style={{ display: isActive ? 'block' : 'none', ...areaStyle }}
-                className={`h-full ${bgClass}`}
+                style={{
+                  ...areaStyle,
+                  // Opacity-based show/hide for smooth dissolve transition
+                  position: 'absolute' as const,
+                  inset: 0,
+                  opacity: isActive ? 1 : 0,
+                  visibility: isActive ? ('visible' as const) : ('hidden' as const),
+                  transition: 'opacity 0.15s ease-out',
+                  zIndex: isActive ? 1 : 0,
+                  pointerEvents: isActive ? ('auto' as const) : ('none' as const),
+                }}
+                className={bgClass}
               >
                 {/* Overlay for project background images */}
                 {tab.type === 'project' && bgImage && (

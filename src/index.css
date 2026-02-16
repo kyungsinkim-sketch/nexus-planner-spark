@@ -478,10 +478,39 @@
   background: color-mix(in srgb, var(--project-accent) 10%, hsl(222 47% 11%));
 }
 
-/* Calendar widget — compact toolbar for widget context */
+/* Calendar widget — compact toolbar and fit-to-widget */
+.calendar-widget-content {
+  overflow: hidden;
+}
+.calendar-widget-content .fc {
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+}
+.calendar-widget-content .fc .fc-view-harness {
+  overflow: hidden;
+}
+.calendar-widget-content .fc table {
+  table-layout: fixed;
+  width: 100% !important;
+}
+.calendar-widget-content .fc .fc-scrollgrid {
+  width: 100% !important;
+  overflow: hidden;
+}
+.calendar-widget-content .fc .fc-daygrid-body {
+  width: 100% !important;
+}
+.calendar-widget-content .fc .fc-daygrid-body table {
+  width: 100% !important;
+}
+.calendar-widget-content .fc .fc-col-header {
+  width: 100% !important;
+}
 .calendar-widget-content .fc .fc-toolbar {
   gap: 0.25rem;
   margin-bottom: 0.25rem;
+  flex-wrap: wrap;
 }
 .calendar-widget-content .fc .fc-toolbar-title {
   font-size: 0.75rem;
@@ -493,6 +522,22 @@
 .calendar-widget-content .fc .fc-today-button {
   font-size: 10px;
   padding: 2px 6px;
+}
+/* Day headers — abbreviate on small widgets */
+.calendar-widget-content .fc .fc-col-header-cell {
+  font-size: 10px;
+  padding: 2px 0;
+}
+/* Day numbers — compact */
+.calendar-widget-content .fc .fc-daygrid-day-number {
+  font-size: 11px;
+  padding: 2px 4px;
+}
+/* Events — compact */
+.calendar-widget-content .fc .fc-daygrid-event {
+  font-size: 10px;
+  padding: 0 2px;
+  margin: 0 1px 1px;
 }
 
 /* FullCalendar Custom Styles */

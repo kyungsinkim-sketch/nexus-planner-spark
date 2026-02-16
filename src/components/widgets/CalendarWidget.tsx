@@ -135,7 +135,7 @@ function CalendarWidget({ context }: { context: WidgetDataContext }) {
 
   return (
     <>
-      <div className="h-full overflow-auto text-xs calendar-widget-content">
+      <div className="h-full overflow-hidden text-xs calendar-widget-content">
         <FullCalendar
           plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin, listPlugin]}
           initialView="dayGridMonth"

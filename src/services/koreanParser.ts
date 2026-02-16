@@ -436,11 +436,14 @@ function parseEventPatterns(
     }
   }
 
+  // Clean event title: strip attendee names, honorifics, request phrases
+  const cleanedTitle = cleanEventTitle(title, chatMembers);
+
   return {
     type: 'create_event',
     confidence: 0.75,
     data: {
-      title,
+      title: cleanedTitle,
       startAt,
       endAt,
       location: extractedLocation,
@@ -450,6 +453,85 @@ function parseEventPatterns(
       projectId: projectId || null,
     },
   };
+}
+
+// ============================================================
+// Event Title Cleaning
+// ============================================================
+
+/**
+ * Clean event title by stripping:
+ * - Attendee names and honorifics ("민규님, 송희님 요한님 포함해서요")
+ * - Request/polite suffixes ("부탁합니다", "해주세요", "포함해서요")
+ * - Sentence-ending particles and connectors
+ *
+ * e.g., "내부 미팅 부탁합니다. 민규님, 송희님 요한님 포함해서요" → "내부 미팅"
+ */
+function cleanEventTitle(rawTitle: string, chatMembers: ChatMember[]): string {
+  let title = rawTitle;
+
+  // Split by sentence boundary (period, comma followed by space)
+  // The first sentence is likely the core title; rest may be attendee info
+  const sentences = title.split(/[.。]\s*/);
+  if (sentences.length > 1) {
+    // Check if later sentences are mostly attendee names / inclusion phrases
+    const firstSentence = sentences[0].trim();
+    const restText = sentences.slice(1).join('. ').trim();
+
+    // If rest contains attendee/inclusion patterns, use only first sentence
+    const attendeePattern = /(?:포함|참석|참여|함께|같이|불러|초대)/;
+    if (attendeePattern.test(restText)) {
+      title = firstSentence;
+    }
+  }
+
+  // Remove attendee name mentions with honorifics
+  // e.g., "민규님", "송희님", "요한님"
+  for (const member of chatMembers) {
+    const bare = stripHonorifics(member.name);
+    const givenName = bare.length >= 2 ? bare.slice(-2) : bare;
+    const variants = [member.name, bare, givenName];
+
+    for (const base of [bare, givenName]) {
+      for (const h of HONORIFICS) {
+        variants.push(base + h);
+      }
+    }
+
+    // Sort longest first to prevent partial replacement
+    const sorted = [...new Set(variants)].sort((a, b) => b.length - a.length);
+    for (const v of sorted) {
+      // Replace name + optional trailing comma/space/connector
+      title = title.replace(new RegExp(v + '[,，\\s]*', 'g'), '');
+    }
+  }
+
+  // Remove request/polite suffixes
+  title = title.replace(/\s*(?:부탁합니다|부탁해요|부탁해|부탁드립니다|해주세요|해줘|잡아주세요|잡아줘|포함해서요|포함해서|포함해주세요|포함해줘|참석시켜주세요|참석시켜줘)\s*/g, '');
+
+  // Remove trailing connectors and particles
+  title = title.replace(/\s*(?:과|와|하고|이랑|랑|도)\s*$/g, '');
+
+  // Remove leading/trailing punctuation and whitespace
+  title = title.replace(/^[\s,，.。]+|[\s,，.。]+$/g, '').trim();
+
+  // If title became empty after cleaning, fall back to first meeting keyword found
+  if (!title) {
+    const meetingKeywords = ['회의', '미팅', '모임', '스크럼', '스탠드업', '킥오프', '브리핑', '워크샵', '약속', '일정'];
+    for (const kw of meetingKeywords) {
+      if (rawTitle.includes(kw)) {
+        title = kw;
+        break;
+      }
+    }
+  }
+
+  // Final fallback
+  if (!title) {
+    title = rawTitle.split(/[.。,，]/)[0].trim();
+  }
+
+  return title;
 }
 
 // ============================================================

@@ -22,6 +22,7 @@ interface WidgetContainerProps {
   onCollapse?: () => void;
   onRemove?: () => void;
   className?: string;
+  style?: React.CSSProperties;
 }
 
 function WidgetSkeleton() {
@@ -41,6 +42,7 @@ export function WidgetContainer({
   onCollapse,
   onRemove,
   className,
+  style,
 }: WidgetContainerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const isVisible = useIntersection(containerRef);
@@ -50,6 +52,7 @@ export function WidgetContainer({
       ref={containerRef}
       className={cn('glass-widget flex flex-col h-full', className)}
       data-widget-id={widgetId}
+      style={style}
     >
       {/* Title bar = drag handle */}
       <div className="widget-titlebar widget-drag-handle">
