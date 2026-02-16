@@ -41,7 +41,7 @@ import {
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { useTranslation } from '@/hooks/useTranslation';
-import { ChatShareMenu } from '@/components/chat/ChatShareMenu';
+// ChatShareMenu removed — replaced by Brain AI (Cmd+Enter)
 import { ChatMessageBubble } from '@/components/chat/ChatMessageBubble';
 import { FileUploadModal } from '@/components/project/FileUploadModal';
 import type { LocationShare, ScheduleShare, DecisionShare, ChatMessage, ChatRoom, FileCategory } from '@/types/core';
@@ -257,7 +257,7 @@ export function ChatPanel() {
 
   const [brainProcessing, setBrainProcessing] = useState(false);
 
-  const handleSendMessage = async () => {
+  const handleSendMessage = async (forceBrain = false) => {
     if (!newMessage.trim() || !selectedChat || !currentUser) return;
 
     const trimmed = newMessage.trim();
@@ -278,8 +278,9 @@ export function ChatPanel() {
 
     setNewMessage('');
 
-    // Auto-parse ALL project chat messages for CRUD actions (DM excluded)
-    if (selectedChat.type === 'project' && cleanContent) {
+    // Brain AI: triggered by Cmd+Enter (forceBrain) or auto-parse for project chats
+    const shouldRunBrain = forceBrain || (selectedChat.type === 'project');
+    if (shouldRunBrain && selectedChat.type === 'project' && cleanContent) {
       setBrainProcessing(true);
       try {
         // Build chat members list for name resolution
@@ -968,15 +969,9 @@ export function ChatPanel() {
             </div>
           )}
 
-          {/* Message Input */}
+          {/* Message Input — Enter=send, Cmd+Enter=Brain AI */}
           <div className="p-2.5 bg-background shrink-0">
             <div className="flex items-center gap-1.5">
-              <ChatShareMenu
-                onShareLocation={handleShareLocation}
-                onShareSchedule={handleShareSchedule}
-                onShareDecision={handleShareDecision}
-                chatMemberIds={chatMemberIds}
-              />
               <Button
                 variant="ghost"
                 size="icon"
@@ -991,9 +986,15 @@ export function ChatPanel() {
                 value={newMessage}
                 onChange={(e) => setNewMessage(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+                  if (e.key === 'Enter' && !e.nativeEvent.isComposing) {
                     e.preventDefault();
-                    handleSendMessage();
+                    if (e.metaKey || e.ctrlKey) {
+                      // Cmd+Enter → Brain AI command
+                      handleSendMessage(true);
+                    } else if (!e.shiftKey) {
+                      // Enter → normal send
+                      handleSendMessage(false);
+                    }
                   }
                 }}
                 className="flex-1 h-9 text-sm"
@@ -1001,13 +1002,22 @@ export function ChatPanel() {
               <Button
                 size="icon"
                 className="w-8 h-8"
-                onClick={handleSendMessage}
+                onClick={() => handleSendMessage(false)}
                 disabled={!newMessage.trim()}
                 aria-label="Send message"
               >
                 <Send className="w-3.5 h-3.5" />
               </Button>
             </div>
+            {/* Brain shortcut hint */}
+            {selectedChat?.type === 'project' && (
+              <div className="flex items-center gap-1 mt-1 px-1">
+                <Brain className="w-3 h-3 text-violet-400" />
+                <span className="text-[10px] text-muted-foreground">
+                  <kbd className="px-1 py-0.5 rounded bg-muted text-[9px] font-mono">⌘</kbd>+<kbd className="px-1 py-0.5 rounded bg-muted text-[9px] font-mono">Enter</kbd> Brain AI
+                </span>
+              </div>
+            )}
           </div>
         </div>
       )}

@@ -350,9 +350,14 @@
   }
   .widget-item-active .glass-widget {
     opacity: 1;
-    background: hsl(var(--card)) !important;
-    box-shadow: var(--glass-shadow), 0 0 0 2px hsl(var(--primary) / 0.4);
+    background: hsl(0 0% 100%) !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.15), 0 0 0 2px hsl(var(--primary) / 0.35);
     transition: opacity 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+  }
+  .dark .widget-item-active .glass-widget {
+    background: hsl(222 47% 12%) !important;
   }
 
   /* Chat widget — frameless, minimal drag handle */

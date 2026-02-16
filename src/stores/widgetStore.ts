@@ -27,15 +27,15 @@ const DEFAULT_DASHBOARD_LAYOUT: WidgetLayoutItem[] = [
 ];
 
 // Default layout for Project tabs (12-col grid)
-// Matches mockup: Calendar big-left, Notifications top-center,
-// Chat right-tall, Todos center, Files bottom-left
+// Fills viewport: Calendar big-left, Notifications top-center,
+// Chat right full-height, Todos center, Files bottom-left, Actions bottom
 const DEFAULT_PROJECT_LAYOUT: WidgetLayoutItem[] = [
-  { i: 'calendar',       x: 0,  y: 0,  w: 5, h: 5, minW: 3, minH: 3 },
-  { i: 'notifications',  x: 5,  y: 0,  w: 4, h: 2, minW: 2, minH: 2 },
-  { i: 'chat',           x: 9,  y: 0,  w: 3, h: 6, minW: 2, minH: 3 },
-  { i: 'todos',          x: 5,  y: 2,  w: 4, h: 3, minW: 2, minH: 2 },
-  { i: 'files',          x: 0,  y: 5,  w: 5, h: 2, minW: 2, minH: 2 },
-  { i: 'actions',        x: 5,  y: 5,  w: 4, h: 2, minW: 2, minH: 2 },
+  { i: 'calendar',       x: 0,  y: 0,  w: 5, h: 7, minW: 3, minH: 3 },
+  { i: 'notifications',  x: 5,  y: 0,  w: 4, h: 3, minW: 2, minH: 2 },
+  { i: 'chat',           x: 9,  y: 0,  w: 3, h: 10, minW: 2, minH: 3 },
+  { i: 'todos',          x: 5,  y: 3,  w: 4, h: 4, minW: 2, minH: 2 },
+  { i: 'files',          x: 0,  y: 7,  w: 5, h: 3, minW: 2, minH: 2 },
+  { i: 'actions',        x: 5,  y: 7,  w: 4, h: 3, minW: 2, minH: 2 },
 ];
 
 // Dashboard tab is always present
@@ -179,7 +179,7 @@ export const useWidgetStore = create<WidgetState>()(
     }),
     {
       name: 're-be-widget-layout',
-      version: 4, // bump to force reset — fix layout persistence
+      version: 5, // bump to force reset — viewport-filling layout
       migrate: () => ({
         // On version mismatch, reset everything to defaults
         openTabs: [DASHBOARD_TAB],

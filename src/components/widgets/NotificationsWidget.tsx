@@ -1,20 +1,54 @@
 /**
- * NotificationsWidget — Shows recent notifications/activity.
+ * NotificationsWidget — Shows unread/new notifications only.
+ * Already-seen items are tracked in local state and hidden.
  */
 
-import { useMemo } from 'react';
+import { useMemo, useState, useCallback } from 'react';
 import { useAppStore } from '@/stores/appStore';
-import { Bell, MessageSquare, Calendar, FileText } from 'lucide-react';
+import { Bell, MessageSquare, Calendar, Check } from 'lucide-react';
 import type { WidgetDataContext } from '@/types/widget';
+
+// Persist dismissed IDs in sessionStorage so they survive re-renders
+// but reset on new browser session
+const DISMISSED_KEY = 'rebe-notif-dismissed';
+function getDismissedIds(): Set<string> {
+  try {
+    const raw = sessionStorage.getItem(DISMISSED_KEY);
+    return raw ? new Set(JSON.parse(raw)) : new Set();
+  } catch { return new Set(); }
+}
+function saveDismissedIds(ids: Set<string>) {
+  sessionStorage.setItem(DISMISSED_KEY, JSON.stringify([...ids]));
+}
 
 function NotificationsWidget({ context }: { context: WidgetDataContext }) {
   const { messages, events } = useAppStore();
+  const [dismissedIds, setDismissedIds] = useState<Set<string>>(getDismissedIds);
 
-  // Simple notification list from recent messages and upcoming events
+  const dismiss = useCallback((id: string) => {
+    setDismissedIds((prev) => {
+      const next = new Set(prev);
+      next.add(id);
+      saveDismissedIds(next);
+      return next;
+    });
+  }, []);
+
+  const dismissAll = useCallback(() => {
+    setDismissedIds((prev) => {
+      const next = new Set(prev);
+      // Add all current notification IDs
+      notifications.forEach((n) => next.add(n.id));
+      saveDismissedIds(next);
+      return next;
+    });
+  }, []);
+
+  // Build notification list
   const notifications = useMemo(() => {
-    const items: { id: string; icon: typeof Bell; text: string; time: string }[] = [];
+    const items: { id: string; icon: typeof Bell; text: string; time: string; type: 'message' | 'event' }[] = [];
 
-    // Recent messages (last 5)
+    // Recent messages (last 10)
     const recentMsgs = messages
       .filter((m) => {
         if (context.type === 'project' && context.projectId) {
@@ -22,15 +56,18 @@ function NotificationsWidget({ context }: { context: WidgetDataContext }) {
         }
         return true;
       })
-      .slice(-5)
+      .slice(-10)
       .reverse();
 
     recentMsgs.forEach((m) => {
+      const id = `msg-${m.id}`;
+      if (dismissedIds.has(id)) return;
       items.push({
-        id: `msg-${m.id}`,
+        id,
         icon: MessageSquare,
-        text: m.content.slice(0, 60),
+        text: m.content.slice(0, 80),
         time: m.createdAt ? new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '',
+        type: 'message',
       });
     });
 
@@ -46,39 +83,71 @@ function NotificationsWidget({ context }: { context: WidgetDataContext }) {
         }
         return match;
       })
-      .slice(0, 3)
+      .slice(0, 5)
       .forEach((e) => {
+        const id = `evt-${e.id}`;
+        if (dismissedIds.has(id)) return;
         items.push({
-          id: `evt-${e.id}`,
+          id,
           icon: Calendar,
           text: e.title,
           time: new Date(e.startAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          type: 'event',
         });
       });
 
-    return items.slice(0, 8);
-  }, [messages, events, context]);
+    return items.slice(0, 10);
+  }, [messages, events, context, dismissedIds]);
+
+  // Reassign dismissAll so it captures current notifications
+  const handleDismissAll = useCallback(() => {
+    setDismissedIds((prev) => {
+      const next = new Set(prev);
+      notifications.forEach((n) => next.add(n.id));
+      saveDismissedIds(next);
+      return next;
+    });
+  }, [notifications]);
 
   if (notifications.length === 0) {
     return (
-      <div className="flex items-center justify-center h-full text-muted-foreground/60 text-sm">
-        <Bell className="w-4 h-4 mr-2" /> No notifications
+      <div className="flex flex-col items-center justify-center h-full text-muted-foreground/60 text-sm gap-1">
+        <Check className="w-5 h-5" />
+        <span>All caught up!</span>
       </div>
     );
   }
 
   return (
-    <div className="space-y-1">
-      {notifications.map((n) => {
-        const Icon = n.icon;
-        return (
-          <div key={n.id} className="flex items-start gap-2 p-1.5 rounded hover:bg-white/5 transition-colors">
-            <Icon className="w-3.5 h-3.5 text-muted-foreground shrink-0 mt-0.5" />
-            <p className="text-xs text-foreground truncate flex-1">{n.text}</p>
-            <span className="text-[10px] text-muted-foreground shrink-0">{n.time}</span>
-          </div>
-        );
-      })}
+    <div className="flex flex-col h-full">
+      {/* Mark all read button */}
+      <div className="flex justify-end px-1 pb-1 shrink-0">
+        <button
+          onClick={handleDismissAll}
+          className="text-[10px] text-muted-foreground hover:text-primary transition-colors"
+        >
+          Mark all read
+        </button>
+      </div>
+
+      <div className="space-y-0.5 flex-1 min-h-0 overflow-auto">
+        {notifications.map((n) => {
+          const Icon = n.icon;
+          return (
+            <div
+              key={n.id}
+              className="flex items-start gap-2 p-1.5 rounded hover:bg-white/5 transition-colors group cursor-pointer"
+              onClick={() => dismiss(n.id)}
+              title="Click to dismiss"
+            >
+              <Icon className="w-3.5 h-3.5 text-muted-foreground shrink-0 mt-0.5" />
+              <p className="text-xs text-foreground truncate flex-1">{n.text}</p>
+              <span className="text-[10px] text-muted-foreground shrink-0">{n.time}</span>
+              <Check className="w-3 h-3 text-muted-foreground/0 group-hover:text-muted-foreground/60 transition-colors shrink-0 mt-0.5" />
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
