@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Calendar, Building2, Clock, CheckCircle2, Lock, Mail } from 'lucide-react';
 import { ProjectHealthBlock } from './ProjectHealthBlock';
 import { NextActionsSection } from './NextActionsSection';
+import { BrainInsightsPanel } from './BrainInsightsPanel';
 import { TeamLoadSnapshot } from './TeamLoadSnapshot';
 import { ProjectCompleteModal } from './ProjectCompleteModal';
 
@@ -126,6 +127,9 @@ export function OverviewTab({ project, onCompleteProject, onNavigateToTab }: Ove
 
       {/* Next Actions Section */}
       <NextActionsSection project={project} onNavigateToTab={handleNavigateToTab} />
+
+      {/* Brain AI Insights (when enabled) */}
+      <BrainInsightsPanel projectId={project.id} />
 
       {/* Team Load Snapshot (Admin Only) */}
       <TeamLoadSnapshot project={project} />

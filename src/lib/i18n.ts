@@ -980,6 +980,26 @@ export const translations = {
     lockerAssigned: '사물함 {n}번이 {user}님에게 배정되었습니다',
     lockerAssignment: '사물함 {n}번 배정',
     userTraining: '님의 트레이닝',
+
+    // Brain AI Settings
+    brainAI: 'Brain AI',
+    brainAISettings: 'Brain AI 설정',
+    brainAISettingsDesc: 'AI 기능을 관리합니다.',
+    brainCRUD: '채팅 CRUD 분석',
+    brainCRUDDesc: '@ai 멘션으로 할 일, 일정, 위치를 자동 추출합니다. (패턴 매칭)',
+    brainIntelligence: '패시브 인텔리전스',
+    brainIntelligenceDesc: '대화를 자동 분석하여 의사결정, 리스크, 액션 아이템을 추출합니다.',
+    brainAlwaysActive: '항상 활성',
+    brainStatusOff: '비활성',
+    brainStatusOn: '활성',
+    brainInsights: 'Brain Insights',
+    brainDecisions: '최근 의사결정',
+    brainActionItems: '미완료 액션 아이템',
+    brainRisks: '활성 리스크',
+    brainConversationSummary: '대화 요약',
+    brainLastAnalyzed: 'AI가 {time}에 {count}개 메시지를 분석했습니다',
+    brainNoData: '아직 분석 데이터가 없습니다',
+    brainAiActive: 'AI 활성',
   },
   en: {
     // Navigation
@@ -1969,6 +1989,26 @@ export const translations = {
     lockerAssigned: 'Locker #{n} assigned to {user}',
     lockerAssignment: 'Locker #{n} Assignment',
     userTraining: "'s Training",
+
+    // Brain AI Settings
+    brainAI: 'Brain AI',
+    brainAISettings: 'Brain AI Settings',
+    brainAISettingsDesc: 'Manage AI features.',
+    brainCRUD: 'Chat CRUD Analysis',
+    brainCRUDDesc: 'Automatically extract todos, events, locations from @ai mentions. (Pattern matching)',
+    brainIntelligence: 'Passive Intelligence',
+    brainIntelligenceDesc: 'Automatically analyze conversations for decisions, risks, and action items.',
+    brainAlwaysActive: 'Always Active',
+    brainStatusOff: 'Off',
+    brainStatusOn: 'On',
+    brainInsights: 'Brain Insights',
+    brainDecisions: 'Recent Decisions',
+    brainActionItems: 'Open Action Items',
+    brainRisks: 'Active Risks',
+    brainConversationSummary: 'Conversation Summary',
+    brainLastAnalyzed: 'AI analyzed {count} messages {time}',
+    brainNoData: 'No analysis data yet',
+    brainAiActive: 'AI Active',
   },
 } as const;
 

@@ -8,7 +8,7 @@
  * - Status badges for processed actions
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import { useAppStore } from '@/stores/appStore';
 import { useTranslation } from '@/hooks/useTranslation';
+import * as brainService from '@/services/brainService';
 import type {
   ChatMessage,
   BrainAction,
@@ -52,11 +53,76 @@ export function BrainActionBubble({
     hasAction: boolean;
     replyMessage: string;
     actions: Array<{
+      id?: string;
       type: string;
       confidence: number;
       data: Record<string, unknown>;
+      status?: BrainActionStatus;
     }>;
   } | undefined;
+
+  // When actions lack real IDs (realtime delivered before UPDATE),
+  // fetch them from the brain_actions table by message_id.
+  const [resolvedActions, setResolvedActions] = useState<typeof brainData extends undefined ? never : NonNullable<typeof brainData>['actions']>(
+    brainData?.actions || [],
+  );
+  const [fetchedIds, setFetchedIds] = useState(false);
+
+  useEffect(() => {
+    if (!brainData?.hasAction || !brainData.actions.length) return;
+    if (fetchedIds) return;
+
+    // Check if any action is missing an ID
+    const missingIds = brainData.actions.some((a) => !a.id);
+    if (!missingIds) {
+      setResolvedActions(brainData.actions);
+      return;
+    }
+
+    // Fetch real action IDs from the database
+    let cancelled = false;
+    const fetchIds = async () => {
+      try {
+        const dbActions = await brainService.getActionsByMessage(message.id);
+        if (cancelled) return;
+
+        if (dbActions.length > 0) {
+          // Merge DB IDs + statuses into the display actions
+          const merged = brainData.actions.map((a, idx) => {
+            const dbAction = dbActions[idx] || dbActions.find((d) => d.actionType === a.type);
+            return {
+              ...a,
+              id: dbAction?.id || a.id,
+              status: dbAction?.status || a.status,
+            };
+          });
+          setResolvedActions(merged);
+          setFetchedIds(true);
+        } else {
+          // DB actions not yet written — retry after a short delay
+          setTimeout(() => {
+            if (!cancelled) fetchIds();
+          }, 1500);
+        }
+      } catch (err) {
+        console.warn('Failed to fetch brain action IDs:', err);
+      }
+    };
+
+    fetchIds();
+    return () => { cancelled = true; };
+  }, [brainData, message.id, fetchedIds]);
+
+  // Also sync when brainData.actions change (e.g., realtime UPDATE arrives)
+  useEffect(() => {
+    if (brainData?.actions) {
+      const hasAllIds = brainData.actions.every((a) => !!a.id);
+      if (hasAllIds) {
+        setResolvedActions(brainData.actions);
+        setFetchedIds(true);
+      }
+    }
+  }, [brainData?.actions]);
 
   if (!brainData) {
     return (
@@ -78,9 +144,9 @@ export function BrainActionBubble({
       </div>
 
       {/* Action cards */}
-      {brainData.hasAction && brainData.actions.map((action, idx) => (
+      {brainData.hasAction && resolvedActions.map((action, idx) => (
         <ActionCard
-          key={idx}
+          key={action.id || idx}
           action={action}
           messageId={message.id}
           actionIndex={idx}
@@ -114,9 +180,13 @@ function ActionCard({
 }) {
   const [processing, setProcessing] = useState(false);
   const status = action.status || 'pending';
-  const actionId = action.id || `${messageId}_${actionIndex}`;
+  const actionId = action.id;
 
   const handleConfirm = async () => {
+    if (!actionId) {
+      console.warn('Cannot confirm action: no action ID yet');
+      return;
+    }
     setProcessing(true);
     try {
       await onConfirm?.(actionId);
@@ -126,6 +196,10 @@ function ActionCard({
   };
 
   const handleReject = async () => {
+    if (!actionId) {
+      console.warn('Cannot reject action: no action ID yet');
+      return;
+    }
     setProcessing(true);
     try {
       await onReject?.(actionId);
@@ -162,7 +236,7 @@ function ActionCard({
         )}
       </div>
 
-      {/* Action buttons (only for pending actions) */}
+      {/* Action buttons (only for pending actions with resolved IDs) */}
       {status === 'pending' && (
         <div className="flex gap-2 p-3 pt-0">
           <Button
@@ -170,21 +244,23 @@ function ActionCard({
             variant="default"
             className="flex-1 gap-1.5 text-xs h-8"
             onClick={handleConfirm}
-            disabled={processing}
+            disabled={processing || !actionId}
           >
             {processing ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            ) : !actionId ? (
               <Loader2 className="w-3.5 h-3.5 animate-spin" />
             ) : (
               <Check className="w-3.5 h-3.5" />
             )}
-            Confirm
+            {actionId ? 'Confirm' : 'Loading...'}
           </Button>
           <Button
             size="sm"
             variant="outline"
             className="flex-1 gap-1.5 text-xs h-8"
             onClick={handleReject}
-            disabled={processing}
+            disabled={processing || !actionId}
           >
             <X className="w-3.5 h-3.5" />
             Reject

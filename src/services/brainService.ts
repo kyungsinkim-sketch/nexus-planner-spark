@@ -1,13 +1,19 @@
 /**
  * Brain AI Service — Client-side API for @ai mention processing
  *
- * Calls Supabase Edge Functions:
- * - brain-process: Sends message to LLM for action extraction
+ * Two processing modes:
+ * 1. **Local Regex** (processMessageLocally) — Korean pattern matching for CRUD.
+ *    No LLM call. Uses koreanParser.ts + brain-create-action Edge Function.
+ * 2. **LLM** (processMessageWithLLM) — Reserved for future passive intelligence.
+ *    Calls brain-process Edge Function → Claude Haiku.
+ *
+ * Execution:
  * - brain-execute: Executes a confirmed action (create todo/event/location)
  */
 
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import type { BrainAction, BrainActionStatus } from '@/types/core';
+import { parseMessageWithRegex } from './koreanParser';
 
 interface ChatMember {
   id: string;
@@ -58,15 +64,78 @@ async function extractFunctionError(error: unknown): Promise<string> {
 }
 
 /**
- * Send a message to the Brain AI for analysis.
- * This triggers the brain-process Edge Function which:
- * 1. Calls Claude LLM to analyze the message
- * 2. Creates a bot chat_message with brain_action_data
- * 3. Creates brain_actions rows for each extracted action
+ * Process a message locally using Korean regex pattern matching.
+ * Auto-parses ALL project chat messages (no @ai trigger required).
  *
- * The bot message will appear via realtime subscription.
+ * Flow:
+ * 1. koreanParser.parseMessageWithRegex() extracts actions client-side
+ * 2. If no actions found → silently return (no bot message, no noise)
+ * 3. If actions found → calls brain-create-action Edge Function (creates bot message + brain_actions)
+ * 4. Bot message arrives via realtime subscription
  */
-export async function processMessage(
+export async function processMessageLocally(
+  request: BrainProcessRequest,
+): Promise<BrainProcessResponse> {
+  if (!isSupabaseConfigured()) {
+    throw new Error('Supabase not configured');
+  }
+
+  // 1. Parse with regex
+  const parseResult = parseMessageWithRegex(
+    request.messageContent,
+    request.chatMembers,
+    request.projectId,
+  );
+
+  // 2. If no actions found, return silently — don't create bot messages for
+  //    normal conversation. This is critical for auto-parse mode.
+  if (!parseResult.hasAction || parseResult.actions.length === 0) {
+    return {
+      success: true,
+      message: {},
+      actions: [],
+      llmResponse: {
+        hasAction: false,
+        replyMessage: '',
+        actionCount: 0,
+      },
+    };
+  }
+
+  // 3. Actions found — send to Edge Function to create bot message + brain_actions
+  const { data, error } = await supabase.functions.invoke('brain-create-action', {
+    body: {
+      replyMessage: parseResult.replyMessage,
+      actions: parseResult.actions.map((a) => ({
+        type: a.type,
+        confidence: a.confidence,
+        data: a.data,
+      })),
+      roomId: request.roomId,
+      projectId: request.projectId,
+      userId: request.userId,
+    },
+  });
+
+  if (error) {
+    const detail = await extractFunctionError(error);
+    console.error('brain-create-action error detail:', detail);
+    throw new Error(`Brain AI failed: ${detail}`);
+  }
+
+  if (!data?.success) {
+    throw new Error(data?.error || 'Brain create-action returned unsuccessful response');
+  }
+
+  return data as BrainProcessResponse;
+}
+
+/**
+ * Send a message to the Brain AI for LLM analysis.
+ * Reserved for passive intelligence / complex queries.
+ * Uses the brain-process Edge Function → Claude Haiku.
+ */
+export async function processMessageWithLLM(
   request: BrainProcessRequest,
 ): Promise<BrainProcessResponse> {
   if (!isSupabaseConfigured()) {
@@ -190,26 +259,20 @@ export async function getActionsByMessage(
 }
 
 /**
- * Detect if a message content contains @ai mention.
- * Returns the message content without the @ai prefix.
+ * Prepare message content for Brain AI processing.
+ * Strips @ai prefix if present, but always returns isBrainMention: true
+ * since all messages are now auto-parsed.
  */
 export function detectBrainMention(content: string): {
   isBrainMention: boolean;
   cleanContent: string;
 } {
-  // Match @ai or @AI at the start of the message
+  // Strip @ai prefix if user explicitly typed it (backward compat)
   const brainPattern = /^@ai\s+/i;
   const match = content.match(brainPattern);
 
-  if (match) {
-    return {
-      isBrainMention: true,
-      cleanContent: content.replace(brainPattern, '').trim(),
-    };
-  }
-
   return {
-    isBrainMention: false,
-    cleanContent: content,
+    isBrainMention: true, // Always true — all messages are auto-parsed
+    cleanContent: match ? content.replace(brainPattern, '').trim() : content,
   };
 }

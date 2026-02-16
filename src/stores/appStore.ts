@@ -42,6 +42,9 @@ interface AppState {
   // Theme
   theme: 'light' | 'dark';
 
+  // Brain AI
+  brainIntelligenceEnabled: boolean;
+
   // UI State
   selectedProjectId: string | null;
   sidebarCollapsed: boolean;
@@ -70,6 +73,7 @@ interface AppState {
   setLanguage: (lang: Language) => void;
   setTheme: (theme: 'light' | 'dark') => void;
   toggleTheme: () => void;
+  setBrainIntelligenceEnabled: (enabled: boolean) => void;
 
   // Project Actions
   addProject: (project: Partial<Project>) => Promise<void>;
@@ -156,6 +160,7 @@ export const useAppStore = create<AppState>()(
       userWorkStatus: 'NOT_AT_WORK',
       language: 'ko',
       theme: 'light',
+      brainIntelligenceEnabled: false,
       selectedProjectId: null,
       sidebarCollapsed: false,
       chatPanelCollapsed: false,
@@ -404,6 +409,7 @@ export const useAppStore = create<AppState>()(
         const next = current === 'dark' ? 'light' : 'dark';
         get().setTheme(next);
       },
+      setBrainIntelligenceEnabled: (enabled) => set({ brainIntelligenceEnabled: enabled }),
 
       // Project Actions
       addProject: async (project) => {
@@ -959,6 +965,7 @@ export const useAppStore = create<AppState>()(
         sidebarCollapsed: state.sidebarCollapsed,
         chatPanelCollapsed: state.chatPanelCollapsed,
         userWorkStatus: state.userWorkStatus,
+        brainIntelligenceEnabled: state.brainIntelligenceEnabled,
       }),
     }
   )

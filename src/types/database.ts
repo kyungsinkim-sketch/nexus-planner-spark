@@ -298,6 +298,137 @@ export interface Database {
                     executed_at?: string | null
                 }
             }
+            chat_digests: {
+                Row: {
+                    id: string
+                    room_id: string | null
+                    project_id: string | null
+                    digest_type: 'decisions' | 'action_items' | 'risks' | 'summary'
+                    content: Json
+                    message_range_start: string
+                    message_range_end: string
+                    message_count: number
+                    model_used: string | null
+                    confidence: number | null
+                    created_at: string
+                    expires_at: string | null
+                }
+                Insert: {
+                    id?: string
+                    room_id?: string | null
+                    project_id?: string | null
+                    digest_type: 'decisions' | 'action_items' | 'risks' | 'summary'
+                    content: Json
+                    message_range_start: string
+                    message_range_end: string
+                    message_count?: number
+                    model_used?: string | null
+                    confidence?: number | null
+                    created_at?: string
+                    expires_at?: string | null
+                }
+                Update: {
+                    id?: string
+                    room_id?: string | null
+                    project_id?: string | null
+                    digest_type?: 'decisions' | 'action_items' | 'risks' | 'summary'
+                    content?: Json
+                    message_range_start?: string
+                    message_range_end?: string
+                    message_count?: number
+                    model_used?: string | null
+                    confidence?: number | null
+                    created_at?: string
+                    expires_at?: string | null
+                }
+            }
+            brain_processing_queue: {
+                Row: {
+                    id: string
+                    room_id: string | null
+                    project_id: string | null
+                    pending_message_count: number
+                    last_processed_at: string | null
+                    cooldown_until: string | null
+                    status: 'idle' | 'processing' | 'cooldown'
+                    created_at: string
+                    updated_at: string
+                }
+                Insert: {
+                    id?: string
+                    room_id?: string | null
+                    project_id?: string | null
+                    pending_message_count?: number
+                    last_processed_at?: string | null
+                    cooldown_until?: string | null
+                    status?: 'idle' | 'processing' | 'cooldown'
+                    created_at?: string
+                    updated_at?: string
+                }
+                Update: {
+                    id?: string
+                    room_id?: string | null
+                    project_id?: string | null
+                    pending_message_count?: number
+                    last_processed_at?: string | null
+                    cooldown_until?: string | null
+                    status?: 'idle' | 'processing' | 'cooldown'
+                    created_at?: string
+                    updated_at?: string
+                }
+            }
+            project_context_snapshots: {
+                Row: {
+                    id: string
+                    project_id: string
+                    snapshot_data: Json
+                    generated_at: string
+                    expires_at: string
+                    model_used: string | null
+                }
+                Insert: {
+                    id?: string
+                    project_id: string
+                    snapshot_data: Json
+                    generated_at?: string
+                    expires_at?: string
+                    model_used?: string | null
+                }
+                Update: {
+                    id?: string
+                    project_id?: string
+                    snapshot_data?: Json
+                    generated_at?: string
+                    expires_at?: string
+                    model_used?: string | null
+                }
+            }
+            brain_activity_log: {
+                Row: {
+                    id: string
+                    activity_type: 'digest_created' | 'context_generated' | 'crud_parsed' | 'error'
+                    room_id: string | null
+                    project_id: string | null
+                    details: Json | null
+                    created_at: string
+                }
+                Insert: {
+                    id?: string
+                    activity_type: 'digest_created' | 'context_generated' | 'crud_parsed' | 'error'
+                    room_id?: string | null
+                    project_id?: string | null
+                    details?: Json | null
+                    created_at?: string
+                }
+                Update: {
+                    id?: string
+                    activity_type?: 'digest_created' | 'context_generated' | 'crud_parsed' | 'error'
+                    room_id?: string | null
+                    project_id?: string | null
+                    details?: Json | null
+                    created_at?: string
+                }
+            }
             file_groups: {
                 Row: {
                     id: string

@@ -32,8 +32,9 @@ import {
 } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
 import { User, UserRole } from '@/types/core';
-import { Shield, UserPlus, Trash2, Edit, Sparkles, Bell, Save, Database } from 'lucide-react';
+import { Shield, UserPlus, Trash2, Edit, Sparkles, Bell, Save, Database, Brain } from 'lucide-react';
 import { toast } from 'sonner';
 import { useTranslation } from '@/hooks/useTranslation';
 
@@ -66,7 +67,7 @@ const initialRolePermissions = {
 
 export function AdminSettingsTab() {
     const { t } = useTranslation();
-    const { users, currentUser } = useAppStore();
+    const { users, currentUser, brainIntelligenceEnabled, setBrainIntelligenceEnabled } = useAppStore();
     const [selectedTab, setSelectedTab] = useState('users');
 
     // Role permissions state
@@ -300,7 +301,7 @@ export function AdminSettingsTab() {
 
     return (
         <Tabs value={selectedTab} onValueChange={setSelectedTab} className="space-y-4">
-            <TabsList className="grid w-full grid-cols-2 lg:grid-cols-4 h-auto">
+            <TabsList className="grid w-full grid-cols-2 lg:grid-cols-5 h-auto">
                 <TabsTrigger value="users" className="gap-2">
                     <Shield className="w-4 h-4" />
                     {t('userPermissions')}
@@ -316,6 +317,10 @@ export function AdminSettingsTab() {
                 <TabsTrigger value="system" className="gap-2">
                     <Database className="w-4 h-4" />
                     System Data
+                </TabsTrigger>
+                <TabsTrigger value="ai" className="gap-2">
+                    <Brain className="w-4 h-4" />
+                    {t('brainAI')}
                 </TabsTrigger>
             </TabsList>
 
@@ -751,6 +756,76 @@ export function AdminSettingsTab() {
                                 <Database className="w-4 h-4 mr-2" />
                                 Seed Database
                             </Button>
+                        </div>
+                    </CardContent>
+                </Card>
+            </TabsContent>
+
+            {/* Brain AI Tab */}
+            <TabsContent value="ai" className="space-y-4">
+                <Card>
+                    <CardHeader>
+                        <CardTitle>{t('brainAISettings')}</CardTitle>
+                        <CardDescription>
+                            {t('brainAISettingsDesc')}
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-6">
+                        {/* CRUD Pattern Matching — always active */}
+                        <div className="p-4 border rounded-lg">
+                            <div className="flex items-center justify-between">
+                                <div className="flex-1">
+                                    <div className="flex items-center gap-2">
+                                        <h4 className="font-semibold">{t('brainCRUD')}</h4>
+                                    </div>
+                                    <p className="text-sm text-muted-foreground mt-1">
+                                        {t('brainCRUDDesc')}
+                                    </p>
+                                </div>
+                                <Badge variant="secondary" className="shrink-0 bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
+                                    {t('brainAlwaysActive')}
+                                </Badge>
+                            </div>
+                        </div>
+
+                        {/* Passive Intelligence Toggle */}
+                        <div className="p-4 border rounded-lg">
+                            <div className="flex items-center justify-between">
+                                <div className="flex-1">
+                                    <div className="flex items-center gap-2">
+                                        <h4 className="font-semibold">{t('brainIntelligence')}</h4>
+                                        <Badge
+                                            variant="outline"
+                                            className={brainIntelligenceEnabled
+                                                ? 'border-emerald-500 text-emerald-600 dark:text-emerald-400'
+                                                : 'border-gray-300 text-gray-500'}
+                                        >
+                                            {brainIntelligenceEnabled ? t('brainStatusOn') : t('brainStatusOff')}
+                                        </Badge>
+                                    </div>
+                                    <p className="text-sm text-muted-foreground mt-1">
+                                        {t('brainIntelligenceDesc')}
+                                    </p>
+                                </div>
+                                <Switch
+                                    checked={brainIntelligenceEnabled}
+                                    onCheckedChange={setBrainIntelligenceEnabled}
+                                />
+                            </div>
+                            {brainIntelligenceEnabled && (
+                                <div className="mt-4 p-3 rounded-lg bg-violet-50 dark:bg-violet-950/20 border border-violet-200 dark:border-violet-800/30">
+                                    <div className="flex items-start gap-2">
+                                        <Brain className="w-4 h-4 text-violet-500 mt-0.5 shrink-0" />
+                                        <div className="text-sm text-violet-700 dark:text-violet-300">
+                                            <p className="font-medium">AI Passive Intelligence is enabled</p>
+                                            <p className="text-xs mt-1 text-violet-600 dark:text-violet-400">
+                                                Conversations will be batch-analyzed every 15 messages for decisions, risks, and action items.
+                                                Results appear in the Project Overview tab.
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </CardContent>
                 </Card>

@@ -194,6 +194,67 @@ export interface BrainExtractedLocation {
   searchQuery: string;       // "서울역" → Map search query
 }
 
+// ============================================================
+// Brain Intelligence Types (Phase 1 — Passive Intelligence)
+// ============================================================
+
+export type DigestType = 'decisions' | 'action_items' | 'risks' | 'summary';
+
+export interface ChatDigest {
+  id: string;
+  roomId?: string;
+  projectId?: string;
+  digestType: DigestType;
+  content: DigestContent;
+  messageRangeStart: string;
+  messageRangeEnd: string;
+  messageCount: number;
+  modelUsed?: string;
+  confidence?: number;
+  createdAt: string;
+  expiresAt?: string;
+}
+
+export interface DigestContent {
+  items: DigestItem[];
+  summary?: string;
+}
+
+export interface DigestItem {
+  text: string;
+  confidence: number;
+  relatedUserIds?: string[];
+  category?: string;
+  priority?: 'low' | 'medium' | 'high';
+}
+
+export interface ProjectContextSnapshot {
+  id: string;
+  projectId: string;
+  snapshotData: ProjectInsightsData;
+  generatedAt: string;
+  expiresAt: string;
+}
+
+export interface ProjectInsightsData {
+  recentDecisions: DigestItem[];
+  openActionItems: DigestItem[];
+  identifiedRisks: DigestItem[];
+  conversationSummary: string;
+  activityLevel: 'low' | 'medium' | 'high';
+  lastAnalyzedAt: string;
+  messageCount: number;
+}
+
+export interface BrainActivityLogEntry {
+  id: string;
+  activityType: 'digest_created' | 'context_generated' | 'crud_parsed' | 'error';
+  roomId?: string;
+  projectId?: string;
+  details?: Record<string, unknown>;
+  createdAt: string;
+}
+
 export interface LocationShare {
   title: string;
   address: string;

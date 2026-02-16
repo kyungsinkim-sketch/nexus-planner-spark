@@ -61,3 +61,62 @@ export interface ChatMember {
   id: string;
   name: string;
 }
+
+// ============================================================
+// Brain Intelligence Types (Phase 1 — Passive Intelligence)
+// ============================================================
+
+export type DigestType = 'decisions' | 'action_items' | 'risks' | 'summary';
+
+export interface DigestItem {
+  text: string;
+  confidence: number;
+  relatedUserIds?: string[];
+  category?: string;
+  priority?: 'low' | 'medium' | 'high';
+}
+
+export interface DigestResult {
+  decisions: DigestItem[];
+  actionItems: DigestItem[];
+  risks: DigestItem[];
+  summary: string;
+}
+
+export interface DigestRequest {
+  roomId?: string;
+  projectId?: string;
+  messageThreshold?: number; // default 15
+}
+
+export interface DigestResponse {
+  success: boolean;
+  digests: Array<{
+    id: string;
+    digestType: DigestType;
+    content: { items: DigestItem[]; summary?: string };
+    messageCount: number;
+  }>;
+  processedRange: { start: string; end: string };
+}
+
+export interface ContextRequest {
+  projectId: string;
+  forceRefresh?: boolean;
+}
+
+export interface ProjectInsightsData {
+  recentDecisions: DigestItem[];
+  openActionItems: DigestItem[];
+  identifiedRisks: DigestItem[];
+  conversationSummary: string;
+  activityLevel: 'low' | 'medium' | 'high';
+  lastAnalyzedAt: string;
+  messageCount: number;
+}
+
+export interface ContextResponse {
+  success: boolean;
+  snapshot: ProjectInsightsData;
+  cached: boolean;
+}

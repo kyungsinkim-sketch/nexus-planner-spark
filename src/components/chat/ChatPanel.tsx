@@ -37,7 +37,9 @@ import {
   Plus,
   Hash,
   ChevronRight,
+  Brain,
 } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { useTranslation } from '@/hooks/useTranslation';
 import { ChatShareMenu } from '@/components/chat/ChatShareMenu';
 import { ChatMessageBubble } from '@/components/chat/ChatMessageBubble';
@@ -66,6 +68,7 @@ export function ChatPanel() {
     loadChatRooms, createChatRoom, getChatRoomsByProject,
     getUserById, addMessage,
     addFileGroup, addFile, getFileGroupsByProject,
+    brainIntelligenceEnabled,
   } = useAppStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTab, setSelectedTab] = useState<'projects' | 'direct'>('projects');
@@ -258,8 +261,8 @@ export function ChatPanel() {
 
     const trimmed = newMessage.trim();
 
-    // Check for @ai mention
-    const { isBrainMention, cleanContent } = brainService.detectBrainMention(trimmed);
+    // Strip @ai prefix if present (backward compat), otherwise use as-is
+    const { cleanContent } = brainService.detectBrainMention(trimmed);
 
     // Send the user's message first
     if (selectedChat.type === 'project') {
@@ -274,14 +277,12 @@ export function ChatPanel() {
 
     setNewMessage('');
 
-    // If @ai mention detected, trigger Brain AI processing
-    if (isBrainMention && cleanContent) {
+    // Auto-parse ALL project chat messages for CRUD actions (DM excluded)
+    if (selectedChat.type === 'project' && cleanContent) {
       setBrainProcessing(true);
       try {
         // Build chat members list for name resolution
-        const project = selectedChat.type === 'project'
-          ? projects.find(p => p.id === selectedChat.id)
-          : null;
+        const project = projects.find(p => p.id === selectedChat.id) || null;
         const memberIds = project?.teamMemberIds || [];
         const chatMembers = memberIds
           .map(id => {
@@ -295,19 +296,19 @@ export function ChatPanel() {
           chatMembers.push({ id: currentUser.id, name: currentUser.name });
         }
 
-        await brainService.processMessage({
+        await brainService.processMessageLocally({
           messageContent: cleanContent,
           roomId: selectedChat.roomId,
-          projectId: selectedChat.type === 'project' ? selectedChat.id : undefined,
+          projectId: selectedChat.id,
           userId: currentUser.id,
           chatMembers,
           projectTitle: project?.title,
         });
 
-        // Bot message will arrive via realtime subscription
+        // Bot message will arrive via realtime subscription (only if action found)
       } catch (error) {
-        console.error('Brain AI processing failed:', error);
-        toast.error('Brain AI processing failed. Please try again.');
+        // Silent failure — don't disturb normal conversation
+        console.error('Brain AI background parsing failed:', error);
       } finally {
         setBrainProcessing(false);
       }
@@ -852,9 +853,16 @@ export function ChatPanel() {
             )}
 
             <div className="flex-1 min-w-0">
-              <h2 className="font-semibold text-foreground text-sm truncate">
-                {selectedChatInfo?.name}
-              </h2>
+              <div className="flex items-center gap-1.5">
+                <h2 className="font-semibold text-foreground text-sm truncate">
+                  {selectedChatInfo?.name}
+                </h2>
+                {brainIntelligenceEnabled && (
+                  <Badge variant="outline" className="text-[10px] gap-1 text-violet-500 border-violet-200 dark:border-violet-800 shrink-0">
+                    <Brain className="w-2.5 h-2.5" /> {t('brainAiActive')}
+                  </Badge>
+                )}
+              </div>
               <p className="text-[10px] text-muted-foreground truncate">
                 {selectedChatInfo?.subtitle}
               </p>
