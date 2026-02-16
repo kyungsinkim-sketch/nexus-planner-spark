@@ -1,21 +1,25 @@
 // Brain Process Edge Function
 // Analyzes a chat message using Claude LLM and creates a bot response with extracted actions.
 // Supports real-time weather data injection via Open-Meteo API (free, no key).
+// Fetches recent conversation history for multi-turn context (resolves "그때", "거기", etc.).
 //
 // Flow:
 //   1. Client sends { messageContent, roomId, projectId, userId, chatMembers }
-//   2. Detect weather intent → fetch Open-Meteo forecast if applicable
-//   3. Edge Function calls Claude API with optional weather context
-//   4. Creates a bot chat_message with type='brain_action'
-//   5. Creates brain_actions rows for each extracted action
-//   6. Returns the bot message + actions to client
+//   2. Create Supabase client + fetch recent chat history for context
+//   3. Detect weather intent (using combined conversation context) → fetch Open-Meteo forecast
+//   4. Edge Function calls Claude API with conversation history + optional weather context
+//   5. Creates a bot chat_message with type='brain_action'
+//   6. Creates brain_actions rows for each extracted action
+//   7. Returns the bot message + actions to client
 
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 import { analyzeMessage } from '../_shared/llm-client.ts';
+import type { ConversationMessage } from '../_shared/llm-client.ts';
 import type { ProcessRequest } from '../_shared/brain-types.ts';
 import { detectWeatherIntent, resolveLocation, fetchWeatherForecast, formatWeatherContext } from '../_shared/weather-client.ts';
 
 const BRAIN_BOT_USER_ID = '00000000-0000-0000-0000-000000000099';
+const HISTORY_LIMIT = 10; // Fetch last N messages for context
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -62,45 +66,7 @@ Deno.serve(async (req) => {
 
     console.log(`Processing @ai message from user ${userId}: "${messageContent.substring(0, 100)}"`);
 
-    // 3. Detect weather intent and fetch real data if needed
-    let weatherContext: string | undefined;
-    try {
-      const weatherIntent = detectWeatherIntent(messageContent);
-      if (weatherIntent) {
-        console.log('Weather intent detected:', JSON.stringify(weatherIntent));
-        const location = await resolveLocation(weatherIntent.locationHint);
-        if (location && weatherIntent.dateHint) {
-          console.log(`Fetching weather for ${location.resolvedName} (${location.lat}, ${location.lon}) on ${weatherIntent.dateHint}`);
-          const forecast = await fetchWeatherForecast(
-            location.lat, location.lon, weatherIntent.dateHint, location.resolvedName,
-          );
-          if (forecast) {
-            weatherContext = formatWeatherContext(forecast);
-            console.log('Weather data fetched successfully');
-          } else {
-            weatherContext = `\n## 날씨 데이터\n요청하신 날짜(${weatherIntent.dateHint})의 날씨 데이터를 가져올 수 없습니다. Open-Meteo 예보는 최대 16일 후까지만 제공됩니다. 해당 날짜가 16일 이상 후라면 날짜가 가까워지면 다시 확인하시기 바랍니다.`;
-          }
-        }
-      }
-    } catch (weatherErr) {
-      console.error('Weather fetch failed (non-fatal):', weatherErr);
-      // Continue without weather data — non-fatal error
-    }
-
-    // 4. Call Claude LLM (with optional weather context)
-    let llmResponse;
-    try {
-      llmResponse = await analyzeMessage(body, anthropicKey, weatherContext);
-      console.log('LLM response:', JSON.stringify({ hasAction: llmResponse.hasAction, actionCount: llmResponse.actions?.length }));
-    } catch (llmErr) {
-      console.error('LLM call failed:', llmErr);
-      return new Response(
-        JSON.stringify({ error: `LLM call failed: ${(llmErr as Error).message}` }),
-        { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
-      );
-    }
-
-    // 5. Create Supabase service client (bypasses RLS)
+    // 3. Create Supabase service client (bypasses RLS) — needed for chat history + DB writes
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
     if (!supabaseUrl || !supabaseServiceKey) {
@@ -112,14 +78,121 @@ Deno.serve(async (req) => {
     }
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // 6. Build brain_action_data for the bot message
+    // 4. Fetch recent chat history for multi-turn context
+    //    This allows the LLM to understand references like "그때", "거기", "그 일정"
+    let conversationHistory: ConversationMessage[] = [];
+    let recentMessagesText = ''; // Combined text for weather intent scanning
+    try {
+      let query = supabase
+        .from('chat_messages')
+        .select('user_id, content, message_type, created_at')
+        .order('created_at', { ascending: false })
+        .limit(HISTORY_LIMIT);
+
+      // Filter by room or project
+      if (roomId) {
+        query = query.eq('room_id', roomId);
+      } else if (projectId) {
+        query = query.eq('project_id', projectId);
+      }
+
+      const { data: recentMsgs, error: histErr } = await query;
+
+      if (!histErr && recentMsgs && recentMsgs.length > 0) {
+        // Reverse to chronological order (oldest first)
+        const chronological = [...recentMsgs].reverse();
+
+        // Build LLM conversation history
+        // Map: user messages → role=user, brain bot messages → role=assistant
+        for (const msg of chronological) {
+          if (!msg.content) continue;
+
+          if (msg.user_id === BRAIN_BOT_USER_ID) {
+            // Brain bot responses
+            conversationHistory.push({ role: 'assistant', content: msg.content });
+          } else {
+            // User messages
+            conversationHistory.push({ role: 'user', content: msg.content });
+          }
+        }
+
+        // Collect all text for weather context scanning
+        recentMessagesText = chronological
+          .map((m) => m.content || '')
+          .join(' ');
+
+        console.log(`Loaded ${chronological.length} recent messages for context`);
+      }
+    } catch (historyErr) {
+      console.error('Failed to load chat history (non-fatal):', historyErr);
+      // Continue without history
+    }
+
+    // Ensure valid multi-turn: messages must alternate user/assistant
+    // Claude API requires alternating roles, so merge consecutive same-role messages
+    conversationHistory = mergeConsecutiveRoles(conversationHistory);
+
+    // 5. Detect weather intent — scan BOTH current message AND recent conversation
+    let weatherContext: string | undefined;
+    try {
+      // First try current message
+      let weatherIntent = detectWeatherIntent(messageContent);
+
+      // If current message has weather keywords but no date/location,
+      // scan recent messages for context (e.g., "그때 날씨" → find date from prior msg)
+      if (weatherIntent) {
+        console.log('Weather intent from current message:', JSON.stringify(weatherIntent));
+      } else if (hasWeatherKeyword(messageContent)) {
+        // Check combined context — current message has weather words but detector
+        // couldn't find date/location. Try scanning recent conversation.
+        const combinedText = recentMessagesText + ' ' + messageContent;
+        weatherIntent = detectWeatherIntent(combinedText);
+        if (weatherIntent) {
+          console.log('Weather intent from conversation context:', JSON.stringify(weatherIntent));
+        }
+      }
+
+      if (weatherIntent) {
+        const location = await resolveLocation(weatherIntent.locationHint);
+        if (location && weatherIntent.dateHint) {
+          console.log(`Fetching weather for ${location.resolvedName} (${location.lat}, ${location.lon}) on ${weatherIntent.dateHint}`);
+          const forecast = await fetchWeatherForecast(
+            location.lat, location.lon, weatherIntent.dateHint, location.resolvedName,
+          );
+          if (forecast) {
+            weatherContext = formatWeatherContext(forecast);
+            console.log('Weather data fetched successfully');
+          } else {
+            weatherContext = `\n## 날씨 데이터\n요청하신 날짜(${weatherIntent.dateHint})의 날씨 데이터를 가져올 수 없습니다. Open-Meteo 예보는 최대 16일 후까지만 제공됩니다. 해당 날짜가 가까워지면 다시 확인해주세요.`;
+          }
+        }
+      }
+    } catch (weatherErr) {
+      console.error('Weather fetch failed (non-fatal):', weatherErr);
+      // Continue without weather data — non-fatal error
+    }
+
+    // 6. Call Claude LLM (with conversation history + optional weather context)
+    let llmResponse;
+    try {
+      llmResponse = await analyzeMessage(body, anthropicKey, weatherContext, conversationHistory);
+      console.log('LLM response:', JSON.stringify({ hasAction: llmResponse.hasAction, actionCount: llmResponse.actions?.length }));
+    } catch (llmErr) {
+      console.error('LLM call failed:', llmErr);
+      return new Response(
+        JSON.stringify({ error: `LLM call failed: ${(llmErr as Error).message}` }),
+        { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      );
+    }
+
+    // 7. Build brain_action_data for the bot message
     const brainActionData = {
       hasAction: llmResponse.hasAction,
       replyMessage: llmResponse.replyMessage,
       actions: llmResponse.actions || [],
     };
 
-    // 7. Insert bot chat message
+    // 8. Insert bot chat message
     const messageInsert: Record<string, unknown> = {
       user_id: BRAIN_BOT_USER_ID,
       content: llmResponse.replyMessage,
@@ -163,7 +236,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    // 8. Insert brain_actions rows (one per extracted action)
+    // 9. Insert brain_actions rows (one per extracted action)
     const insertedActions: Array<Record<string, unknown>> = [];
 
     // Resolve project_id for enriching extracted_data
@@ -197,7 +270,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    // 9. Return response
+    // 10. Return response
     return new Response(
       JSON.stringify({
         success: true,
@@ -228,3 +301,51 @@ Deno.serve(async (req) => {
     );
   }
 });
+
+/**
+ * Merge consecutive messages with the same role to satisfy Claude API requirements.
+ * Claude requires alternating user/assistant messages.
+ */
+function mergeConsecutiveRoles(messages: ConversationMessage[]): ConversationMessage[] {
+  if (messages.length === 0) return [];
+
+  const merged: ConversationMessage[] = [];
+  for (const msg of messages) {
+    const last = merged[merged.length - 1];
+    if (last && last.role === msg.role) {
+      // Merge into previous message
+      last.content += '\n' + msg.content;
+    } else {
+      merged.push({ ...msg });
+    }
+  }
+
+  // Claude requires the first message to be 'user'. If it starts with 'assistant', drop it.
+  while (merged.length > 0 && merged[0].role === 'assistant') {
+    merged.shift();
+  }
+
+  // Claude requires the last message before our new user message to be 'assistant'.
+  // If the last message in history is 'user', it will merge with our new message naturally.
+  // But we should trim trailing user messages since we'll add the current one.
+  while (merged.length > 0 && merged[merged.length - 1].role === 'user') {
+    // Keep the last user message as part of context — analyzeMessage appends the new one
+    // But if there are two consecutive user messages at the end, merge them
+    break;
+  }
+
+  return merged;
+}
+
+/**
+ * Quick check if a message contains weather-related keywords,
+ * even without full date/location extraction.
+ */
+function hasWeatherKeyword(text: string): boolean {
+  const keywords = [
+    '날씨', '기온', '온도', '바람', '풍속', '시정', '가시거리',
+    '강수', '습도', '체감', '예보', '기상', 'weather', 'forecast',
+    '비 올', '눈 올', '맑', '흐림', '우천',
+  ];
+  return keywords.some((kw) => text.includes(kw));
+}

@@ -46,6 +46,7 @@ ${projectId ? `## Current Project\nProject ID: ${projectId}${projectTitle ? `\nP
 - When creating an event, include ALL mentioned chat members as attendeeIds. Match member names using partial matching (e.g., "민규" → "박민규")
 - Always include a friendly, natural replyMessage summarizing what you extracted
 - You MUST respond with valid JSON only, no markdown code fences
+- CRITICAL: You receive recent conversation history as prior messages. When the user says "그때", "거기", "그날", "그곳", "그 일정", etc., resolve these references from the conversation history. For example, if a previous message mentioned "2월 28일 부산 해운대 드론 촬영", and the user asks "그때 날씨 어때?", you must understand "그때" = 2월 28일 and the location = 부산 해운대.
 - When weather data is provided below, use it to give detailed, helpful answers about weather conditions. Format the response nicely with emojis and clear sections for temperature, wind, visibility, precipitation, etc. Provide filming/outdoor activity recommendations based on the conditions.
 - If weather data is NOT available (e.g., date too far in the future), explain that the forecast is only available up to 16 days ahead and suggest checking closer to the date.
 
@@ -95,14 +96,23 @@ Today's date is: ${new Date().toISOString().split('T')[0]}
 Current time (KST): ${new Date().toLocaleTimeString('ko-KR', { timeZone: 'Asia/Seoul', hour: '2-digit', minute: '2-digit' })}${weatherContext || ''}`;
 }
 
+/** A single message in the conversation history for multi-turn context */
+export interface ConversationMessage {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
 /**
  * Call the Anthropic Claude API to analyze a chat message.
  * Optional weatherContext is injected into the system prompt for weather queries.
+ * Optional conversationHistory provides recent messages for multi-turn context
+ * (e.g., so "그때" references the previous message's date/location).
  */
 export async function analyzeMessage(
   request: ProcessRequest,
   apiKey: string,
   weatherContext?: string,
+  conversationHistory?: ConversationMessage[],
 ): Promise<LLMResponse> {
   const systemPrompt = buildSystemPrompt(
     request.chatMembers,
@@ -110,6 +120,12 @@ export async function analyzeMessage(
     request.projectTitle,
     weatherContext,
   );
+
+  // Build messages array: conversation history + current user message
+  const messages: ConversationMessage[] = [
+    ...(conversationHistory || []),
+    { role: 'user', content: request.messageContent },
+  ];
 
   const response = await fetch(ANTHROPIC_API_URL, {
     method: 'POST',
@@ -122,12 +138,7 @@ export async function analyzeMessage(
       model: MODEL,
       max_tokens: MAX_TOKENS,
       system: systemPrompt,
-      messages: [
-        {
-          role: 'user',
-          content: request.messageContent,
-        },
-      ],
+      messages,
     }),
   });
 
