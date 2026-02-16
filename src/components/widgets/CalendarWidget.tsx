@@ -9,13 +9,14 @@
  * - Event resize to adjust duration
  */
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import listPlugin from '@fullcalendar/list';
 import { useAppStore } from '@/stores/appStore';
+import { subscribeToEvents } from '@/services/eventService';
 import { EventSidePanel } from '@/components/calendar/EventSidePanel';
 import { NewEventModal } from '@/components/project/NewEventModal';
 import { toast } from 'sonner';
@@ -23,7 +24,16 @@ import type { CalendarEvent } from '@/types/core';
 import type { WidgetDataContext } from '@/types/widget';
 
 function CalendarWidget({ context }: { context: WidgetDataContext }) {
-  const { events, getProjectById, updateEvent, deleteEvent } = useAppStore();
+  const { events, getProjectById, updateEvent, deleteEvent, loadEvents } = useAppStore();
+
+  // Subscribe to realtime calendar_events changes so brain-created events
+  // appear without page refresh
+  useEffect(() => {
+    const unsubscribe = subscribeToEvents(() => {
+      loadEvents();
+    });
+    return () => unsubscribe();
+  }, [loadEvents]);
 
   // Event detail panel
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
@@ -69,9 +79,14 @@ function CalendarWidget({ context }: { context: WidgetDataContext }) {
   };
 
   // Date range select → open new event modal
+  // IMPORTANT: Use local date components, NOT toISOString() which converts to UTC
+  // and shifts the date backward in KST (UTC+9). e.g., Feb 16 00:00 KST → Feb 15 15:00 UTC
   const handleSelect = (info: { start: Date; end: Date }) => {
     setEditingEvent(undefined);
-    setNewEventDate(info.start.toISOString().split('T')[0]);
+    const y = info.start.getFullYear();
+    const m = String(info.start.getMonth() + 1).padStart(2, '0');
+    const d = String(info.start.getDate()).padStart(2, '0');
+    setNewEventDate(`${y}-${m}-${d}`);
     setNewEventStartTime(info.start.toTimeString().slice(0, 5));
     setNewEventEndTime(info.end.toTimeString().slice(0, 5));
     setShowEventModal(true);

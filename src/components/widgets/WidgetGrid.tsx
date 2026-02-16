@@ -39,8 +39,17 @@ export function WidgetGrid({ context, projectKeyColor }: WidgetGridProps) {
   const currentUser = useAppStore((s) => s.currentUser);
   const isAdmin = currentUser?.role === 'ADMIN';
 
-  // Track which widget is actively being interacted with (for opacity)
+  // Track which widget is actively being interacted with (for opacity).
+  // Active = clicked, dragged, or resized. Clicking outside deactivates.
   const [activeWidgetId, setActiveWidgetId] = useState<string | null>(null);
+
+  // Click outside any widget → deactivate
+  const handleGridClick = useCallback((e: React.MouseEvent) => {
+    // Only deactivate if clicking on the grid background, not on a widget
+    if (e.target === e.currentTarget) {
+      setActiveWidgetId(null);
+    }
+  }, []);
 
   const {
     dashboardWidgetLayout,
@@ -159,6 +168,7 @@ export function WidgetGrid({ context, projectKeyColor }: WidgetGridProps) {
       style={{
         ...(projectKeyColor ? { '--project-accent': projectKeyColor } as React.CSSProperties : {}),
       }}
+      onClick={handleGridClick}
     >
       {mounted && (
         <ResponsiveGridLayout
@@ -186,14 +196,14 @@ export function WidgetGrid({ context, projectKeyColor }: WidgetGridProps) {
             if (newItem) setActiveWidgetId(newItem.i);
           }}
           onDragStop={(finalLayout) => {
-            setActiveWidgetId(null);
+            // Keep widget active after drag (don't reset to null)
             saveLayout(finalLayout);
           }}
           onResizeStart={(_layout, _oldItem, newItem) => {
             if (newItem) setActiveWidgetId(newItem.i);
           }}
           onResizeStop={(finalLayout) => {
-            setActiveWidgetId(null);
+            // Keep widget active after resize (don't reset to null)
             saveLayout(finalLayout);
           }}
         >
@@ -223,6 +233,7 @@ export function WidgetGrid({ context, projectKeyColor }: WidgetGridProps) {
                 key={item.i}
                 className={isActive ? 'widget-item-active' : 'widget-item-idle'}
                 style={noTransitionStyle}
+                onMouseDown={() => setActiveWidgetId(item.i)}
               >
                 {isFramelessWidget(widgetType) ? (
                   // Frameless: no WidgetContainer, direct embed with minimal drag handle

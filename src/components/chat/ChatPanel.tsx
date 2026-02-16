@@ -342,12 +342,16 @@ export function ChatPanel() {
       );
 
       // Refresh calendar events so new events appear immediately
+      // Small delay to ensure DB write has propagated before querying
       if (result.executedData?.type === 'event') {
-        loadEvents();
+        await loadEvents();
+        // Retry after a short delay in case of DB propagation lag
+        setTimeout(() => loadEvents(), 1000);
       }
       // Refresh todos if a todo was created
       if (result.executedData?.type === 'todo') {
-        loadTodos();
+        await loadTodos();
+        setTimeout(() => loadTodos(), 1000);
       }
     } catch (error) {
       console.error('Failed to execute brain action:', error);
