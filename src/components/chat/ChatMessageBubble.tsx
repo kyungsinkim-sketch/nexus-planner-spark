@@ -25,6 +25,7 @@ import { useTranslation } from '@/hooks/useTranslation';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import * as fileService from '@/services/fileService';
 import type { ChatMessage, FileItem } from '@/types/core';
+import { BrainActionBubble } from './BrainActionBubble';
 
 interface ChatMessageBubbleProps {
   message: ChatMessage;
@@ -32,10 +33,23 @@ interface ChatMessageBubbleProps {
   onVoteDecision?: (messageId: string, optionId: string, reason: string) => void;
   onAcceptSchedule?: (messageId: string) => void;
   onDelete?: (messageId: string) => void;
+  onConfirmBrainAction?: (actionId: string) => void;
+  onRejectBrainAction?: (actionId: string) => void;
 }
 
-export function ChatMessageBubble({ message, isCurrentUser, onVoteDecision, onAcceptSchedule, onDelete }: ChatMessageBubbleProps) {
+export function ChatMessageBubble({ message, isCurrentUser, onVoteDecision, onAcceptSchedule, onDelete, onConfirmBrainAction, onRejectBrainAction }: ChatMessageBubbleProps) {
   const { messageType } = message;
+
+  // Brain AI bot message
+  if (messageType === 'brain_action') {
+    return (
+      <BrainActionBubble
+        message={message}
+        onConfirmAction={onConfirmBrainAction}
+        onRejectAction={onRejectBrainAction}
+      />
+    );
+  }
 
   if (messageType === 'location' && message.locationData) {
     return (

@@ -43,8 +43,10 @@ import { ChatShareMenu } from '@/components/chat/ChatShareMenu';
 import { ChatMessageBubble } from '@/components/chat/ChatMessageBubble';
 import { FileUploadModal } from '@/components/project/FileUploadModal';
 import type { LocationShare, ScheduleShare, DecisionShare, ChatMessage, ChatRoom, FileCategory } from '@/types/core';
+import { BRAIN_BOT_USER_ID } from '@/types/core';
 import * as chatService from '@/services/chatService';
 import * as fileService from '@/services/fileService';
+import * as brainService from '@/services/brainService';
 import { isSupabaseConfigured } from '@/lib/supabase';
 import { toast } from 'sonner';
 
@@ -249,20 +251,98 @@ export function ChatPanel() {
     };
   }, [selectedChat?.type, selectedChat?.id, selectedChat?.roomId, currentUser?.id, addMessage]);
 
-  const handleSendMessage = () => {
+  const [brainProcessing, setBrainProcessing] = useState(false);
+
+  const handleSendMessage = async () => {
     if (!newMessage.trim() || !selectedChat || !currentUser) return;
 
+    const trimmed = newMessage.trim();
+
+    // Check for @brain mention
+    const { isBrainMention, cleanContent } = brainService.detectBrainMention(trimmed);
+
+    // Send the user's message first
     if (selectedChat.type === 'project') {
       if (selectedChat.roomId) {
-        sendRoomMessage(selectedChat.roomId, selectedChat.id, newMessage.trim());
+        sendRoomMessage(selectedChat.roomId, selectedChat.id, trimmed);
       } else {
-        sendProjectMessage(selectedChat.id, newMessage.trim());
+        sendProjectMessage(selectedChat.id, trimmed);
       }
     } else {
-      sendDirectMessage(selectedChat.id, newMessage.trim());
+      sendDirectMessage(selectedChat.id, trimmed);
     }
 
     setNewMessage('');
+
+    // If @brain mention detected, trigger Brain AI processing
+    if (isBrainMention && cleanContent) {
+      setBrainProcessing(true);
+      try {
+        // Build chat members list for name resolution
+        const project = selectedChat.type === 'project'
+          ? projects.find(p => p.id === selectedChat.id)
+          : null;
+        const memberIds = project?.teamMemberIds || [];
+        const chatMembers = memberIds
+          .map(id => {
+            const user = getUserById(id);
+            return user ? { id: user.id, name: user.name } : null;
+          })
+          .filter(Boolean) as { id: string; name: string }[];
+
+        // Always include current user
+        if (!chatMembers.find(m => m.id === currentUser.id)) {
+          chatMembers.push({ id: currentUser.id, name: currentUser.name });
+        }
+
+        await brainService.processMessage({
+          messageContent: cleanContent,
+          roomId: selectedChat.roomId,
+          projectId: selectedChat.type === 'project' ? selectedChat.id : undefined,
+          userId: currentUser.id,
+          chatMembers,
+          projectTitle: project?.title,
+        });
+
+        // Bot message will arrive via realtime subscription
+      } catch (error) {
+        console.error('Brain AI processing failed:', error);
+        toast.error('Brain AI processing failed. Please try again.');
+      } finally {
+        setBrainProcessing(false);
+      }
+    }
+  };
+
+  // Brain action confirm/reject handlers
+  const handleConfirmBrainAction = async (actionId: string) => {
+    if (!currentUser) return;
+    try {
+      // First confirm, then execute
+      await brainService.updateActionStatus(actionId, 'confirmed', currentUser.id);
+      const result = await brainService.executeAction(actionId, currentUser.id);
+      toast.success(
+        result.executedData?.type === 'todo'
+          ? 'Todo created successfully!'
+          : result.executedData?.type === 'event'
+            ? 'Event created successfully!'
+            : 'Action completed!',
+      );
+    } catch (error) {
+      console.error('Failed to execute brain action:', error);
+      toast.error('Failed to execute action. Please try again.');
+    }
+  };
+
+  const handleRejectBrainAction = async (actionId: string) => {
+    if (!currentUser) return;
+    try {
+      await brainService.updateActionStatus(actionId, 'rejected', currentUser.id);
+      toast.info('Action rejected.');
+    } catch (error) {
+      console.error('Failed to reject brain action:', error);
+      toast.error('Failed to reject action.');
+    }
   };
 
   // Rich content sharing handlers
@@ -843,6 +923,8 @@ export function ChatPanel() {
                                 onVoteDecision={handleVoteDecision}
                                 onAcceptSchedule={handleAcceptSchedule}
                                 onDelete={handleDeleteMessage}
+                                onConfirmBrainAction={handleConfirmBrainAction}
+                                onRejectBrainAction={handleRejectBrainAction}
                               />
                             </div>
                           </div>
@@ -857,6 +939,16 @@ export function ChatPanel() {
           </ScrollArea>
 
           <Separator />
+
+          {/* Brain Processing Indicator */}
+          {brainProcessing && (
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-violet-50 dark:bg-violet-950/30 border-t border-violet-200/50 dark:border-violet-800/50">
+              <div className="w-3 h-3 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" />
+              <span className="text-xs text-violet-600 dark:text-violet-400 font-medium">
+                Re-Be Brain is thinking...
+              </span>
+            </div>
+          )}
 
           {/* Message Input */}
           <div className="p-2.5 bg-background shrink-0">

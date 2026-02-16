@@ -225,10 +225,11 @@ export interface Database {
                     attachment_id: string | null
                     direct_chat_user_id: string | null
                     room_id: string | null
-                    message_type: 'text' | 'file' | 'location' | 'schedule' | 'decision'
+                    message_type: 'text' | 'file' | 'location' | 'schedule' | 'decision' | 'brain_action'
                     location_data: Json | null
                     schedule_data: Json | null
                     decision_data: Json | null
+                    brain_action_data: Json | null
                     created_at: string
                 }
                 Insert: {
@@ -239,10 +240,11 @@ export interface Database {
                     attachment_id?: string | null
                     direct_chat_user_id?: string | null
                     room_id?: string | null
-                    message_type?: 'text' | 'file' | 'location' | 'schedule' | 'decision'
+                    message_type?: 'text' | 'file' | 'location' | 'schedule' | 'decision' | 'brain_action'
                     location_data?: Json | null
                     schedule_data?: Json | null
                     decision_data?: Json | null
+                    brain_action_data?: Json | null
                     created_at?: string
                 }
                 Update: {
@@ -253,11 +255,47 @@ export interface Database {
                     attachment_id?: string | null
                     direct_chat_user_id?: string | null
                     room_id?: string | null
-                    message_type?: 'text' | 'file' | 'location' | 'schedule' | 'decision'
+                    message_type?: 'text' | 'file' | 'location' | 'schedule' | 'decision' | 'brain_action'
                     location_data?: Json | null
                     schedule_data?: Json | null
                     decision_data?: Json | null
+                    brain_action_data?: Json | null
                     created_at?: string
+                }
+            }
+            brain_actions: {
+                Row: {
+                    id: string
+                    message_id: string
+                    action_type: 'create_todo' | 'create_event' | 'share_location'
+                    status: 'pending' | 'confirmed' | 'rejected' | 'executed' | 'failed'
+                    extracted_data: Json
+                    executed_data: Json | null
+                    confirmed_by: string | null
+                    created_at: string
+                    executed_at: string | null
+                }
+                Insert: {
+                    id?: string
+                    message_id: string
+                    action_type: 'create_todo' | 'create_event' | 'share_location'
+                    status?: 'pending' | 'confirmed' | 'rejected' | 'executed' | 'failed'
+                    extracted_data: Json
+                    executed_data?: Json | null
+                    confirmed_by?: string | null
+                    created_at?: string
+                    executed_at?: string | null
+                }
+                Update: {
+                    id?: string
+                    message_id?: string
+                    action_type?: 'create_todo' | 'create_event' | 'share_location'
+                    status?: 'pending' | 'confirmed' | 'rejected' | 'executed' | 'failed'
+                    extracted_data?: Json
+                    executed_data?: Json | null
+                    confirmed_by?: string | null
+                    created_at?: string
+                    executed_at?: string | null
                 }
             }
             file_groups: {

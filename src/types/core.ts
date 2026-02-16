@@ -145,7 +145,54 @@ export interface CalendarEvent {
 }
 
 // Chat message types for rich content sharing
-export type ChatMessageType = 'text' | 'file' | 'location' | 'schedule' | 'decision';
+export type ChatMessageType = 'text' | 'file' | 'location' | 'schedule' | 'decision' | 'brain_action';
+
+// ============================================================
+// Brain AI Types
+// ============================================================
+
+export const BRAIN_BOT_USER_ID = '00000000-0000-0000-0000-000000000099';
+
+export type BrainActionType = 'create_todo' | 'create_event' | 'share_location';
+export type BrainActionStatus = 'pending' | 'confirmed' | 'rejected' | 'executed' | 'failed';
+
+export interface BrainAction {
+  id: string;
+  messageId: string;
+  actionType: BrainActionType;
+  status: BrainActionStatus;
+  extractedData: BrainExtractedTodo | BrainExtractedEvent | BrainExtractedLocation;
+  executedData?: Record<string, unknown>;
+  confirmedBy?: string;
+  createdAt: string;
+  executedAt?: string;
+}
+
+export interface BrainExtractedTodo {
+  title: string;
+  assigneeNames: string[];    // Original names from message ("민규님")
+  assigneeIds: string[];      // Resolved user IDs
+  dueDate: string;            // ISO string
+  priority: TodoPriority;
+  projectId?: string;
+}
+
+export interface BrainExtractedEvent {
+  title: string;
+  startAt: string;
+  endAt: string;
+  location?: string;
+  locationUrl?: string;
+  attendeeIds: string[];
+  type: 'MEETING' | 'TASK' | 'DEADLINE' | 'DELIVERY';
+  projectId?: string;
+}
+
+export interface BrainExtractedLocation {
+  title: string;
+  address: string;
+  searchQuery: string;       // "서울역" → Map search query
+}
 
 export interface LocationShare {
   title: string;
@@ -221,6 +268,7 @@ export interface ChatMessage {
   locationData?: LocationShare;
   scheduleData?: ScheduleShare;
   decisionData?: DecisionShare;
+  brainActionData?: BrainAction; // Brain AI extracted action
 }
 
 export interface FileGroup {
