@@ -9,7 +9,7 @@
 // message is created with those IDs embedded in brain_action_data. This ensures
 // the front-end has valid UUIDs for confirm/reject operations.
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1';
+import { createClient } from 'jsr:@supabase/supabase-js@2';
 import { BRAIN_BOT_USER_ID } from '../_shared/brain-types.ts';
 
 const corsHeaders = {

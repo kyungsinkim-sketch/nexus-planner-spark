@@ -334,14 +334,28 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
           chatMembers.push({ id: currentUser.id, name: currentUser.name });
         }
 
-        await brainService.processMessageLocally({
-          messageContent: cleanContent,
-          roomId: selectedChat.roomId,
-          projectId: selectedChat.id,
-          userId: currentUser.id,
-          chatMembers,
-          projectTitle: project?.title,
-        });
+        if (forceBrain) {
+          // Cmd+Enter → Use LLM (brain-process) for intelligent parsing
+          // Bypasses strict regex parser; uses Claude Haiku for natural language understanding
+          await brainService.processMessageWithLLM({
+            messageContent: cleanContent,
+            roomId: selectedChat.roomId,
+            projectId: selectedChat.id,
+            userId: currentUser.id,
+            chatMembers,
+            projectTitle: project?.title,
+          });
+        } else {
+          // Auto-parse → Use regex (silent, no noise for non-matching messages)
+          await brainService.processMessageLocally({
+            messageContent: cleanContent,
+            roomId: selectedChat.roomId,
+            projectId: selectedChat.id,
+            userId: currentUser.id,
+            chatMembers,
+            projectTitle: project?.title,
+          });
+        }
 
         // Bot message will arrive via realtime subscription (only if action found)
       } catch (error) {

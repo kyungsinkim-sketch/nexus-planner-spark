@@ -9,7 +9,7 @@
 //   4. Upsert into project_context_snapshots
 //   5. Return snapshot data
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1';
+import { createClient } from 'jsr:@supabase/supabase-js@2';
 import type { ContextRequest, ProjectInsightsData, DigestItem } from '../_shared/brain-types.ts';
 
 const corsHeaders = {

@@ -8,7 +8,7 @@
 //   4. Creates brain_actions rows for each extracted action
 //   5. Returns the bot message + actions to client
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1';
+import { createClient } from 'jsr:@supabase/supabase-js@2';
 import { analyzeMessage } from '../_shared/llm-client.ts';
 import type { ProcessRequest } from '../_shared/brain-types.ts';
 
