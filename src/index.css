@@ -489,7 +489,7 @@
   background: color-mix(in srgb, var(--project-accent) 10%, hsl(222 47% 11%));
 }
 
-/* Chat widget — constrain to widget width */
+/* Chat widget — constrain ALL content to widget width */
 [data-widget-id="chat"] .widget-content,
 [data-widget-id="chat"] > div,
 [data-widget-id="brainChat"] .widget-content,
@@ -497,6 +497,14 @@
   overflow: hidden;
   max-width: 100%;
   min-width: 0;
+}
+/* Chat messages: enforce max-width on all chat bubble containers */
+[data-widget-id="chat"] .group\/msg,
+[data-widget-id="chat"] [class*="max-w-[80%]"],
+[data-widget-id="chat"] [class*="inline-block"] {
+  max-width: 100%;
+  overflow: hidden;
+  word-break: break-word;
 }
 
 /* Calendar widget — compact toolbar and fit-to-widget */

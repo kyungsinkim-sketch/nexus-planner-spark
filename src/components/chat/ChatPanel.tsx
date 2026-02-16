@@ -345,8 +345,13 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
 
         // Bot message will arrive via realtime subscription (only if action found)
       } catch (error) {
-        // Silent failure — don't disturb normal conversation
-        console.error('Brain AI background parsing failed:', error);
+        console.error('Brain AI processing failed:', error);
+        // Show error only if user explicitly triggered brain (Cmd+Enter)
+        if (forceBrain) {
+          toast.error('Brain AI processing failed', {
+            description: error instanceof Error ? error.message : 'Unknown error',
+          });
+        }
       } finally {
         setBrainProcessing(false);
       }

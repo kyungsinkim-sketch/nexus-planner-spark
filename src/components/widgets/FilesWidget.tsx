@@ -92,7 +92,7 @@ function FilesWidget({ context }: { context: WidgetDataContext }) {
       .slice(0, 20);
   }, [fileGroups, files, context]);
 
-  const handleDoubleClick = useCallback((file: FileItem) => {
+  const handleFileClick = useCallback((file: FileItem) => {
     setSelectedFile(file);
     setComment(file.comment || '');
   }, []);
@@ -139,8 +139,8 @@ function FilesWidget({ context }: { context: WidgetDataContext }) {
             <div
               key={f.id}
               className="flex items-center gap-2.5 px-2 py-1.5 rounded-lg hover:bg-white/5 transition-colors cursor-pointer"
-              onDoubleClick={() => handleDoubleClick(f)}
-              title="Double-click to preview"
+              onClick={() => handleFileClick(f)}
+              title="Click to preview"
             >
               {/* Thumbnail for images / PDF badge for PDFs / Icon fallback */}
               {isImage && fileUrl ? (
@@ -177,7 +177,7 @@ function FilesWidget({ context }: { context: WidgetDataContext }) {
 
       {/* File Preview Dialog */}
       <Dialog open={!!selectedFile} onOpenChange={(open) => { if (!open) setSelectedFile(null); }}>
-        <DialogContent className="sm:max-w-[480px]">
+        <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
           {selectedFile && (() => {
             const info = getFileInfo(selectedFile.name, selectedFile.type);
             const Icon = info.icon;
@@ -202,14 +202,14 @@ function FilesWidget({ context }: { context: WidgetDataContext }) {
                         <img
                           src={previewUrl}
                           alt={selectedFile.name}
-                          className="max-w-full max-h-[300px] object-contain"
+                          className="max-w-full max-h-[500px] object-contain"
                           loading="lazy"
                         />
                       );
                     }
                     if (isPdf_ && previewUrl) {
                       return (
-                        <div className="w-full h-[300px]">
+                        <div className="w-full h-[500px]">
                           <iframe
                             src={`${previewUrl}#toolbar=0`}
                             className="w-full h-full border-0"

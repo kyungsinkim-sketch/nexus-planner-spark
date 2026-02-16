@@ -137,7 +137,7 @@ function LocationBubble({ data, isCurrentUser }: { data: NonNullable<ChatMessage
   const providerLabel = { google: 'Google Maps', naver: 'Naver Map', kakao: 'Kakao Map', other: 'Map' }[data.provider];
 
   return (
-    <div className={`rounded-2xl overflow-hidden border max-w-[320px] ${isCurrentUser ? 'bg-primary/5 border-primary/20' : 'bg-muted border-border'}`}>
+    <div className={`rounded-2xl overflow-hidden border max-w-[min(320px,100%)] ${isCurrentUser ? 'bg-primary/5 border-primary/20' : 'bg-muted border-border'}`}>
       <div className="p-3 space-y-2">
         <div className="flex items-start gap-2">
           <MapPin className="w-4 h-4 text-blue-500 mt-0.5 shrink-0" />
@@ -191,7 +191,7 @@ function ScheduleBubble({ data, isCurrentUser, onAccept }: {
   const formatTime = (d: Date) => d.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
 
   return (
-    <div className={`rounded-2xl overflow-hidden border max-w-[320px] ${isCurrentUser ? 'bg-primary/5 border-primary/20' : 'bg-muted border-border'}`}>
+    <div className={`rounded-2xl overflow-hidden border max-w-[min(320px,100%)] ${isCurrentUser ? 'bg-primary/5 border-primary/20' : 'bg-muted border-border'}`}>
       <div className="p-3 space-y-2">
         <div className="flex items-start gap-2">
           <CalendarDays className="w-4 h-4 text-green-500 mt-0.5 shrink-0" />
@@ -307,7 +307,7 @@ function FileBubble({ message, isCurrentUser }: { message: ChatMessage; isCurren
 
   return (
     <>
-      <div className={`rounded-2xl overflow-hidden border max-w-[320px] ${isCurrentUser ? 'bg-primary/5 border-primary/20' : 'bg-muted border-border'}`}>
+      <div className={`rounded-2xl overflow-hidden border max-w-full w-full ${isCurrentUser ? 'bg-primary/5 border-primary/20' : 'bg-muted border-border'}`} style={{ maxWidth: 'min(320px, 100%)' }}>
         {/* Image preview thumbnail */}
         {isImage && downloadUrl && (
           <div
@@ -323,12 +323,12 @@ function FileBubble({ message, isCurrentUser }: { message: ChatMessage; isCurren
           </div>
         )}
 
-        <div className="p-3">
-          <div className="flex items-center gap-3">
+        <div className="p-3 min-w-0">
+          <div className="flex items-center gap-3 min-w-0">
             <div className="shrink-0">
               {getFileIcon()}
             </div>
-            <div className="flex-1 min-w-0">
+            <div className="flex-1 min-w-0 overflow-hidden">
               <p className="text-sm font-medium truncate">{fileName}</p>
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
                 {fileSize && <span>{fileSize}</span>}
@@ -342,22 +342,22 @@ function FileBubble({ message, isCurrentUser }: { message: ChatMessage; isCurren
               <Button
                 size="sm"
                 variant="outline"
-                className="flex-1 text-xs gap-1.5"
+                className="flex-1 text-xs gap-1.5 min-w-0"
                 onClick={handleDownload}
               >
-                <Download className="w-3.5 h-3.5" />
-                Download
+                <Download className="w-3.5 h-3.5 shrink-0" />
+                <span className="truncate">Download</span>
               </Button>
             )}
             {isPreviewable && downloadUrl && (
               <Button
                 size="sm"
                 variant="outline"
-                className="flex-1 text-xs gap-1.5"
+                className="flex-1 text-xs gap-1.5 min-w-0"
                 onClick={() => setShowPreview(true)}
               >
-                <Eye className="w-3.5 h-3.5" />
-                Preview
+                <Eye className="w-3.5 h-3.5 shrink-0" />
+                <span className="truncate">Preview</span>
               </Button>
             )}
           </div>
@@ -423,7 +423,7 @@ function DecisionBubble({ data, messageId, isCurrentUser, onVote }: {
   };
 
   return (
-    <div className={`rounded-2xl overflow-hidden border max-w-[360px] ${isCurrentUser ? 'bg-primary/5 border-primary/20' : 'bg-muted border-border'}`}>
+    <div className={`rounded-2xl overflow-hidden border max-w-[min(360px,100%)] ${isCurrentUser ? 'bg-primary/5 border-primary/20' : 'bg-muted border-border'}`}>
       <div className="p-3 space-y-3">
         <div className="flex items-start gap-2">
           <ListChecks className="w-4 h-4 text-violet-500 mt-0.5 shrink-0" />
