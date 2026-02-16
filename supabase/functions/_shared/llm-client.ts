@@ -5,16 +5,18 @@ import type { LLMResponse, ProcessRequest } from './brain-types.ts';
 
 const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
 const MODEL = 'claude-haiku-4-5-20251001';
-const MAX_TOKENS = 1024;
+const MAX_TOKENS = 2048;
 
 /**
  * Build the system prompt for Brain AI action extraction.
  * Instructs the model to parse Korean natural language into structured actions.
+ * Optionally includes real-time weather data when a weather query is detected.
  */
 function buildSystemPrompt(
   chatMembers: { id: string; name: string }[],
   projectId?: string,
   projectTitle?: string,
+  weatherContext?: string,
 ): string {
   const memberList = chatMembers.map((m) => `- ${m.name} (id: ${m.id})`).join('\n');
 
@@ -44,6 +46,8 @@ ${projectId ? `## Current Project\nProject ID: ${projectId}${projectTitle ? `\nP
 - When creating an event, include ALL mentioned chat members as attendeeIds. Match member names using partial matching (e.g., "민규" → "박민규")
 - Always include a friendly, natural replyMessage summarizing what you extracted
 - You MUST respond with valid JSON only, no markdown code fences
+- When weather data is provided below, use it to give detailed, helpful answers about weather conditions. Format the response nicely with emojis and clear sections for temperature, wind, visibility, precipitation, etc. Provide filming/outdoor activity recommendations based on the conditions.
+- If weather data is NOT available (e.g., date too far in the future), explain that the forecast is only available up to 16 days ahead and suggest checking closer to the date.
 
 ## Response Format (JSON)
 {
@@ -88,20 +92,23 @@ ${projectId ? `## Current Project\nProject ID: ${projectId}${projectTitle ? `\nP
 }
 
 Today's date is: ${new Date().toISOString().split('T')[0]}
-Current time (KST): ${new Date().toLocaleTimeString('ko-KR', { timeZone: 'Asia/Seoul', hour: '2-digit', minute: '2-digit' })}`;
+Current time (KST): ${new Date().toLocaleTimeString('ko-KR', { timeZone: 'Asia/Seoul', hour: '2-digit', minute: '2-digit' })}${weatherContext || ''}`;
 }
 
 /**
  * Call the Anthropic Claude API to analyze a chat message.
+ * Optional weatherContext is injected into the system prompt for weather queries.
  */
 export async function analyzeMessage(
   request: ProcessRequest,
   apiKey: string,
+  weatherContext?: string,
 ): Promise<LLMResponse> {
   const systemPrompt = buildSystemPrompt(
     request.chatMembers,
     request.projectId,
     request.projectTitle,
+    weatherContext,
   );
 
   const response = await fetch(ANTHROPIC_API_URL, {

@@ -1,16 +1,19 @@
 // Brain Process Edge Function
 // Analyzes a chat message using Claude LLM and creates a bot response with extracted actions.
+// Supports real-time weather data injection via Open-Meteo API (free, no key).
 //
 // Flow:
 //   1. Client sends { messageContent, roomId, projectId, userId, chatMembers }
-//   2. Edge Function calls Claude API to analyze the message
-//   3. Creates a bot chat_message with type='brain_action'
-//   4. Creates brain_actions rows for each extracted action
-//   5. Returns the bot message + actions to client
+//   2. Detect weather intent → fetch Open-Meteo forecast if applicable
+//   3. Edge Function calls Claude API with optional weather context
+//   4. Creates a bot chat_message with type='brain_action'
+//   5. Creates brain_actions rows for each extracted action
+//   6. Returns the bot message + actions to client
 
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 import { analyzeMessage } from '../_shared/llm-client.ts';
 import type { ProcessRequest } from '../_shared/brain-types.ts';
+import { detectWeatherIntent, resolveLocation, fetchWeatherForecast, formatWeatherContext } from '../_shared/weather-client.ts';
 
 const BRAIN_BOT_USER_ID = '00000000-0000-0000-0000-000000000099';
 
@@ -59,10 +62,35 @@ Deno.serve(async (req) => {
 
     console.log(`Processing @ai message from user ${userId}: "${messageContent.substring(0, 100)}"`);
 
-    // 3. Call Claude LLM
+    // 3. Detect weather intent and fetch real data if needed
+    let weatherContext: string | undefined;
+    try {
+      const weatherIntent = detectWeatherIntent(messageContent);
+      if (weatherIntent) {
+        console.log('Weather intent detected:', JSON.stringify(weatherIntent));
+        const location = await resolveLocation(weatherIntent.locationHint);
+        if (location && weatherIntent.dateHint) {
+          console.log(`Fetching weather for ${location.resolvedName} (${location.lat}, ${location.lon}) on ${weatherIntent.dateHint}`);
+          const forecast = await fetchWeatherForecast(
+            location.lat, location.lon, weatherIntent.dateHint, location.resolvedName,
+          );
+          if (forecast) {
+            weatherContext = formatWeatherContext(forecast);
+            console.log('Weather data fetched successfully');
+          } else {
+            weatherContext = `\n## 날씨 데이터\n요청하신 날짜(${weatherIntent.dateHint})의 날씨 데이터를 가져올 수 없습니다. Open-Meteo 예보는 최대 16일 후까지만 제공됩니다. 해당 날짜가 16일 이상 후라면 날짜가 가까워지면 다시 확인하시기 바랍니다.`;
+          }
+        }
+      }
+    } catch (weatherErr) {
+      console.error('Weather fetch failed (non-fatal):', weatherErr);
+      // Continue without weather data — non-fatal error
+    }
+
+    // 4. Call Claude LLM (with optional weather context)
     let llmResponse;
     try {
-      llmResponse = await analyzeMessage(body, anthropicKey);
+      llmResponse = await analyzeMessage(body, anthropicKey, weatherContext);
       console.log('LLM response:', JSON.stringify({ hasAction: llmResponse.hasAction, actionCount: llmResponse.actions?.length }));
     } catch (llmErr) {
       console.error('LLM call failed:', llmErr);
@@ -72,7 +100,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    // 4. Create Supabase service client (bypasses RLS)
+    // 5. Create Supabase service client (bypasses RLS)
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
     if (!supabaseUrl || !supabaseServiceKey) {
@@ -84,14 +112,14 @@ Deno.serve(async (req) => {
     }
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // 5. Build brain_action_data for the bot message
+    // 6. Build brain_action_data for the bot message
     const brainActionData = {
       hasAction: llmResponse.hasAction,
       replyMessage: llmResponse.replyMessage,
       actions: llmResponse.actions || [],
     };
 
-    // 6. Insert bot chat message
+    // 7. Insert bot chat message
     const messageInsert: Record<string, unknown> = {
       user_id: BRAIN_BOT_USER_ID,
       content: llmResponse.replyMessage,
@@ -135,7 +163,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    // 7. Insert brain_actions rows (one per extracted action)
+    // 8. Insert brain_actions rows (one per extracted action)
     const insertedActions: Array<Record<string, unknown>> = [];
 
     // Resolve project_id for enriching extracted_data
@@ -169,7 +197,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    // 8. Return response
+    // 9. Return response
     return new Response(
       JSON.stringify({
         success: true,
