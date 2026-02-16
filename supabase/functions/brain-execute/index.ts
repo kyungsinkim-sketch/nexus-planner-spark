@@ -112,6 +112,7 @@ Deno.serve(async (req) => {
         const attendeeIds = (eventData.attendeeIds as string[]) || [];
 
         // Build the event insert object
+        const filteredAttendeeIds = attendeeIds.filter((id: string) => id !== '');
         const eventInsert: Record<string, unknown> = {
           title: eventData.title,
           type: eventData.type || 'MEETING',
@@ -120,6 +121,7 @@ Deno.serve(async (req) => {
           project_id: eventData.projectId || null,
           owner_id: userId,
           source: 'PAULUS',
+          attendee_ids: filteredAttendeeIds.length > 0 ? filteredAttendeeIds : null,
         };
 
         // Include location data if available
