@@ -11,6 +11,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { TabState, WidgetLayoutItem, WidgetType, WidgetContext } from '@/types/widget';
 import { MAX_OPEN_TABS } from '@/types/widget';
+import { WIDGET_DEFINITIONS as WIDGET_DEFINITIONS_IMPORT } from '@/components/widgets/widgetRegistry';
 
 // Default layout for Dashboard (12-col grid)
 // Matches mockup: Projects top-left, Progress chart, Activity chart,
@@ -23,17 +24,18 @@ const DEFAULT_DASHBOARD_LAYOUT: WidgetLayoutItem[] = [
   { i: 'todos',           x: 9,  y: 3,  w: 3, h: 3, minW: 2, minH: 2 },
   { i: 'attendance',      x: 0,  y: 4,  w: 3, h: 2, minW: 2, minH: 2 },
   { i: 'files',           x: 3,  y: 4,  w: 3, h: 2, minW: 2, minH: 2 },
-  { i: 'brainChat',       x: 6,  y: 4,  w: 3, h: 2, minW: 2, minH: 2 },
+  { i: 'brainChat',       x: 6,  y: 4,  w: 3, h: 1, minW: 3, minH: 1 },
 ];
 
 // Default layout for Project tabs (12-col grid)
 // Fills viewport: Calendar big-left, Notifications top-center,
 // Chat right full-height, Todos center, Files bottom-left, Actions bottom
 const DEFAULT_PROJECT_LAYOUT: WidgetLayoutItem[] = [
-  { i: 'calendar',       x: 0,  y: 0,  w: 5, h: 7, minW: 3, minH: 3 },
-  { i: 'notifications',  x: 5,  y: 0,  w: 4, h: 3, minW: 2, minH: 2 },
+  { i: 'brainChat',      x: 0,  y: 0,  w: 9, h: 1, minW: 3, minH: 1 },
+  { i: 'calendar',       x: 0,  y: 1,  w: 5, h: 6, minW: 3, minH: 3 },
+  { i: 'notifications',  x: 5,  y: 1,  w: 4, h: 3, minW: 2, minH: 2 },
   { i: 'chat',           x: 9,  y: 0,  w: 3, h: 10, minW: 2, minH: 3 },
-  { i: 'todos',          x: 5,  y: 3,  w: 4, h: 4, minW: 2, minH: 2 },
+  { i: 'todos',          x: 5,  y: 4,  w: 4, h: 3, minW: 2, minH: 2 },
   { i: 'files',          x: 0,  y: 7,  w: 5, h: 3, minW: 2, minH: 2 },
   { i: 'actions',        x: 5,  y: 7,  w: 4, h: 3, minW: 2, minH: 2 },
 ];
@@ -137,16 +139,17 @@ export const useWidgetStore = create<WidgetState>()(
         const current = get()[key];
         // Already exists?
         if (current.some((item) => item.i === widgetType)) return;
-        // Add at bottom
+        // Add at bottom with definition defaults
+        const def = WIDGET_DEFINITIONS_IMPORT[widgetType];
         const maxY = current.reduce((max, item) => Math.max(max, item.y + item.h), 0);
         const newItem: WidgetLayoutItem = {
           i: widgetType,
           x: 0,
           y: maxY,
-          w: 4,
-          h: 3,
-          minW: 2,
-          minH: 2,
+          w: def?.defaultSize?.w ?? 4,
+          h: def?.defaultSize?.h ?? 3,
+          minW: def?.minSize?.w ?? 2,
+          minH: def?.minSize?.h ?? 2,
         };
         set({ [key]: [...current, newItem] });
       },
@@ -179,7 +182,7 @@ export const useWidgetStore = create<WidgetState>()(
     }),
     {
       name: 're-be-widget-layout',
-      version: 5, // bump to force reset — viewport-filling layout
+      version: 6, // bump to force reset — brainChat in project + h:1
       migrate: () => ({
         // On version mismatch, reset everything to defaults
         openTabs: [DASHBOARD_TAB],

@@ -14,8 +14,10 @@ import { ResponsiveGridLayout, useContainerWidth, verticalCompactor } from 'reac
 import { useWidgetStore } from '@/stores/widgetStore';
 import { useAppStore } from '@/stores/appStore';
 import { useTranslation } from '@/hooks/useTranslation';
+import { useNavigate } from 'react-router-dom';
 import { WidgetContainer } from './WidgetContainer';
 import { WIDGET_COMPONENTS, WIDGET_DEFINITIONS } from './widgetRegistry';
+import { Plus, Settings, X } from 'lucide-react';
 import type { WidgetDataContext, WidgetLayoutItem, WidgetType } from '@/types/widget';
 import { GRID_BREAKPOINTS, GRID_COLS, GRID_MARGIN } from '@/types/widget';
 
@@ -36,8 +38,10 @@ interface LayoutItem {
 
 export function WidgetGrid({ context, projectKeyColor }: WidgetGridProps) {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const currentUser = useAppStore((s) => s.currentUser);
   const isAdmin = currentUser?.role === 'ADMIN';
+  const [showAddMenu, setShowAddMenu] = useState(false);
 
   // Track which widget is actively being interacted with (for opacity).
   // Active = clicked, dragged, or resized. Clicking outside deactivates.
@@ -56,6 +60,7 @@ export function WidgetGrid({ context, projectKeyColor }: WidgetGridProps) {
     projectWidgetLayout,
     updateDashboardLayout,
     updateProjectLayout,
+    addWidget,
     removeWidget,
     toggleWidgetCollapsed,
   } = useWidgetStore();
@@ -285,6 +290,84 @@ export function WidgetGrid({ context, projectKeyColor }: WidgetGridProps) {
           })}
         </ResponsiveGridLayout>
       )}
+
+      {/* Floating Action Buttons — bottom right */}
+      <div className="fixed bottom-6 right-6 flex items-center gap-2 z-30">
+        {/* Settings button (project context only) */}
+        {context.type === 'project' && (
+          <button
+            onClick={() => navigate('/settings')}
+            className="w-10 h-10 rounded-full glass-widget flex items-center justify-center
+                       shadow-lg hover:shadow-xl transition-all
+                       text-muted-foreground hover:text-foreground"
+            title={t('settings')}
+          >
+            <Settings className="w-4.5 h-4.5" />
+          </button>
+        )}
+
+        {/* Add widget button */}
+        <div className="relative">
+          <button
+            onClick={() => setShowAddMenu(!showAddMenu)}
+            className={`w-10 h-10 rounded-full flex items-center justify-center
+                       shadow-lg hover:shadow-xl transition-all ${
+                         showAddMenu
+                           ? 'bg-destructive text-destructive-foreground rotate-45'
+                           : 'bg-primary text-primary-foreground hover:bg-primary/90'
+                       }`}
+            title={showAddMenu ? t('close') : t('addWidget')}
+          >
+            {showAddMenu ? <X className="w-5 h-5" /> : <Plus className="w-5 h-5" />}
+          </button>
+
+          {/* Add widget menu popup */}
+          {showAddMenu && (
+            <div className="absolute bottom-12 right-0 w-56 p-2 rounded-xl glass-widget shadow-xl border border-border/50
+                            animate-in fade-in slide-in-from-bottom-2 duration-200">
+              <p className="text-xs font-medium text-muted-foreground px-2 py-1 mb-1">
+                {t('addWidget')}
+              </p>
+              {(() => {
+                const currentWidgetIds = layout.map((item) => item.i);
+                const availableWidgets = Object.values(WIDGET_DEFINITIONS).filter((def) => {
+                  if (currentWidgetIds.includes(def.type)) return false;
+                  if (!def.contexts.includes(context.type)) return false;
+                  if (def.adminOnly && !isAdmin) return false;
+                  return true;
+                });
+
+                if (availableWidgets.length === 0) {
+                  return (
+                    <p className="text-xs text-muted-foreground/60 px-2 py-2 text-center">
+                      {t('allWidgetsAdded')}
+                    </p>
+                  );
+                }
+
+                return availableWidgets.map((def) => {
+                  const Icon = def.icon;
+                  const label = t(def.titleKey as Parameters<typeof t>[0]) || def.titleKey;
+                  return (
+                    <button
+                      key={def.type}
+                      onClick={() => {
+                        addWidget(context.type, def.type);
+                        setShowAddMenu(false);
+                      }}
+                      className="w-full flex items-center gap-2.5 px-2 py-2 rounded-lg
+                                 text-sm text-foreground hover:bg-primary/10 transition-colors"
+                    >
+                      <Icon className="w-4 h-4 text-muted-foreground" />
+                      <span>{label}</span>
+                    </button>
+                  );
+                });
+              })()}
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
