@@ -73,10 +73,33 @@ function CalendarWidget({ context }: { context: WidgetDataContext }) {
           end: event.endAt,
           backgroundColor: project?.keyColor || undefined,
           borderColor: project?.keyColor || undefined,
+          extendedProps: {
+            location: event.location,
+            type: event.type,
+          },
         };
       }),
     [filteredEvents, getProjectById],
   );
+
+  // Custom event rendering — show location under title when available
+  const renderEventContent = (eventInfo: { event: { title: string; extendedProps: { location?: string; type?: string } }; timeText: string }) => {
+    return (
+      <div className="fc-event-inner px-1 overflow-hidden">
+        <div className="flex items-center gap-1">
+          {eventInfo.timeText && (
+            <span className="fc-event-time text-[9px] opacity-80 shrink-0">{eventInfo.timeText}</span>
+          )}
+          <span className="fc-event-title truncate text-[10px] sm:text-xs font-medium">{eventInfo.event.title}</span>
+        </div>
+        {eventInfo.event.extendedProps.location && (
+          <div className="flex items-center gap-0.5 opacity-70 truncate">
+            <span className="text-[8px] sm:text-[9px]">📍 {eventInfo.event.extendedProps.location}</span>
+          </div>
+        )}
+      </div>
+    );
+  };
 
   // Event click → open side panel
   const handleEventClick = (info: { event: { id: string } }) => {
@@ -176,6 +199,7 @@ function CalendarWidget({ context }: { context: WidgetDataContext }) {
             list: 'List',
           }}
           events={calendarEvents}
+          eventContent={renderEventContent}
           height="100%"
           dayMaxEvents={2}
           nowIndicator={true}

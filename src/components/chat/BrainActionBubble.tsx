@@ -126,16 +126,16 @@ export function BrainActionBubble({
 
   if (!brainData) {
     return (
-      <div className="inline-block rounded-2xl px-4 py-2 text-sm bg-muted text-foreground">
+      <div className="w-fit max-w-full rounded-2xl px-4 py-2 text-sm bg-muted text-foreground break-words">
         {message.content}
       </div>
     );
   }
 
   return (
-    <div className="space-y-2 w-full max-w-full">
+    <div className="space-y-2 w-full max-w-full overflow-hidden">
       {/* Bot reply message */}
-      <div className="inline-block rounded-2xl px-4 py-2.5 text-sm bg-gradient-to-br from-violet-50 to-blue-50 dark:from-violet-950/30 dark:to-blue-950/30 border border-violet-200/50 dark:border-violet-800/50">
+      <div className="w-fit max-w-full rounded-2xl px-4 py-2.5 text-sm bg-gradient-to-br from-violet-50 to-blue-50 dark:from-violet-950/30 dark:to-blue-950/30 border border-violet-200/50 dark:border-violet-800/50 break-words">
         <div className="flex items-center gap-1.5 mb-1">
           <Brain className="w-3.5 h-3.5 text-violet-500" />
           <span className="text-xs font-semibold text-violet-600 dark:text-violet-400">Re-Be Brain</span>

@@ -378,37 +378,40 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
     try {
       // First confirm, then execute
       await brainService.updateActionStatus(actionId, 'confirmed', currentUser.id);
+      console.log('[Brain] Status updated to confirmed, now executing...');
       const result = await brainService.executeAction(actionId, currentUser.id);
+      console.log('[Brain] Execute result:', JSON.stringify(result));
+
+      const dataType = result.executedData?.type;
       toast.success(
-        result.executedData?.type === 'todo'
+        dataType === 'todo'
           ? 'Todo created successfully!'
-          : result.executedData?.type === 'event'
+          : dataType === 'event'
             ? 'Event created successfully!'
             : 'Action completed!',
       );
 
-      // Refresh data so new events/todos appear immediately
-      // The edge function uses service_role key so the insert is instant,
-      // but we add retries for safety (realtime subscription also picks this up)
-      console.log('[Brain] Action executed:', result.executedData?.type, result.executedData);
-
-      const refreshWithRetry = async (loadFn: () => Promise<void>, retries = 3) => {
-        for (let i = 0; i < retries; i++) {
-          await new Promise(r => setTimeout(r, i === 0 ? 200 : 1000));
+      // Force immediate refresh + retries for the created entity
+      // The edge function uses service_role key so the insert is instant
+      if (dataType === 'event' || dataType === 'todo') {
+        const loadFn = dataType === 'event' ? loadEvents : loadTodos;
+        // Immediate first attempt
+        try {
+          await loadFn();
+          console.log(`[Brain] Immediate ${dataType} refresh succeeded`);
+        } catch (err) {
+          console.error(`[Brain] Immediate ${dataType} refresh failed:`, err);
+        }
+        // Two more retries with delays
+        for (let i = 1; i <= 2; i++) {
+          await new Promise(r => setTimeout(r, 1000));
           try {
             await loadFn();
-            console.log(`[Brain] Refresh attempt ${i + 1} succeeded`);
+            console.log(`[Brain] Retry ${i} ${dataType} refresh succeeded`);
           } catch (err) {
-            console.error(`[Brain] Refresh attempt ${i + 1} failed:`, err);
+            console.error(`[Brain] Retry ${i} ${dataType} refresh failed:`, err);
           }
         }
-      };
-
-      if (result.executedData?.type === 'event') {
-        refreshWithRetry(loadEvents);
-      }
-      if (result.executedData?.type === 'todo') {
-        refreshWithRetry(loadTodos);
       }
     } catch (error) {
       console.error('Failed to execute brain action:', error);

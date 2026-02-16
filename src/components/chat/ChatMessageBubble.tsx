@@ -96,9 +96,9 @@ export function ChatMessageBubble({ message, isCurrentUser, onVoteDecision, onAc
   return (
     <MessageWrapper isCurrentUser={isCurrentUser} onDelete={onDelete} messageId={message.id}>
       <div
-        className={`inline-block rounded-2xl px-4 py-2 text-sm max-w-full break-words ${
+        className={`w-fit rounded-2xl px-4 py-2 text-sm max-w-full break-words ${
           isCurrentUser
-            ? 'bg-primary text-primary-foreground'
+            ? 'bg-primary text-primary-foreground ml-auto'
             : 'bg-muted text-foreground'
         }`}
       >
@@ -118,7 +118,7 @@ function MessageWrapper({ children, isCurrentUser, onDelete, messageId }: {
   if (!isCurrentUser || !onDelete) return <>{children}</>;
 
   return (
-    <div className="group/msg relative inline-block">
+    <div className="group/msg relative w-fit max-w-full">
       {children}
       <button
         onClick={() => onDelete(messageId)}

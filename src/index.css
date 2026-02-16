@@ -603,8 +603,24 @@
   @apply text-base sm:text-lg font-semibold text-foreground;
 }
 
+/* !important needed: FullCalendar injects its own CSS via JS (border-radius:.25em)
+   which overrides Tailwind classes due to cascade order */
 .fc .fc-button {
-  @apply text-xs sm:text-sm font-medium rounded-xl shadow-none;
+  @apply text-xs sm:text-sm font-medium shadow-none;
+  border-radius: 0.75rem !important; /* rounded-xl = 12px */
+}
+
+/* Button group — maintain rounded corners on first/last buttons */
+.fc .fc-button-group > .fc-button:first-child {
+  border-top-left-radius: 0.75rem !important;
+  border-bottom-left-radius: 0.75rem !important;
+}
+.fc .fc-button-group > .fc-button:last-child {
+  border-top-right-radius: 0.75rem !important;
+  border-bottom-right-radius: 0.75rem !important;
+}
+.fc .fc-button-group > .fc-button:not(:first-child):not(:last-child) {
+  border-radius: 0 !important;
 }
 
 .fc .fc-button-primary:not(:disabled):active,
@@ -621,7 +637,8 @@
 }
 
 .fc .fc-event {
-  @apply rounded-lg text-[10px] sm:text-xs border-0 cursor-pointer transition-transform hover:scale-[1.02];
+  @apply text-[10px] sm:text-xs border-0 cursor-pointer transition-transform hover:scale-[1.02];
+  border-radius: 0.5rem !important; /* rounded-lg = 8px */
 }
 
 /* Mobile Calendar Adjustments */
