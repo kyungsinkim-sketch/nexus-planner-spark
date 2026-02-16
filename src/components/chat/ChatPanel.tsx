@@ -314,9 +314,9 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
 
     setNewMessage('');
 
-    // Brain AI: triggered by Cmd+Enter (forceBrain) or auto-parse for project chats
-    const shouldRunBrain = forceBrain || (selectedChat.type === 'project');
-    if (shouldRunBrain && selectedChat.type === 'project' && cleanContent) {
+    // Brain AI: triggered ONLY by Cmd+Enter (forceBrain) or Brain Chat Widget
+    // Normal Enter key sends a plain message without Brain AI involvement
+    if (forceBrain && selectedChat.type === 'project' && cleanContent) {
       setBrainProcessing(true);
       try {
         // Build chat members list for name resolution
