@@ -15,7 +15,6 @@ import {
   Home,
   Calendar,
   FolderKanban,
-  MessageSquare,
   Crown,
   Menu,
   Sparkles,
@@ -110,7 +109,6 @@ export function EnhancedMobileNav() {
   const navItems = [
     { path: '/', icon: Home, labelKey: 'dashboard' as const, visible: true, pro: false },
     { path: '/projects', icon: FolderKanban, labelKey: 'projects' as const, visible: true, pro: false },
-    { path: '/chat', icon: MessageSquare, labelKey: 'chat' as const, visible: true, pro: false },
     { path: '/calendar', icon: Calendar, labelKey: 'calendar' as const, visible: true, pro: false },
     { path: '/admin', icon: Crown, labelKey: 'admin' as const, visible: currentUser?.role === 'ADMIN', pro: true },
   ].filter(item => item.visible);
@@ -352,8 +350,8 @@ export function EnhancedMobileNav() {
         className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-md border-t border-border"
         style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
       >
-        <div className="grid grid-cols-5 gap-1 px-2 py-2">
-          {navItems.slice(0, 5).map((item) => {
+        <div className="grid grid-cols-4 gap-1 px-2 py-2">
+          {navItems.slice(0, 4).map((item) => {
             const isActive = location.pathname === item.path ||
               (item.path !== '/' && location.pathname.startsWith(item.path));
 

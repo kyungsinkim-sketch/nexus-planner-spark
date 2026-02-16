@@ -19,7 +19,6 @@ const AdminPage = lazy(() => import("./pages/AdminPage"));
 const ProfilePage = lazy(() => import("./pages/ProfilePage"));
 const SettingsPage = lazy(() => import("./pages/SettingsPage"));
 const InboxPage = lazy(() => import("./pages/InboxPage"));
-const ChatPage = lazy(() => import("./pages/ChatPage"));
 const DepositStatusPage = lazy(() => import("./pages/DepositStatusPage"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const AuthPage = lazy(() => import("./pages/AuthPage").then(m => ({ default: m.AuthPage })));
@@ -114,7 +113,8 @@ const App = () => {
                   <Route path="/projects" element={<ProjectsPage />} />
                   <Route path="/projects/:projectId" element={<ProjectDetailPage />} />
                   <Route path="/projects/:projectId/deposits" element={<DepositStatusPage />} />
-                  <Route path="/chat" element={<ChatPage />} />
+                  {/* /chat redirects to / — Chat is now always visible in the split-screen layout */}
+                  <Route path="/chat" element={<Navigate to="/" replace />} />
                   <Route path="/inbox" element={<InboxPage />} />
                   <Route path="/admin" element={<AdminRoute><AdminPage /></AdminRoute>} />
                   <Route path="/profile" element={<ProfilePage />} />

@@ -45,6 +45,7 @@ interface AppState {
   // UI State
   selectedProjectId: string | null;
   sidebarCollapsed: boolean;
+  chatPanelCollapsed: boolean;
 
   // Auth Actions
   signIn: (email: string, password: string) => Promise<void>;
@@ -63,6 +64,8 @@ interface AppState {
   // UI Actions
   setSelectedProject: (projectId: string | null) => void;
   toggleSidebar: () => void;
+  toggleChatPanel: () => void;
+  setChatPanelCollapsed: (collapsed: boolean) => void;
   setUserWorkStatus: (status: UserWorkStatus) => void;
   setLanguage: (lang: Language) => void;
   setTheme: (theme: 'light' | 'dark') => void;
@@ -155,6 +158,7 @@ export const useAppStore = create<AppState>()(
       theme: 'light',
       selectedProjectId: null,
       sidebarCollapsed: false,
+      chatPanelCollapsed: false,
 
       // Auth Actions
       signIn: async (email: string, password: string) => {
@@ -370,6 +374,8 @@ export const useAppStore = create<AppState>()(
       // UI Actions
       setSelectedProject: (projectId) => set({ selectedProjectId: projectId }),
       toggleSidebar: () => set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
+      toggleChatPanel: () => set((state) => ({ chatPanelCollapsed: !state.chatPanelCollapsed })),
+      setChatPanelCollapsed: (collapsed) => set({ chatPanelCollapsed: collapsed }),
 
       setUserWorkStatus: async (status) => {
         set({ userWorkStatus: status });
@@ -951,6 +957,7 @@ export const useAppStore = create<AppState>()(
       partialize: (state) => ({
         language: state.language,
         sidebarCollapsed: state.sidebarCollapsed,
+        chatPanelCollapsed: state.chatPanelCollapsed,
         userWorkStatus: state.userWorkStatus,
       }),
     }

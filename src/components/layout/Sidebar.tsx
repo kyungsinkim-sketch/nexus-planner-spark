@@ -9,7 +9,6 @@ import {
   Sparkles,
   Crown,
   Inbox,
-  MessageSquare,
   Building2,
   Coffee,
   Dumbbell,
@@ -62,7 +61,6 @@ export function Sidebar() {
   const navItems = [
     { path: '/', icon: Home, labelKey: 'dashboard' as const, visible: true, pro: false },
     { path: '/projects', icon: FolderKanban, labelKey: 'projects' as const, visible: true, pro: false },
-    { path: '/chat', icon: MessageSquare, labelKey: 'chat' as const, visible: true, pro: false },
     { path: '/calendar', icon: Calendar, labelKey: 'calendar' as const, visible: true, pro: false },
     { path: '/inbox', icon: Inbox, labelKey: 'inbox' as const, visible: true, pro: false },
     { path: '/profile', icon: User, labelKey: 'myProfile' as const, visible: true, pro: false },
