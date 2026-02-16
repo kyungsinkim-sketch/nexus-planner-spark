@@ -222,7 +222,6 @@ export function WidgetGrid({ context, projectKeyColor }: WidgetGridProps) {
             const activeGlassStyle: React.CSSProperties | undefined = isActive
               ? {
                   background: isDark ? '#0e1629' : '#ffffff',
-                  opacity: 1,
                   backdropFilter: 'none',
                   WebkitBackdropFilter: 'none',
                 }

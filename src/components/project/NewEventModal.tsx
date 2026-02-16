@@ -73,14 +73,18 @@ export function NewEventModal({
 
   const selectedAttendees = users.filter(u => attendeeIds.includes(u.id));
 
-  // Pre-fill form when editing
+  // Pre-fill form when editing — use local date components to avoid UTC shift
   useEffect(() => {
     if (open && editEvent) {
       setTitle(editEvent.title);
       setType(editEvent.type);
       const startDate = new Date(editEvent.startAt);
       const endDate = new Date(editEvent.endAt);
-      setDate(startDate.toISOString().split('T')[0]);
+      // Use local date components (NOT toISOString which converts to UTC)
+      const sy = startDate.getFullYear();
+      const sm = String(startDate.getMonth() + 1).padStart(2, '0');
+      const sd = String(startDate.getDate()).padStart(2, '0');
+      setDate(`${sy}-${sm}-${sd}`);
       setStartTime(startDate.toTimeString().slice(0, 5));
       setEndTime(endDate.toTimeString().slice(0, 5));
       setAttendeeIds(editEvent.attendeeIds || []);
@@ -112,8 +116,13 @@ export function NewEventModal({
       return;
     }
 
-    const startAt = `${date}T${startTime}:00`;
-    const endAt = `${date}T${endTime}:00`;
+    // Build proper ISO strings with timezone offset so Supabase stores the correct time.
+    // Naive strings like "2026-02-16T14:00:00" are interpreted as UTC by Supabase timestamptz,
+    // which shifts the time by the user's timezone offset (e.g., -9h for KST).
+    const startDate = new Date(`${date}T${startTime}:00`);
+    const endDate = new Date(`${date}T${endTime}:00`);
+    const startAt = startDate.toISOString();
+    const endAt = endDate.toISOString();
 
     setIsSaving(true);
     try {

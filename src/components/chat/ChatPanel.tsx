@@ -60,7 +60,12 @@ interface SelectedChat {
   roomId?: string; // selected room within project
 }
 
-export function ChatPanel() {
+interface ChatPanelProps {
+  /** When provided (project tab), auto-select the project's default chat room on mount */
+  defaultProjectId?: string;
+}
+
+export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
   const { t } = useTranslation();
   const {
     projects, users, currentUser, messages, chatRooms,
@@ -82,6 +87,28 @@ export function ChatPanel() {
   const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [showFileUpload, setShowFileUpload] = useState(false);
+
+  // Auto-select project chat room when defaultProjectId is provided (widget on project tab)
+  const hasAutoSelectedRef = useRef(false);
+  useEffect(() => {
+    if (!defaultProjectId || hasAutoSelectedRef.current) return;
+    hasAutoSelectedRef.current = true;
+
+    // Load chat rooms for the project, then auto-select the default room
+    (async () => {
+      await loadChatRooms(defaultProjectId);
+      const rooms = getChatRoomsByProject(defaultProjectId);
+      const defaultRoom = rooms.find(r => r.isDefault) || rooms[0];
+      if (defaultRoom) {
+        setSelectedChat({ type: 'project', id: defaultProjectId, roomId: defaultRoom.id });
+        setExpandedProjectId(defaultProjectId);
+      } else {
+        // No rooms yet — just select the project-level chat
+        setSelectedChat({ type: 'project', id: defaultProjectId });
+        setExpandedProjectId(defaultProjectId);
+      }
+    })();
+  }, [defaultProjectId, loadChatRooms, getChatRoomsByProject]);
 
   // Filter all projects
   const allProjects = useMemo(() => {
@@ -669,7 +696,7 @@ export function ChatPanel() {
   }, [chatMessages]);
 
   return (
-    <div className="flex flex-col h-full bg-background">
+    <div className="flex flex-col h-full bg-background overflow-hidden w-full max-w-full">
       {/* When no chat selected: show chat list */}
       {!selectedChat ? (
         <div className="flex flex-col h-full">
@@ -846,9 +873,9 @@ export function ChatPanel() {
         </div>
       ) : (
         /* When chat selected: show messages */
-        <div className="flex flex-col h-full">
+        <div className="flex flex-col h-full overflow-hidden">
           {/* Chat Header */}
-          <div className="p-3 border-b border-border flex items-center gap-2.5 shrink-0">
+          <div className="p-3 border-b border-border flex items-center gap-2.5 shrink-0 min-w-0 overflow-hidden">
             <Button
               variant="ghost"
               size="icon"
@@ -894,7 +921,7 @@ export function ChatPanel() {
           </div>
 
           {/* Messages */}
-          <ScrollArea className="flex-1 p-3">
+          <ScrollArea className="flex-1 p-3 min-w-0">
             {chatMessages.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full text-center py-8">
                 <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center mb-3">
@@ -983,8 +1010,8 @@ export function ChatPanel() {
           )}
 
           {/* Message Input — Enter=send, Cmd+Enter=Brain AI */}
-          <div className="p-2.5 bg-background shrink-0">
-            <div className="flex items-center gap-1.5">
+          <div className="p-2.5 bg-background shrink-0 min-w-0">
+            <div className="flex items-center gap-1.5 min-w-0">
               <Button
                 variant="ghost"
                 size="icon"
@@ -1010,7 +1037,7 @@ export function ChatPanel() {
                     }
                   }
                 }}
-                className="flex-1 h-9 text-sm"
+                className="flex-1 h-9 text-sm min-w-0"
               />
               <Button
                 size="icon"
