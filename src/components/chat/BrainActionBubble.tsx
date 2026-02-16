@@ -124,6 +124,58 @@ export function BrainActionBubble({
     }
   }, [brainData?.actions]);
 
+  // Poll for status updates when any action is in 'confirmed' (Processing) state
+  // The auto-execute flow changes status to 'confirmed' then 'executed',
+  // but the embedded brainActionData in the chat message is never updated.
+  useEffect(() => {
+    const hasProcessing = resolvedActions.some(
+      (a) => a.status === 'confirmed' || a.status === 'pending',
+    );
+    if (!hasProcessing || !fetchedIds) return;
+
+    let cancelled = false;
+    let retries = 0;
+    const maxRetries = 10; // poll up to ~20 seconds
+
+    const poll = async () => {
+      if (cancelled || retries >= maxRetries) return;
+      retries++;
+
+      try {
+        const dbActions = await brainService.getActionsByMessage(message.id);
+        if (cancelled || dbActions.length === 0) return;
+
+        const merged = resolvedActions.map((a, idx) => {
+          const dbAction = dbActions[idx] || dbActions.find((d) => d.actionType === a.type);
+          if (!dbAction) return a;
+          return {
+            ...a,
+            id: dbAction.id || a.id,
+            status: dbAction.status || a.status,
+          };
+        });
+
+        setResolvedActions(merged);
+
+        // If still processing, continue polling
+        const stillProcessing = merged.some(
+          (a) => a.status === 'confirmed' || a.status === 'pending',
+        );
+        if (stillProcessing && !cancelled) {
+          setTimeout(poll, 2000);
+        }
+      } catch (err) {
+        console.warn('Failed to poll brain action statuses:', err);
+      }
+    };
+
+    const timer = setTimeout(poll, 2000);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [resolvedActions, fetchedIds, message.id]);
+
   if (!brainData) {
     return (
       <div className="w-fit max-w-full rounded-2xl px-4 py-2 text-sm bg-muted text-foreground break-words">

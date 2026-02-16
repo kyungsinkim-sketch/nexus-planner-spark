@@ -28,25 +28,28 @@ import type { WidgetDataContext } from '@/types/widget';
 
 export function TabLayout() {
   const { openTabs, activeTabId } = useWidgetStore();
-  const { getProjectById, projects } = useAppStore();
+  const { projects } = useAppStore();
   const location = useLocation();
 
   // If we're on a sub-route (admin, settings), show Outlet instead of widget grid
   const isSubRoute = location.pathname !== '/';
 
   // Resolve project data for each open project tab
+  // Use projects.find() directly instead of getProjectById to ensure
+  // proper reactivity — getProjectById is a stable function reference
+  // that doesn't change when project data changes.
   const tabProjectData = useMemo(() => {
     const map: Record<string, { keyColor?: string; thumbnail?: string }> = {};
     openTabs.forEach((tab) => {
       if (tab.type === 'project' && tab.projectId) {
-        const project = getProjectById(tab.projectId);
+        const project = projects.find(p => p.id === tab.projectId);
         if (project) {
           map[tab.id] = { keyColor: project.keyColor, thumbnail: project.thumbnail };
         }
       }
     });
     return map;
-  }, [openTabs, getProjectById, projects]);
+  }, [openTabs, projects]);
 
   return (
     <div className="h-screen flex flex-col bg-background overflow-hidden">
