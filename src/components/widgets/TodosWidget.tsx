@@ -12,7 +12,7 @@ function TodosWidget({ context }: { context: WidgetDataContext }) {
   const { personalTodos, currentUser } = useAppStore();
 
   const todos = useMemo(() => {
-    let list = personalTodos.filter((t) => t.assigneeId === currentUser?.id || t.ownerId === currentUser?.id);
+    let list = personalTodos.filter((t) => t.assigneeIds?.includes(currentUser?.id || '') || t.requestedById === currentUser?.id);
     if (context.type === 'project' && context.projectId) {
       list = list.filter((t) => t.projectId === context.projectId);
     }
