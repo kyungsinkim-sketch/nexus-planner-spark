@@ -419,7 +419,10 @@ function parseEventPatterns(
             variants.push(base + h);
           }
         }
-        for (const v of variants) {
+        // Sort by length descending — longest match first to prevent
+        // partial match (e.g., "민규" matching before "민규님")
+        const sortedVariants = [...new Set(variants)].sort((a, b) => b.length - a.length);
+        for (const v of sortedVariants) {
           if (locCandidate.startsWith(v)) {
             locCandidate = locCandidate.substring(v.length).trim();
           }
@@ -695,9 +698,12 @@ function parseDateTimeExpression(text: string): { dateTime: string | null; endDa
     return { dateTime: null, endDateTime: null };
   }
 
-  // Build the datetime
+  // Build the datetime using LOCAL timezone
+  // IMPORTANT: new Date("YYYY-MM-DD") parses as UTC midnight, which shifts
+  // the date in KST. We parse components and use new Date(y, m, d) instead.
   const dateStr = dateInfo.date || toISODate(new Date());
-  const baseDate = new Date(dateStr);
+  const [year, month, dayOfMonth] = dateStr.split('-').map(Number);
+  const baseDate = new Date(year, month - 1, dayOfMonth);
 
   if (timeInfo.hour !== null) {
     baseDate.setHours(timeInfo.hour, timeInfo.minute, 0, 0);
@@ -986,10 +992,15 @@ function getNextWeekday(from: Date, targetDay: number, nextWeek: boolean): Date 
 }
 
 /**
- * Convert a Date to ISO date string (YYYY-MM-DD).
+ * Convert a Date to ISO date string (YYYY-MM-DD) using LOCAL timezone.
+ * IMPORTANT: .toISOString() converts to UTC, which shifts dates backward
+ * in KST (UTC+9). We must use getFullYear/getMonth/getDate instead.
  */
 function toISODate(date: Date): string {
-  return date.toISOString().split('T')[0];
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
 }
 
 /**
