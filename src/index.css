@@ -315,6 +315,11 @@
       hsl(262 40% 14%) 100%);
   }
 
+  /* Project background area — when project has a thumbnail */
+  .project-bg-area {
+    position: relative;
+  }
+
   /* Widget title bar */
   .widget-titlebar {
     @apply flex items-center justify-between px-3 py-2
@@ -331,6 +336,28 @@
   /* Widget content area */
   .widget-content {
     @apply p-3 h-full overflow-auto;
+  }
+
+  /* Project accent color — applied via --project-accent CSS variable */
+  /* When a project has a keyColor, tint widget borders and title bars */
+  [style*="--project-accent"] .glass-widget {
+    border-color: var(--project-accent, hsl(var(--glass-border)));
+    border-width: 1.5px;
+  }
+  [style*="--project-accent"] .widget-titlebar {
+    background: color-mix(in srgb, var(--project-accent) 15%, hsl(var(--glass-border)));
+  }
+  [style*="--project-accent"] .chat-widget-handle {
+    background: color-mix(in srgb, var(--project-accent) 15%, hsl(var(--glass-border)));
+  }
+  [style*="--project-accent"] .widget-item-active .glass-widget {
+    box-shadow: 0 8px 32px rgba(0,0,0,0.15), 0 0 0 2px var(--project-accent);
+  }
+  .dark [style*="--project-accent"] .widget-titlebar {
+    background: color-mix(in srgb, var(--project-accent) 10%, hsl(222 47% 11%));
+  }
+  .dark [style*="--project-accent"] .chat-widget-handle {
+    background: color-mix(in srgb, var(--project-accent) 10%, hsl(222 47% 11%));
   }
 
   /* Widget active / idle states */
@@ -358,6 +385,20 @@
   }
   .dark .widget-item-active .glass-widget {
     background: hsl(222 47% 12%) !important;
+  }
+
+  /* Calendar widget — compact toolbar for widget */
+  .calendar-widget-content .fc .fc-toolbar {
+    @apply gap-1 mb-1;
+  }
+  .calendar-widget-content .fc .fc-toolbar-title {
+    @apply text-xs sm:text-sm;
+  }
+  .calendar-widget-content .fc .fc-button {
+    @apply text-[10px] px-1.5 py-0.5;
+  }
+  .calendar-widget-content .fc .fc-today-button {
+    @apply text-[10px] px-1.5 py-0.5;
   }
 
   /* Chat widget — frameless, minimal drag handle */

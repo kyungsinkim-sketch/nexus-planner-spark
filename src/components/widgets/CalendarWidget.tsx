@@ -140,13 +140,21 @@ function CalendarWidget({ context }: { context: WidgetDataContext }) {
           plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin, listPlugin]}
           initialView="dayGridMonth"
           headerToolbar={{
-            left: 'prev,next',
+            left: 'prev,next today',
             center: 'title',
-            right: 'dayGridMonth,listWeek',
+            right: 'dayGridMonth,timeGridWeek,listDay',
+          }}
+          buttonText={{
+            today: 'Today',
+            month: 'Month',
+            week: 'Week',
+            day: 'Day',
+            list: 'List',
           }}
           events={calendarEvents}
           height="100%"
           dayMaxEvents={2}
+          nowIndicator={true}
           titleFormat={{ year: 'numeric', month: 'short' }}
           editable={true}
           selectable={true}

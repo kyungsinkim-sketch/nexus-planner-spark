@@ -20,6 +20,7 @@ import { GRID_BREAKPOINTS, GRID_COLS, GRID_MARGIN } from '@/types/widget';
 
 interface WidgetGridProps {
   context: WidgetDataContext;
+  projectKeyColor?: string;
 }
 
 interface LayoutItem {
@@ -32,7 +33,7 @@ interface LayoutItem {
   minH?: number;
 }
 
-export function WidgetGrid({ context }: WidgetGridProps) {
+export function WidgetGrid({ context, projectKeyColor }: WidgetGridProps) {
   const { t } = useTranslation();
   const currentUser = useAppStore((s) => s.currentUser);
   const isAdmin = currentUser?.role === 'ADMIN';
@@ -143,7 +144,11 @@ export function WidgetGrid({ context }: WidgetGridProps) {
   const isFramelessWidget = (widgetType: string) => widgetType === 'chat' || widgetType === 'calendar';
 
   return (
-    <div ref={containerRef} className="h-full w-full">
+    <div
+      ref={containerRef}
+      className="h-full w-full"
+      style={projectKeyColor ? { '--project-accent': projectKeyColor } as React.CSSProperties : undefined}
+    >
       {mounted && (
         <ResponsiveGridLayout
           className="widget-grid"

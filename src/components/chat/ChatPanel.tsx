@@ -219,13 +219,22 @@ export function ChatPanel() {
     }
   };
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  const scrollToBottom = (instant = false) => {
+    messagesEndRef.current?.scrollIntoView({ behavior: instant ? 'instant' : 'smooth' });
   };
 
+  // Track previous chat ID to detect room entry vs. new message
+  const prevChatIdRef = useRef<string | null>(null);
+
   useEffect(() => {
-    scrollToBottom();
-  }, [chatMessages]);
+    if (chatMessages.length === 0) return;
+    // Determine if this is a room entry (chat changed) vs. new message in same room
+    const chatId = selectedChat ? `${selectedChat.type}-${selectedChat.id}-${selectedChat.roomId || ''}` : null;
+    const isRoomEntry = chatId !== prevChatIdRef.current;
+    prevChatIdRef.current = chatId;
+    // Room entry → instant scroll; new message → smooth scroll
+    scrollToBottom(isRoomEntry);
+  }, [chatMessages, selectedChat]);
 
   // Subscribe to realtime messages when selecting a room
   useEffect(() => {
