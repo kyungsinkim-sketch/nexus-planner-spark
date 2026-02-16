@@ -232,12 +232,14 @@ export function WidgetGrid({ context, projectKeyColor }: WidgetGridProps) {
                 key={item.i}
                 className={isActive ? 'widget-item-active' : 'widget-item-idle'}
                 style={noTransitionStyle}
-                onMouseDown={() => setActiveWidgetId(item.i)}
               >
                 {isFramelessWidget(widgetType) ? (
                   // Frameless: no WidgetContainer, direct embed with minimal drag handle
                   <div className="glass-widget flex flex-col h-full" data-widget-id={item.i} style={activeGlassStyle}>
-                    <div className="widget-drag-handle chat-widget-handle">
+                    <div
+                      className="widget-drag-handle chat-widget-handle"
+                      onMouseDown={() => setActiveWidgetId(item.i)}
+                    >
                       <span className="text-xs font-medium text-foreground/70 truncate flex items-center gap-1.5">
                         <def.icon className="w-3.5 h-3.5" />
                         {title}
@@ -264,6 +266,7 @@ export function WidgetGrid({ context, projectKeyColor }: WidgetGridProps) {
                     onCollapse={() => toggleWidgetCollapsed(context.type, widgetType)}
                     onRemove={() => removeWidget(context.type, widgetType)}
                     style={activeGlassStyle}
+                    onTitleBarClick={() => setActiveWidgetId(item.i)}
                   >
                     <WidgetComponent context={context} />
                   </WidgetContainer>

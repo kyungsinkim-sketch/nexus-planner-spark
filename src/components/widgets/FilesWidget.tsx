@@ -5,6 +5,8 @@
 
 import { useMemo, useState, useCallback } from 'react';
 import { useAppStore } from '@/stores/appStore';
+import { getFileDownloadUrl } from '@/services/fileService';
+import { isSupabaseConfigured } from '@/lib/supabase';
 import {
   FileText, Image, FileSpreadsheet, Presentation, Film,
   FileArchive, File, Music, Code, Download, Trash2,
@@ -40,6 +42,28 @@ function getFileInfo(fileName: string, fileType?: string) {
   if (/^(js|ts|tsx|jsx|py|rb|go|rs|java|c|cpp|h|css|html|json|xml|yaml|yml|sh)$/.test(ext))
     return { icon: Code, label: 'Code', color: 'text-cyan-500', previewable: false };
   return { icon: File, label: ext.toUpperCase() || 'File', color: 'text-muted-foreground', previewable: false };
+}
+
+/** Check if file is an image type that can show a thumbnail */
+function isImageFile(fileName: string, fileType?: string) {
+  const ext = fileName.split('.').pop()?.toLowerCase() || '';
+  return /^(jpg|jpeg|png|gif|webp|svg|bmp|ico|tiff)$/.test(ext) || fileType?.startsWith('image');
+}
+
+/** Check if file is a PDF */
+function isPdfFile(fileName: string, fileType?: string) {
+  const ext = fileName.split('.').pop()?.toLowerCase() || '';
+  return ext === 'pdf' || fileType === 'application/pdf';
+}
+
+/** Get the public URL for a stored file (for thumbnails) */
+function getFileUrl(storagePath?: string): string | null {
+  if (!storagePath || !isSupabaseConfigured()) return null;
+  try {
+    return getFileDownloadUrl(storagePath);
+  } catch {
+    return null;
+  }
 }
 
 function formatSize(size?: string) {
@@ -107,6 +131,10 @@ function FilesWidget({ context }: { context: WidgetDataContext }) {
         {allFiles.map((f) => {
           const info = getFileInfo(f.name, f.type);
           const Icon = info.icon;
+          const isImage = isImageFile(f.name, f.type);
+          const isPdf = isPdfFile(f.name, f.type);
+          const fileUrl = (isImage || isPdf) ? getFileUrl(f.storagePath) : null;
+
           return (
             <div
               key={f.id}
@@ -114,9 +142,26 @@ function FilesWidget({ context }: { context: WidgetDataContext }) {
               onDoubleClick={() => handleDoubleClick(f)}
               title="Double-click to preview"
             >
-              <div className={`shrink-0 ${info.color}`}>
-                <Icon className="w-4 h-4" />
-              </div>
+              {/* Thumbnail for images / PDF badge for PDFs / Icon fallback */}
+              {isImage && fileUrl ? (
+                <div className="shrink-0 w-8 h-8 rounded overflow-hidden bg-muted">
+                  <img
+                    src={fileUrl}
+                    alt={f.name}
+                    className="w-full h-full object-cover"
+                    loading="lazy"
+                    onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                  />
+                </div>
+              ) : isPdf ? (
+                <div className="shrink-0 w-8 h-8 rounded bg-red-50 dark:bg-red-950/30 flex items-center justify-center border border-red-200/50 dark:border-red-800/30">
+                  <span className="text-[9px] font-bold text-red-500">PDF</span>
+                </div>
+              ) : (
+                <div className={`shrink-0 ${info.color}`}>
+                  <Icon className="w-4 h-4" />
+                </div>
+              )}
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-medium text-foreground truncate">{f.name}</p>
                 <p className="text-[10px] text-muted-foreground">
@@ -146,18 +191,48 @@ function FilesWidget({ context }: { context: WidgetDataContext }) {
                 </DialogHeader>
 
                 {/* Preview area */}
-                <div className="bg-muted rounded-lg p-6 flex items-center justify-center min-h-[120px]">
-                  {info.previewable ? (
-                    <div className="text-center space-y-2">
-                      <Eye className="w-8 h-8 text-muted-foreground mx-auto" />
-                      <p className="text-xs text-muted-foreground">Preview available after upload to storage</p>
-                    </div>
-                  ) : (
-                    <div className="text-center space-y-2">
-                      <Icon className={`w-12 h-12 ${info.color} mx-auto opacity-60`} />
-                      <p className="text-xs text-muted-foreground">{info.label} file</p>
-                    </div>
-                  )}
+                <div className="bg-muted rounded-lg flex items-center justify-center min-h-[120px] overflow-hidden">
+                  {(() => {
+                    const previewUrl = getFileUrl(selectedFile.storagePath);
+                    const isImg = isImageFile(selectedFile.name, selectedFile.type);
+                    const isPdf_ = isPdfFile(selectedFile.name, selectedFile.type);
+
+                    if (isImg && previewUrl) {
+                      return (
+                        <img
+                          src={previewUrl}
+                          alt={selectedFile.name}
+                          className="max-w-full max-h-[300px] object-contain"
+                          loading="lazy"
+                        />
+                      );
+                    }
+                    if (isPdf_ && previewUrl) {
+                      return (
+                        <div className="w-full h-[300px]">
+                          <iframe
+                            src={`${previewUrl}#toolbar=0`}
+                            className="w-full h-full border-0"
+                            title={selectedFile.name}
+                          />
+                        </div>
+                      );
+                    }
+                    if (info.previewable) {
+                      return (
+                        <div className="text-center space-y-2 p-6">
+                          <Eye className="w-8 h-8 text-muted-foreground mx-auto" />
+                          <p className="text-xs text-muted-foreground">Preview available after upload to storage</p>
+                        </div>
+                      );
+                    }
+                    return (
+                      <div className="text-center space-y-2 p-6">
+                        <Icon className={`w-12 h-12 ${info.color} mx-auto opacity-60`} />
+                        <p className="text-xs text-muted-foreground">{info.label} file</p>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* File metadata */}

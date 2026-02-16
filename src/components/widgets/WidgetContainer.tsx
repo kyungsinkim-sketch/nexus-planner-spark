@@ -21,6 +21,7 @@ interface WidgetContainerProps {
   collapsed?: boolean;
   onCollapse?: () => void;
   onRemove?: () => void;
+  onTitleBarClick?: () => void;
   className?: string;
   style?: React.CSSProperties;
 }
@@ -41,6 +42,7 @@ export function WidgetContainer({
   collapsed = false,
   onCollapse,
   onRemove,
+  onTitleBarClick,
   className,
   style,
 }: WidgetContainerProps) {
@@ -54,8 +56,8 @@ export function WidgetContainer({
       data-widget-id={widgetId}
       style={style}
     >
-      {/* Title bar = drag handle */}
-      <div className="widget-titlebar widget-drag-handle">
+      {/* Title bar = drag handle + activation trigger */}
+      <div className="widget-titlebar widget-drag-handle" onMouseDown={onTitleBarClick}>
         <div className="flex items-center gap-2 min-w-0">
           <Icon className="w-4 h-4 text-foreground/70 shrink-0" />
           <span className="text-sm font-medium text-foreground/90 truncate">{title}</span>

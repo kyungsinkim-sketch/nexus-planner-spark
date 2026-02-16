@@ -211,8 +211,12 @@ export const subscribeToEvents = (
         return () => { };
     }
 
+    // Unique channel name per subscriber to avoid conflicts
+    // (multiple components can subscribe independently)
+    const channelName = `calendar_events_changes_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+
     const channel = supabase
-        .channel('calendar_events_changes')
+        .channel(channelName)
         .on(
             'postgres_changes',
             {
