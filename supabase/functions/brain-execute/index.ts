@@ -111,18 +111,29 @@ Deno.serve(async (req) => {
         const eventData = extractedData;
         const attendeeIds = (eventData.attendeeIds as string[]) || [];
 
+        // Build the event insert object
+        const eventInsert: Record<string, unknown> = {
+          title: eventData.title,
+          type: eventData.type || 'MEETING',
+          start_at: eventData.startAt,
+          end_at: eventData.endAt,
+          project_id: eventData.projectId || null,
+          owner_id: userId,
+          source: 'PAULUS',
+        };
+
+        // Include location data if available
+        if (eventData.location) {
+          eventInsert.location = eventData.location;
+        }
+        if (eventData.locationUrl) {
+          eventInsert.location_url = eventData.locationUrl;
+        }
+
         // Insert the event
         const { data: event, error: eventError } = await supabase
           .from('calendar_events')
-          .insert({
-            title: eventData.title,
-            type: eventData.type || 'MEETING',
-            start_at: eventData.startAt,
-            end_at: eventData.endAt,
-            project_id: eventData.projectId || null,
-            owner_id: userId,
-            source: 'PAULUS',
-          })
+          .insert(eventInsert)
           .select()
           .single();
 

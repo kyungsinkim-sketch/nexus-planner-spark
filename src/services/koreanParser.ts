@@ -388,19 +388,36 @@ function parseEventPatterns(
 
   // ── Inline location extraction from event time expression ──
   // When the time expression contains "에서", the text before it is a location.
-  // e.g., "민규님 강남역 9번출구에서 3시" → location = "강남역 9번출구"
+  // e.g., "민규님 2월 16일 강남역 9번출구에서 3시" → location = "강남역 9번출구"
   let extractedLocation: string | null = null;
   if (capturedTimeExpr) {
     const eoseoIdx = capturedTimeExpr.indexOf('에서');
     if (eoseoIdx > 0) {
       let locCandidate = capturedTimeExpr.substring(0, eoseoIdx).trim();
 
-      // Strip leading person names (chatMembers-based)
+      // Strip date expressions (e.g., "2월 16일", "내일", "다음주")
+      locCandidate = locCandidate
+        .replace(/\d{1,2}\s*월\s*\d{1,2}\s*일?/g, '')  // "2월 16일"
+        .replace(/\d{1,2}\s*[월/]\s*\d{1,2}/g, '')      // "2/16"
+        .replace(/(?:오늘|내일|모레|다음\s*주|이번\s*주)/g, '')
+        .replace(/(?:월|화|수|목|금|토|일)요일/g, '')
+        .trim();
+
+      // Strip person names (chatMembers-based)
+      // Match both full name (박민규) and given name (민규) + honorifics
       for (const member of chatMembers) {
         const bare = stripHonorifics(member.name);
+        // Build variants: full name, bare name, given name (last 2 chars)
         const variants = [member.name, bare];
-        for (const h of HONORIFICS) {
-          variants.push(bare + h);
+        const givenName = bare.length >= 2 ? bare.slice(-2) : bare;
+        if (givenName !== bare) {
+          variants.push(givenName);
+        }
+        // Add honorific variants for each base form
+        for (const base of [bare, givenName]) {
+          for (const h of HONORIFICS) {
+            variants.push(base + h);
+          }
         }
         for (const v of variants) {
           if (locCandidate.startsWith(v)) {
@@ -623,8 +640,24 @@ function parseDateExpression(text: string): { date: string | null } {
     }
   }
 
+  // Specific date: "M월 D일" or "M/D"
+  // IMPORTANT: Must check BEFORE day-of-week pattern to prevent
+  // "16일" → "일(Sunday)" false match
+  const specificDateMatch = text.match(/(\d{1,2})\s*[월/]\s*(\d{1,2})\s*일?/);
+  if (specificDateMatch) {
+    const month = parseInt(specificDateMatch[1], 10) - 1;
+    const day = parseInt(specificDateMatch[2], 10);
+    const result = new Date(now.getFullYear(), month, day);
+    // If the date is in the past, assume next year
+    if (result < today) {
+      result.setFullYear(result.getFullYear() + 1);
+    }
+    return { date: toISODate(result) };
+  }
+
   // "이번주 ~요일" or just "~요일"
-  const thisDayMatch = text.match(/(?:이번\s*주\s*)?(월|화|수|목|금|토|일)(?:요일)?/);
+  // Negative lookbehind (?<!\d) prevents "16일" from matching as day-of-week "일"
+  const thisDayMatch = text.match(/(?:이번\s*주\s*)?(?<!\d)(월|화|수|목|금|토|일)(?:요일)?/);
   if (thisDayMatch) {
     const targetDay = DAY_NAMES[thisDayMatch[1]] ?? DAY_NAMES[thisDayMatch[1] + '요일'];
     if (targetDay !== undefined) {
@@ -646,19 +679,6 @@ function parseDateExpression(text: string): { date: string | null } {
   if (text.includes('다음주') || text.includes('다음 주')) {
     const nextMonday = getNextWeekday(today, 1, true);
     return { date: toISODate(nextMonday) };
-  }
-
-  // Specific date: "M월 D일" or "M/D"
-  const specificDateMatch = text.match(/(\d{1,2})\s*[월/]\s*(\d{1,2})\s*일?/);
-  if (specificDateMatch) {
-    const month = parseInt(specificDateMatch[1], 10) - 1;
-    const day = parseInt(specificDateMatch[2], 10);
-    const result = new Date(now.getFullYear(), month, day);
-    // If the date is in the past, assume next year
-    if (result < today) {
-      result.setFullYear(result.getFullYear() + 1);
-    }
-    return { date: toISODate(result) };
   }
 
   return { date: null };
