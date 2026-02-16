@@ -388,20 +388,20 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
       );
 
       // Refresh data so new events/todos appear immediately
-      // Multiple retries with delays to handle DB propagation lag
+      // The edge function uses service_role key so the insert is instant,
+      // but we add retries for safety (realtime subscription also picks this up)
+      const refreshWithRetry = async (loadFn: () => Promise<void>, retries = 3) => {
+        for (let i = 0; i < retries; i++) {
+          await new Promise(r => setTimeout(r, i === 0 ? 200 : 1000));
+          await loadFn();
+        }
+      };
+
       if (result.executedData?.type === 'event') {
-        // Small delay to ensure edge function DB write is committed
-        setTimeout(async () => {
-          await loadEvents();
-          // Second retry for safety
-          setTimeout(() => loadEvents(), 1500);
-        }, 300);
+        refreshWithRetry(loadEvents);
       }
       if (result.executedData?.type === 'todo') {
-        setTimeout(async () => {
-          await loadTodos();
-          setTimeout(() => loadTodos(), 1500);
-        }, 300);
+        refreshWithRetry(loadTodos);
       }
     } catch (error) {
       console.error('Failed to execute brain action:', error);

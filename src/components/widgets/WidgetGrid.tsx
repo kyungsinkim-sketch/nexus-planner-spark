@@ -14,10 +14,10 @@ import { ResponsiveGridLayout, useContainerWidth, verticalCompactor } from 'reac
 import { useWidgetStore } from '@/stores/widgetStore';
 import { useAppStore } from '@/stores/appStore';
 import { useTranslation } from '@/hooks/useTranslation';
-import { useNavigate } from 'react-router-dom';
 import { WidgetContainer } from './WidgetContainer';
 import { WIDGET_COMPONENTS, WIDGET_DEFINITIONS } from './widgetRegistry';
 import { Plus, Settings, X } from 'lucide-react';
+import { EditProjectModal } from '@/components/project/EditProjectModal';
 import type { WidgetDataContext, WidgetLayoutItem, WidgetType } from '@/types/widget';
 import { GRID_BREAKPOINTS, GRID_COLS, GRID_MARGIN } from '@/types/widget';
 
@@ -38,10 +38,16 @@ interface LayoutItem {
 
 export function WidgetGrid({ context, projectKeyColor }: WidgetGridProps) {
   const { t } = useTranslation();
-  const navigate = useNavigate();
   const currentUser = useAppStore((s) => s.currentUser);
   const isAdmin = currentUser?.role === 'ADMIN';
   const [showAddMenu, setShowAddMenu] = useState(false);
+  const [showProjectSettings, setShowProjectSettings] = useState(false);
+
+  // Get current project for settings dialog
+  const projects = useAppStore((s) => s.projects);
+  const currentProject = context.type === 'project' && context.projectId
+    ? projects.find(p => p.id === context.projectId) || null
+    : null;
 
   // Track which widget is actively being interacted with (for opacity).
   // Active = clicked, dragged, or resized. Clicking outside deactivates.
@@ -291,16 +297,16 @@ export function WidgetGrid({ context, projectKeyColor }: WidgetGridProps) {
         </ResponsiveGridLayout>
       )}
 
-      {/* Floating Action Buttons — bottom right */}
-      <div className="fixed bottom-6 right-6 flex items-center gap-2 z-30">
-        {/* Settings button (project context only) */}
-        {context.type === 'project' && (
+      {/* Floating Action Buttons — above bottom navbar */}
+      <div className="fixed bottom-20 right-6 flex items-center gap-2 z-30">
+        {/* Settings button (project context only) — opens project settings dialog */}
+        {context.type === 'project' && context.projectId && (
           <button
-            onClick={() => navigate('/settings')}
+            onClick={() => setShowProjectSettings(true)}
             className="w-10 h-10 rounded-full glass-widget flex items-center justify-center
                        shadow-lg hover:shadow-xl transition-all
                        text-muted-foreground hover:text-foreground"
-            title={t('settings')}
+            title={t('projectSettings')}
           >
             <Settings className="w-4.5 h-4.5" />
           </button>
@@ -368,6 +374,15 @@ export function WidgetGrid({ context, projectKeyColor }: WidgetGridProps) {
           )}
         </div>
       </div>
+
+      {/* Project Settings Dialog */}
+      {currentProject && (
+        <EditProjectModal
+          open={showProjectSettings}
+          onOpenChange={setShowProjectSettings}
+          project={currentProject}
+        />
+      )}
     </div>
   );
 }

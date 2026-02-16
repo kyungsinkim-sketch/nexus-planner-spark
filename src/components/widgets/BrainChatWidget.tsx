@@ -44,12 +44,14 @@ function BrainChatWidget({ context }: { context: WidgetDataContext }) {
         projectTitle: undefined,
       });
 
-      toast.success('Brain AI processed your request');
+      toast.success('Brain AI processed. Check notifications to confirm.');
 
+      // Brain actions are in 'pending' state — user confirms via notification/chat.
+      // Refresh data after a delay in case realtime is slow.
       setTimeout(async () => {
         await loadEvents();
         await loadTodos();
-      }, 500);
+      }, 1000);
     } catch (error) {
       console.error('Brain AI processing failed:', error);
       toast.error('Brain AI processing failed');
