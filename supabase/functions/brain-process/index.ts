@@ -138,15 +138,25 @@ Deno.serve(async (req) => {
     // 7. Insert brain_actions rows (one per extracted action)
     const insertedActions: Array<Record<string, unknown>> = [];
 
+    // Resolve project_id for enriching extracted_data
+    const resolvedProjectId = messageInsert.project_id || projectId || null;
+
     if (llmResponse.hasAction && llmResponse.actions && llmResponse.actions.length > 0) {
       for (const action of llmResponse.actions) {
+        // Merge projectId into extracted_data so brain-execute
+        // can create events/todos with the correct project_id
+        const enrichedData = {
+          ...(action.data || {}),
+          projectId: (action.data as Record<string, unknown>)?.projectId || resolvedProjectId,
+        };
+
         const { data: actionRow, error: actionError } = await supabase
           .from('brain_actions')
           .insert({
             message_id: botMessage.id,
             action_type: action.type,
             status: 'pending',
-            extracted_data: action.data || {},
+            extracted_data: enrichedData,
           })
           .select()
           .single();

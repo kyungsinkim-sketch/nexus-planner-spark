@@ -118,13 +118,20 @@ Deno.serve(async (req) => {
     const createdActions = [];
     if (hasActions) {
       for (const action of actions) {
+        // Merge resolvedProjectId into extracted_data so brain-execute
+        // can create events/todos with the correct project_id
+        const enrichedData = {
+          ...action.data,
+          projectId: action.data.projectId || resolvedProjectId || null,
+        };
+
         const { data: brainAction, error: actionError } = await supabase
           .from('brain_actions')
           .insert({
             message_id: botMessage.id,
             action_type: action.type,
             status: 'pending',
-            extracted_data: action.data,
+            extracted_data: enrichedData,
           })
           .select()
           .single();
