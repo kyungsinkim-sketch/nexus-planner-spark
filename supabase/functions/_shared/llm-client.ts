@@ -45,7 +45,7 @@ ${projectId ? `## Current Project\nProject ID: ${projectId}${projectTitle ? `\nP
 - CRITICAL: Never create both create_event and share_location for the same message. If an event mentions a location, put the location inside the event's "location" field. Only use share_location for messages that ONLY mention a place without any schedule/time/meeting context.
 - When creating an event, include ALL mentioned chat members as attendeeIds. Match member names using partial matching (e.g., "민규" → "박민규")
 - Always include a friendly, natural replyMessage summarizing what you extracted. Actions are auto-executed immediately, so say "등록했습니다" or "생성했습니다" (not "확인 버튼을 눌러주세요" — there is no confirm step)
-- You MUST respond with valid JSON only, no markdown code fences
+- ABSOLUTE RULE: Your ENTIRE response must be a single JSON object and NOTHING else. No text before or after the JSON. No markdown code fences. No explanation. Start with { and end with }. The "replyMessage" field inside the JSON is where your natural language response goes
 - CRITICAL: You receive recent conversation history as prior messages. When the user says "그때", "거기", "그날", "그곳", "그 일정", etc., resolve these references from the conversation history. For example, if a previous message mentioned "2월 28일 부산 해운대 드론 촬영", and the user asks "그때 날씨 어때?", you must understand "그때" = 2월 28일 and the location = 부산 해운대.
 - When weather data is provided below, use it to give detailed, helpful answers about weather conditions. Format the response nicely with emojis and clear sections for temperature, wind, visibility, precipitation, etc. Provide filming/outdoor activity recommendations based on the conditions.
 - If weather data is NOT available (e.g., date too far in the future), explain that the forecast is only available up to 16 days ahead and suggest checking closer to the date.
@@ -157,24 +157,76 @@ export async function analyzeMessage(
     throw new Error('No text content in Anthropic response');
   }
 
-  // Parse the JSON response
-  let parsed: LLMResponse;
+  // Parse the JSON response — robust extraction handles mixed text + JSON
+  const parsed = extractJSON(textBlock.text);
+  return parsed;
+}
+
+/**
+ * Robustly extract a JSON object from LLM output.
+ * Handles these cases:
+ *   1. Pure JSON: `{ "hasAction": true, ... }`
+ *   2. Markdown fenced: ```json\n{ ... }\n```
+ *   3. Mixed text + JSON: `some text { "hasAction": true, ... }`
+ *   4. Text + fenced JSON: `some text ```json\n{ ... }\n```\n`
+ *   5. Complete garbage: returns fallback with the raw text as replyMessage
+ */
+function extractJSON(raw: string): LLMResponse {
+  const text = raw.trim();
+
+  // 1. Try direct parse (ideal case — pure JSON)
   try {
-    // Strip markdown code fences if present
-    let jsonText = textBlock.text.trim();
-    if (jsonText.startsWith('```')) {
-      jsonText = jsonText.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '');
-    }
-    parsed = JSON.parse(jsonText);
-  } catch (e) {
-    console.error('Failed to parse LLM response:', textBlock.text);
-    // Return a safe fallback
-    parsed = {
-      hasAction: false,
-      replyMessage: textBlock.text,
-      actions: [],
-    };
+    return JSON.parse(text);
+  } catch {
+    // continue
   }
 
-  return parsed;
+  // 2. Strip markdown code fences and retry
+  if (text.includes('```')) {
+    const fenceMatch = text.match(/```(?:json)?\s*\n?([\s\S]*?)\n?\s*```/);
+    if (fenceMatch) {
+      try {
+        return JSON.parse(fenceMatch[1].trim());
+      } catch {
+        // continue
+      }
+    }
+  }
+
+  // 3. Find the first { ... } that contains "hasAction" — brace-balanced extraction
+  const startIdx = text.indexOf('{');
+  if (startIdx !== -1) {
+    let depth = 0;
+    let endIdx = -1;
+    for (let i = startIdx; i < text.length; i++) {
+      if (text[i] === '{') depth++;
+      else if (text[i] === '}') {
+        depth--;
+        if (depth === 0) {
+          endIdx = i;
+          break;
+        }
+      }
+    }
+    if (endIdx !== -1) {
+      const jsonCandidate = text.substring(startIdx, endIdx + 1);
+      try {
+        const obj = JSON.parse(jsonCandidate);
+        // Verify it looks like our expected response
+        if ('hasAction' in obj || 'replyMessage' in obj) {
+          return obj as LLMResponse;
+        }
+      } catch {
+        // continue
+      }
+    }
+  }
+
+  // 4. Fallback — couldn't extract JSON, use raw text as reply
+  console.error('Failed to extract JSON from LLM response:', text.substring(0, 200));
+  return {
+    hasAction: false,
+    replyMessage: text.replace(/```[\s\S]*?```/g, '').replace(/\{[\s\S]*\}/, '').trim() || text,
+    actions: [],
+  };
 }
