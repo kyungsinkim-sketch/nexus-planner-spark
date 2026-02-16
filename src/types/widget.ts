@@ -74,5 +74,5 @@ export const MAX_OPEN_TABS = 8;
 // Grid configuration
 export const GRID_BREAKPOINTS = { lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 };
 export const GRID_COLS = { lg: 12, md: 10, sm: 6, xs: 4, xxs: 2 };
-export const GRID_ROW_HEIGHT = 80;
+export const GRID_ROW_HEIGHT = 60;
 export const GRID_MARGIN: [number, number] = [12, 12];

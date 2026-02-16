@@ -333,6 +333,34 @@
     @apply p-3 h-full overflow-auto;
   }
 
+  /* Widget resize handles (react-grid-layout) */
+  .react-resizable-handle {
+    position: absolute;
+    z-index: 10;
+  }
+  .react-resizable-handle::after {
+    display: none !important;
+  }
+  /* Edge handles — thin invisible strips */
+  .react-resizable-handle-s { bottom: 0; left: 0; right: 0; height: 6px; cursor: s-resize; }
+  .react-resizable-handle-n { top: 0; left: 0; right: 0; height: 6px; cursor: n-resize; }
+  .react-resizable-handle-e { right: 0; top: 0; bottom: 0; width: 6px; cursor: e-resize; }
+  .react-resizable-handle-w { left: 0; top: 0; bottom: 0; width: 6px; cursor: w-resize; }
+  /* Corner handles — small squares */
+  .react-resizable-handle-se { bottom: 0; right: 0; width: 10px; height: 10px; cursor: se-resize; }
+  .react-resizable-handle-sw { bottom: 0; left: 0; width: 10px; height: 10px; cursor: sw-resize; }
+  .react-resizable-handle-ne { top: 0; right: 0; width: 10px; height: 10px; cursor: ne-resize; }
+  .react-resizable-handle-nw { top: 0; left: 0; width: 10px; height: 10px; cursor: nw-resize; }
+  /* Show subtle dots on corner hover */
+  .react-grid-item:hover .react-resizable-handle-se,
+  .react-grid-item:hover .react-resizable-handle-sw,
+  .react-grid-item:hover .react-resizable-handle-ne,
+  .react-grid-item:hover .react-resizable-handle-nw {
+    background: radial-gradient(circle, hsl(var(--primary) / 0.5) 1.5px, transparent 1.5px);
+    background-size: 4px 4px;
+    background-position: center;
+  }
+
   /* Shimmer Animation */
   .shimmer {
     @apply relative overflow-hidden;

@@ -117,6 +117,7 @@ export function WidgetGrid({ context }: WidgetGridProps) {
       containerPadding={[16, 16]}
       compactType="vertical"
       draggableHandle=".widget-drag-handle"
+      resizeHandles={['s', 'w', 'e', 'n', 'se', 'sw', 'ne', 'nw']}
       useCSSTransforms
       onLayoutChange={(currentLayout: LayoutItem[]) => handleLayoutChange(currentLayout)}
     >

@@ -13,22 +13,29 @@ import type { TabState, WidgetLayoutItem, WidgetType, WidgetContext } from '@/ty
 import { MAX_OPEN_TABS } from '@/types/widget';
 
 // Default layout for Dashboard (12-col grid)
+// Matches mockup: Projects top-left, Progress chart, Activity chart,
+// Score cards, Notifications right, Todos right, Files bottom
 const DEFAULT_DASHBOARD_LAYOUT: WidgetLayoutItem[] = [
-  { i: 'calendar',       x: 0,  y: 0,  w: 6, h: 4, minW: 3, minH: 3 },
-  { i: 'notifications',  x: 6,  y: 0,  w: 3, h: 2, minW: 2, minH: 2 },
-  { i: 'chat',           x: 9,  y: 0,  w: 3, h: 5, minW: 3, minH: 3 },
-  { i: 'todos',          x: 6,  y: 2,  w: 3, h: 3, minW: 2, minH: 2 },
-  { i: 'files',          x: 0,  y: 4,  w: 6, h: 3, minW: 3, minH: 2 },
-  { i: 'projects',       x: 6,  y: 5,  w: 6, h: 4, minW: 3, minH: 3 },
+  { i: 'projects',        x: 0,  y: 0,  w: 5, h: 4, minW: 3, minH: 3 },
+  { i: 'progressChart',   x: 5,  y: 0,  w: 4, h: 2, minW: 2, minH: 2 },
+  { i: 'activityChart',   x: 5,  y: 2,  w: 4, h: 2, minW: 2, minH: 2 },
+  { i: 'notifications',   x: 9,  y: 0,  w: 3, h: 3, minW: 2, minH: 2 },
+  { i: 'todos',           x: 9,  y: 3,  w: 3, h: 3, minW: 2, minH: 2 },
+  { i: 'attendance',      x: 0,  y: 4,  w: 3, h: 2, minW: 2, minH: 2 },
+  { i: 'files',           x: 3,  y: 4,  w: 3, h: 2, minW: 2, minH: 2 },
+  { i: 'brainChat',       x: 6,  y: 4,  w: 3, h: 2, minW: 2, minH: 2 },
 ];
 
 // Default layout for Project tabs (12-col grid)
+// Matches mockup: Calendar big-left, Notifications top-center,
+// Chat right-tall, Todos center, Files bottom-left
 const DEFAULT_PROJECT_LAYOUT: WidgetLayoutItem[] = [
-  { i: 'calendar',       x: 0,  y: 0,  w: 6, h: 4, minW: 3, minH: 3 },
-  { i: 'notifications',  x: 6,  y: 0,  w: 3, h: 2, minW: 2, minH: 2 },
-  { i: 'chat',           x: 9,  y: 0,  w: 3, h: 5, minW: 3, minH: 3 },
-  { i: 'todos',          x: 6,  y: 2,  w: 3, h: 3, minW: 2, minH: 2 },
-  { i: 'files',          x: 0,  y: 4,  w: 6, h: 3, minW: 3, minH: 2 },
+  { i: 'calendar',       x: 0,  y: 0,  w: 5, h: 5, minW: 3, minH: 3 },
+  { i: 'notifications',  x: 5,  y: 0,  w: 4, h: 2, minW: 2, minH: 2 },
+  { i: 'chat',           x: 9,  y: 0,  w: 3, h: 6, minW: 2, minH: 3 },
+  { i: 'todos',          x: 5,  y: 2,  w: 4, h: 3, minW: 2, minH: 2 },
+  { i: 'files',          x: 0,  y: 5,  w: 5, h: 2, minW: 2, minH: 2 },
+  { i: 'actions',        x: 5,  y: 5,  w: 4, h: 2, minW: 2, minH: 2 },
 ];
 
 // Dashboard tab is always present
@@ -172,6 +179,7 @@ export const useWidgetStore = create<WidgetState>()(
     }),
     {
       name: 're-be-widget-layout',
+      version: 2, // bump to reset layouts with new defaults
       partialize: (state) => ({
         openTabs: state.openTabs,
         activeTabId: state.activeTabId,
