@@ -17,6 +17,7 @@ import {
   Mail,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useAppStore } from '@/stores/appStore';
 
 // Mock initial settings
 const initialSettings: GoogleCalendarSettings = {
@@ -26,6 +27,7 @@ const initialSettings: GoogleCalendarSettings = {
 };
 
 export function SettingsPage() {
+  const { currentUser } = useAppStore();
   const [settings, setSettings] = useState<GoogleCalendarSettings>(initialSettings);
   const [isSyncing, setIsSyncing] = useState(false);
 
@@ -62,13 +64,13 @@ export function SettingsPage() {
       description: 'Please authorize access to your calendar.',
     });
 
-    // Simulate connection
+    // Simulate connection — use current user's email as default
     setTimeout(() => {
       setSettings({
         isConnected: true,
         syncStatus: 'CONNECTED',
         lastSyncAt: new Date().toISOString(),
-        connectedEmail: 'user@gmail.com',
+        connectedEmail: currentUser?.email || `${currentUser?.name || 'user'}@paulus.pro`,
         autoSync: true,
       });
       toast.success('Google Calendar Connected', {
