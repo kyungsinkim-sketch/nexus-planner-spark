@@ -177,7 +177,7 @@ function FilesWidget({ context }: { context: WidgetDataContext }) {
 
       {/* File Preview Dialog */}
       <Dialog open={!!selectedFile} onOpenChange={(open) => { if (!open) setSelectedFile(null); }}>
-        <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-[90vw] w-[90vw] max-h-[90vh] overflow-y-auto">
           {selectedFile && (() => {
             const info = getFileInfo(selectedFile.name, selectedFile.type);
             const Icon = info.icon;
@@ -202,14 +202,14 @@ function FilesWidget({ context }: { context: WidgetDataContext }) {
                         <img
                           src={previewUrl}
                           alt={selectedFile.name}
-                          className="max-w-full max-h-[500px] object-contain"
+                          className="max-w-full max-h-[70vh] object-contain mx-auto"
                           loading="lazy"
                         />
                       );
                     }
                     if (isPdf_ && previewUrl) {
                       return (
-                        <div className="w-full h-[500px]">
+                        <div className="w-full h-[70vh]">
                           <iframe
                             src={`${previewUrl}#toolbar=0`}
                             className="w-full h-full border-0"
