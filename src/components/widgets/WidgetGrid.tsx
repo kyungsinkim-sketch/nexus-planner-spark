@@ -8,8 +8,9 @@
 
 import { useMemo, useCallback, useState, useEffect, useRef } from 'react';
 import { ResponsiveGridLayout, useContainerWidth, verticalCompactor } from 'react-grid-layout';
-import 'react-grid-layout/css/styles.css';
-import 'react-resizable/css/styles.css';
+// CSS imports moved to index.css for correct cascade order
+// import 'react-grid-layout/css/styles.css';
+// import 'react-resizable/css/styles.css';
 import { useWidgetStore } from '@/stores/widgetStore';
 import { useAppStore } from '@/stores/appStore';
 import { useTranslation } from '@/hooks/useTranslation';
@@ -143,15 +144,22 @@ export function WidgetGrid({ context, projectKeyColor }: WidgetGridProps) {
   // Frameless widgets: rendered without WidgetContainer, just glass-widget + minimal drag handle
   const isFramelessWidget = (widgetType: string) => widgetType === 'chat' || widgetType === 'calendar';
 
+  // Inline style to kill transitions — applied to every grid item to guarantee
+  // no slide-in animation regardless of CSS load order
+  const noTransitionStyle: React.CSSProperties = { transition: 'none' };
+
   return (
     <div
       ref={containerRef}
       className="h-full w-full"
-      style={projectKeyColor ? { '--project-accent': projectKeyColor } as React.CSSProperties : undefined}
+      style={{
+        ...(projectKeyColor ? { '--project-accent': projectKeyColor } as React.CSSProperties : {}),
+      }}
     >
       {mounted && (
         <ResponsiveGridLayout
           className="widget-grid"
+          style={noTransitionStyle}
           width={width}
           layouts={gridLayouts}
           breakpoints={GRID_BREAKPOINTS}
@@ -199,6 +207,7 @@ export function WidgetGrid({ context, projectKeyColor }: WidgetGridProps) {
               <div
                 key={item.i}
                 className={isActive ? 'widget-item-active' : 'widget-item-idle'}
+                style={noTransitionStyle}
               >
                 {isFramelessWidget(widgetType) ? (
                   // Frameless: no WidgetContainer, direct embed with minimal drag handle
