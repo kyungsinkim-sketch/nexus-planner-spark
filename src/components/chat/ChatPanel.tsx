@@ -12,7 +12,6 @@
 
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { useAppStore } from '@/stores/appStore';
-import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -32,7 +31,6 @@ import {
   FolderKanban,
   Users,
   Search,
-  MessageSquare,
   Send,
   Paperclip,
   ArrowLeft,
