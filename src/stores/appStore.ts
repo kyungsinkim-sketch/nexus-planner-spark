@@ -358,18 +358,18 @@ export const useAppStore = create<AppState>()(
             return { fileGroups: [...otherGroups, ...groups] };
           });
 
-          // Load files for each group
-          const newFiles: FileItem[] = [];
-          for (const group of groups) {
-            const files = await fileService.getFilesByGroup(group.id);
-            newFiles.push(...files);
-          }
+          // Load ALL files for this project (grouped + chat-uploaded)
+          const allProjectFiles = await fileService.getFilesByProject(projectId);
 
-          // Merge with existing files instead of replacing
+          // Merge: keep files from other projects, replace this project's files
+          const allProjectFileIds = new Set(allProjectFiles.map(f => f.id));
           const groupIds = new Set(groups.map(g => g.id));
           set((state) => {
-            const otherFiles = state.files.filter(f => !groupIds.has(f.fileGroupId));
-            return { files: [...otherFiles, ...newFiles] };
+            const otherFiles = state.files.filter(f =>
+              !allProjectFileIds.has(f.id) &&
+              (!f.fileGroupId || !groupIds.has(f.fileGroupId))
+            );
+            return { files: [...otherFiles, ...allProjectFiles] };
           });
         } catch (error) {
           console.error('Failed to load file groups:', error);

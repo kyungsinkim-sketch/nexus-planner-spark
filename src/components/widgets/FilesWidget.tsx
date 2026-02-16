@@ -88,7 +88,14 @@ function FilesWidget({ context }: { context: WidgetDataContext }) {
         : fileGroups.map((g) => g.id),
     );
     return files
-      .filter((f) => f.fileGroupId && projectGroupIds.has(f.fileGroupId))
+      .filter((f) => {
+        // Include files in project's file groups
+        if (f.fileGroupId && projectGroupIds.has(f.fileGroupId)) return true;
+        // Include chat-uploaded files without a group (loaded by getFilesByProject)
+        if (!f.fileGroupId && f.source === 'CHAT') return true;
+        return false;
+      })
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
       .slice(0, 20);
   }, [fileGroups, files, context]);
 

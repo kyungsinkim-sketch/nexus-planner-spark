@@ -97,6 +97,69 @@ export const getFilesByGroup = async (fileGroupId: string): Promise<FileItem[]> 
     return data.map(transformFileItem);
 };
 
+// Get ALL files for a project — includes grouped files AND chat-uploaded files
+// Chat files are found via chat_messages with attachment_id in the same project
+export const getFilesByProject = async (projectId: string): Promise<FileItem[]> => {
+    if (!isSupabaseConfigured()) {
+        throw new Error('Supabase not configured');
+    }
+
+    // 1. Get all file_group IDs for this project
+    const { data: groups, error: groupErr } = await supabase
+        .from('file_groups')
+        .select('id')
+        .eq('project_id', projectId);
+
+    if (groupErr) throw new Error(handleSupabaseError(groupErr));
+
+    const groupIds = (groups || []).map(g => g.id);
+
+    // 2. Get all files in these groups
+    let groupedFiles: FileItem[] = [];
+    if (groupIds.length > 0) {
+        const { data: gFiles, error: gErr } = await supabase
+            .from('file_items')
+            .select('*')
+            .in('file_group_id', groupIds)
+            .order('created_at', { ascending: false });
+
+        if (gErr) throw new Error(handleSupabaseError(gErr));
+        groupedFiles = (gFiles || []).map(transformFileItem);
+    }
+
+    // 3. Get chat-uploaded files for this project (file_items linked via chat_messages)
+    const { data: chatMsgs, error: chatErr } = await supabase
+        .from('chat_messages')
+        .select('attachment_id')
+        .eq('project_id', projectId)
+        .eq('message_type', 'file')
+        .not('attachment_id', 'is', null);
+
+    if (chatErr) throw new Error(handleSupabaseError(chatErr));
+
+    const chatFileIds = (chatMsgs || [])
+        .map(m => m.attachment_id)
+        .filter(Boolean) as string[];
+
+    // Filter out IDs already in grouped files
+    const groupedFileIds = new Set(groupedFiles.map(f => f.id));
+    const ungroupedChatFileIds = chatFileIds.filter(id => !groupedFileIds.has(id));
+
+    let chatFiles: FileItem[] = [];
+    if (ungroupedChatFileIds.length > 0) {
+        const { data: cFiles, error: cErr } = await supabase
+            .from('file_items')
+            .select('*')
+            .in('id', ungroupedChatFileIds)
+            .order('created_at', { ascending: false });
+
+        if (cErr) throw new Error(handleSupabaseError(cErr));
+        chatFiles = (cFiles || []).map(transformFileItem);
+    }
+
+    return [...groupedFiles, ...chatFiles];
+};
+
 // Upload file metadata
 export const createFileItem = async (fileItem: Partial<FileItem>): Promise<FileItem> => {
     if (!isSupabaseConfigured()) {
