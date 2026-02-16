@@ -351,7 +351,8 @@
     background: color-mix(in srgb, var(--project-accent) 15%, hsl(var(--glass-border)));
   }
   [style*="--project-accent"] .widget-item-active .glass-widget {
-    box-shadow: 0 8px 32px rgba(0,0,0,0.15), 0 0 0 2px var(--project-accent);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.18), 0 0 0 2px var(--project-accent) !important;
+    border-color: var(--project-accent) !important;
   }
   .dark [style*="--project-accent"] .widget-titlebar {
     background: color-mix(in srgb, var(--project-accent) 10%, hsl(222 47% 11%));
@@ -376,15 +377,16 @@
     z-index: 20 !important;
   }
   .widget-item-active .glass-widget {
-    opacity: 1;
+    opacity: 1 !important;
     background: hsl(0 0% 100%) !important;
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
-    box-shadow: 0 8px 32px rgba(0,0,0,0.15), 0 0 0 2px hsl(var(--primary) / 0.35);
-    transition: opacity 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+    border-color: hsl(var(--primary) / 0.35) !important;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.18), 0 0 0 2px hsl(var(--primary) / 0.35) !important;
+    transition: none !important;
   }
   .dark .widget-item-active .glass-widget {
-    background: hsl(222 47% 12%) !important;
+    background: hsl(222 47% 11%) !important;
   }
 
   /* Calendar widget — compact toolbar for widget */
@@ -410,6 +412,25 @@
   }
   .chat-widget-handle:active {
     cursor: grabbing;
+  }
+
+  /* Disable react-grid-layout mount/tab-switch transition animation.
+     Widgets should appear instantly without sliding into position. */
+  .react-grid-item {
+    transition: none !important;
+  }
+  .react-grid-item.cssTransforms {
+    transition: none !important;
+  }
+  .react-grid-layout {
+    transition: none !important;
+  }
+  /* Only allow transition during active drag/resize */
+  .react-grid-item.react-draggable-dragging {
+    transition: none !important;
+  }
+  .react-grid-item.resizing {
+    transition: none !important;
   }
 
   /* Widget resize handles (react-grid-layout v2) */
