@@ -89,7 +89,7 @@ export const WIDGET_DEFINITIONS: Record<WidgetType, WidgetDefinition> = {
     titleKey: 'budget',
     icon: DollarSign,
     defaultSize: { w: 4, h: 2 },
-    minSize: { w: 3, h: 1 },
+    minSize: { w: 2, h: 1 },
     contexts: ['project'],
     adminOnly: true,
   },
