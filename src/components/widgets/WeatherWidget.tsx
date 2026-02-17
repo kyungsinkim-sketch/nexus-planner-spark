@@ -77,9 +77,6 @@ function WeatherWidget({ context: _context }: { context: WidgetDataContext }) {
   return (
     <>
       <div className="h-full flex flex-col widget-dark-card p-3">
-        {/* City label */}
-        <p className="text-xs font-medium text-white/60 mb-1 shrink-0">{cityLabel}</p>
-
         {/* 7-day forecast row */}
         <div className="grid grid-cols-7 gap-0.5 flex-1 items-center">
           {days.map((day) => {
@@ -87,12 +84,12 @@ function WeatherWidget({ context: _context }: { context: WidgetDataContext }) {
             const isToday = day.dayOffset === 0;
             return (
               <div key={day.dayOffset} className="text-center">
-                <p className={`text-[10px] font-medium ${isToday ? 'text-white' : 'text-white/50'}`}>
+                <p className={`text-sm font-medium ${isToday ? 'text-white' : 'text-white/50'}`}>
                   {day.dayName}
                 </p>
-                <Icon className={`w-4 h-4 mx-auto my-0.5 ${CONDITION_COLORS[day.condition]}`} />
-                <p className="text-[11px] font-semibold text-white">{day.high}°</p>
-                <p className="text-[10px] text-white/40">{day.low}°</p>
+                <Icon className={`w-6 h-6 mx-auto my-1 ${CONDITION_COLORS[day.condition]}`} />
+                <p className="text-base font-semibold text-white">{day.high}°</p>
+                <p className="text-sm text-white/40">{day.low}°</p>
               </div>
             );
           })}
