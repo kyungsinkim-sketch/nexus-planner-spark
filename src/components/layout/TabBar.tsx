@@ -68,9 +68,9 @@ export function TabBar() {
   const currentStatus = workStatusConfig[userWorkStatus];
 
   return (
-    <div className="glass-tabbar flex items-center h-12 px-2 gap-1 shrink-0 z-30">
+    <div className="glass-tabbar flex items-stretch h-12 px-2 gap-1 shrink-0 z-30">
       {/* === Left: Project Tabs === */}
-      <div className="flex items-center gap-1 flex-1 min-w-0 overflow-x-auto scrollbar-hide">
+      <div className="flex items-stretch gap-1 flex-1 min-w-0 overflow-x-auto scrollbar-hide">
         {openTabs.map((tab) => {
           const isActive = tab.id === activeTabId;
           const isDashboard = tab.type === 'dashboard';
@@ -83,11 +83,11 @@ export function TabBar() {
                   if (isDashboard) navigate('/');
                 }}
                 className={cn(
-                  'flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium transition-all min-w-0 max-w-[180px] shrink-0 relative',
+                  'flex items-center gap-1.5 px-3 text-xs font-medium transition-all min-w-0 max-w-[180px] shrink-0 relative',
                   isActive && !isDashboard
-                    ? 'text-white rounded-t-lg rounded-b-none -mb-px'
+                    ? 'text-white rounded-b-lg rounded-t-none'
                     : isActive
-                      ? 'bg-white/15 text-foreground shadow-sm rounded-lg'
+                      ? 'bg-white/15 text-foreground shadow-sm rounded-b-lg'
                       : 'text-muted-foreground hover:bg-white/8 hover:text-foreground rounded-lg',
                 )}
                 style={
@@ -122,7 +122,7 @@ export function TabBar() {
       </div>
 
       {/* === Right: Controls === */}
-      <div className="flex items-center gap-1 shrink-0 ml-2">
+      <div className="flex items-center gap-1 shrink-0 ml-2 self-center">
         {/* Theme toggle */}
         <button
           onClick={toggleTheme}

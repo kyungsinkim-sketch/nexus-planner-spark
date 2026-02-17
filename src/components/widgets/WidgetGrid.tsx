@@ -21,6 +21,7 @@ import type { LucideIcon } from 'lucide-react';
 import { EditProjectModal } from '@/components/project/EditProjectModal';
 import type { WidgetDataContext, WidgetLayoutItem, WidgetType } from '@/types/widget';
 import { GRID_BREAKPOINTS, GRID_COLS, GRID_MARGIN } from '@/types/widget';
+import { cn } from '@/lib/utils';
 
 /** Inline loading skeleton for lazy-loaded widget chunks (prevents full-page Suspense flash) */
 function WidgetLoadingSkeleton() {
@@ -289,7 +290,13 @@ export function WidgetGrid({ context, projectKeyColor }: WidgetGridProps) {
                   // Barless: no title bar, hover-reveal settings/remove buttons at top-right
                   // Uses opaque gray background (not glass transparency)
                   <div
-                    className="h-full widget-drag-handle group/barless relative rounded-[var(--widget-radius)] overflow-hidden border border-border/60"
+                    className={cn(
+                      "h-full widget-drag-handle group/barless relative rounded-[var(--widget-radius)] overflow-hidden",
+                      // Dark-card widgets have their own bg — no border needed
+                      ['worldClock','weather','todayWeather','activityChart','progressChart','health'].includes(widgetType)
+                        ? 'border-0'
+                        : 'border border-border/60',
+                    )}
                     data-widget-id={item.i}
                     style={activeGlassStyle}
                     onMouseDown={() => setActiveWidgetId(item.i)}
@@ -403,8 +410,8 @@ export function WidgetGrid({ context, projectKeyColor }: WidgetGridProps) {
           {/* Add widget menu popup */}
           {showAddMenu && (
             <div className="absolute bottom-12 right-0 w-56 p-2 rounded-xl shadow-xl border border-border/50
-                            animate-in fade-in slide-in-from-bottom-2 duration-200 bg-popover text-popover-foreground backdrop-blur-xl"
-                 style={{ '--project-accent': undefined } as React.CSSProperties}>
+                            animate-in fade-in slide-in-from-bottom-2 duration-200 widget-add-popup"
+            >
               <p className="text-xs font-medium text-muted-foreground px-2 py-1 mb-1">
                 {t('addWidget')}
               </p>
