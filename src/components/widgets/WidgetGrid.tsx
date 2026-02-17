@@ -280,10 +280,7 @@ export function WidgetGrid({ context, projectKeyColor }: WidgetGridProps) {
                   <div
                     className="h-full widget-drag-handle group/barless relative rounded-[var(--widget-radius)] overflow-hidden border border-border/60"
                     data-widget-id={item.i}
-                    style={{
-                      ...activeGlassStyle,
-                      background: isDark ? 'hsl(222 20% 14%)' : 'hsl(220 14% 94%)',
-                    }}
+                    style={activeGlassStyle}
                     onMouseDown={() => setActiveWidgetId(item.i)}
                   >
                     {/* Hover-reveal action buttons */}
