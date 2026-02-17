@@ -7,6 +7,7 @@
 
 import { useMemo, useState, useCallback } from 'react';
 import { useAppStore } from '@/stores/appStore';
+import { useTranslation } from '@/hooks/useTranslation';
 import { Bell, MessageSquare, Calendar, Check, AtSign } from 'lucide-react';
 import { BRAIN_BOT_USER_ID } from '@/types/core';
 import type { WidgetDataContext } from '@/types/widget';
@@ -23,6 +24,7 @@ function saveDismissedIds(ids: Set<string>) {
 }
 
 function NotificationsWidget({ context }: { context: WidgetDataContext }) {
+  const { t } = useTranslation();
   const { messages, events, currentUser, getUserById } = useAppStore();
   const [dismissedIds, setDismissedIds] = useState<Set<string>>(getDismissedIds);
 
@@ -133,7 +135,7 @@ function NotificationsWidget({ context }: { context: WidgetDataContext }) {
     return (
       <div className="flex flex-col items-center justify-center h-full text-muted-foreground/60 text-sm gap-1">
         <Check className="w-5 h-5" />
-        <span>All caught up!</span>
+        <span>{t('allCaughtUp')}</span>
       </div>
     );
   }
@@ -145,7 +147,7 @@ function NotificationsWidget({ context }: { context: WidgetDataContext }) {
           onClick={handleDismissAll}
           className="text-[10px] text-muted-foreground hover:text-primary transition-colors"
         >
-          Mark all read
+          {t('markAllRead')}
         </button>
       </div>
 
@@ -157,7 +159,7 @@ function NotificationsWidget({ context }: { context: WidgetDataContext }) {
               key={n.id}
               className="flex items-start gap-2 p-1.5 rounded hover:bg-white/5 transition-colors group cursor-pointer"
               onClick={() => handleClick(n)}
-              title="Click to dismiss"
+              title={t('clickToDismiss')}
             >
               <Icon className="w-3.5 h-3.5 text-muted-foreground shrink-0 mt-0.5" />
               <div className="flex-1 min-w-0">

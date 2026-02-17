@@ -49,7 +49,7 @@ export default function BudgetPage() {
         </Button>
         <div className="min-w-0">
           <h1 className="text-sm font-semibold text-foreground truncate">
-            {project.name} — {t('budgetManagement')}
+            {project.name} {t('budgetManagement')}
           </h1>
         </div>
       </div>

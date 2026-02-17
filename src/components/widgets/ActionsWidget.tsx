@@ -4,10 +4,12 @@
 
 import { useMemo } from 'react';
 import { useAppStore } from '@/stores/appStore';
+import { useTranslation } from '@/hooks/useTranslation';
 import { AlertTriangle, Clock } from 'lucide-react';
 import type { WidgetDataContext } from '@/types/widget';
 
 function ActionsWidget({ context }: { context: WidgetDataContext }) {
+  const { t } = useTranslation();
   const { personalTodos, events } = useAppStore();
 
   const overdueTodos = useMemo(() => {
@@ -37,7 +39,7 @@ function ActionsWidget({ context }: { context: WidgetDataContext }) {
   if (overdueTodos.length === 0 && upcomingEvents.length === 0) {
     return (
       <div className="flex items-center justify-center h-full text-muted-foreground/60 text-sm">
-        All caught up!
+        {t('allCaughtUp')}
       </div>
     );
   }

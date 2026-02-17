@@ -11,6 +11,7 @@ import { useRef, Suspense, type ReactNode } from 'react';
 import { Minus, Plus, X } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useIntersection } from '@/hooks/useIntersection';
+import { useTranslation } from '@/hooks/useTranslation';
 import { cn } from '@/lib/utils';
 
 interface HeaderAction {
@@ -54,6 +55,7 @@ export function WidgetContainer({
   className,
   style,
 }: WidgetContainerProps) {
+  const { t } = useTranslation();
   const containerRef = useRef<HTMLDivElement>(null);
   const isVisible = useIntersection(containerRef);
 
@@ -85,7 +87,7 @@ export function WidgetContainer({
             <button
               onClick={(e) => { e.stopPropagation(); onCollapse(); }}
               className="p-1 rounded hover:bg-white/10 transition-colors"
-              title={collapsed ? 'Expand' : 'Collapse'}
+              title={collapsed ? t('expand') : t('collapse')}
             >
               {collapsed ? <Plus className="w-3.5 h-3.5" /> : <Minus className="w-3.5 h-3.5" />}
             </button>
@@ -94,7 +96,7 @@ export function WidgetContainer({
             <button
               onClick={(e) => { e.stopPropagation(); onRemove(); }}
               className="p-1 rounded hover:bg-destructive/20 transition-colors"
-              title="Remove widget"
+              title={t('removeWidget')}
             >
               <X className="w-3.5 h-3.5" />
             </button>

@@ -319,7 +319,7 @@ export function WidgetGrid({ context, projectKeyColor }: WidgetGridProps) {
                         onClick={(e) => { e.stopPropagation(); removeWidget(context.type, widgetType); }}
                         className="p-1 rounded-md bg-background/80 backdrop-blur-sm border border-border/50
                                    hover:bg-destructive/20 shadow-sm transition-colors"
-                        title="Remove widget"
+                        title={t('removeWidget')}
                       >
                         <X className="w-3 h-3 text-foreground/70" />
                       </button>
@@ -344,7 +344,7 @@ export function WidgetGrid({ context, projectKeyColor }: WidgetGridProps) {
                       <button
                         onClick={(e) => { e.stopPropagation(); removeWidget(context.type, widgetType); }}
                         className="p-0.5 rounded hover:bg-destructive/20 transition-colors"
-                        title="Remove widget"
+                        title={t('removeWidget')}
                       >
                         <span className="w-3.5 h-3.5 flex items-center justify-center text-foreground/70">✕</span>
                       </button>

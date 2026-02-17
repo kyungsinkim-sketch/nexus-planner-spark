@@ -271,7 +271,7 @@ function FilesWidget({ context }: { context: WidgetDataContext }) {
               key={f.id}
               className="flex items-center gap-2.5 px-2 py-1.5 rounded-lg hover:bg-white/5 transition-colors cursor-pointer group"
               onClick={() => handleFileClick(f)}
-              title="Click to preview"
+              title={t('clickToPreview')}
             >
               {/* Thumbnail for images / PDF badge for PDFs / Icon fallback */}
               {isImage && fileUrl ? (
