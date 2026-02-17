@@ -168,15 +168,15 @@ function WorldClockWidget({ context: _context }: { context: WidgetDataContext })
         {selectedCities.map((city) => {
           const offset = getOffsetLabel(city.timezone, language);
           return (
-            <div key={city.key} className="text-center py-1">
-              <p className="text-[11px] font-semibold text-white/90 truncate">{city.label}</p>
-              <p className="text-xl font-mono font-bold text-white tabular-nums leading-tight mt-0.5">
+            <div key={city.key} className="text-center py-0.5">
+              <p className="text-[11px] font-semibold text-white/90 truncate">
+                {city.label}
+                {offset && <span className="text-[10px] text-white/40 font-normal ml-0.5">({offset})</span>}
+              </p>
+              <p className="text-xl font-mono font-bold text-white tabular-nums leading-tight">
                 {formatTime(city.timezone)}
                 <span className="text-[10px] text-white/30 font-normal ml-0.5">{formatSeconds(city.timezone)}</span>
               </p>
-              {offset && (
-                <p className="text-[10px] text-white/40 mt-0.5">{offset}</p>
-              )}
             </div>
           );
         })}
