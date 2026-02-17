@@ -293,7 +293,7 @@ export function WidgetGrid({ context, projectKeyColor }: WidgetGridProps) {
                     className={cn(
                       "h-full widget-drag-handle group/barless relative rounded-[var(--widget-radius)] overflow-hidden",
                       // Dark-card widgets have their own bg — no border needed
-                      ['worldClock','weather','todayWeather','activityChart','progressChart','health'].includes(widgetType)
+                      ['worldClock','weather','todayWeather','activityChart','progressChart','health','budget'].includes(widgetType)
                         ? 'border-0'
                         : 'border border-border/60',
                     )}
