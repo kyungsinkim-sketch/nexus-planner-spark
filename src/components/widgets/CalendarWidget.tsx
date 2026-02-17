@@ -66,16 +66,19 @@ function CalendarWidget({ context }: { context: WidgetDataContext }) {
     () =>
       filteredEvents.map((event) => {
         const project = event.projectId ? getProjectById(event.projectId) : null;
+        const color = project?.keyColor || 'hsl(234 89% 60%)';
         return {
           id: event.id,
           title: event.title,
           start: event.startAt,
           end: event.endAt,
-          backgroundColor: project?.keyColor || undefined,
-          borderColor: project?.keyColor || undefined,
+          backgroundColor: `color-mix(in srgb, ${color} 15%, transparent)`,
+          borderColor: color,
+          textColor: 'inherit',
           extendedProps: {
             location: event.location,
             type: event.type,
+            dotColor: color,
           },
         };
       }),
@@ -83,20 +86,17 @@ function CalendarWidget({ context }: { context: WidgetDataContext }) {
   );
 
   // Custom event rendering — show location under title when available
-  const renderEventContent = (eventInfo: { event: { title: string; extendedProps: { location?: string; type?: string } }; timeText: string }) => {
+  const renderEventContent = (eventInfo: { event: { title: string; extendedProps: { location?: string; type?: string; dotColor?: string } }; timeText: string }) => {
     return (
-      <div className="fc-event-inner px-1 overflow-hidden">
-        <div className="flex items-center gap-1">
-          {eventInfo.timeText && (
-            <span className="fc-event-time text-[9px] opacity-80 shrink-0">{eventInfo.timeText}</span>
-          )}
-          <span className="fc-event-title truncate text-[10px] sm:text-xs font-medium">{eventInfo.event.title}</span>
-        </div>
-        {eventInfo.event.extendedProps.location && (
-          <div className="flex items-center gap-0.5 opacity-70 truncate">
-            <span className="text-[8px] sm:text-[9px]">📍 {eventInfo.event.extendedProps.location}</span>
-          </div>
+      <div className="fc-event-inner flex items-center gap-1 px-0.5 overflow-hidden min-w-0">
+        <span
+          className="w-1.5 h-1.5 rounded-full shrink-0"
+          style={{ backgroundColor: eventInfo.event.extendedProps.dotColor || 'hsl(234 89% 60%)' }}
+        />
+        {eventInfo.timeText && (
+          <span className="text-[9px] text-muted-foreground shrink-0">{eventInfo.timeText}</span>
         )}
+        <span className="truncate text-[10px] font-medium text-foreground">{eventInfo.event.title}</span>
       </div>
     );
   };
