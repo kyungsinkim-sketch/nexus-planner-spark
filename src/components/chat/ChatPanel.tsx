@@ -1116,7 +1116,7 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
                             ) : (
                               <div className="w-7" />
                             )}
-                            <div className={`flex-1 min-w-0 overflow-hidden ${isCurrentUser ? 'flex flex-col items-end' : ''}`}>
+                            <div className={`flex-1 min-w-0 overflow-hidden ${isCurrentUser ? 'text-right' : ''}`}>
                               {showAvatar && (
                                 <div className={`flex items-center gap-1.5 mb-0.5 ${isCurrentUser ? 'flex-row-reverse' : ''}`}>
                                   <span className="text-xs font-medium text-foreground">
@@ -1127,7 +1127,7 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
                                   </span>
                                 </div>
                               )}
-                              <div className="group/msg-actions relative max-w-full w-fit">
+                              <div className={`group/msg-actions relative max-w-full ${isCurrentUser ? 'ml-auto' : ''}`} style={{ width: 'fit-content' }}>
                                 <ChatMessageBubble
                                   message={message}
                                   isCurrentUser={isCurrentUser}

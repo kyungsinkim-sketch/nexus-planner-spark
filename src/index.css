@@ -606,34 +606,43 @@
   color: white !important;
 }
 
-[data-widget-id="chat"] .widget-content,
+/* ─── Chat widget overflow containment ───
+   The chat widget is rendered as a "frameless" widget: glass-widget → flex-col → overflow-hidden → ChatPanel.
+   Radix ScrollArea Viewport creates an internal scrollable div that can expand horizontally.
+   These rules ensure NOTHING inside the chat widget exceeds the widget boundary. */
+
+/* 1. All direct children of the chat glass-widget */
+[data-widget-id="chat"],
 [data-widget-id="chat"] > div {
   overflow: hidden;
   max-width: 100%;
   min-width: 0;
 }
-/* Chat ScrollArea viewport: prevent horizontal expansion */
+
+/* 2. ScrollArea viewport: block horizontal scroll, constrain content.
+   Radix applies `display: table` + `min-width: 100%` on viewport's child,
+   which causes it to expand beyond container. Override both. */
 [data-widget-id="chat"] [data-radix-scroll-area-viewport] {
   overflow-x: hidden !important;
 }
 [data-widget-id="chat"] [data-radix-scroll-area-viewport] > div {
+  display: block !important;
   max-width: 100% !important;
   min-width: 0 !important;
-  width: 100% !important;
 }
-/* Chat messages: enforce max-width on all chat bubble containers */
-[data-widget-id="chat"] .group\/msg,
-[data-widget-id="chat"] [class*="max-w-"],
-[data-widget-id="chat"] [class*="inline-block"] {
-  max-width: 100% !important;
-  overflow-wrap: break-word;
-  word-break: break-word;
-}
-/* Chat bubble inner content: prevent any child from exceeding container */
-[data-widget-id="chat"] .space-y-3 > div,
-[data-widget-id="chat"] .space-y-4 > div {
+
+/* 3. Every div inside the chat widget must respect container width */
+[data-widget-id="chat"] div {
   max-width: 100%;
-  overflow: hidden;
+  min-width: 0;
+}
+
+/* 4. Text content: force long words / URLs to break */
+[data-widget-id="chat"] p,
+[data-widget-id="chat"] span,
+[data-widget-id="chat"] a {
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 /* Calendar widget — compact toolbar and fit-to-widget */
