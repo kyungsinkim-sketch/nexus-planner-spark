@@ -541,36 +541,35 @@
   border-color: var(--project-accent, hsl(var(--glass-border)));
   border-width: 1.5px;
 }
-[style*="--project-accent"] .widget-titlebar {
+[style*="--project-accent"] .react-grid-item .widget-titlebar {
   background: color-mix(in srgb, var(--project-accent) 15%, hsl(var(--glass-border)));
 }
-[style*="--project-accent"] .chat-widget-handle {
+[style*="--project-accent"] .react-grid-item .chat-widget-handle {
   background: color-mix(in srgb, var(--project-accent) 15%, hsl(var(--glass-border)));
 }
 [style*="--project-accent"] .widget-item-active .glass-widget {
   box-shadow: 0 8px 32px rgba(0,0,0,0.18), 0 0 0 2px var(--project-accent) !important;
   border-color: var(--project-accent) !important;
 }
-.dark [style*="--project-accent"] .widget-titlebar {
+.dark [style*="--project-accent"] .react-grid-item .widget-titlebar {
   background: color-mix(in srgb, var(--project-accent) 10%, hsl(222 47% 11%));
 }
-.dark [style*="--project-accent"] .chat-widget-handle {
+.dark [style*="--project-accent"] .react-grid-item .chat-widget-handle {
   background: color-mix(in srgb, var(--project-accent) 10%, hsl(222 47% 11%));
 }
 
-/* Project accent — override default variant buttons inside project context */
-[style*="--project-accent"] button[class*="bg-primary"] {
+/* Project accent — override buttons/icons only inside grid items */
+[style*="--project-accent"] .react-grid-item button[class*="bg-primary"] {
   background: color-mix(in srgb, var(--project-accent) 90%, transparent) !important;
   border-color: color-mix(in srgb, var(--project-accent) 40%, transparent) !important;
 }
-[style*="--project-accent"] button[class*="bg-primary"]:hover {
+[style*="--project-accent"] .react-grid-item button[class*="bg-primary"]:hover {
   background: var(--project-accent) !important;
 }
-/* Project accent for icon colors using text-primary */
-[style*="--project-accent"] .text-primary {
+[style*="--project-accent"] .react-grid-item .text-primary {
   color: var(--project-accent) !important;
 }
-[style*="--project-accent"] .text-primary\/70 {
+[style*="--project-accent"] .react-grid-item .text-primary\/70 {
   color: color-mix(in srgb, var(--project-accent) 70%, transparent) !important;
 }
 /* Project accent for primary ring */
