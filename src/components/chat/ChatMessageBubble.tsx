@@ -96,11 +96,12 @@ export function ChatMessageBubble({ message, isCurrentUser, onVoteDecision, onAc
   return (
     <MessageWrapper isCurrentUser={isCurrentUser} onDelete={onDelete} messageId={message.id}>
       <div
-        className={`w-fit rounded-2xl px-4 py-2 text-sm max-w-full break-words ${
+        className={`w-fit rounded-2xl px-4 py-2 text-sm max-w-full whitespace-pre-wrap ${
           isCurrentUser
             ? 'bg-primary text-primary-foreground ml-auto'
             : 'bg-muted text-foreground'
         }`}
+        style={{ overflowWrap: 'anywhere', wordBreak: 'break-word' }}
       >
         {message.content}
       </div>

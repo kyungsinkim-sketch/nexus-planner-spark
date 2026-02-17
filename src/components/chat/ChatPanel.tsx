@@ -1127,7 +1127,7 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
                                   </span>
                                 </div>
                               )}
-                              <div className="group/msg-actions relative inline-block">
+                              <div className="group/msg-actions relative inline-block max-w-full">
                                 <ChatMessageBubble
                                   message={message}
                                   isCurrentUser={isCurrentUser}

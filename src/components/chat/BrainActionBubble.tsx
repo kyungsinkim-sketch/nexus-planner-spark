@@ -184,19 +184,33 @@ export function BrainActionBubble({
     );
   }
 
+  // Check if all actions are terminal (executed/rejected/failed) — show compact inline status
+  const allTerminal = brainData.hasAction &&
+    resolvedActions.length > 0 &&
+    resolvedActions.every((a) => a.status === 'executed' || a.status === 'rejected' || a.status === 'failed');
+
   return (
     <div className="space-y-2 w-full max-w-full overflow-hidden">
-      {/* Bot reply message */}
-      <div className="w-fit max-w-full rounded-2xl px-4 py-2.5 text-sm bg-gradient-to-br from-violet-50 to-blue-50 dark:from-violet-950/30 dark:to-blue-950/30 border border-violet-200/50 dark:border-violet-800/50 break-words">
+      {/* Bot reply message — with inline completion badges when all actions are done */}
+      <div className="w-fit max-w-full rounded-2xl px-4 py-2.5 text-sm bg-gradient-to-br from-violet-50 to-blue-50 dark:from-violet-950/30 dark:to-blue-950/30 border border-violet-200/50 dark:border-violet-800/50" style={{ overflowWrap: 'anywhere', wordBreak: 'break-word' }}>
         <div className="flex items-center gap-1.5 mb-1">
-          <Brain className="w-3.5 h-3.5 text-violet-500" />
+          <Brain className="w-3.5 h-3.5 text-violet-500 shrink-0" />
           <span className="text-xs font-semibold text-violet-600 dark:text-violet-400">Re-Be Brain</span>
         </div>
         <p className="text-foreground leading-relaxed">{brainData.replyMessage}</p>
+
+        {/* Inline compact completion badges — shown when all actions finished */}
+        {allTerminal && (
+          <div className="flex flex-wrap items-center gap-1.5 mt-2 pt-2 border-t border-violet-200/30 dark:border-violet-700/30">
+            {resolvedActions.map((action, idx) => (
+              <InlineActionBadge key={action.id || idx} action={action} />
+            ))}
+          </div>
+        )}
       </div>
 
-      {/* Action cards */}
-      {brainData.hasAction && resolvedActions.map((action, idx) => (
+      {/* Full action cards — only shown when actions are still pending/processing */}
+      {brainData.hasAction && !allTerminal && resolvedActions.map((action, idx) => (
         <ActionCard
           key={action.id || idx}
           action={action}
@@ -269,7 +283,7 @@ function ActionCard({
           <ActionIcon type={action.type} />
           <span className="text-xs font-semibold">
             {action.type === 'create_todo' && t('todo')}
-            {action.type === 'create_event' && t('events')}
+            {(action.type === 'create_event' || action.type === 'update_event') && t('events')}
             {action.type === 'share_location' && t('currentLocation')}
           </span>
         </div>
@@ -281,7 +295,7 @@ function ActionCard({
         {action.type === 'create_todo' && (
           <TodoActionBody data={action.data as unknown as BrainExtractedTodo} />
         )}
-        {action.type === 'create_event' && (
+        {(action.type === 'create_event' || action.type === 'update_event') && (
           <EventActionBody data={action.data as unknown as BrainExtractedEvent} />
         )}
         {action.type === 'share_location' && (
@@ -324,17 +338,57 @@ function ActionCard({
   );
 }
 
-function ActionIcon({ type }: { type: string }) {
+function ActionIcon({ type, className }: { type: string; className?: string }) {
+  const iconClass = className || 'w-4 h-4';
   switch (type) {
     case 'create_todo':
-      return <ListTodo className="w-4 h-4 text-blue-500" />;
+      return <ListTodo className={`${iconClass} text-blue-500`} />;
     case 'create_event':
-      return <CalendarDays className="w-4 h-4 text-green-500" />;
+      return <CalendarDays className={`${iconClass} text-green-500`} />;
+    case 'update_event':
+      return <CalendarDays className={`${iconClass} text-amber-500`} />;
     case 'share_location':
-      return <MapPin className="w-4 h-4 text-orange-500" />;
+      return <MapPin className={`${iconClass} text-orange-500`} />;
     default:
-      return <Brain className="w-4 h-4 text-violet-500" />;
+      return <Brain className={`${iconClass} text-violet-500`} />;
   }
+}
+
+/** Compact inline badge for completed/rejected/failed actions — shown inside the reply bubble */
+function InlineActionBadge({ action }: { action: { type: string; status?: string; data: Record<string, unknown> } }) {
+  const { t } = useTranslation();
+  const status = action.status || 'pending';
+  const title = (action.data?.title as string) || (action.data?.originalTitle as string) || '';
+
+  const statusConfig = {
+    executed: {
+      icon: CheckCircle2,
+      label: t('brainDone'),
+      colors: 'text-green-600 bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-800/50',
+    },
+    rejected: {
+      icon: XCircle,
+      label: t('brainRejected'),
+      colors: 'text-gray-500 bg-gray-50 dark:bg-gray-950/30 border-gray-200 dark:border-gray-800/50',
+    },
+    failed: {
+      icon: AlertTriangle,
+      label: t('brainFailed'),
+      colors: 'text-red-600 bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800/50',
+    },
+  }[status] || null;
+
+  if (!statusConfig) return null;
+  const StatusIcon = statusConfig.icon;
+
+  return (
+    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium border ${statusConfig.colors}`}>
+      <ActionIcon type={action.type} className="w-3 h-3" />
+      <StatusIcon className="w-3 h-3" />
+      {title && <span className="truncate max-w-[120px]">{title}</span>}
+      {!title && <span>{statusConfig.label}</span>}
+    </span>
+  );
 }
 
 function StatusBadge({ status }: { status: string }) {

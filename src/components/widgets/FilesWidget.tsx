@@ -138,10 +138,19 @@ function FilesWidget({ context }: { context: WidgetDataContext }) {
     // TODO: Notify project participants when notification system is available
   }, [selectedFile, newComment, currentUser, t, context]);
 
-  const handleDeleteFile = useCallback((fileId: string, e?: React.MouseEvent) => {
+  const handleDeleteFile = useCallback(async (fileId: string, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
-    const { files: allStoreFiles } = useAppStore.getState();
-    useAppStore.setState({ files: allStoreFiles.filter((f) => f.id !== fileId) });
+
+    // Use the appStore action which handles both Supabase DELETE and local state
+    try {
+      await useAppStore.getState().deleteFileItem(fileId);
+    } catch (err) {
+      console.error('Failed to delete file:', err);
+      // Even if Supabase fails, remove from local state for UX
+      const { files: allStoreFiles } = useAppStore.getState();
+      useAppStore.setState({ files: allStoreFiles.filter((f) => f.id !== fileId) });
+    }
+
     if (selectedFile?.id === fileId) setSelectedFile(null);
     toast.success(t('fileDeleted'));
   }, [selectedFile, t]);

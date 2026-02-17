@@ -6,7 +6,7 @@
  * (drag/resize stop), NOT on automatic compaction during mount.
  */
 
-import { useMemo, useCallback, useState, useEffect, useRef } from 'react';
+import { useMemo, useCallback, useState, useEffect, useRef, Suspense } from 'react';
 import { ResponsiveGridLayout, useContainerWidth, verticalCompactor } from 'react-grid-layout';
 // CSS imports moved to index.css for correct cascade order
 // import 'react-grid-layout/css/styles.css';
@@ -21,6 +21,15 @@ import type { LucideIcon } from 'lucide-react';
 import { EditProjectModal } from '@/components/project/EditProjectModal';
 import type { WidgetDataContext, WidgetLayoutItem, WidgetType } from '@/types/widget';
 import { GRID_BREAKPOINTS, GRID_COLS, GRID_MARGIN } from '@/types/widget';
+
+/** Inline loading skeleton for lazy-loaded widget chunks (prevents full-page Suspense flash) */
+function WidgetLoadingSkeleton() {
+  return (
+    <div className="flex items-center justify-center h-full min-h-[60px] text-muted-foreground/40">
+      <div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin" />
+    </div>
+  );
+}
 
 interface WidgetGridProps {
   context: WidgetDataContext;
@@ -272,7 +281,9 @@ export function WidgetGrid({ context, projectKeyColor }: WidgetGridProps) {
                     data-widget-id={item.i}
                     onMouseDown={() => setActiveWidgetId(item.i)}
                   >
-                    <WidgetComponent context={context} />
+                    <Suspense fallback={<WidgetLoadingSkeleton />}>
+                      <WidgetComponent context={context} />
+                    </Suspense>
                   </div>
                 ) : isBarlessWidget(widgetType) ? (
                   // Barless: no title bar, hover-reveal settings/remove buttons at top-right
@@ -307,7 +318,9 @@ export function WidgetGrid({ context, projectKeyColor }: WidgetGridProps) {
                       </button>
                     </div>
                     <div className="h-full overflow-hidden">
-                      <WidgetComponent context={context} />
+                      <Suspense fallback={<WidgetLoadingSkeleton />}>
+                        <WidgetComponent context={context} />
+                      </Suspense>
                     </div>
                   </div>
                 ) : isFramelessWidget(widgetType) ? (
@@ -330,7 +343,9 @@ export function WidgetGrid({ context, projectKeyColor }: WidgetGridProps) {
                       </button>
                     </div>
                     <div className="flex-1 min-h-0 overflow-hidden">
-                      <WidgetComponent context={context} />
+                      <Suspense fallback={<WidgetLoadingSkeleton />}>
+                        <WidgetComponent context={context} />
+                      </Suspense>
                     </div>
                   </div>
                 ) : (
