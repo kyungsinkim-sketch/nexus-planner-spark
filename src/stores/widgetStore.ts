@@ -18,8 +18,7 @@ import { WIDGET_DEFINITIONS as WIDGET_DEFINITIONS_IMPORT } from '@/components/wi
 // Score cards, Notifications right, Todos right, Files bottom
 const DEFAULT_DASHBOARD_LAYOUT: WidgetLayoutItem[] = [
   { i: 'projects',        x: 0,  y: 0,  w: 5, h: 4, minW: 3, minH: 3 },
-  { i: 'progressChart',   x: 5,  y: 0,  w: 4, h: 2, minW: 2, minH: 2 },
-  { i: 'activityChart',   x: 5,  y: 2,  w: 4, h: 2, minW: 2, minH: 2 },
+  { i: 'todaySchedule',   x: 5,  y: 0,  w: 4, h: 4, minW: 2, minH: 2 },
   { i: 'notifications',   x: 9,  y: 0,  w: 3, h: 3, minW: 2, minH: 2 },
   { i: 'todos',           x: 9,  y: 3,  w: 3, h: 3, minW: 2, minH: 2 },
   { i: 'attendance',      x: 0,  y: 4,  w: 3, h: 2, minW: 2, minH: 2 },
@@ -188,7 +187,7 @@ export const useWidgetStore = create<WidgetState>()(
     }),
     {
       name: 're-be-widget-layout',
-      version: 9, // bump — ark.works project layout + budget/health minW:2 + Lovable size updates
+      version: 10, // bump — add todaySchedule widget + weather minH:1
       migrate: () => ({
         // On version mismatch, reset everything to defaults
         openTabs: [DASHBOARD_TAB],

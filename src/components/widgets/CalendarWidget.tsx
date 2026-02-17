@@ -66,18 +66,22 @@ function CalendarWidget({ context }: { context: WidgetDataContext }) {
     () =>
       filteredEvents.map((event) => {
         const project = event.projectId ? getProjectById(event.projectId) : null;
-        const color = project?.keyColor || 'hsl(234 89% 60%)';
+        // Project events use keyColor, Google events use a distinct teal, fallback to primary
+        const color = project?.keyColor
+          || (event.source === 'GOOGLE' ? 'hsl(200 80% 50%)' : 'hsl(234 89% 60%)');
         return {
           id: event.id,
           title: event.title,
           start: event.startAt,
           end: event.endAt,
+          allDay: event.startAt?.includes('T00:00:00') && event.endAt?.includes('T23:59:59'),
           backgroundColor: `color-mix(in srgb, ${color} 15%, transparent)`,
           borderColor: color,
           textColor: 'inherit',
           extendedProps: {
             location: event.location,
             type: event.type,
+            source: event.source,
             dotColor: color,
           },
         };
@@ -85,8 +89,8 @@ function CalendarWidget({ context }: { context: WidgetDataContext }) {
     [filteredEvents, getProjectById],
   );
 
-  // Custom event rendering — show location under title when available
-  const renderEventContent = (eventInfo: { event: { title: string; extendedProps: { location?: string; type?: string; dotColor?: string } }; timeText: string }) => {
+  // Custom event rendering — show project color dot + optional Google icon
+  const renderEventContent = (eventInfo: { event: { title: string; extendedProps: { location?: string; type?: string; source?: string; dotColor?: string } }; timeText: string }) => {
     return (
       <div className="fc-event-inner flex items-center gap-1 px-0.5 overflow-hidden min-w-0">
         <span
@@ -94,9 +98,9 @@ function CalendarWidget({ context }: { context: WidgetDataContext }) {
           style={{ backgroundColor: eventInfo.event.extendedProps.dotColor || 'hsl(234 89% 60%)' }}
         />
         {eventInfo.timeText && (
-          <span className="text-[9px] text-muted-foreground shrink-0">{eventInfo.timeText}</span>
+          <span className="text-[10px] text-muted-foreground shrink-0">{eventInfo.timeText}</span>
         )}
-        <span className="truncate text-[10px] font-medium text-foreground">{eventInfo.event.title}</span>
+        <span className="truncate text-[11px] font-medium text-foreground">{eventInfo.event.title}</span>
       </div>
     );
   };
@@ -206,12 +210,13 @@ function CalendarWidget({ context }: { context: WidgetDataContext }) {
           events={calendarEvents}
           eventContent={renderEventContent}
           height="100%"
-          dayMaxEvents={2}
+          dayMaxEvents={false}
           nowIndicator={true}
           titleFormat={{ year: 'numeric', month: 'short' }}
           editable={true}
           selectable={true}
           selectMirror={true}
+          allDaySlot={true}
           eventClick={handleEventClick}
           select={handleSelect}
           eventDrop={handleEventDrop}

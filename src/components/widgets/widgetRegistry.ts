@@ -25,6 +25,7 @@ import {
   Globe,
   CloudSun,
   Cloud,
+  CalendarCheck,
 } from 'lucide-react';
 import type { WidgetDefinition, WidgetType, WidgetDataContext } from '@/types/widget';
 
@@ -48,6 +49,7 @@ export const WIDGET_COMPONENTS: Record<WidgetType, ComponentType<{ context: Widg
   worldClock:     lazy(() => import('./WorldClockWidget')),
   weather:        lazy(() => import('./WeatherWidget')),
   todayWeather:   lazy(() => import('./TodayWeatherWidget')),
+  todaySchedule:  lazy(() => import('./TodayScheduleWidget')),
 };
 
 // Widget definitions (metadata)
@@ -186,7 +188,7 @@ export const WIDGET_DEFINITIONS: Record<WidgetType, WidgetDefinition> = {
     titleKey: 'weeklyWeather',
     icon: CloudSun,
     defaultSize: { w: 6, h: 2 },
-    minSize: { w: 4, h: 2 },
+    minSize: { w: 4, h: 1 },
     contexts: ['dashboard'],
   },
   todayWeather: {
@@ -196,5 +198,13 @@ export const WIDGET_DEFINITIONS: Record<WidgetType, WidgetDefinition> = {
     defaultSize: { w: 2, h: 1 },
     minSize: { w: 2, h: 1 },
     contexts: ['dashboard'],
+  },
+  todaySchedule: {
+    type: 'todaySchedule',
+    titleKey: 'todaySchedule',
+    icon: CalendarCheck,
+    defaultSize: { w: 3, h: 3 },
+    minSize: { w: 2, h: 2 },
+    contexts: ['dashboard', 'project'],
   },
 };

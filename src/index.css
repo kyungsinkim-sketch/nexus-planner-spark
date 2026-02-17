@@ -691,7 +691,7 @@
   padding: 0.25rem 0.5rem;
 }
 .calendar-widget-content .fc .fc-toolbar-title {
-  font-size: 1.1rem;
+  font-size: 1.2rem;
   font-weight: 700;
   letter-spacing: -0.02em;
   color: hsl(var(--foreground));
@@ -699,7 +699,7 @@
 
 /* ── Buttons: pill-shaped, subtle ── */
 .calendar-widget-content .fc .fc-button {
-  font-size: 10px;
+  font-size: 11px;
   padding: 3px 8px;
   font-weight: 500;
   background: transparent !important;
@@ -717,7 +717,7 @@
   color: white !important;
 }
 .calendar-widget-content .fc .fc-today-button {
-  font-size: 10px;
+  font-size: 11px;
   padding: 3px 10px;
   background: hsl(var(--primary) / 0.08) !important;
   color: hsl(var(--primary)) !important;
@@ -748,12 +748,12 @@
 
 /* ── Column headers: uppercase weekday labels ── */
 .calendar-widget-content .fc .fc-col-header-cell {
-  font-size: 10px;
+  font-size: 11px;
   padding: 4px 0;
   border: none !important;
 }
 .calendar-widget-content .fc .fc-col-header-cell-cushion {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -781,7 +781,7 @@
 
 /* ── Day numbers ── */
 .calendar-widget-content .fc .fc-daygrid-day-number {
-  font-size: 12px;
+  font-size: 13px;
   padding: 3px 6px;
   font-weight: 500;
   color: hsl(var(--foreground));
@@ -811,7 +811,7 @@
 
 /* ── Events: Apple-style colored left border blocks ── */
 .calendar-widget-content .fc .fc-daygrid-event {
-  font-size: 10px;
+  font-size: 11px;
   padding: 1px 4px;
   margin: 0 2px 1px;
   border-radius: 4px !important;
@@ -837,6 +837,18 @@
   border: none !important;
   border-left: 3px solid var(--fc-event-border-color, hsl(var(--primary))) !important;
   box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+}
+
+/* ── Week view: all-day slot at top (Google Calendar style) ── */
+.calendar-widget-content .fc .fc-timegrid .fc-daygrid-body {
+  border-bottom: 1px solid hsl(var(--border) / 0.5);
+}
+.calendar-widget-content .fc .fc-timegrid-axis-cushion {
+  font-size: 10px;
+  color: hsl(var(--muted-foreground));
+}
+.calendar-widget-content .fc .fc-daygrid-event-harness {
+  margin: 0 1px;
 }
 
 /* ── List view ── */
