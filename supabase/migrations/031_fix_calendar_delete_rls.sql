@@ -15,6 +15,7 @@
 -- 1. FIX DELETE POLICY — allow authenticated users to delete
 -- =====================================================
 DROP POLICY IF EXISTS "Users can delete own events" ON calendar_events;
+DROP POLICY IF EXISTS "Authenticated users can delete events" ON calendar_events;
 CREATE POLICY "Authenticated users can delete events" ON calendar_events
     FOR DELETE USING ((select auth.uid()) IS NOT NULL);
 
@@ -24,6 +25,7 @@ CREATE POLICY "Authenticated users can delete events" ON calendar_events
 -- with a different owner_id (e.g., assigning events to team members)
 -- =====================================================
 DROP POLICY IF EXISTS "Users can insert own events" ON calendar_events;
+DROP POLICY IF EXISTS "Authenticated users can insert events" ON calendar_events;
 CREATE POLICY "Authenticated users can insert events" ON calendar_events
     FOR INSERT WITH CHECK ((select auth.uid()) IS NOT NULL);
 
@@ -32,5 +34,6 @@ CREATE POLICY "Authenticated users can insert events" ON calendar_events
 -- Keeps the existing broader policy but ensures consistency
 -- =====================================================
 DROP POLICY IF EXISTS "Users can update own or attending events" ON calendar_events;
+DROP POLICY IF EXISTS "Authenticated users can update events" ON calendar_events;
 CREATE POLICY "Authenticated users can update events" ON calendar_events
     FOR UPDATE USING ((select auth.uid()) IS NOT NULL);

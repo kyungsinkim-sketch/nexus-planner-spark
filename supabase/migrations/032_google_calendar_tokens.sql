@@ -1,6 +1,7 @@
 -- Migration 032: Google Calendar OAuth tokens table
 -- Stores per-user Google OAuth tokens for calendar sync.
 -- Tokens are encrypted at rest by Supabase's storage layer.
+-- Uses IF NOT EXISTS / DROP IF EXISTS for idempotent re-runs.
 
 CREATE TABLE IF NOT EXISTS google_calendar_tokens (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -27,23 +28,31 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_gcal_tokens_user ON google_calendar_tokens
 ALTER TABLE google_calendar_tokens ENABLE ROW LEVEL SECURITY;
 
 -- Users can only view/manage their own tokens
+DROP POLICY IF EXISTS "Users can view own gcal tokens" ON google_calendar_tokens;
 CREATE POLICY "Users can view own gcal tokens" ON google_calendar_tokens
     FOR SELECT USING (user_id = (select auth.uid()));
 
+DROP POLICY IF EXISTS "Users can insert own gcal tokens" ON google_calendar_tokens;
 CREATE POLICY "Users can insert own gcal tokens" ON google_calendar_tokens
     FOR INSERT WITH CHECK (user_id = (select auth.uid()));
 
+DROP POLICY IF EXISTS "Users can update own gcal tokens" ON google_calendar_tokens;
 CREATE POLICY "Users can update own gcal tokens" ON google_calendar_tokens
     FOR UPDATE USING (user_id = (select auth.uid()));
 
+DROP POLICY IF EXISTS "Users can delete own gcal tokens" ON google_calendar_tokens;
 CREATE POLICY "Users can delete own gcal tokens" ON google_calendar_tokens
     FOR DELETE USING (user_id = (select auth.uid()));
 
 -- Service role (Edge Functions) needs bypass — they use service_role key which bypasses RLS
 
--- Add trigger for updated_at
-CREATE TRIGGER update_gcal_tokens_updated_at BEFORE UPDATE ON google_calendar_tokens
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+-- Add trigger for updated_at (use DO block to avoid duplicate trigger error)
+DO $$ BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'update_gcal_tokens_updated_at') THEN
+        CREATE TRIGGER update_gcal_tokens_updated_at BEFORE UPDATE ON google_calendar_tokens
+            FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+    END IF;
+END $$;
 
 -- Also create a sync_token table for incremental sync
 CREATE TABLE IF NOT EXISTS google_calendar_sync_tokens (
@@ -61,11 +70,17 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_gcal_sync_tokens_user ON google_calendar_s
 
 ALTER TABLE google_calendar_sync_tokens ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can view own sync tokens" ON google_calendar_sync_tokens;
 CREATE POLICY "Users can view own sync tokens" ON google_calendar_sync_tokens
     FOR SELECT USING (user_id = (select auth.uid()));
 
+DROP POLICY IF EXISTS "Users can manage own sync tokens" ON google_calendar_sync_tokens;
 CREATE POLICY "Users can manage own sync tokens" ON google_calendar_sync_tokens
     FOR ALL USING (user_id = (select auth.uid()));
 
-CREATE TRIGGER update_gcal_sync_tokens_updated_at BEFORE UPDATE ON google_calendar_sync_tokens
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+DO $$ BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'update_gcal_sync_tokens_updated_at') THEN
+        CREATE TRIGGER update_gcal_sync_tokens_updated_at BEFORE UPDATE ON google_calendar_sync_tokens
+            FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+    END IF;
+END $$;
