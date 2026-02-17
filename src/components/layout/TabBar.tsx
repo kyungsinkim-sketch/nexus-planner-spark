@@ -66,6 +66,7 @@ export function TabBar() {
   } = useAppStore();
   const isAdmin = currentUser?.role === 'ADMIN';
   const currentStatus = workStatusConfig[userWorkStatus];
+  const isDark = theme === 'dark';
 
   return (
     <div className="glass-tabbar flex items-stretch h-12 px-2 gap-1 shrink-0 z-30">
@@ -86,14 +87,16 @@ export function TabBar() {
                   'flex items-center gap-1.5 px-3 text-xs font-medium transition-all min-w-0 max-w-[180px] shrink-0 relative',
                   isActive && !isDashboard
                     ? 'text-white rounded-b-lg rounded-t-none'
-                    : isActive
-                      ? 'bg-white/15 text-foreground shadow-sm rounded-b-lg'
+                    : isActive && isDashboard
+                      ? 'text-foreground rounded-b-lg rounded-t-none'
                       : 'text-muted-foreground hover:bg-white/8 hover:text-foreground rounded-lg',
                 )}
                 style={
                   isActive && !isDashboard && tab.keyColor
                     ? { backgroundColor: tab.keyColor }
-                    : undefined
+                    : isActive && isDashboard
+                      ? { backgroundColor: isDark ? 'hsl(222 47% 12%)' : 'hsl(220 20% 91%)' }
+                      : undefined
                 }
               >
                 {isDashboard ? (
