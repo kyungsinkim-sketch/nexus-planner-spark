@@ -28,16 +28,22 @@ const DEFAULT_DASHBOARD_LAYOUT: WidgetLayoutItem[] = [
 ];
 
 // Default layout for Project tabs (12-col grid)
-// Fills viewport: Calendar big-left, Notifications top-center,
-// Chat right full-height, Todos center, Files bottom-left, Actions bottom
+// Based on ark.works production layout:
+// Row 0: Health | Budget | Brain Chat | Chat (right full-height)
+// Row 1-7: Calendar (big-left) | Notifications, Todos, Actions (stacked right-center)
+// Row 8-9: Files | Brain Insights | Team Load
 const DEFAULT_PROJECT_LAYOUT: WidgetLayoutItem[] = [
-  { i: 'brainChat',      x: 0,  y: 0,  w: 9, h: 1, minW: 3, minH: 1 },
-  { i: 'calendar',       x: 0,  y: 1,  w: 5, h: 6, minW: 3, minH: 3 },
-  { i: 'notifications',  x: 5,  y: 1,  w: 4, h: 3, minW: 2, minH: 2 },
+  { i: 'health',         x: 0,  y: 0,  w: 3, h: 1, minW: 2, minH: 1 },
+  { i: 'budget',         x: 3,  y: 0,  w: 3, h: 1, minW: 2, minH: 1 },
+  { i: 'brainChat',      x: 6,  y: 0,  w: 3, h: 1, minW: 3, minH: 1 },
+  { i: 'calendar',       x: 0,  y: 1,  w: 7, h: 7, minW: 3, minH: 3 },
+  { i: 'notifications',  x: 7,  y: 1,  w: 2, h: 3, minW: 2, minH: 2 },
   { i: 'chat',           x: 9,  y: 0,  w: 3, h: 10, minW: 2, minH: 3 },
-  { i: 'todos',          x: 5,  y: 4,  w: 4, h: 3, minW: 2, minH: 2 },
-  { i: 'files',          x: 0,  y: 7,  w: 5, h: 3, minW: 2, minH: 2 },
-  { i: 'actions',        x: 5,  y: 7,  w: 4, h: 3, minW: 2, minH: 2 },
+  { i: 'todos',          x: 7,  y: 4,  w: 2, h: 2, minW: 2, minH: 2 },
+  { i: 'actions',        x: 7,  y: 6,  w: 2, h: 2, minW: 2, minH: 2 },
+  { i: 'files',          x: 0,  y: 8,  w: 3, h: 2, minW: 2, minH: 2 },
+  { i: 'brainInsights',  x: 3,  y: 8,  w: 3, h: 2, minW: 3, minH: 2 },
+  { i: 'teamLoad',       x: 6,  y: 8,  w: 3, h: 2, minW: 3, minH: 2 },
 ];
 
 // Dashboard tab is always present
@@ -182,7 +188,7 @@ export const useWidgetStore = create<WidgetState>()(
     }),
     {
       name: 're-be-widget-layout',
-      version: 8, // bump — budget/health smaller default
+      version: 9, // bump — ark.works project layout + budget/health minW:2 + Lovable size updates
       migrate: () => ({
         // On version mismatch, reset everything to defaults
         openTabs: [DASHBOARD_TAB],
