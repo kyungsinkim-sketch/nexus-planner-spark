@@ -276,10 +276,14 @@ export function WidgetGrid({ context, projectKeyColor }: WidgetGridProps) {
                   </div>
                 ) : isBarlessWidget(widgetType) ? (
                   // Barless: no title bar, hover-reveal settings/remove buttons at top-right
+                  // Uses opaque gray background (not glass transparency)
                   <div
-                    className="glass-widget h-full widget-drag-handle group/barless relative"
+                    className="h-full widget-drag-handle group/barless relative rounded-[var(--widget-radius)] overflow-hidden border border-border/60"
                     data-widget-id={item.i}
-                    style={activeGlassStyle}
+                    style={{
+                      ...activeGlassStyle,
+                      background: isDark ? 'hsl(222 20% 14%)' : 'hsl(220 14% 94%)',
+                    }}
                     onMouseDown={() => setActiveWidgetId(item.i)}
                   >
                     {/* Hover-reveal action buttons */}

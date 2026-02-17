@@ -360,6 +360,25 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
             const dataType = (execResult.executedData as { type?: string })?.type;
             if (dataType === 'event') {
               await loadEvents();
+              // Smart dedup: if user asked to "change" an event, Brain may create a new one
+              // instead of updating. Detect duplicate titles and remove the older one.
+              const execData = execResult.executedData as Record<string, unknown>;
+              const newTitle = (execData.title as string) || '';
+              if (newTitle) {
+                const { events: currentEvents, deleteEvent: delEvt } = useAppStore.getState();
+                const dupes = currentEvents.filter(e => e.title === newTitle);
+                if (dupes.length > 1) {
+                  // Keep the newest (last created), delete the older duplicate
+                  const sorted = dupes.sort((a, b) =>
+                    new Date(b.startAt).getTime() - new Date(a.startAt).getTime()
+                  );
+                  // The older one (with the original time) should be removed
+                  for (let d = 1; d < sorted.length; d++) {
+                    await delEvt(sorted[d].id);
+                    console.log(`[Brain] Dedup: removed older event "${sorted[d].title}" (${sorted[d].id})`);
+                  }
+                }
+              }
               console.log('[Brain] Auto-executed event from chat, refreshed');
             }
             if (dataType === 'todo') {

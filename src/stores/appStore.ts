@@ -1004,7 +1004,13 @@ export const useAppStore = create<AppState>()(
         // After hydration, filter out deleted mock events so they don't reappear
         if (state && !isSupabaseConfigured() && state.deletedMockEventIds?.length) {
           const deletedSet = new Set(state.deletedMockEventIds);
-          state.events = state.events.filter((e) => !deletedSet.has(e.id));
+          // Start from the initial mockEvents (which is what events is set to at init)
+          // and filter out any that were deleted
+          const filtered = mockEvents.filter((e) => !deletedSet.has(e.id));
+          // Use queueMicrotask to ensure this runs after full hydration
+          queueMicrotask(() => {
+            useAppStore.setState({ events: filtered });
+          });
         }
       },
     }

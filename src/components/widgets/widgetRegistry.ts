@@ -176,7 +176,7 @@ export const WIDGET_DEFINITIONS: Record<WidgetType, WidgetDefinition> = {
     titleKey: 'worldClock',
     icon: Globe,
     defaultSize: { w: 6, h: 2 },
-    minSize: { w: 4, h: 2 },
+    minSize: { w: 2, h: 2 },
     contexts: ['dashboard'],
   },
   weather: {

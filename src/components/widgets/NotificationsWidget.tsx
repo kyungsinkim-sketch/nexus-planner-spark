@@ -64,13 +64,14 @@ function NotificationsWidget({ context }: { context: WidgetDataContext }) {
       .reverse();
 
     // Filter to only @mention messages that mention the current user
-    const mentionPattern = currentUser ? new RegExp(`@${currentUser.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`) : null;
+    // Use simple string includes for Korean name compatibility (\b doesn't work with Korean)
+    const mentionTag = currentUser ? `@${currentUser.name}` : null;
 
     recentMsgs.forEach((m) => {
       const id = `msg-${m.id}`;
       if (dismissedIds.has(id)) return;
       const sender = getUserById(m.userId);
-      const isMention = mentionPattern ? mentionPattern.test(m.content) : false;
+      const isMention = mentionTag ? m.content.includes(mentionTag) : false;
 
       // Only show @mention messages in notifications (not all messages)
       if (!isMention) return;

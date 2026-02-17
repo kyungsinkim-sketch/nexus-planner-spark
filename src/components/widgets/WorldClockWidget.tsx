@@ -215,7 +215,6 @@ function WorldClockWidget({ context: _context }: { context: WidgetDataContext })
               {formatTime(city.timezone)}
             </p>
             <p className="text-[11px] font-medium text-foreground/80 truncate">{city.label}</p>
-            <p className="text-[9px] text-muted-foreground truncate leading-tight">{formatDate(city.timezone)}</p>
           </div>
         ))}
       </div>

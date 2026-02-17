@@ -20,6 +20,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { MentionTextarea } from '@/components/ui/mention-textarea';
 import { toast } from 'sonner';
 import type { FileItem, FileComment } from '@/types/core';
 import type { WidgetDataContext } from '@/types/widget';
@@ -73,7 +74,7 @@ function formatSize(size?: string) {
 }
 
 function FilesWidget({ context }: { context: WidgetDataContext }) {
-  const { fileGroups, files, loadFileGroups, currentUser, users } = useAppStore();
+  const { fileGroups, files, loadFileGroups, currentUser, users, projects } = useAppStore();
   const { t } = useTranslation();
   const [selectedFile, setSelectedFile] = useState<FileItem | null>(null);
   const [newComment, setNewComment] = useState('');
@@ -322,27 +323,25 @@ function FilesWidget({ context }: { context: WidgetDataContext }) {
                     </div>
                   )}
 
-                  {/* New comment input */}
+                  {/* New comment input with @mention support */}
                   <div className="flex gap-2">
-                    <textarea
+                    <MentionTextarea
                       value={newComment}
-                      onChange={(e) => setNewComment(e.target.value)}
+                      onChange={setNewComment}
                       placeholder={t('addComment')}
                       rows={1}
-                      className="flex-1 px-3 py-2 text-xs rounded-md border border-input bg-background
-                                 placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1
-                                 focus-visible:ring-ring resize-none overflow-hidden leading-normal"
+                      className="flex-1"
                       onKeyDown={(e) => {
                         if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
                           e.preventDefault();
                           handleAddComment();
                         }
                       }}
-                      onInput={(e) => {
-                        const target = e.target as HTMLTextAreaElement;
-                        target.style.height = 'auto';
-                        target.style.height = `${Math.min(target.scrollHeight, 64)}px`;
-                      }}
+                      mentionableUserIds={
+                        context.type === 'project' && context.projectId
+                          ? projects.find(p => p.id === context.projectId)?.teamMemberIds
+                          : undefined
+                      }
                     />
                     <Button
                       size="icon"
