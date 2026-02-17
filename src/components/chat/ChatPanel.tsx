@@ -50,6 +50,7 @@ import * as chatService from '@/services/chatService';
 import * as fileService from '@/services/fileService';
 import * as brainService from '@/services/brainService';
 import { isSupabaseConfigured } from '@/lib/supabase';
+import { isSupabaseConfigured } from '@/lib/supabase';
 import { toast } from 'sonner';
 
 type ChatType = 'project' | 'direct';
@@ -74,7 +75,7 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
     getUserById, addMessage,
     addFileGroup, addFile, getFileGroupsByProject,
     brainIntelligenceEnabled,
-    loadEvents, loadTodos,
+    loadEvents, loadTodos, addTodo,
   } = useAppStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTab, setSelectedTab] = useState<'projects' | 'direct'>('projects');
@@ -359,11 +360,33 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
               console.log('[Brain] Auto-executed event from chat, refreshed');
             }
             if (dataType === 'todo') {
+              // Immediate + retries to handle DB replication lag
               await loadTodos();
               console.log('[Brain] Auto-executed todo from chat, refreshed');
+              // Retry twice with 1s delays for consistency
+              for (let retry = 1; retry <= 2; retry++) {
+                await new Promise(r => setTimeout(r, 1000));
+                await loadTodos().catch(() => {});
+              }
             }
           } catch (execErr) {
             console.error('[Brain] Auto-execute failed for action:', actionId, execErr);
+            // Mock mode fallback: create todo/event locally from action's extracted data
+            if (!isSupabaseConfigured()) {
+              const act = action as Record<string, unknown>;
+              const actionType = act.action_type || act.actionType;
+              const extracted = (act.extracted_data || act.extractedData) as Record<string, unknown> | undefined;
+              if (actionType === 'create_todo' && extracted) {
+                await addTodo({
+                  title: (extracted.title as string) || 'Untitled',
+                  assigneeIds: (extracted.assigneeIds as string[]) || [currentUser.id],
+                  dueDate: (extracted.dueDate as string) || new Date().toISOString(),
+                  priority: (extracted.priority as 'HIGH' | 'NORMAL' | 'LOW') || 'NORMAL',
+                  projectId: (extracted.projectId as string) || selectedChat?.id,
+                });
+                console.log('[Brain] Mock fallback: todo created locally');
+              }
+            }
           }
         }
 

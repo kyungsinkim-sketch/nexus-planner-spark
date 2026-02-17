@@ -13,13 +13,14 @@ import { toast } from 'sonner';
 import { useAppStore } from '@/stores/appStore';
 import { useTranslation } from '@/hooks/useTranslation';
 import * as brainService from '@/services/brainService';
+import { isSupabaseConfigured } from '@/lib/supabase';
 import type { WidgetDataContext } from '@/types/widget';
 
 function BrainChatWidget({ context }: { context: WidgetDataContext }) {
   const [input, setInput] = useState('');
   const [processing, setProcessing] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
-  const { currentUser, users, projects, loadEvents, loadTodos } = useAppStore();
+  const { currentUser, users, projects, loadEvents, loadTodos, addTodo } = useAppStore();
   const { t } = useTranslation();
 
   const projectId = context.type === 'project' ? context.projectId : undefined;
@@ -74,6 +75,23 @@ function BrainChatWidget({ context }: { context: WidgetDataContext }) {
           if (dataType === 'todo') createdTodo = true;
         } catch (err) {
           console.error('[BrainWidget] Failed to auto-execute action:', actionId, err);
+          // Mock mode fallback: create todo locally from action's extracted data
+          if (!isSupabaseConfigured()) {
+            const act = action as Record<string, unknown>;
+            const actionType = act.action_type || act.actionType;
+            const extracted = (act.extracted_data || act.extractedData) as Record<string, unknown> | undefined;
+            if (actionType === 'create_todo' && extracted) {
+              await addTodo({
+                title: (extracted.title as string) || 'Untitled',
+                assigneeIds: (extracted.assigneeIds as string[]) || [currentUser.id],
+                dueDate: (extracted.dueDate as string) || new Date().toISOString(),
+                priority: (extracted.priority as 'HIGH' | 'NORMAL' | 'LOW') || 'NORMAL',
+                projectId: (extracted.projectId as string) || projectId,
+              });
+              createdTodo = true;
+              console.log('[BrainWidget] Mock fallback: todo created locally');
+            }
+          }
         }
       }
 
@@ -89,9 +107,15 @@ function BrainChatWidget({ context }: { context: WidgetDataContext }) {
         toast.success('Brain AI processed.');
       }
 
-      // Refresh data immediately
+      // Refresh data immediately + retries for DB replication lag
       if (createdEvent) await loadEvents();
-      if (createdTodo) await loadTodos();
+      if (createdTodo) {
+        await loadTodos();
+        for (let retry = 1; retry <= 2; retry++) {
+          await new Promise(r => setTimeout(r, 1000));
+          await loadTodos().catch(() => {});
+        }
+      }
     } catch (error) {
       console.error('Brain AI processing failed:', error);
       toast.error('Brain AI processing failed');
@@ -99,7 +123,7 @@ function BrainChatWidget({ context }: { context: WidgetDataContext }) {
       setProcessing(false);
       inputRef.current?.focus();
     }
-  }, [input, processing, currentUser, users, projects, project, projectId, loadEvents, loadTodos]);
+  }, [input, processing, currentUser, users, projects, project, projectId, loadEvents, loadTodos, addTodo]);
 
   return (
     <div className="flex items-center h-full w-full px-3 gap-2.5

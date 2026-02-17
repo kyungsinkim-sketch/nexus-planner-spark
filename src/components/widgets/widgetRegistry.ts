@@ -22,6 +22,8 @@ import {
   Lightbulb,
   Users,
   Zap,
+  Globe,
+  CloudSun,
 } from 'lucide-react';
 import type { WidgetDefinition, WidgetType, WidgetDataContext } from '@/types/widget';
 
@@ -42,6 +44,8 @@ export const WIDGET_COMPONENTS: Record<WidgetType, ComponentType<{ context: Widg
   projects:       lazy(() => import('./ProjectsWidget')),
   brainChat:      lazy(() => import('./BrainChatWidget')),
   brainInsights:  lazy(() => import('./BrainInsightsWidget')),
+  worldClock:     lazy(() => import('./WorldClockWidget')),
+  weather:        lazy(() => import('./WeatherWidget')),
 };
 
 // Widget definitions (metadata)
@@ -166,5 +170,21 @@ export const WIDGET_DEFINITIONS: Record<WidgetType, WidgetDefinition> = {
     defaultSize: { w: 4, h: 3 },
     minSize: { w: 3, h: 2 },
     contexts: ['project'],
+  },
+  worldClock: {
+    type: 'worldClock',
+    titleKey: 'worldClock',
+    icon: Globe,
+    defaultSize: { w: 6, h: 2 },
+    minSize: { w: 4, h: 2 },
+    contexts: ['dashboard'],
+  },
+  weather: {
+    type: 'weather',
+    titleKey: 'weeklyWeather',
+    icon: CloudSun,
+    defaultSize: { w: 6, h: 2 },
+    minSize: { w: 4, h: 2 },
+    contexts: ['dashboard'],
   },
 };
