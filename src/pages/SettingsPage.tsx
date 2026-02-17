@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { GoogleCalendarSettings, GoogleCalendarSyncStatus } from '@/types/core';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -6,11 +6,11 @@ import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
-import { 
+import {
   Calendar,
-  RefreshCw, 
-  Check, 
-  X, 
+  RefreshCw,
+  Check,
+  X,
   AlertCircle,
   ExternalLink,
   Clock,
@@ -19,8 +19,16 @@ import {
 import { toast } from 'sonner';
 import { useAppStore } from '@/stores/appStore';
 import { useTranslation } from '@/hooks/useTranslation';
+import {
+  isGoogleCalendarConfigured,
+  startGoogleOAuth,
+  handleOAuthCallback,
+  syncGoogleCalendar,
+  disconnectGoogleCalendar,
+  getGoogleCalendarStatus,
+  updateAutoSync,
+} from '@/services/googleCalendarService';
 
-// Mock initial settings
 const initialSettings: GoogleCalendarSettings = {
   isConnected: false,
   syncStatus: 'DISCONNECTED',
@@ -32,10 +40,48 @@ export function SettingsPage() {
   const { t } = useTranslation();
   const [settings, setSettings] = useState<GoogleCalendarSettings>(initialSettings);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [isConnecting, setIsConnecting] = useState(false);
 
-  const statusConfig: Record<GoogleCalendarSyncStatus, { 
-    label: string; 
-    icon: typeof Check; 
+  const isRealOAuth = isGoogleCalendarConfigured();
+
+  // Load Google Calendar connection status on mount
+  useEffect(() => {
+    if (currentUser?.id && isRealOAuth) {
+      getGoogleCalendarStatus(currentUser.id).then(setSettings);
+    }
+  }, [currentUser?.id, isRealOAuth]);
+
+  // Handle OAuth callback if URL has ?code= parameter
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get('code');
+    const state = params.get('state'); // userId
+
+    if (code && state && currentUser?.id) {
+      // Clean up the URL
+      window.history.replaceState({}, '', window.location.pathname);
+
+      setIsConnecting(true);
+      handleOAuthCallback(code, state).then(async (result) => {
+        setIsConnecting(false);
+        if (result.success) {
+          toast.success(t('googleCalendarConnected'));
+          // Reload status
+          const status = await getGoogleCalendarStatus(currentUser.id);
+          setSettings(status);
+          // Trigger initial sync
+          handleSync();
+        } else {
+          toast.error(result.error || 'Failed to connect Google Calendar');
+        }
+      });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUser?.id]);
+
+  const statusConfig: Record<GoogleCalendarSyncStatus, {
+    label: string;
+    icon: typeof Check;
     className: string;
   }> = {
     DISCONNECTED: {
@@ -60,67 +106,113 @@ export function SettingsPage() {
     },
   };
 
-  const handleConnect = () => {
-    // Mock OAuth flow
-    toast.info(t('openingGoogleSignIn'), {
-      description: t('pleaseAuthorize'),
-    });
+  const handleConnect = useCallback(() => {
+    if (!currentUser?.id) return;
 
-    // Simulate connection — use current user's email as default
-    setTimeout(() => {
-      setSettings({
-        isConnected: true,
-        syncStatus: 'CONNECTED',
-        lastSyncAt: new Date().toISOString(),
-        connectedEmail: currentUser?.email || `${currentUser?.name || 'user'}@re-be.io`,
-        autoSync: true,
+    if (isRealOAuth) {
+      // Real OAuth flow — redirect to Google
+      startGoogleOAuth(currentUser.id);
+    } else {
+      // Mock OAuth flow (when VITE_GOOGLE_CLIENT_ID is not set)
+      toast.info(t('openingGoogleSignIn'), {
+        description: t('pleaseAuthorize'),
       });
-      toast.success(t('googleCalendarConnected'), {
-        description: t('calendarSyncedWithPaulus'),
+
+      setTimeout(() => {
+        setSettings({
+          isConnected: true,
+          syncStatus: 'CONNECTED',
+          lastSyncAt: new Date().toISOString(),
+          connectedEmail: currentUser?.email || `${currentUser?.name || 'user'}@re-be.io`,
+          autoSync: true,
+        });
+        toast.success(t('googleCalendarConnected'), {
+          description: t('calendarSyncedWithPaulus'),
+        });
+      }, 1500);
+    }
+  }, [currentUser, isRealOAuth, t]);
+
+  const handleDisconnect = useCallback(async () => {
+    if (!currentUser?.id) return;
+
+    if (isRealOAuth) {
+      const result = await disconnectGoogleCalendar(currentUser.id, false);
+      if (result.success) {
+        setSettings(initialSettings);
+        toast.success(t('googleCalendarDisconnected'));
+      } else {
+        toast.error(result.error || 'Failed to disconnect');
+      }
+    } else {
+      setSettings(initialSettings);
+      toast.success(t('googleCalendarDisconnected'), {
+        description: t('googleCalendarDisconnectedDesc'),
       });
-    }, 1500);
-  };
+    }
+  }, [currentUser?.id, isRealOAuth, t]);
 
-  const handleDisconnect = () => {
-    setSettings({
-      isConnected: false,
-      syncStatus: 'DISCONNECTED',
-      autoSync: true,
-    });
-    toast.success(t('googleCalendarDisconnected'), {
-      description: t('googleCalendarDisconnectedDesc'),
-    });
-  };
+  const handleSync = useCallback(async () => {
+    if (!currentUser?.id) return;
 
-  const handleSync = () => {
     setIsSyncing(true);
     setSettings((prev) => ({ ...prev, syncStatus: 'SYNCING' }));
 
-    // Simulate sync
-    setTimeout(() => {
+    if (isRealOAuth) {
+      const result = await syncGoogleCalendar(currentUser.id);
       setIsSyncing(false);
-      setSettings((prev) => ({
-        ...prev,
-        syncStatus: 'CONNECTED',
-        lastSyncAt: new Date().toISOString(),
-      }));
-      toast.success(t('syncComplete'), {
-        description: t('syncCompleteDesc'),
-      });
-    }, 2000);
-  };
 
-  const handleAutoSyncToggle = (enabled: boolean) => {
+      if (result.success) {
+        const status = await getGoogleCalendarStatus(currentUser.id);
+        setSettings(status);
+
+        const parts: string[] = [];
+        if (result.imported) parts.push(`${result.imported} imported`);
+        if (result.exported) parts.push(`${result.exported} exported`);
+        if (result.deleted) parts.push(`${result.deleted} deleted`);
+
+        toast.success(t('syncComplete'), {
+          description: parts.length > 0 ? parts.join(', ') : 'Calendar is up to date',
+        });
+
+        // Reload events in the store
+        useAppStore.getState().loadEvents();
+      } else {
+        setSettings((prev) => ({ ...prev, syncStatus: 'ERROR' }));
+        toast.error(t('syncError'), { description: result.error });
+      }
+    } else {
+      // Mock sync
+      setTimeout(() => {
+        setIsSyncing(false);
+        setSettings((prev) => ({
+          ...prev,
+          syncStatus: 'CONNECTED',
+          lastSyncAt: new Date().toISOString(),
+        }));
+        toast.success(t('syncComplete'), {
+          description: t('syncCompleteDesc'),
+        });
+      }, 2000);
+    }
+  }, [currentUser?.id, isRealOAuth, t]);
+
+  const handleAutoSyncToggle = useCallback(async (enabled: boolean) => {
     setSettings((prev) => ({ ...prev, autoSync: enabled }));
+
+    if (isRealOAuth && currentUser?.id) {
+      await updateAutoSync(currentUser.id, enabled);
+    }
+
     toast.success(enabled ? t('autoSyncEnabled') : t('autoSyncDisabled'));
-  };
+  }, [currentUser?.id, isRealOAuth, t]);
 
   const formatLastSync = (dateString?: string) => {
     if (!dateString) return 'Never';
     const date = new Date(dateString);
     const now = new Date();
     const diffMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60));
-    
+
     if (diffMinutes < 1) return 'Just now';
     if (diffMinutes < 60) return `${diffMinutes} minutes ago`;
     const diffHours = Math.floor(diffMinutes / 60);
@@ -158,8 +250,8 @@ export function SettingsPage() {
                     {t('syncEventsBetween')}
                   </p>
                 </div>
-                <Badge 
-                  variant="outline" 
+                <Badge
+                  variant="outline"
                   className={`gap-1.5 ${statusConfig[settings.syncStatus].className}`}
                 >
                   <StatusIcon className={`w-3 h-3 ${settings.syncStatus === 'SYNCING' ? 'animate-spin' : ''}`} />
@@ -253,26 +345,40 @@ export function SettingsPage() {
                     </ul>
                   </div>
 
-                  <Button onClick={handleConnect} className="gap-2 w-full sm:w-auto">
-                    <svg className="w-4 h-4" viewBox="0 0 24 24">
-                      <path
-                        fill="currentColor"
-                        d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                      />
-                      <path
-                        fill="currentColor"
-                        d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                      />
-                      <path
-                        fill="currentColor"
-                        d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
-                      />
-                      <path
-                        fill="currentColor"
-                        d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-                      />
-                    </svg>
-                    {t('connectGoogleCalendar')}
+                  {!isRealOAuth && (
+                    <p className="text-[10px] text-muted-foreground/60">
+                      ⚠ VITE_GOOGLE_CLIENT_ID not set — using mock mode
+                    </p>
+                  )}
+
+                  <Button
+                    onClick={handleConnect}
+                    disabled={isConnecting}
+                    className="gap-2 w-full sm:w-auto"
+                  >
+                    {isConnecting ? (
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <svg className="w-4 h-4" viewBox="0 0 24 24">
+                        <path
+                          fill="currentColor"
+                          d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                        />
+                        <path
+                          fill="currentColor"
+                          d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                        />
+                        <path
+                          fill="currentColor"
+                          d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+                        />
+                        <path
+                          fill="currentColor"
+                          d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+                        />
+                      </svg>
+                    )}
+                    {isConnecting ? t('connecting') : t('connectGoogleCalendar')}
                   </Button>
                 </div>
               )}

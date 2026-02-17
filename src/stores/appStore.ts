@@ -548,10 +548,25 @@ export const useAppStore = create<AppState>()(
       deleteEvent: async (eventId) => {
         if (isSupabaseConfigured()) {
           try {
+            // Check if event is Google-sourced — if so, also delete from Google Calendar
+            const event = get().events.find((e) => e.id === eventId);
+
             await eventService.deleteEvent(eventId);
             set((state) => ({
               events: state.events.filter((e) => e.id !== eventId),
             }));
+
+            // Best-effort sync: delete from Google Calendar if it's a Google event
+            if (event?.source === 'GOOGLE' && event.googleEventId) {
+              const { currentUser } = get();
+              if (currentUser?.id) {
+                import('@/services/googleCalendarService').then((gcal) => {
+                  gcal.deleteGoogleCalendarEvent(currentUser.id, event.googleEventId!).catch(() => {
+                    // Non-fatal: Google event may already be deleted
+                  });
+                });
+              }
+            }
           } catch (error) {
             console.error('Failed to delete event:', error);
             throw error;

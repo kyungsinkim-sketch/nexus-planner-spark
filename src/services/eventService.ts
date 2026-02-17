@@ -191,18 +191,39 @@ export const updateEvent = async (
 };
 
 // Delete event
+// NOTE: Supabase .delete() silently succeeds (no error) even when RLS blocks
+// the operation — it just returns 0 affected rows. We use .select() to verify
+// the row was actually deleted. If .select() returns data, the delete went through.
+// If it returns empty array, the row either didn't exist or RLS blocked it.
 export const deleteEvent = async (id: string): Promise<void> => {
     if (!isSupabaseConfigured()) {
         throw new Error('Supabase not configured');
     }
 
-    const { error } = await supabase
+    const { data, error } = await supabase
         .from('calendar_events')
         .delete()
-        .eq('id', id);
+        .eq('id', id)
+        .select();
 
     if (error) {
         throw new Error(handleSupabaseError(error));
+    }
+
+    // If no rows were returned, the delete was silently blocked by RLS
+    if (!data || data.length === 0) {
+        // Verify: does the row still exist?
+        const { data: existing } = await supabase
+            .from('calendar_events')
+            .select('id')
+            .eq('id', id)
+            .maybeSingle();
+
+        if (existing) {
+            console.error(`[eventService] DELETE blocked by RLS for event ${id}. Row still exists.`);
+            throw new Error('Permission denied: cannot delete this event (RLS policy)');
+        }
+        // Row doesn't exist — either already deleted or never existed. That's fine.
     }
 };
 

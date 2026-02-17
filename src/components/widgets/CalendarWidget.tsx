@@ -173,11 +173,16 @@ function CalendarWidget({ context }: { context: WidgetDataContext }) {
   };
 
   // Delete from side panel
-  const handleDeleteEvent = (event: CalendarEvent) => {
-    deleteEvent(event.id);
-    setIsPanelOpen(false);
-    setSelectedEvent(null);
-    toast.success(`"${event.title}" deleted`);
+  const handleDeleteEvent = async (event: CalendarEvent) => {
+    try {
+      await deleteEvent(event.id);
+      setIsPanelOpen(false);
+      setSelectedEvent(null);
+      toast.success(`"${event.title}" deleted`);
+    } catch (error) {
+      console.error('Failed to delete event:', error);
+      toast.error('Failed to delete event');
+    }
   };
 
   return (
