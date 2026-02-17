@@ -32,7 +32,7 @@ export const ProjectCard = memo(function ProjectCard({ project, onClick }: Proje
 
     return (
         <Card
-            className="cursor-pointer transition-all hover:shadow-lg hover:scale-[1.02] group"
+            className="cursor-pointer transition-all duration-300 hover:shadow-lg hover:scale-[1.02] hover:-translate-y-1 group bg-card/70 backdrop-blur-sm"
             onClick={onClick}
         >
             {/* Project Key Color Header */}

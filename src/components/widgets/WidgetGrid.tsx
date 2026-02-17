@@ -229,14 +229,14 @@ export function WidgetGrid({ context, projectKeyColor }: WidgetGridProps) {
           }}
           onDragStop={(finalLayout) => {
             // Keep widget active after drag (don't reset to null)
-            saveLayout(finalLayout);
+            saveLayout(finalLayout as unknown as LayoutItem[]);
           }}
           onResizeStart={(_layout, _oldItem, newItem) => {
             if (newItem) setActiveWidgetId(newItem.i);
           }}
           onResizeStop={(finalLayout) => {
             // Keep widget active after resize (don't reset to null)
-            saveLayout(finalLayout);
+            saveLayout(finalLayout as unknown as LayoutItem[]);
           }}
         >
           {visibleWidgets.map((item) => {

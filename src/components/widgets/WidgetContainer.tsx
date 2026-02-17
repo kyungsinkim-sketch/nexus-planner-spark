@@ -66,9 +66,9 @@ export function WidgetContainer({
     >
       {/* Title bar = drag handle + activation trigger */}
       <div className="widget-titlebar widget-drag-handle" onMouseDown={onTitleBarClick}>
-        <div className="flex items-center gap-2 min-w-0">
-          <Icon className="w-4 h-4 text-foreground/70 shrink-0" />
-          <span className="text-sm font-medium text-foreground/90 truncate">{title}</span>
+        <div className="flex items-center gap-2.5 min-w-0">
+          <Icon className="w-4 h-4 text-primary/70 shrink-0" />
+          <span className="text-sm font-semibold text-foreground/85 truncate tracking-tight">{title}</span>
         </div>
         <div className="flex items-center gap-0.5 shrink-0">
           {headerActions?.map((action, idx) => (
@@ -104,7 +104,7 @@ export function WidgetContainer({
 
       {/* Content */}
       {!collapsed && (
-        <div className="widget-content flex-1 min-h-0">
+        <div className="widget-content flex-1 min-h-0 p-0">
           <Suspense fallback={<WidgetSkeleton />}>
             {isVisible ? children : <WidgetSkeleton />}
           </Suspense>
