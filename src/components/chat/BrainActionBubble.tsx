@@ -178,7 +178,7 @@ export function BrainActionBubble({
 
   if (!brainData) {
     return (
-      <div className="w-fit max-w-full rounded-2xl px-4 py-2 text-sm bg-muted text-foreground break-words">
+      <div className="w-fit max-w-full rounded-2xl px-4 py-2 text-sm bg-muted text-foreground" style={{ overflowWrap: 'anywhere', wordBreak: 'break-word' }}>
         {message.content}
       </div>
     );
@@ -190,7 +190,7 @@ export function BrainActionBubble({
     resolvedActions.every((a) => a.status === 'executed' || a.status === 'rejected' || a.status === 'failed');
 
   return (
-    <div className="space-y-2 w-full max-w-full overflow-hidden">
+    <div className="space-y-2 max-w-full overflow-hidden">
       {/* Bot reply message — with inline completion badges when all actions are done */}
       <div className="w-fit max-w-full rounded-2xl px-4 py-2.5 text-sm bg-gradient-to-br from-violet-50 to-blue-50 dark:from-violet-950/30 dark:to-blue-950/30 border border-violet-200/50 dark:border-violet-800/50" style={{ overflowWrap: 'anywhere', wordBreak: 'break-word' }}>
         <div className="flex items-center gap-1.5 mb-1">
@@ -276,7 +276,7 @@ function ActionCard({
   };
 
   return (
-    <div className="rounded-xl border bg-card overflow-hidden shadow-sm">
+    <div className="rounded-xl border bg-card overflow-hidden shadow-sm max-w-full">
       {/* Action header */}
       <div className="flex items-center justify-between px-3 py-2 bg-muted/40 border-b">
         <div className="flex items-center gap-2">

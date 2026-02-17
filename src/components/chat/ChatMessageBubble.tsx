@@ -116,10 +116,10 @@ function MessageWrapper({ children, isCurrentUser, onDelete, messageId }: {
   onDelete?: (messageId: string) => void;
   messageId: string;
 }) {
-  if (!isCurrentUser || !onDelete) return <>{children}</>;
+  if (!isCurrentUser || !onDelete) return <div className="max-w-full overflow-hidden">{children}</div>;
 
   return (
-    <div className="group/msg relative w-fit max-w-full">
+    <div className="group/msg relative w-fit max-w-full overflow-hidden">
       {children}
       <button
         onClick={() => onDelete(messageId)}
@@ -243,15 +243,20 @@ function FileBubble({ message, isCurrentUser }: { message: ChatMessage; isCurren
   const storeFileItem = message.attachmentId ? files.find(f => f.id === message.attachmentId) : null;
   const fileItem = storeFileItem || dbFileItem;
 
-  // If not in store, fetch from DB
+  // If not in store, fetch from DB (use maybeSingle to avoid 406 when row doesn't exist)
   useEffect(() => {
     if (message.attachmentId && !storeFileItem && isSupabaseConfigured()) {
       supabase
         .from('file_items')
         .select('*')
         .eq('id', message.attachmentId)
-        .single()
-        .then(({ data }) => {
+        .maybeSingle()
+        .then(({ data, error }) => {
+          if (error) {
+            // Silently ignore — file may have been deleted or is a mock-only ID
+            console.debug(`[FileBubble] Could not fetch file_item ${message.attachmentId}:`, error.message);
+            return;
+          }
           if (data) {
             setDbFileItem({
               id: data.id,

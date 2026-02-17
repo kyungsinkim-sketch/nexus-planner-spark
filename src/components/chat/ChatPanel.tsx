@@ -1072,7 +1072,7 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
           )}
 
           {/* Messages */}
-          <ScrollArea className="flex-1 p-3 min-w-0">
+          <ScrollArea className="flex-1 p-3 min-w-0 overflow-x-hidden">
             {chatMessages.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full text-center py-8">
                 <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center mb-3">
@@ -1084,9 +1084,9 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
                 </p>
               </div>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-4 max-w-full overflow-hidden">
                 {Object.entries(groupedMessages).map(([date, dateMessages]) => (
-                  <div key={date}>
+                  <div key={date} className="max-w-full overflow-hidden">
                     <div className="flex items-center gap-2 mb-3">
                       <Separator className="flex-1" />
                       <span className="text-[10px] font-medium text-muted-foreground">{date}</span>
@@ -1101,7 +1101,7 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
                         return (
                           <div
                             key={message.id}
-                            className={`flex gap-2 ${isCurrentUser ? 'flex-row-reverse' : ''}`}
+                            className={`flex gap-2 min-w-0 ${isCurrentUser ? 'flex-row-reverse' : ''}`}
                           >
                             {showAvatar ? (
                               <Avatar className="w-7 h-7 shrink-0">
@@ -1116,7 +1116,7 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
                             ) : (
                               <div className="w-7" />
                             )}
-                            <div className={`flex-1 min-w-0 max-w-[calc(100%-3rem)] overflow-hidden ${isCurrentUser ? 'text-right' : ''}`}>
+                            <div className={`flex-1 min-w-0 overflow-hidden ${isCurrentUser ? 'flex flex-col items-end' : ''}`}>
                               {showAvatar && (
                                 <div className={`flex items-center gap-1.5 mb-0.5 ${isCurrentUser ? 'flex-row-reverse' : ''}`}>
                                   <span className="text-xs font-medium text-foreground">
@@ -1127,7 +1127,7 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
                                   </span>
                                 </div>
                               )}
-                              <div className="group/msg-actions relative inline-block max-w-full">
+                              <div className="group/msg-actions relative max-w-full w-fit">
                                 <ChatMessageBubble
                                   message={message}
                                   isCurrentUser={isCurrentUser}
