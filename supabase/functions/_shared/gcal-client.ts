@@ -344,10 +344,33 @@ export function googleEventToDbInsert(
   // Skip cancelled events
   if (googleEvent.status === 'cancelled') return null;
 
-  const startAt = googleEvent.start?.dateTime
-    || (googleEvent.start?.date ? `${googleEvent.start.date}T00:00:00Z` : null);
-  const endAt = googleEvent.end?.dateTime
-    || (googleEvent.end?.date ? `${googleEvent.end.date}T23:59:59Z` : null);
+  // For timed events, use dateTime directly.
+  // For all-day events, Google uses exclusive end dates (e.g., 1-day event on Feb 17
+  // has start.date="2026-02-17", end.date="2026-02-18").
+  // We subtract 1 day from end.date to get the inclusive last day,
+  // then store with Asia/Seoul timezone offset (+09:00).
+  const isAllDay = !googleEvent.start?.dateTime && !!googleEvent.start?.date;
+
+  let startAt: string | null = null;
+  let endAt: string | null = null;
+
+  if (isAllDay) {
+    if (googleEvent.start?.date) {
+      startAt = `${googleEvent.start.date}T00:00:00+09:00`;
+    }
+    if (googleEvent.end?.date) {
+      // Subtract 1 day from exclusive end date to get inclusive end
+      const endDate = new Date(googleEvent.end.date + 'T00:00:00+09:00');
+      endDate.setDate(endDate.getDate() - 1);
+      const yyyy = endDate.getFullYear();
+      const mm = String(endDate.getMonth() + 1).padStart(2, '0');
+      const dd = String(endDate.getDate()).padStart(2, '0');
+      endAt = `${yyyy}-${mm}-${dd}T23:59:59+09:00`;
+    }
+  } else {
+    startAt = googleEvent.start?.dateTime || null;
+    endAt = googleEvent.end?.dateTime || null;
+  }
 
   if (!startAt || !endAt) return null;
 
