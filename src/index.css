@@ -536,7 +536,8 @@
 }
 
 /* Project accent color — applied via --project-accent CSS variable */
-[style*="--project-accent"] .glass-widget {
+/* Exclude the FAB popup from accent bleeding — only widget grid items get accent */
+[style*="--project-accent"] .react-grid-item .glass-widget {
   border-color: var(--project-accent, hsl(var(--glass-border)));
   border-width: 1.5px;
 }
