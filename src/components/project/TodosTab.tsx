@@ -224,7 +224,7 @@ export function TodosTab({ projectId }: TodosTabProps) {
             {t('completed')} ({todos.filter((t) => t.status === 'COMPLETED').length})
           </Button>
         </div>
-        <Button onClick={() => setShowNewModal(true)} className="gap-2">
+        <Button onClick={() => setShowNewModal(true)} variant="glass-accent" className="gap-2">
           <Plus className="w-4 h-4" />
           {t('newTodo')}
         </Button>
@@ -390,7 +390,7 @@ export function TodosTab({ projectId }: TodosTabProps) {
               <Button type="button" variant="outline" onClick={() => setShowNewModal(false)}>
                 {t('cancel')}
               </Button>
-              <Button type="submit" className="gap-2">
+              <Button type="submit" variant="glass-accent" className="gap-2">
                 <Plus className="w-4 h-4" />
                 {t('createTodo')}
               </Button>

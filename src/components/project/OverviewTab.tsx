@@ -147,7 +147,7 @@ export function OverviewTab({ project, onCompleteProject, onNavigateToTab }: Ove
                 {t('markProjectComplete')}
               </p>
             </div>
-            <Button onClick={handleCompleteClick} className="gap-2">
+            <Button onClick={handleCompleteClick} variant="glass-accent" className="gap-2">
               <CheckCircle2 className="w-4 h-4" />
               {t('projectComplete')}
             </Button>

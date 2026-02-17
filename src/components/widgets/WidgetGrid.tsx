@@ -381,7 +381,7 @@ export function WidgetGrid({ context, projectKeyColor }: WidgetGridProps) {
                        shadow-lg hover:shadow-xl transition-all ${
                          showAddMenu
                            ? 'bg-destructive text-destructive-foreground rotate-45'
-                           : 'bg-primary text-primary-foreground hover:bg-primary/90'
+                           : 'glass-button-accent text-white'
                        }`}
             title={showAddMenu ? t('close') : t('addWidget')}
           >

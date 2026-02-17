@@ -247,7 +247,7 @@ export function ProjectCalendarTab({ projectId }: ProjectCalendarTabProps) {
           <p className="text-sm text-muted-foreground">
             {filteredEvents.length} of {projectEvents.length} events
           </p>
-          <Button size="sm" className="gap-2" onClick={handleAddEventClick}>
+          <Button size="sm" variant="glass-accent" className="gap-2" onClick={handleAddEventClick}>
             <Plus className="w-4 h-4" />
             Add Event
           </Button>

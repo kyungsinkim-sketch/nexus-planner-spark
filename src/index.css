@@ -282,6 +282,30 @@
     @apply bg-card/80 backdrop-blur-md border border-border/50;
   }
 
+  /* Liquid Glass — Button variants */
+  .glass-button {
+    background: hsl(var(--glass-bg));
+    backdrop-filter: blur(16px) saturate(1.3);
+    -webkit-backdrop-filter: blur(16px) saturate(1.3);
+    box-shadow: var(--glass-inner-glow), 0 1px 3px 0 rgba(0, 0, 0, 0.06);
+  }
+  .glass-button:hover {
+    background: hsl(var(--glass-bg-hover));
+    box-shadow: var(--glass-inner-glow), 0 2px 8px 0 rgba(0, 0, 0, 0.1);
+  }
+
+  /* Glass button with accent color (uses --project-accent or primary) */
+  .glass-button-accent {
+    background: color-mix(in srgb, var(--project-accent, hsl(var(--primary))) 75%, transparent);
+    backdrop-filter: blur(16px) saturate(1.3);
+    -webkit-backdrop-filter: blur(16px) saturate(1.3);
+    box-shadow: var(--glass-inner-glow), 0 2px 8px 0 color-mix(in srgb, var(--project-accent, hsl(var(--primary))) 25%, transparent);
+  }
+  .glass-button-accent:hover {
+    background: color-mix(in srgb, var(--project-accent, hsl(var(--primary))) 85%, transparent);
+    box-shadow: var(--glass-inner-glow), 0 4px 12px 0 color-mix(in srgb, var(--project-accent, hsl(var(--primary))) 35%, transparent);
+  }
+
   /* Liquid Glass — Widget cards.
      Background is semi-transparent (via color alpha), but content stays fully opaque.
      NEVER use `opacity` on this element — it would make ALL children transparent. */
@@ -515,7 +539,33 @@
   background: color-mix(in srgb, var(--project-accent) 10%, hsl(222 47% 11%));
 }
 
-/* Chat widget — constrain ALL content to widget width */
+/* Project accent — override default variant buttons inside project context */
+[style*="--project-accent"] button[class*="bg-primary"] {
+  background: color-mix(in srgb, var(--project-accent) 90%, transparent) !important;
+  border-color: color-mix(in srgb, var(--project-accent) 40%, transparent) !important;
+}
+[style*="--project-accent"] button[class*="bg-primary"]:hover {
+  background: var(--project-accent) !important;
+}
+/* Project accent for icon colors using text-primary */
+[style*="--project-accent"] .text-primary {
+  color: var(--project-accent) !important;
+}
+[style*="--project-accent"] .text-primary\/70 {
+  color: color-mix(in srgb, var(--project-accent) 70%, transparent) !important;
+}
+/* Project accent for primary ring */
+[style*="--project-accent"] .ring-primary {
+  --tw-ring-color: var(--project-accent) !important;
+}
+/* FAB + button in project context */
+[style*="--project-accent"] .bg-primary {
+  background-color: var(--project-accent) !important;
+}
+[style*="--project-accent"] .hover\:bg-primary\/90:hover {
+  background-color: color-mix(in srgb, var(--project-accent) 90%, transparent) !important;
+}
+
 [data-widget-id="chat"] .widget-content,
 [data-widget-id="chat"] > div {
   overflow: hidden;
