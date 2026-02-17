@@ -648,6 +648,10 @@
   word-break: break-word;
 }
 
+/* ═══════════════════════════════════════════════════════════════
+   APPLE CALENDAR STYLE — clean, minimal FullCalendar overrides
+   ═══════════════════════════════════════════════════════════════ */
+
 /* Calendar widget — compact toolbar and fit-to-widget */
 .calendar-widget-content {
   overflow: hidden;
@@ -667,6 +671,7 @@
 .calendar-widget-content .fc .fc-scrollgrid {
   width: 100% !important;
   overflow: hidden;
+  border: none !important;
 }
 .calendar-widget-content .fc .fc-daygrid-body {
   width: 100% !important;
@@ -677,40 +682,172 @@
 .calendar-widget-content .fc .fc-col-header {
   width: 100% !important;
 }
+
+/* ── Toolbar: Apple-style large title + subtle controls ── */
 .calendar-widget-content .fc .fc-toolbar {
-  gap: 0.25rem;
-  margin-bottom: 0.25rem;
-  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+  flex-wrap: nowrap;
+  padding: 0.25rem 0.5rem;
 }
 .calendar-widget-content .fc .fc-toolbar-title {
-  font-size: 0.75rem;
+  font-size: 1.1rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: hsl(var(--foreground));
 }
+
+/* ── Buttons: pill-shaped, subtle ── */
 .calendar-widget-content .fc .fc-button {
   font-size: 10px;
-  padding: 2px 6px;
+  padding: 3px 8px;
+  font-weight: 500;
+  background: transparent !important;
+  border: none !important;
+  color: hsl(var(--primary)) !important;
+  box-shadow: none !important;
+  border-radius: 1rem !important;
+  transition: background 0.15s;
+}
+.calendar-widget-content .fc .fc-button:hover {
+  background: hsl(var(--primary) / 0.08) !important;
+}
+.calendar-widget-content .fc .fc-button-primary:not(:disabled).fc-button-active {
+  background: hsl(var(--primary)) !important;
+  color: white !important;
 }
 .calendar-widget-content .fc .fc-today-button {
   font-size: 10px;
-  padding: 2px 6px;
+  padding: 3px 10px;
+  background: hsl(var(--primary) / 0.08) !important;
+  color: hsl(var(--primary)) !important;
+  border: none !important;
+  font-weight: 600;
 }
-/* Day headers — abbreviate on small widgets */
-.calendar-widget-content .fc .fc-col-header-cell {
-  font-size: 10px;
-  padding: 2px 0;
+.calendar-widget-content .fc .fc-today-button:hover {
+  background: hsl(var(--primary) / 0.15) !important;
 }
-/* Day numbers — compact */
-.calendar-widget-content .fc .fc-daygrid-day-number {
-  font-size: 11px;
+.calendar-widget-content .fc .fc-prev-button,
+.calendar-widget-content .fc .fc-next-button {
   padding: 2px 4px;
 }
-/* Events — compact */
-.calendar-widget-content .fc .fc-daygrid-event {
-  font-size: 10px;
-  padding: 0 2px;
-  margin: 0 1px 1px;
+
+/* ── Button group: pill bar ── */
+.calendar-widget-content .fc .fc-button-group {
+  background: hsl(var(--muted));
+  border-radius: 1rem;
+  padding: 1px;
+}
+.calendar-widget-content .fc .fc-button-group > .fc-button {
+  border-radius: 0.875rem !important;
+  margin-left: 1px !important;
+}
+.calendar-widget-content .fc .fc-button-group > .fc-button:first-child {
+  margin-left: 0 !important;
 }
 
-/* FullCalendar Custom Styles */
+/* ── Column headers: uppercase weekday labels ── */
+.calendar-widget-content .fc .fc-col-header-cell {
+  font-size: 10px;
+  padding: 4px 0;
+  border: none !important;
+}
+.calendar-widget-content .fc .fc-col-header-cell-cushion {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: hsl(var(--muted-foreground));
+  padding: 4px 0;
+}
+
+/* ── Grid: minimal borders ── */
+.calendar-widget-content .fc .fc-scrollgrid td,
+.calendar-widget-content .fc .fc-scrollgrid th {
+  border-color: hsl(var(--border) / 0.5) !important;
+}
+.calendar-widget-content .fc .fc-scrollgrid {
+  border: none !important;
+}
+.calendar-widget-content .fc td:first-child {
+  border-left: none !important;
+}
+.calendar-widget-content .fc td:last-child {
+  border-right: none !important;
+}
+.calendar-widget-content .fc .fc-scrollgrid > thead > tr > th {
+  border-bottom: 1px solid hsl(var(--border) / 0.3) !important;
+}
+
+/* ── Day numbers ── */
+.calendar-widget-content .fc .fc-daygrid-day-number {
+  font-size: 12px;
+  padding: 3px 6px;
+  font-weight: 500;
+  color: hsl(var(--foreground));
+}
+/* Today: red/blue circle around the day number */
+.calendar-widget-content .fc .fc-day-today .fc-daygrid-day-number {
+  background: hsl(var(--primary));
+  color: white;
+  border-radius: 50%;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  margin: 2px;
+  padding: 0;
+}
+/* Today background */
+.calendar-widget-content .fc .fc-day-today {
+  background: transparent !important;
+}
+/* Other month days */
+.calendar-widget-content .fc .fc-day-other .fc-daygrid-day-number {
+  color: hsl(var(--muted-foreground) / 0.4);
+}
+
+/* ── Events: Apple-style colored left border blocks ── */
+.calendar-widget-content .fc .fc-daygrid-event {
+  font-size: 10px;
+  padding: 1px 4px;
+  margin: 0 2px 1px;
+  border-radius: 4px !important;
+  border: none !important;
+  border-left: 3px solid var(--fc-event-border-color, hsl(var(--primary))) !important;
+  background: var(--fc-event-bg-color, hsl(var(--primary) / 0.12)) !important;
+  color: hsl(var(--foreground)) !important;
+  box-shadow: none !important;
+  transition: transform 0.1s;
+}
+.calendar-widget-content .fc .fc-daygrid-event:hover {
+  transform: scale(1.02);
+}
+/* Override dot events */
+.calendar-widget-content .fc .fc-daygrid-dot-event {
+  background: transparent !important;
+  border-left: 3px solid var(--fc-event-border-color, hsl(var(--primary))) !important;
+}
+
+/* ── Week/Day time grid events ── */
+.calendar-widget-content .fc .fc-timegrid-event {
+  border-radius: 6px !important;
+  border: none !important;
+  border-left: 3px solid var(--fc-event-border-color, hsl(var(--primary))) !important;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+}
+
+/* ── List view ── */
+.calendar-widget-content .fc .fc-list {
+  border: none !important;
+}
+.calendar-widget-content .fc .fc-list-event:hover td {
+  background: hsl(var(--accent)) !important;
+}
+
+/* ── FullCalendar Global Variables ── */
 .fc {
   --fc-border-color: hsl(var(--border));
   --fc-button-bg-color: hsl(var(--primary));
@@ -719,50 +856,44 @@
   --fc-button-hover-border-color: hsl(var(--primary) / 0.9);
   --fc-button-active-bg-color: hsl(var(--primary) / 0.8);
   --fc-button-active-border-color: hsl(var(--primary) / 0.8);
-  --fc-today-bg-color: hsl(var(--primary) / 0.05);
-  --fc-event-bg-color: hsl(var(--primary));
+  --fc-today-bg-color: transparent;
+  --fc-event-bg-color: hsl(var(--primary) / 0.12);
   --fc-event-border-color: hsl(var(--primary));
-  --fc-page-bg-color: hsl(var(--background));
+  --fc-page-bg-color: transparent;
   --fc-neutral-bg-color: hsl(var(--muted));
   --fc-list-event-hover-bg-color: hsl(var(--accent));
 }
 
 .fc .fc-toolbar-title {
-  @apply text-base sm:text-lg font-semibold text-foreground;
+  @apply text-base sm:text-lg font-bold text-foreground;
+  letter-spacing: -0.02em;
 }
 
-/* !important needed: FullCalendar injects its own CSS via JS (border-radius:.25em)
-   which overrides Tailwind classes due to cascade order */
 .fc .fc-button {
   @apply text-xs sm:text-sm font-medium shadow-none;
-  border-radius: 0.75rem !important; /* rounded-xl = 12px */
+  border-radius: 1rem !important;
 }
-
-/* Button group — ALL buttons get uniform rounded corners (including middle) */
 .fc .fc-button-group > .fc-button {
-  border-radius: 0.75rem !important;
+  border-radius: 0.875rem !important;
   margin-left: 2px !important;
 }
 .fc .fc-button-group > .fc-button:first-child {
   margin-left: 0 !important;
 }
-
 .fc .fc-button-primary:not(:disabled):active,
 .fc .fc-button-primary:not(:disabled).fc-button-active {
   @apply bg-primary;
 }
 
 .fc .fc-col-header-cell-cushion {
-  @apply text-[10px] sm:text-xs font-medium text-muted-foreground uppercase tracking-wide py-2;
+  @apply text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wider py-2;
 }
-
 .fc .fc-daygrid-day-number {
   @apply text-xs sm:text-sm text-foreground p-1 sm:p-2;
 }
-
 .fc .fc-event {
-  @apply text-[10px] sm:text-xs border-0 cursor-pointer transition-transform hover:scale-[1.02];
-  border-radius: 0.5rem !important; /* rounded-lg = 8px */
+  @apply text-[10px] sm:text-xs border-0 cursor-pointer;
+  border-radius: 4px !important;
 }
 
 /* Mobile Calendar Adjustments */
@@ -770,49 +901,23 @@
   .fc .fc-toolbar {
     @apply flex-col gap-2;
   }
-
   .fc .fc-toolbar-chunk {
     @apply flex items-center justify-center;
   }
-
   .fc .fc-daygrid-day-frame {
     @apply min-h-[60px];
   }
 }
 
-/* Event Type Colors - Only used in main calendar as fallback when no project key color exists */
-/* Project calendars use project key color for all events */
-.fc-event-task {
-  background-color: hsl(var(--event-task)) !important;
-}
-
-.fc-event-deadline {
-  background-color: hsl(var(--event-deadline)) !important;
-}
-
-.fc-event-meeting {
-  background-color: hsl(var(--event-meeting)) !important;
-}
-
-.fc-event-pt {
-  background-color: hsl(var(--event-pt)) !important;
-}
-
-.fc-event-delivery {
-  background-color: hsl(var(--event-delivery)) !important;
-}
-
-.fc-event-todo {
-  background-color: hsl(188 94% 43%) !important;
-}
-
-.fc-event-todo.completed {
-  opacity: 0.5;
-}
-
-.fc-event-training {
-  background-color: hsl(330 81% 60%) !important;
-}
+/* Event Type Colors */
+.fc-event-task { background-color: hsl(var(--event-task) / 0.15) !important; border-left-color: hsl(var(--event-task)) !important; }
+.fc-event-deadline { background-color: hsl(var(--event-deadline) / 0.15) !important; border-left-color: hsl(var(--event-deadline)) !important; }
+.fc-event-meeting { background-color: hsl(var(--event-meeting) / 0.15) !important; border-left-color: hsl(var(--event-meeting)) !important; }
+.fc-event-pt { background-color: hsl(var(--event-pt) / 0.15) !important; border-left-color: hsl(var(--event-pt)) !important; }
+.fc-event-delivery { background-color: hsl(var(--event-delivery) / 0.15) !important; border-left-color: hsl(var(--event-delivery)) !important; }
+.fc-event-todo { background-color: hsl(188 94% 43% / 0.15) !important; border-left-color: hsl(188 94% 43%) !important; }
+.fc-event-todo.completed { opacity: 0.5; }
+.fc-event-training { background-color: hsl(330 81% 60% / 0.15) !important; border-left-color: hsl(330 81% 60%) !important; }
 
 .event-badge-training {
   @apply bg-pink-500/10 text-pink-600 border-pink-500/30;
