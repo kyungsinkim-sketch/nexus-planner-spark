@@ -14,6 +14,7 @@ import { Loader2 } from "lucide-react";
 const AdminPage = lazy(() => import("./pages/AdminPage"));
 const SettingsPage = lazy(() => import("./pages/SettingsPage"));
 const DepositStatusPage = lazy(() => import("./pages/DepositStatusPage"));
+const BudgetPage = lazy(() => import("./pages/BudgetPage"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const AuthPage = lazy(() => import("./pages/AuthPage").then(m => ({ default: m.AuthPage })));
 
@@ -109,6 +110,7 @@ const App = () => {
                   <Route path="/admin" element={<AdminRoute><AdminPage /></AdminRoute>} />
                   <Route path="/settings" element={<SettingsPage />} />
                   <Route path="/projects/:projectId/deposits" element={<DepositStatusPage />} />
+                  <Route path="/projects/:projectId/budget" element={<AdminRoute><BudgetPage /></AdminRoute>} />
 
                   {/* Legacy routes redirect to root (now widget-based) */}
                   <Route path="/calendar" element={<Navigate to="/" replace />} />

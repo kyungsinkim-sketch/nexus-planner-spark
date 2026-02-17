@@ -5,7 +5,7 @@
  * Right side: Admin, Settings, Theme toggle, Language toggle, User status
  */
 
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useWidgetStore } from '@/stores/widgetStore';
 import { useAppStore } from '@/stores/appStore';
 import {
@@ -54,6 +54,7 @@ const workStatusConfig: Record<UserWorkStatus, { labelKey: TranslationKey; icon:
 
 export function TabBar() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { t, language, toggleLanguage } = useTranslation();
   const { openTabs, activeTabId, setActiveTab, closeProjectTab } = useWidgetStore();
   const {
@@ -67,6 +68,8 @@ export function TabBar() {
   const isAdmin = currentUser?.role === 'ADMIN';
   const currentStatus = workStatusConfig[userWorkStatus];
   const isDark = theme === 'dark';
+  // Whether we're on a sub-route (admin, settings, budget, deposits)
+  const isOnSubRoute = location.pathname !== '/';
 
   return (
     <div className="glass-tabbar flex items-stretch h-12 px-2 gap-1 shrink-0 z-30">
@@ -81,7 +84,8 @@ export function TabBar() {
                 key={tab.id}
                 onClick={() => {
                   setActiveTab(tab.id);
-                  if (isDashboard) navigate('/');
+                  // Navigate to root when: clicking dashboard, or when on a sub-route (admin/settings/budget)
+                  if (isDashboard || isOnSubRoute) navigate('/');
                 }}
                 className={cn(
                   'flex items-center gap-1.5 px-3 text-xs font-medium transition-all min-w-0 max-w-[180px] shrink-0 relative',
