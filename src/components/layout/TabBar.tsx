@@ -76,38 +76,48 @@ export function TabBar() {
           const isDashboard = tab.type === 'dashboard';
 
           return (
-            <button
-              key={tab.id}
-              onClick={() => {
-                setActiveTab(tab.id);
-                if (isDashboard) navigate('/');
-              }}
-              className={cn(
-                'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all min-w-0 max-w-[180px] shrink-0',
-                isActive
-                  ? 'bg-white/15 text-foreground shadow-sm'
-                  : 'text-muted-foreground hover:bg-white/8 hover:text-foreground',
-              )}
-            >
-              {isDashboard ? (
-                <LayoutDashboard className="w-3.5 h-3.5 shrink-0" />
-              ) : (
-                <div
-                  className="w-2.5 h-2.5 rounded-full shrink-0"
-                  style={{ backgroundColor: tab.keyColor || 'hsl(234 89% 60%)' }}
-                />
-              )}
-              <span className="truncate">{isDashboard ? t('dashboard') : tab.label}</span>
-              {!isDashboard && (
-                <button
-                  onClick={(e) => { e.stopPropagation(); closeProjectTab(tab.id); }}
-                  className="p-0.5 rounded hover:bg-white/20 transition-colors ml-0.5 shrink-0"
-                >
-                  <X className="w-3 h-3" />
-                </button>
-              )}
-            </button>
-          );
+              <button
+                key={tab.id}
+                onClick={() => {
+                  setActiveTab(tab.id);
+                  if (isDashboard) navigate('/');
+                }}
+                className={cn(
+                  'flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium transition-all min-w-0 max-w-[180px] shrink-0 relative',
+                  isActive && !isDashboard
+                    ? 'text-white rounded-t-lg rounded-b-none -mb-px'
+                    : isActive
+                      ? 'bg-white/15 text-foreground shadow-sm rounded-lg'
+                      : 'text-muted-foreground hover:bg-white/8 hover:text-foreground rounded-lg',
+                )}
+                style={
+                  isActive && !isDashboard && tab.keyColor
+                    ? { backgroundColor: tab.keyColor }
+                    : undefined
+                }
+              >
+                {isDashboard ? (
+                  <LayoutDashboard className="w-3.5 h-3.5 shrink-0" />
+                ) : (
+                  <div
+                    className={cn('w-2.5 h-2.5 rounded-full shrink-0', isActive && 'bg-white/40')}
+                    style={!isActive ? { backgroundColor: tab.keyColor || 'hsl(234 89% 60%)' } : undefined}
+                  />
+                )}
+                <span className="truncate">{isDashboard ? t('dashboard') : tab.label}</span>
+                {!isDashboard && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); closeProjectTab(tab.id); }}
+                    className={cn(
+                      'p-0.5 rounded transition-colors ml-0.5 shrink-0',
+                      isActive ? 'hover:bg-white/30' : 'hover:bg-white/20',
+                    )}
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                )}
+              </button>
+            );
         })}
       </div>
 

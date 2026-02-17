@@ -192,7 +192,7 @@ export function WidgetGrid({ context, projectKeyColor }: WidgetGridProps) {
   const isFramelessWidget = (widgetType: string) => widgetType === 'chat' || widgetType === 'calendar' || widgetType === 'brainChat';
 
   // Barless widgets: no title bar at all, hover-reveal settings/remove buttons in top-right corner
-  const isBarlessWidget = (widgetType: string) => widgetType === 'worldClock' || widgetType === 'weather' || widgetType === 'todayWeather' || widgetType === 'activityChart' || widgetType === 'progressChart';
+  const isBarlessWidget = (widgetType: string) => widgetType === 'worldClock' || widgetType === 'weather' || widgetType === 'todayWeather' || widgetType === 'activityChart' || widgetType === 'progressChart' || widgetType === 'health';
 
   // Inline style to kill transitions — applied to every grid item to guarantee
   // no slide-in animation regardless of CSS load order
@@ -402,8 +402,9 @@ export function WidgetGrid({ context, projectKeyColor }: WidgetGridProps) {
 
           {/* Add widget menu popup */}
           {showAddMenu && (
-            <div className="absolute bottom-12 right-0 w-56 p-2 rounded-xl glass-widget shadow-xl border border-border/50
-                            animate-in fade-in slide-in-from-bottom-2 duration-200">
+            <div className="absolute bottom-12 right-0 w-56 p-2 rounded-xl shadow-xl border border-border/50
+                            animate-in fade-in slide-in-from-bottom-2 duration-200 bg-popover text-popover-foreground backdrop-blur-xl"
+                 style={{ '--project-accent': undefined } as React.CSSProperties}>
               <p className="text-xs font-medium text-muted-foreground px-2 py-1 mb-1">
                 {t('addWidget')}
               </p>
