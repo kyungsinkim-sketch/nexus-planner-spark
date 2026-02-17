@@ -458,6 +458,29 @@ export interface Database {
                     created_at?: string
                 }
             }
+            file_comments: {
+                Row: {
+                    id: string
+                    file_item_id: string
+                    user_id: string
+                    content: string
+                    created_at: string
+                }
+                Insert: {
+                    id?: string
+                    file_item_id: string
+                    user_id: string
+                    content: string
+                    created_at?: string
+                }
+                Update: {
+                    id?: string
+                    file_item_id?: string
+                    user_id?: string
+                    content?: string
+                    created_at?: string
+                }
+            }
             file_items: {
                 Row: {
                     id: string

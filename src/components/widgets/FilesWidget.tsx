@@ -6,7 +6,13 @@
 
 import { useMemo, useState, useCallback, useEffect, useRef } from 'react';
 import { useAppStore } from '@/stores/appStore';
-import { getFileDownloadUrl } from '@/services/fileService';
+import {
+  getFileDownloadUrl,
+  getFileComments,
+  createFileComment,
+  subscribeToFileItems,
+  subscribeToFileComments,
+} from '@/services/fileService';
 import { isSupabaseConfigured } from '@/lib/supabase';
 import { useTranslation } from '@/hooks/useTranslation';
 import {
@@ -77,6 +83,7 @@ function FilesWidget({ context }: { context: WidgetDataContext }) {
   const { fileGroups, files, loadFileGroups, currentUser, users, projects } = useAppStore();
   const { t } = useTranslation();
   const [selectedFile, setSelectedFile] = useState<FileItem | null>(null);
+  const [fileComments, setFileComments] = useState<FileComment[]>([]);
   const [newComment, setNewComment] = useState('');
   const commentsEndRef = useRef<HTMLDivElement>(null);
 
@@ -86,6 +93,80 @@ function FilesWidget({ context }: { context: WidgetDataContext }) {
       loadFileGroups(context.projectId).catch(() => {});
     }
   }, [context.type, context.projectId, loadFileGroups]);
+
+  // ─── Realtime: file_items changes (INSERT/DELETE across users) ───
+  useEffect(() => {
+    if (!isSupabaseConfigured()) return;
+
+    const unsub = subscribeToFileItems(
+      // onInsert — another user uploaded a file
+      (newFile) => {
+        useAppStore.setState((state) => {
+          // Avoid duplicates
+          if (state.files.some((f) => f.id === newFile.id)) return state;
+          return { files: [...state.files, newFile] };
+        });
+      },
+      // onUpdate — another user changed file metadata
+      (updatedFile) => {
+        useAppStore.setState((state) => ({
+          files: state.files.map((f) => f.id === updatedFile.id ? updatedFile : f),
+        }));
+      },
+      // onDelete — another user deleted a file
+      (deletedId) => {
+        useAppStore.setState((state) => ({
+          files: state.files.filter((f) => f.id !== deletedId),
+        }));
+        // Close preview if the deleted file is open
+        if (selectedFile?.id === deletedId) {
+          setSelectedFile(null);
+        }
+      },
+    );
+
+    return unsub;
+  }, [selectedFile?.id]);
+
+  // ─── Load comments from DB when a file is selected ───
+  useEffect(() => {
+    if (!selectedFile || !isSupabaseConfigured()) {
+      setFileComments([]);
+      return;
+    }
+
+    let cancelled = false;
+
+    // Fetch existing comments
+    getFileComments(selectedFile.id)
+      .then((comments) => { if (!cancelled) setFileComments(comments); })
+      .catch((err) => console.error('Failed to load comments:', err));
+
+    // Subscribe to realtime comment changes
+    const unsub = subscribeToFileComments(
+      selectedFile.id,
+      (newComment) => {
+        if (!cancelled) {
+          setFileComments((prev) => {
+            // Avoid duplicates (optimistic insert may already exist)
+            if (prev.some((c) => c.id === newComment.id)) return prev;
+            return [...prev, newComment];
+          });
+          setTimeout(() => commentsEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 50);
+        }
+      },
+      (deletedId) => {
+        if (!cancelled) {
+          setFileComments((prev) => prev.filter((c) => c.id !== deletedId));
+        }
+      },
+    );
+
+    return () => {
+      cancelled = true;
+      unsub();
+    };
+  }, [selectedFile?.id]);
 
   const allFiles = useMemo(() => {
     const projectGroupIds = new Set(
@@ -112,31 +193,43 @@ function FilesWidget({ context }: { context: WidgetDataContext }) {
     return users.find(u => u.id === userId);
   }, [users]);
 
-  const handleAddComment = useCallback(() => {
+  const handleAddComment = useCallback(async () => {
     if (!selectedFile || !newComment.trim() || !currentUser) return;
-    const { files: allStoreFiles } = useAppStore.getState();
-    const idx = allStoreFiles.findIndex((f) => f.id === selectedFile.id);
-    if (idx === -1) return;
 
-    const comment: FileComment = {
-      id: `fc_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
-      userId: currentUser.id,
-      content: newComment.trim(),
-      createdAt: new Date().toISOString(),
-    };
-    const updated = [...allStoreFiles];
-    const existingComments = updated[idx].comments || [];
-    updated[idx] = { ...updated[idx], comments: [...existingComments, comment] };
-    useAppStore.setState({ files: updated });
-    setSelectedFile(updated[idx]);
+    const content = newComment.trim();
     setNewComment('');
-    toast.success(t('commentAdded'));
 
-    // Scroll to bottom of comments
+    if (isSupabaseConfigured()) {
+      try {
+        // Insert to DB → realtime subscription will sync to all users
+        const created = await createFileComment(selectedFile.id, currentUser.id, content);
+        // Optimistic: add locally immediately (realtime will deduplicate)
+        setFileComments((prev) => {
+          if (prev.some((c) => c.id === created.id)) return prev;
+          return [...prev, created];
+        });
+        toast.success(t('commentAdded'));
+      } catch (err) {
+        console.error('Failed to create comment:', err);
+        toast.error('Failed to add comment');
+        setNewComment(content); // Restore on failure
+        return;
+      }
+    } else {
+      // Mock mode: local-only comment
+      const mockComment: FileComment = {
+        id: `fc_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+        fileItemId: selectedFile.id,
+        userId: currentUser.id,
+        content,
+        createdAt: new Date().toISOString(),
+      };
+      setFileComments((prev) => [...prev, mockComment]);
+      toast.success(t('commentAdded'));
+    }
+
     setTimeout(() => commentsEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 50);
-
-    // TODO: Notify project participants when notification system is available
-  }, [selectedFile, newComment, currentUser, t, context]);
+  }, [selectedFile, newComment, currentUser, t]);
 
   const handleDeleteFile = useCallback(async (fileId: string, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
@@ -172,7 +265,6 @@ function FilesWidget({ context }: { context: WidgetDataContext }) {
           const isImage = isImageFile(f.name, f.type);
           const isPdf = isPdfFile(f.name, f.type);
           const fileUrl = (isImage || isPdf) ? getFileUrl(f.storagePath) : null;
-          const commentCount = f.comments?.length || 0;
 
           return (
             <div
@@ -204,11 +296,6 @@ function FilesWidget({ context }: { context: WidgetDataContext }) {
                 <p className="text-[10px] text-muted-foreground">
                   {info.label}
                   {f.size ? ` · ${formatSize(f.size)}` : ''}
-                  {commentCount > 0 && (
-                    <span className="ml-1 text-primary">
-                      💬 {commentCount}
-                    </span>
-                  )}
                 </p>
               </div>
               {/* Inline delete button */}
@@ -230,7 +317,7 @@ function FilesWidget({ context }: { context: WidgetDataContext }) {
           {selectedFile && (() => {
             const info = getFileInfo(selectedFile.name, selectedFile.type);
             const Icon = info.icon;
-            const comments = selectedFile.comments || [];
+            const comments = fileComments;
             return (
               <>
                 <DialogHeader>

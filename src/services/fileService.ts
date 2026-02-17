@@ -1,11 +1,13 @@
 import { supabase, isSupabaseConfigured, handleSupabaseError } from '@/lib/supabase';
-import type { FileGroup, FileItem } from '@/types/core';
+import type { FileGroup, FileItem, FileComment } from '@/types/core';
 import type { Database } from '@/types/database';
 
 type FileGroupRow = Database['public']['Tables']['file_groups']['Row'];
 type FileGroupInsert = Database['public']['Tables']['file_groups']['Insert'];
 type FileItemRow = Database['public']['Tables']['file_items']['Row'];
 type FileItemInsert = Database['public']['Tables']['file_items']['Insert'];
+type FileCommentRow = Database['public']['Tables']['file_comments']['Row'];
+type FileCommentInsert = Database['public']['Tables']['file_comments']['Insert'];
 
 // Transform database row to app FileGroup type
 const transformFileGroup = (row: FileGroupRow): FileGroup => {
@@ -294,4 +296,161 @@ export const updateFileItem = async (
     }
 
     return transformFileItem(data);
+};
+
+// ─── File Comments ───
+
+const transformFileComment = (row: FileCommentRow): FileComment => ({
+    id: row.id,
+    fileItemId: row.file_item_id,
+    userId: row.user_id,
+    content: row.content,
+    createdAt: row.created_at,
+});
+
+// Get all comments for a file
+export const getFileComments = async (fileItemId: string): Promise<FileComment[]> => {
+    if (!isSupabaseConfigured()) {
+        throw new Error('Supabase not configured');
+    }
+
+    const { data, error } = await supabase
+        .from('file_comments')
+        .select('*')
+        .eq('file_item_id', fileItemId)
+        .order('created_at', { ascending: true });
+
+    if (error) {
+        throw new Error(handleSupabaseError(error));
+    }
+
+    return data.map(transformFileComment);
+};
+
+// Create a comment on a file
+export const createFileComment = async (
+    fileItemId: string,
+    userId: string,
+    content: string,
+): Promise<FileComment> => {
+    if (!isSupabaseConfigured()) {
+        throw new Error('Supabase not configured');
+    }
+
+    const insertData: FileCommentInsert = {
+        file_item_id: fileItemId,
+        user_id: userId,
+        content,
+    };
+
+    const { data, error } = await supabase
+        .from('file_comments')
+        .insert(insertData as unknown as Record<string, unknown>)
+        .select()
+        .single();
+
+    if (error) {
+        throw new Error(handleSupabaseError(error));
+    }
+
+    return transformFileComment(data as FileCommentRow);
+};
+
+// Delete a comment
+export const deleteFileComment = async (commentId: string): Promise<void> => {
+    if (!isSupabaseConfigured()) {
+        throw new Error('Supabase not configured');
+    }
+
+    const { error } = await supabase
+        .from('file_comments')
+        .delete()
+        .eq('id', commentId);
+
+    if (error) {
+        throw new Error(handleSupabaseError(error));
+    }
+};
+
+// ─── Realtime Subscriptions ───
+
+/**
+ * Subscribe to file_items changes (INSERT, UPDATE, DELETE).
+ * Used to sync file list across users in real-time.
+ */
+export const subscribeToFileItems = (
+    onInsert: (file: FileItem) => void,
+    onUpdate: (file: FileItem) => void,
+    onDelete: (id: string) => void,
+): (() => void) => {
+    if (!isSupabaseConfigured()) {
+        return () => {};
+    }
+
+    const channelName = `file_items_changes_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+
+    const channel = supabase
+        .channel(channelName)
+        .on(
+            'postgres_changes',
+            {
+                event: '*',
+                schema: 'public',
+                table: 'file_items',
+            },
+            (payload) => {
+                if (payload.eventType === 'INSERT' && payload.new) {
+                    onInsert(transformFileItem(payload.new as FileItemRow));
+                } else if (payload.eventType === 'UPDATE' && payload.new) {
+                    onUpdate(transformFileItem(payload.new as FileItemRow));
+                } else if (payload.eventType === 'DELETE' && payload.old) {
+                    onDelete((payload.old as { id: string }).id);
+                }
+            },
+        )
+        .subscribe();
+
+    return () => {
+        supabase.removeChannel(channel);
+    };
+};
+
+/**
+ * Subscribe to file_comments changes for a specific file.
+ * Notifies when comments are added/deleted on the file.
+ */
+export const subscribeToFileComments = (
+    fileItemId: string,
+    onInsert: (comment: FileComment) => void,
+    onDelete: (commentId: string) => void,
+): (() => void) => {
+    if (!isSupabaseConfigured()) {
+        return () => {};
+    }
+
+    const channelName = `file_comments_${fileItemId}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+
+    const channel = supabase
+        .channel(channelName)
+        .on(
+            'postgres_changes',
+            {
+                event: '*',
+                schema: 'public',
+                table: 'file_comments',
+                filter: `file_item_id=eq.${fileItemId}`,
+            },
+            (payload) => {
+                if (payload.eventType === 'INSERT' && payload.new) {
+                    onInsert(transformFileComment(payload.new as FileCommentRow));
+                } else if (payload.eventType === 'DELETE' && payload.old) {
+                    onDelete((payload.old as { id: string }).id);
+                }
+            },
+        )
+        .subscribe();
+
+    return () => {
+        supabase.removeChannel(channel);
+    };
 };

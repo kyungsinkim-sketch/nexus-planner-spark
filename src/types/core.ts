@@ -343,6 +343,7 @@ export interface FileGroup {
 
 export interface FileComment {
   id: string;
+  fileItemId: string;
   userId: string;
   content: string;
   createdAt: string;
