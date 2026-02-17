@@ -1,9 +1,6 @@
 /**
  * WorldClockWidget — Shows digital clocks for selected world cities/timezones.
- * Updates every second via setInterval.
- * Uses Intl.DateTimeFormat for native timezone support.
- * City selection: predefined list + free-text timezone search.
- * Settings gear is in the WidgetContainer titlebar (via headerActions).
+ * Dark card design inspired by Apple clock widget.
  */
 
 import { useState, useEffect, useMemo } from 'react';
@@ -62,46 +59,41 @@ const PREDEFINED_CITIES: CityDef[] = [
   { key: 'amsterdam',   timezone: 'Europe/Amsterdam',      labelKo: '암스테르담', labelEn: 'Amsterdam',    flag: '🇳🇱' },
 ];
 
-// Build a map from key to city for quick lookup
 const CITY_MAP = new Map(PREDEFINED_CITIES.map(c => [c.key, c]));
-
 const DEFAULT_CITY_KEYS = ['seoul', 'newyork', 'london', 'tokyo', 'losangeles'];
 const MAX_CITIES = 6;
 
-/** Check if a timezone string is valid */
 function isValidTimezone(tz: string): boolean {
-  try {
-    Intl.DateTimeFormat(undefined, { timeZone: tz });
-    return true;
-  } catch {
-    return false;
-  }
+  try { Intl.DateTimeFormat(undefined, { timeZone: tz }); return true; } catch { return false; }
 }
 
-/** Stored city entry: either a predefined key or a custom timezone */
-interface StoredCity {
-  key: string;      // predefined key OR custom timezone string
-  timezone: string;  // IANA timezone
-  label: string;     // display name
-  flag: string;
-}
+interface StoredCity { key: string; timezone: string; label: string; flag: string; }
 
 function resolveStoredCity(key: string, lang: string): StoredCity {
   const predefined = CITY_MAP.get(key);
-  if (predefined) {
-    return {
-      key: predefined.key,
-      timezone: predefined.timezone,
-      label: lang === 'ko' ? predefined.labelKo : predefined.labelEn,
-      flag: predefined.flag,
-    };
-  }
-  // Custom timezone key (e.g. "America/Denver")
-  if (isValidTimezone(key)) {
-    const cityName = key.split('/').pop()?.replace(/_/g, ' ') || key;
-    return { key, timezone: key, label: cityName, flag: '🌐' };
-  }
+  if (predefined) return { key: predefined.key, timezone: predefined.timezone, label: lang === 'ko' ? predefined.labelKo : predefined.labelEn, flag: predefined.flag };
+  if (isValidTimezone(key)) { const cityName = key.split('/').pop()?.replace(/_/g, ' ') || key; return { key, timezone: key, label: cityName, flag: '🌐' }; }
   return { key, timezone: 'UTC', label: key, flag: '🌐' };
+}
+
+/** Compute UTC offset difference string relative to local timezone */
+function getOffsetLabel(tz: string, lang: string): string {
+  const now = new Date();
+  const localOffset = now.getTimezoneOffset(); // in minutes (negative = ahead of UTC)
+  const formatter = new Intl.DateTimeFormat('en-US', { timeZone: tz, timeZoneName: 'shortOffset' });
+  const parts = formatter.formatToParts(now);
+  const tzPart = parts.find(p => p.type === 'timeZoneName')?.value || '';
+  // Parse offset like "GMT+9" or "GMT-5"
+  const match = tzPart.match(/GMT([+-]?\d+(?::\d+)?)/);
+  if (!match) return '';
+  const offsetStr = match[1];
+  const [hStr, mStr] = offsetStr.includes(':') ? offsetStr.split(':') : [offsetStr, '0'];
+  const targetOffsetMin = parseInt(hStr) * 60 + (parseInt(mStr || '0') * (parseInt(hStr) < 0 ? -1 : 1));
+  const localOffsetMin = -localOffset;
+  const diffHours = (targetOffsetMin - localOffsetMin) / 60;
+  if (diffHours === 0) return lang === 'ko' ? '현지' : 'Local';
+  const sign = diffHours > 0 ? '+' : '';
+  return `${sign}${diffHours}${lang === 'ko' ? '시간' : 'h'}`;
 }
 
 function WorldClockWidget({ context: _context }: { context: WidgetDataContext }) {
@@ -123,68 +115,37 @@ function WorldClockWidget({ context: _context }: { context: WidgetDataContext })
     return () => clearInterval(timer);
   }, []);
 
-  // Sync temp selection when settings opens
   useEffect(() => {
-    if (worldClockSettingsOpen) {
-      setTempSelected(selectedKeys);
-      setSearchQuery('');
-    }
+    if (worldClockSettingsOpen) { setTempSelected(selectedKeys); setSearchQuery(''); }
   }, [worldClockSettingsOpen, selectedKeys]);
 
-  const selectedCities = useMemo(
-    () => selectedKeys.map(k => resolveStoredCity(k, language)),
-    [selectedKeys, language],
-  );
+  const selectedCities = useMemo(() => selectedKeys.map(k => resolveStoredCity(k, language)), [selectedKeys, language]);
 
-  // Filter predefined cities by search query + show matching IANA timezones
   const filteredCities = useMemo(() => {
     if (!searchQuery.trim()) return PREDEFINED_CITIES;
     const q = searchQuery.toLowerCase();
     return PREDEFINED_CITIES.filter(c =>
-      c.labelEn.toLowerCase().includes(q) ||
-      c.labelKo.includes(q) ||
-      c.timezone.toLowerCase().includes(q) ||
-      c.key.toLowerCase().includes(q)
+      c.labelEn.toLowerCase().includes(q) || c.labelKo.includes(q) || c.timezone.toLowerCase().includes(q) || c.key.toLowerCase().includes(q)
     );
   }, [searchQuery]);
 
-  // Check if the search query itself is a valid timezone not in predefined list
   const customTimezoneMatch = useMemo(() => {
     if (!searchQuery.trim()) return null;
     const q = searchQuery.trim();
-    // Check if it's already in predefined
     if (PREDEFINED_CITIES.some(c => c.key === q || c.timezone === q)) return null;
-    // Try as IANA timezone
-    if (isValidTimezone(q)) {
-      const label = q.split('/').pop()?.replace(/_/g, ' ') || q;
-      return { key: q, timezone: q, label, flag: '🌐' };
-    }
-    // Try with common prefixes
+    if (isValidTimezone(q)) { const label = q.split('/').pop()?.replace(/_/g, ' ') || q; return { key: q, timezone: q, label, flag: '🌐' }; }
     for (const prefix of ['America/', 'Europe/', 'Asia/', 'Africa/', 'Pacific/', 'Australia/']) {
       const tryTz = prefix + q.replace(/\s+/g, '_');
-      if (isValidTimezone(tryTz)) {
-        const label = tryTz.split('/').pop()?.replace(/_/g, ' ') || tryTz;
-        return { key: tryTz, timezone: tryTz, label, flag: '🌐' };
-      }
+      if (isValidTimezone(tryTz)) { const label = tryTz.split('/').pop()?.replace(/_/g, ' ') || tryTz; return { key: tryTz, timezone: tryTz, label, flag: '🌐' }; }
     }
     return null;
   }, [searchQuery]);
 
   const formatTime = (tz: string) =>
-    new Intl.DateTimeFormat('en-US', {
-      timeZone: tz,
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false,
-    }).format(now);
+    new Intl.DateTimeFormat('en-US', { timeZone: tz, hour: '2-digit', minute: '2-digit', hour12: false }).format(now);
 
-  const formatDate = (tz: string) =>
-    new Intl.DateTimeFormat(language === 'ko' ? 'ko-KR' : 'en-US', {
-      timeZone: tz,
-      weekday: 'short',
-      month: 'short',
-      day: 'numeric',
-    }).format(now);
+  const formatSeconds = (tz: string) =>
+    new Intl.DateTimeFormat('en-US', { timeZone: tz, second: '2-digit' }).format(now);
 
   const toggleCity = (key: string) => {
     setTempSelected(prev => {
@@ -194,29 +155,31 @@ function WorldClockWidget({ context: _context }: { context: WidgetDataContext })
     });
   };
 
-  const handleSave = () => {
-    updateWidgetSettings('worldClock', { cities: tempSelected });
-    setWorldClockSettingsOpen(false);
-  };
+  const handleSave = () => { updateWidgetSettings('worldClock', { cities: tempSelected }); setWorldClockSettingsOpen(false); };
 
   const cols = Math.min(selectedCities.length, 6);
 
   return (
     <>
-      {/* City clocks grid */}
       <div
-        className="h-full grid gap-1 items-center px-1"
+        className="h-full widget-dark-card p-2 grid gap-1 items-center"
         style={{ gridTemplateColumns: `repeat(${cols}, 1fr)` }}
       >
-        {selectedCities.map((city) => (
-          <div key={city.key} className="text-center py-0.5">
-            <p className="text-base leading-none mb-0.5">{city.flag}</p>
-            <p className="text-lg font-mono font-bold text-foreground tabular-nums leading-tight">
-              {formatTime(city.timezone)}
-            </p>
-            <p className="text-[11px] font-medium text-foreground/80 truncate">{city.label}</p>
-          </div>
-        ))}
+        {selectedCities.map((city) => {
+          const offset = getOffsetLabel(city.timezone, language);
+          return (
+            <div key={city.key} className="text-center py-1">
+              <p className="text-[11px] font-semibold text-white/90 truncate">{city.label}</p>
+              <p className="text-xl font-mono font-bold text-white tabular-nums leading-tight mt-0.5">
+                {formatTime(city.timezone)}
+                <span className="text-[10px] text-white/30 font-normal ml-0.5">{formatSeconds(city.timezone)}</span>
+              </p>
+              {offset && (
+                <p className="text-[10px] text-white/40 mt-0.5">{offset}</p>
+              )}
+            </div>
+          );
+        })}
       </div>
 
       {/* Settings Dialog */}
@@ -225,73 +188,35 @@ function WorldClockWidget({ context: _context }: { context: WidgetDataContext })
           <DialogHeader>
             <DialogTitle>{t('worldClock')} — {t('settings')}</DialogTitle>
           </DialogHeader>
-
-          {/* Selected cities */}
           {tempSelected.length > 0 && (
             <div className="flex flex-wrap gap-1.5 pb-1">
               {tempSelected.map(key => {
                 const city = resolveStoredCity(key, language);
                 return (
-                  <span
-                    key={key}
-                    className="inline-flex items-center gap-1 px-2 py-1 bg-primary/10 text-primary rounded-full text-xs"
-                  >
+                  <span key={key} className="inline-flex items-center gap-1 px-2 py-1 bg-primary/10 text-primary rounded-full text-xs">
                     {city.flag} {city.label}
-                    <button onClick={() => toggleCity(key)} className="hover:bg-primary/20 rounded-full p-0.5">
-                      <X className="w-3 h-3" />
-                    </button>
+                    <button onClick={() => toggleCity(key)} className="hover:bg-primary/20 rounded-full p-0.5"><X className="w-3 h-3" /></button>
                   </span>
                 );
               })}
             </div>
           )}
-
           <p className="text-xs text-muted-foreground">
-            {language === 'ko'
-              ? `도시 이름 또는 타임존을 검색하세요 (${tempSelected.length}/${MAX_CITIES})`
-              : `Search city or timezone (${tempSelected.length}/${MAX_CITIES})`}
+            {language === 'ko' ? `도시 이름 또는 타임존을 검색하세요 (${tempSelected.length}/${MAX_CITIES})` : `Search city or timezone (${tempSelected.length}/${MAX_CITIES})`}
           </p>
-
-          {/* Search input */}
-          <Input
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder={language === 'ko' ? '도시명 또는 타임존 입력...' : 'City name or timezone...'}
-            className="h-8 text-sm"
-            autoFocus
-          />
-
-          {/* Custom timezone match */}
+          <Input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder={language === 'ko' ? '도시명 또는 타임존 입력...' : 'City name or timezone...'} className="h-8 text-sm" autoFocus />
           {customTimezoneMatch && !tempSelected.includes(customTimezoneMatch.key) && (
-            <button
-              onClick={() => toggleCity(customTimezoneMatch.key)}
-              className={`flex items-center gap-2 px-2.5 py-2 rounded-lg text-sm transition-colors border
-                bg-emerald-50 dark:bg-emerald-950/30 border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100
-                ${tempSelected.length >= MAX_CITIES ? 'opacity-40 pointer-events-none' : ''}`}
-            >
-              <span className="text-base">🌐</span>
-              <span className="truncate">{customTimezoneMatch.label}</span>
-              <span className="text-[10px] text-emerald-500 ml-auto">{customTimezoneMatch.timezone}</span>
+            <button onClick={() => toggleCity(customTimezoneMatch.key)} className={`flex items-center gap-2 px-2.5 py-2 rounded-lg text-sm transition-colors border bg-emerald-50 dark:bg-emerald-950/30 border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 ${tempSelected.length >= MAX_CITIES ? 'opacity-40 pointer-events-none' : ''}`}>
+              <span className="text-base">🌐</span><span className="truncate">{customTimezoneMatch.label}</span><span className="text-[10px] text-emerald-500 ml-auto">{customTimezoneMatch.timezone}</span>
             </button>
           )}
-
-          {/* Predefined city list */}
           <div className="grid grid-cols-2 gap-1.5 max-h-48 overflow-y-auto py-1">
             {filteredCities.map((city) => {
               const isSelected = tempSelected.includes(city.key);
               const label = language === 'ko' ? city.labelKo : city.labelEn;
               return (
-                <button
-                  key={city.key}
-                  onClick={() => toggleCity(city.key)}
-                  className={`flex items-center gap-2 px-2.5 py-2 rounded-lg text-sm transition-colors border ${
-                    isSelected
-                      ? 'bg-primary/10 border-primary text-primary'
-                      : 'bg-transparent border-border text-foreground hover:bg-muted'
-                  } ${!isSelected && tempSelected.length >= MAX_CITIES ? 'opacity-40 pointer-events-none' : ''}`}
-                >
-                  <span className="text-base">{city.flag}</span>
-                  <span className="truncate">{label}</span>
+                <button key={city.key} onClick={() => toggleCity(city.key)} className={`flex items-center gap-2 px-2.5 py-2 rounded-lg text-sm transition-colors border ${isSelected ? 'bg-primary/10 border-primary text-primary' : 'bg-transparent border-border text-foreground hover:bg-muted'} ${!isSelected && tempSelected.length >= MAX_CITIES ? 'opacity-40 pointer-events-none' : ''}`}>
+                  <span className="text-base">{city.flag}</span><span className="truncate">{label}</span>
                 </button>
               );
             })}
@@ -301,14 +226,9 @@ function WorldClockWidget({ context: _context }: { context: WidgetDataContext })
               </p>
             )}
           </div>
-
           <DialogFooter>
-            <Button variant="outline" size="sm" onClick={() => setWorldClockSettingsOpen(false)}>
-              {t('cancel')}
-            </Button>
-            <Button size="sm" onClick={handleSave} disabled={tempSelected.length === 0}>
-              {t('save')}
-            </Button>
+            <Button variant="outline" size="sm" onClick={() => setWorldClockSettingsOpen(false)}>{t('cancel')}</Button>
+            <Button size="sm" onClick={handleSave} disabled={tempSelected.length === 0}>{t('save')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

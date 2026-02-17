@@ -1,8 +1,6 @@
 /**
  * WeatherWidget — Shows a 7-day weather forecast for a selected city.
- * Uses mock data generated based on city latitude (season-aware).
- * Settings gear is in the WidgetContainer titlebar (via headerActions).
- * Free-text city search with predefined list.
+ * Dark card design with gradient background (inspired by Apple widgets).
  */
 
 import { useState, useMemo, useEffect } from 'react';
@@ -60,8 +58,16 @@ const CONDITION_ICONS: Record<WeatherCondition, LucideIcon> = {
   rainy: CloudRain, drizzle: CloudDrizzle, snowy: CloudSnow, windy: Wind,
 };
 const CONDITION_COLORS: Record<WeatherCondition, string> = {
-  sunny: 'text-amber-400', partlyCloudy: 'text-amber-300', cloudy: 'text-gray-400',
-  rainy: 'text-blue-400', drizzle: 'text-blue-300', snowy: 'text-sky-200', windy: 'text-teal-400',
+  sunny: 'text-amber-300', partlyCloudy: 'text-amber-200', cloudy: 'text-gray-300',
+  rainy: 'text-blue-300', drizzle: 'text-blue-200', snowy: 'text-sky-100', windy: 'text-teal-300',
+};
+const CONDITION_LABELS_KO: Record<WeatherCondition, string> = {
+  sunny: '맑음', partlyCloudy: '구름 조금', cloudy: '흐림',
+  rainy: '비', drizzle: '이슬비', snowy: '눈', windy: '바람',
+};
+const CONDITION_LABELS_EN: Record<WeatherCondition, string> = {
+  sunny: 'Clear', partlyCloudy: 'Partly Cloudy', cloudy: 'Cloudy',
+  rainy: 'Rain', drizzle: 'Drizzle', snowy: 'Snow', windy: 'Windy',
 };
 
 function generateForecast(cityKey: string, lat: number): Array<{ dayOffset: number; condition: WeatherCondition; high: number; low: number }> {
@@ -142,6 +148,13 @@ function WeatherWidget({ context: _context }: { context: WidgetDataContext }) {
     });
   }, [forecast, t, language]);
 
+  const todayForecast = days[0];
+  const TodayIcon = CONDITION_ICONS[todayForecast.condition];
+  const conditionLabel = language === 'ko'
+    ? CONDITION_LABELS_KO[todayForecast.condition]
+    : CONDITION_LABELS_EN[todayForecast.condition];
+  const cityLabel = language === 'ko' ? cityDef.labelKo : cityDef.labelEn;
+
   const filteredCities = useMemo(() => {
     if (!searchQuery.trim()) return WEATHER_CITIES;
     const q = searchQuery.toLowerCase();
@@ -155,34 +168,37 @@ function WeatherWidget({ context: _context }: { context: WidgetDataContext }) {
     setWeatherSettingsOpen(false);
   };
 
-  const cityLabel = language === 'ko' ? cityDef.labelKo : cityDef.labelEn;
-
   return (
     <>
-      <div className="h-full flex flex-col">
-        {/* City label */}
-        <div className="px-2 pb-0.5 shrink-0">
-          <span className="text-[10px] text-muted-foreground font-medium">
-            {cityDef.flag} {cityLabel}
-          </span>
+      <div className="h-full flex flex-col widget-dark-card weather-gradient-bg p-3">
+        {/* Header: city + current temp */}
+        <div className="shrink-0 mb-1">
+          <p className="text-sm font-semibold text-white/90">{cityLabel}</p>
+          <div className="flex items-center gap-2">
+            <span className="text-3xl font-light text-white tabular-nums">{todayForecast.high}°</span>
+          </div>
+          <div className="flex items-center gap-1.5 mt-0.5">
+            <TodayIcon className={`w-4 h-4 ${CONDITION_COLORS[todayForecast.condition]}`} />
+            <span className="text-xs text-white/70">{conditionLabel}</span>
+            <span className="text-xs text-white/50">
+              {language === 'ko' ? `최고:${todayForecast.high}° 최저:${todayForecast.low}°` : `H:${todayForecast.high}° L:${todayForecast.low}°`}
+            </span>
+          </div>
         </div>
 
-        {/* 7-day forecast */}
-        <div className="grid grid-cols-7 gap-0.5 flex-1 items-center px-1">
+        {/* 7-day forecast row */}
+        <div className="grid grid-cols-7 gap-0.5 flex-1 items-center border-t border-white/10 pt-2 mt-1">
           {days.map((day) => {
             const Icon = CONDITION_ICONS[day.condition];
             const isToday = day.dayOffset === 0;
             return (
-              <div
-                key={day.dayOffset}
-                className={`text-center py-1 rounded-lg transition-colors ${isToday ? 'bg-primary/10' : ''}`}
-              >
-                <p className={`text-xs font-medium ${isToday ? 'text-primary' : 'text-foreground/70'}`}>
+              <div key={day.dayOffset} className="text-center">
+                <p className={`text-[10px] font-medium ${isToday ? 'text-white' : 'text-white/50'}`}>
                   {day.dayName}
                 </p>
-                <Icon className={`w-5 h-5 mx-auto my-1 ${CONDITION_COLORS[day.condition]}`} />
-                <p className="text-xs font-semibold text-foreground">{day.high}°</p>
-                <p className="text-[10px] text-muted-foreground">{day.low}°</p>
+                <Icon className={`w-4 h-4 mx-auto my-0.5 ${CONDITION_COLORS[day.condition]}`} />
+                <p className="text-[11px] font-semibold text-white">{day.high}°</p>
+                <p className="text-[10px] text-white/40">{day.low}°</p>
               </div>
             );
           })}
@@ -195,8 +211,6 @@ function WeatherWidget({ context: _context }: { context: WidgetDataContext }) {
           <DialogHeader>
             <DialogTitle>{t('weeklyWeather')} — {t('settings')}</DialogTitle>
           </DialogHeader>
-
-          {/* Search input */}
           <Input
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
@@ -204,7 +218,6 @@ function WeatherWidget({ context: _context }: { context: WidgetDataContext }) {
             className="h-8 text-sm"
             autoFocus
           />
-
           <div className="grid grid-cols-2 gap-1.5 max-h-56 overflow-y-auto py-1">
             {filteredCities.map((city) => {
               const isSelected = tempCity === city.key;
@@ -230,7 +243,6 @@ function WeatherWidget({ context: _context }: { context: WidgetDataContext }) {
               </p>
             )}
           </div>
-
           <DialogFooter>
             <Button variant="outline" size="sm" onClick={() => setWeatherSettingsOpen(false)}>
               {t('cancel')}

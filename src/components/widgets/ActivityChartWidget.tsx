@@ -1,14 +1,17 @@
 /**
  * ActivityChartWidget — Line chart of weekly activity (Dashboard only).
+ * Dark card design with gradient accent lines.
  */
 
 import { useMemo } from 'react';
 import { useAppStore } from '@/stores/appStore';
-import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, Tooltip } from 'recharts';
+import { useTranslation } from '@/hooks/useTranslation';
+import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, Tooltip, Area, AreaChart } from 'recharts';
 import type { WidgetDataContext } from '@/types/widget';
 
 function ActivityChartWidget({ context: _context }: { context: WidgetDataContext }) {
   const { events, messages } = useAppStore();
+  const { t } = useTranslation();
 
   const data = useMemo(() => {
     const days: { label: string; events: number; messages: number }[] = [];
@@ -26,16 +29,56 @@ function ActivityChartWidget({ context: _context }: { context: WidgetDataContext
     return days;
   }, [events, messages]);
 
+  const totalEvents = data.reduce((s, d) => s + d.events, 0);
+  const totalMessages = data.reduce((s, d) => s + d.messages, 0);
+
   return (
-    <ResponsiveContainer width="100%" height="100%">
-      <LineChart data={data} margin={{ top: 8, right: 8, left: -16, bottom: 8 }}>
-        <XAxis dataKey="label" tick={{ fontSize: 10 }} />
-        <YAxis tick={{ fontSize: 10 }} />
-        <Tooltip />
-        <Line type="monotone" dataKey="events" stroke="hsl(234 89% 60%)" strokeWidth={2} dot={false} />
-        <Line type="monotone" dataKey="messages" stroke="hsl(142 76% 36%)" strokeWidth={2} dot={false} />
-      </LineChart>
-    </ResponsiveContainer>
+    <div className="h-full widget-dark-card p-3 flex flex-col">
+      {/* Summary header */}
+      <div className="flex items-center gap-4 mb-2 shrink-0">
+        <div className="flex items-center gap-1.5">
+          <span className="w-2 h-2 rounded-full" style={{ background: '#818cf8' }} />
+          <span className="text-[11px] text-white/60">{t('events')}</span>
+          <span className="text-xs font-semibold text-white tabular-nums">{totalEvents}</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="w-2 h-2 rounded-full" style={{ background: '#34d399' }} />
+          <span className="text-[11px] text-white/60">{t('messages')}</span>
+          <span className="text-xs font-semibold text-white tabular-nums">{totalMessages}</span>
+        </div>
+      </div>
+
+      {/* Chart */}
+      <div className="flex-1 min-h-0">
+        <ResponsiveContainer width="100%" height="100%">
+          <AreaChart data={data} margin={{ top: 4, right: 4, left: -20, bottom: 4 }}>
+            <defs>
+              <linearGradient id="gradEvents" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#818cf8" stopOpacity={0.3} />
+                <stop offset="100%" stopColor="#818cf8" stopOpacity={0.02} />
+              </linearGradient>
+              <linearGradient id="gradMessages" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#34d399" stopOpacity={0.3} />
+                <stop offset="100%" stopColor="#34d399" stopOpacity={0.02} />
+              </linearGradient>
+            </defs>
+            <XAxis dataKey="label" tick={{ fontSize: 10, fill: 'rgba(255,255,255,0.4)' }} axisLine={false} tickLine={false} />
+            <YAxis tick={{ fontSize: 10, fill: 'rgba(255,255,255,0.3)' }} axisLine={false} tickLine={false} />
+            <Tooltip
+              contentStyle={{
+                background: 'rgba(15, 23, 42, 0.95)',
+                border: '1px solid rgba(255,255,255,0.1)',
+                borderRadius: '8px',
+                color: '#fff',
+                fontSize: '12px',
+              }}
+            />
+            <Area type="monotone" dataKey="events" stroke="#818cf8" strokeWidth={2} fill="url(#gradEvents)" dot={false} />
+            <Area type="monotone" dataKey="messages" stroke="#34d399" strokeWidth={2} fill="url(#gradMessages)" dot={false} />
+          </AreaChart>
+        </ResponsiveContainer>
+      </div>
+    </div>
   );
 }
 
