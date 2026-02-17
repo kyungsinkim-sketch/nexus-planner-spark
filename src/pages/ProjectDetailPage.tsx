@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useSearchParams } from 'react-router-dom';
 import { useAppStore } from '@/stores/appStore';
 import {
   ArrowLeft,
@@ -41,9 +41,11 @@ import { ProjectCompletionDialog } from '@/components/project/ProjectCompletionD
 
 export default function ProjectDetailPage() {
   const { projectId } = useParams<{ projectId: string }>();
+  const [searchParams] = useSearchParams();
   const { getProjectById, updateProject, currentUser, getUserById } = useAppStore();
   const [showEditModal, setShowEditModal] = useState(false);
   const [showCompletionDialog, setShowCompletionDialog] = useState(false);
+  const defaultTab = searchParams.get('tab') || 'overview';
 
   const project = getProjectById(projectId || '');
 
@@ -237,7 +239,7 @@ export default function ProjectDetailPage() {
       </div>
 
       {/* Tabs */}
-      <Tabs defaultValue="overview" className="space-y-6">
+      <Tabs defaultValue={defaultTab} className="space-y-6">
         <TabsList
           className="w-full justify-start"
           style={{
