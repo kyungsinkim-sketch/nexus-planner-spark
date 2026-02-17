@@ -93,7 +93,7 @@ export function TabBar() {
                 )}
                 style={
                   isActive && !isDashboard && tab.keyColor
-                    ? { backgroundColor: `${tab.keyColor}33` }
+                    ? { backgroundColor: `${tab.keyColor}cc` }
                     : isActive && isDashboard
                       ? { backgroundColor: isDark ? 'hsl(222 47% 12%)' : 'hsl(220 20% 91%)' }
                       : undefined

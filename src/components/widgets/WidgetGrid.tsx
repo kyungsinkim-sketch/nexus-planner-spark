@@ -409,8 +409,8 @@ export function WidgetGrid({ context, projectKeyColor }: WidgetGridProps) {
 
           {/* Add widget menu popup */}
           {showAddMenu && (
-            <div className="absolute bottom-12 right-0 w-56 p-2 rounded-xl shadow-xl border border-border/50
-                            animate-in fade-in slide-in-from-bottom-2 duration-200 widget-add-popup"
+            <div className="absolute bottom-12 right-0 w-56 p-2 rounded-xl glass-widget shadow-xl border border-border/50
+                            animate-in fade-in slide-in-from-bottom-2 duration-200"
             >
               <p className="text-xs font-medium text-muted-foreground px-2 py-1 mb-1">
                 {t('addWidget')}
