@@ -999,19 +999,16 @@ export const useAppStore = create<AppState>()(
         brainIntelligenceEnabled: state.brainIntelligenceEnabled,
         widgetSettings: state.widgetSettings,
         deletedMockEventIds: state.deletedMockEventIds,
+        theme: state.theme,
       }),
-      onRehydrateStorage: () => (state) => {
-        // After hydration, filter out deleted mock events so they don't reappear
-        if (state && !isSupabaseConfigured() && state.deletedMockEventIds?.length) {
-          const deletedSet = new Set(state.deletedMockEventIds);
-          // Start from the initial mockEvents (which is what events is set to at init)
-          // and filter out any that were deleted
-          const filtered = mockEvents.filter((e) => !deletedSet.has(e.id));
-          // Use queueMicrotask to ensure this runs after full hydration
-          queueMicrotask(() => {
-            useAppStore.setState({ events: filtered });
-          });
+      merge: (persisted, current) => {
+        const merged = { ...current, ...(persisted as Partial<AppState>) };
+        // In mock mode, filter out deleted events from the initial mockEvents
+        if (!isSupabaseConfigured() && merged.deletedMockEventIds?.length) {
+          const deletedSet = new Set(merged.deletedMockEventIds);
+          merged.events = mockEvents.filter((e) => !deletedSet.has(e.id));
         }
+        return merged;
       },
     }
   )

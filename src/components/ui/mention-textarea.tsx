@@ -41,17 +41,19 @@ export function MentionTextarea({
   const [mentionStartPos, setMentionStartPos] = useState(-1);
 
   const availableUsers = useMemo(() => {
+    // Filter to valid users with name & email, then scope to mentionableUserIds if provided
+    const valid = users.filter(u => u && u.name && u.email);
     if (mentionableUserIds) {
-      return users.filter(u => mentionableUserIds.includes(u.id));
+      return valid.filter(u => mentionableUserIds.includes(u.id));
     }
-    return users;
+    return valid;
   }, [users, mentionableUserIds]);
 
   const filteredUsers = useMemo(() => {
     if (!mentionQuery) return availableUsers.slice(0, 8);
     const q = mentionQuery.toLowerCase();
     return availableUsers
-      .filter(u => u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q))
+      .filter(u => (u.name || '').toLowerCase().includes(q) || (u.email || '').toLowerCase().includes(q))
       .slice(0, 8);
   }, [availableUsers, mentionQuery]);
 
@@ -200,7 +202,7 @@ export function MentionTextarea({
               onMouseEnter={() => setMentionIndex(idx)}
             >
               <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-medium text-primary shrink-0">
-                {user.name[0]}
+                {user.name?.[0] || '?'}
               </div>
               <div className="min-w-0">
                 <p className="text-sm font-medium truncate">{user.name}</p>

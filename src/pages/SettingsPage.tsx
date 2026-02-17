@@ -72,7 +72,7 @@ export function SettingsPage() {
         isConnected: true,
         syncStatus: 'CONNECTED',
         lastSyncAt: new Date().toISOString(),
-        connectedEmail: currentUser?.email || `${currentUser?.name || 'user'}@paulus.pro`,
+        connectedEmail: currentUser?.email || `${currentUser?.name || 'user'}@re-be.io`,
         autoSync: true,
       });
       toast.success(t('googleCalendarConnected'), {

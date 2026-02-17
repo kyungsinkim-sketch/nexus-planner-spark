@@ -94,11 +94,11 @@ export function EventSidePanel({ event, isOpen, onClose, onEdit, onDelete }: Eve
                     ) : (
                       <Calendar className="w-3 h-3" />
                     )}
-                    {isGoogleEvent ? 'Google' : 'Paulus'}
+                    {isGoogleEvent ? 'Google' : 'Re-Be'}
                   </Badge>
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p>{t('sourceLabel')}: {isGoogleEvent ? 'Google Calendar' : 'Paulus.ai'}</p>
+                  <p>{t('sourceLabel')}: {isGoogleEvent ? 'Google Calendar' : 'Re-Be.io'}</p>
                   {event.googleEventId && (
                     <p className="text-xs text-muted-foreground">
                       ID: {event.googleEventId}

@@ -264,13 +264,13 @@ export default function CalendarPage() {
 DTSTART:${startDate}
 DTEND:${endDate}
 SUMMARY:${event.title}
-DESCRIPTION:Event from Paulus.ai
+DESCRIPTION:Event from Re-Be.io
 END:VEVENT`;
       }).join('\n');
 
     const icsContent = `BEGIN:VCALENDAR
 VERSION:2.0
-PRODID:-//Paulus.ai//Calendar Export//EN
+PRODID:-//Re-Be.io//Calendar Export//EN
 ${icsEvents}
 END:VCALENDAR`;
 
@@ -279,7 +279,7 @@ END:VCALENDAR`;
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = 'paulus-calendar-export.ics';
+    link.download = 'rebe-calendar-export.ics';
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
