@@ -430,7 +430,7 @@ export function FilesTab({ projectId }: FilesTabProps) {
                 ? t('importantFiles')
                 : categoryLabels[selectedCategory]}
           </h3>
-          <Button size="sm" className="gap-2" onClick={() => setShowUploadModal(true)}>
+          <Button size="sm" variant="glass-accent" className="gap-2" onClick={() => setShowUploadModal(true)}>
             <Upload className="w-4 h-4" />
             {t('uploadFiles')}
           </Button>
