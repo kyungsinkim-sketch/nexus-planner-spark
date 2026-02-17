@@ -182,7 +182,7 @@ export const useWidgetStore = create<WidgetState>()(
     }),
     {
       name: 're-be-widget-layout',
-      version: 7, // bump — weather split + worldClock shrink
+      version: 8, // bump — budget/health smaller default
       migrate: () => ({
         // On version mismatch, reset everything to defaults
         openTabs: [DASHBOARD_TAB],
