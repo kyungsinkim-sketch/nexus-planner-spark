@@ -3,7 +3,7 @@
  * Double-click opens a preview popup with download/delete/comment actions.
  */
 
-import { useMemo, useState, useCallback } from 'react';
+import { useMemo, useState, useCallback, useEffect } from 'react';
 import { useAppStore } from '@/stores/appStore';
 import { getFileDownloadUrl } from '@/services/fileService';
 import { isSupabaseConfigured } from '@/lib/supabase';
@@ -77,9 +77,16 @@ function formatSize(size?: string) {
 }
 
 function FilesWidget({ context }: { context: WidgetDataContext }) {
-  const { fileGroups, files } = useAppStore();
+  const { fileGroups, files, loadFileGroups } = useAppStore();
   const [selectedFile, setSelectedFile] = useState<FileItem | null>(null);
   const [comment, setComment] = useState('');
+
+  // Load file groups on mount / when project context changes
+  useEffect(() => {
+    if (context.type === 'project' && context.projectId) {
+      loadFileGroups(context.projectId).catch(() => {});
+    }
+  }, [context.type, context.projectId, loadFileGroups]);
 
   const allFiles = useMemo(() => {
     const projectGroupIds = new Set(

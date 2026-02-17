@@ -13,12 +13,19 @@ import type { LucideIcon } from 'lucide-react';
 import { useIntersection } from '@/hooks/useIntersection';
 import { cn } from '@/lib/utils';
 
+interface HeaderAction {
+  icon: LucideIcon;
+  onClick: () => void;
+  title: string;
+}
+
 interface WidgetContainerProps {
   widgetId: string;
   title: string;
   icon: LucideIcon;
   children: ReactNode;
   collapsed?: boolean;
+  headerActions?: HeaderAction[];
   onCollapse?: () => void;
   onRemove?: () => void;
   onTitleBarClick?: () => void;
@@ -40,6 +47,7 @@ export function WidgetContainer({
   icon: Icon,
   children,
   collapsed = false,
+  headerActions,
   onCollapse,
   onRemove,
   onTitleBarClick,
@@ -63,6 +71,16 @@ export function WidgetContainer({
           <span className="text-sm font-medium text-foreground/90 truncate">{title}</span>
         </div>
         <div className="flex items-center gap-0.5 shrink-0">
+          {headerActions?.map((action, idx) => (
+            <button
+              key={idx}
+              onClick={(e) => { e.stopPropagation(); action.onClick(); }}
+              className="p-1 rounded hover:bg-white/10 transition-colors"
+              title={action.title}
+            >
+              <action.icon className="w-3.5 h-3.5" />
+            </button>
+          ))}
           {onCollapse && (
             <button
               onClick={(e) => { e.stopPropagation(); onCollapse(); }}

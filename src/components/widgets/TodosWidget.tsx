@@ -1,13 +1,15 @@
 /**
  * TodosWidget — Shows personal todos with creation and completion.
  * Dashboard: all todos. Project: project-specific tasks.
- * Includes a + button for quick todo creation.
+ * The + button lives in the WidgetContainer titlebar (via headerActions).
+ * Global state `todoCreateDialogOpen` triggers the create dialog.
+ * Supports multi-user assignment via UserSearchInput and priority selection.
  */
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useAppStore } from '@/stores/appStore';
 import { useTranslation } from '@/hooks/useTranslation';
-import { CheckCircle2, Circle, Plus } from 'lucide-react';
+import { CheckCircle2, Circle } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -17,8 +19,10 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { UserSearchInput } from '@/components/ui/user-search-input';
 import { toast } from 'sonner';
 import type { WidgetDataContext } from '@/types/widget';
+import type { User } from '@/types/core';
 
 const priorityDot: Record<string, string> = {
   HIGH: 'bg-red-500',
@@ -26,14 +30,44 @@ const priorityDot: Record<string, string> = {
   LOW: 'bg-gray-400',
 };
 
+const PRIORITIES = ['HIGH', 'NORMAL', 'LOW'] as const;
+
 function TodosWidget({ context }: { context: WidgetDataContext }) {
-  const { personalTodos, currentUser, addTodo, completeTodo } = useAppStore();
+  const {
+    personalTodos, currentUser, users, projects,
+    addTodo, completeTodo,
+    todoCreateDialogOpen, setTodoCreateDialogOpen,
+  } = useAppStore();
   const { t, language } = useTranslation();
-  const [showCreate, setShowCreate] = useState(false);
+
+  // Create dialog state
   const [newTitle, setNewTitle] = useState('');
   const [newDueDate, setNewDueDate] = useState('');
+  const [newPriority, setNewPriority] = useState<'HIGH' | 'NORMAL' | 'LOW'>('NORMAL');
+  const [selectedAssignees, setSelectedAssignees] = useState<User[]>([]);
 
   const locale = language === 'ko' ? 'ko-KR' : 'en-US';
+
+  // Determine available users for assignment (project team or all users)
+  const projectId = context.type === 'project' ? context.projectId : undefined;
+  const project = projectId ? projects.find(p => p.id === projectId) : undefined;
+
+  const availableUsers = useMemo(() => {
+    if (project?.teamMemberIds?.length) {
+      return users.filter(u => project.teamMemberIds.includes(u.id));
+    }
+    return users;
+  }, [users, project]);
+
+  // Reset form when dialog opens
+  useEffect(() => {
+    if (todoCreateDialogOpen) {
+      setNewTitle('');
+      setNewDueDate('');
+      setNewPriority('NORMAL');
+      setSelectedAssignees(currentUser ? [currentUser] : []);
+    }
+  }, [todoCreateDialogOpen, currentUser]);
 
   const todos = useMemo(() => {
     let list = personalTodos.filter(
@@ -52,21 +86,22 @@ function TodosWidget({ context }: { context: WidgetDataContext }) {
     return list.slice(0, 10);
   }, [personalTodos, currentUser, context]);
 
-  const handleCreate = async () => {
+  const handleCreate = useCallback(async () => {
     if (!newTitle.trim() || !currentUser) return;
+    const assigneeIds = selectedAssignees.length > 0
+      ? selectedAssignees.map(u => u.id)
+      : [currentUser.id];
     await addTodo({
       title: newTitle.trim(),
-      assigneeIds: [currentUser.id],
+      assigneeIds,
       requestedById: currentUser.id,
       dueDate: newDueDate || new Date().toISOString(),
-      priority: 'NORMAL',
+      priority: newPriority,
       projectId: context.type === 'project' ? context.projectId : undefined,
     });
     toast.success(t('todoCreated'));
-    setNewTitle('');
-    setNewDueDate('');
-    setShowCreate(false);
-  };
+    setTodoCreateDialogOpen(false);
+  }, [newTitle, newDueDate, newPriority, selectedAssignees, currentUser, context, addTodo, setTodoCreateDialogOpen, t]);
 
   const handleToggle = async (todoId: string, currentStatus: string) => {
     if (currentStatus === 'PENDING') {
@@ -74,25 +109,25 @@ function TodosWidget({ context }: { context: WidgetDataContext }) {
     }
   };
 
+  const handleAddAssignee = useCallback((user: User) => {
+    setSelectedAssignees(prev => {
+      if (prev.find(u => u.id === user.id)) return prev;
+      return [...prev, user];
+    });
+  }, []);
+
+  const handleRemoveAssignee = useCallback((userId: string) => {
+    setSelectedAssignees(prev => prev.filter(u => u.id !== userId));
+  }, []);
+
   return (
     <div className="h-full flex flex-col">
-      {/* Header row with + button */}
-      <div className="flex justify-end px-1 pb-1 shrink-0">
-        <button
-          onClick={(e) => { e.stopPropagation(); setShowCreate(true); }}
-          className="p-1 rounded hover:bg-white/10 dark:hover:bg-white/10 hover:bg-black/5 transition-colors"
-          title={t('newTodo')}
-        >
-          <Plus className="w-3.5 h-3.5 text-muted-foreground hover:text-foreground transition-colors" />
-        </button>
-      </div>
-
       {/* Todo list */}
       {todos.length === 0 ? (
         <div className="flex flex-col items-center justify-center flex-1 gap-2 text-muted-foreground/60">
           <p className="text-sm">{t('noTodosYet')}</p>
           <button
-            onClick={() => setShowCreate(true)}
+            onClick={() => setTodoCreateDialogOpen(true)}
             className="text-xs text-primary hover:text-primary/80 transition-colors"
           >
             + {t('newTodo')}
@@ -152,13 +187,14 @@ function TodosWidget({ context }: { context: WidgetDataContext }) {
         </div>
       )}
 
-      {/* Quick Create Dialog */}
-      <Dialog open={showCreate} onOpenChange={setShowCreate}>
-        <DialogContent className="sm:max-w-sm">
+      {/* Enhanced Create Dialog with assignee + priority */}
+      <Dialog open={todoCreateDialogOpen} onOpenChange={setTodoCreateDialogOpen}>
+        <DialogContent className="sm:max-w-md" onMouseDown={(e) => e.stopPropagation()}>
           <DialogHeader>
             <DialogTitle>{t('newTodo')}</DialogTitle>
           </DialogHeader>
           <div className="space-y-3 py-2">
+            {/* Title */}
             <Input
               value={newTitle}
               onChange={(e) => setNewTitle(e.target.value)}
@@ -171,18 +207,63 @@ function TodosWidget({ context }: { context: WidgetDataContext }) {
                 }
               }}
             />
-            <Input
-              type="date"
-              value={newDueDate}
-              onChange={(e) => setNewDueDate(e.target.value)}
-            />
+
+            {/* Assignees (multi-select) */}
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">
+                {t('assignees')}
+              </label>
+              <UserSearchInput
+                users={availableUsers}
+                selectedUsers={selectedAssignees}
+                onSelect={handleAddAssignee}
+                onRemove={handleRemoveAssignee}
+                placeholder={t('searchUsers')}
+                multiple
+              />
+            </div>
+
+            {/* Due Date */}
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">
+                {t('dueDate')}
+              </label>
+              <Input
+                type="date"
+                value={newDueDate}
+                onChange={(e) => setNewDueDate(e.target.value)}
+              />
+            </div>
+
+            {/* Priority */}
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">
+                {t('priority')}
+              </label>
+              <div className="flex gap-2">
+                {PRIORITIES.map((p) => (
+                  <button
+                    key={p}
+                    type="button"
+                    onClick={() => setNewPriority(p)}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border ${
+                      newPriority === p
+                        ? 'bg-primary/10 border-primary text-primary'
+                        : 'bg-transparent border-border text-muted-foreground hover:bg-muted'
+                    }`}
+                  >
+                    <span className={`w-2 h-2 rounded-full ${priorityDot[p]}`} />
+                    {p === 'HIGH' ? t('high') : p === 'NORMAL' ? t('normal') : t('low')}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" size="sm" onClick={() => setShowCreate(false)}>
+            <Button variant="outline" size="sm" onClick={() => setTodoCreateDialogOpen(false)}>
               {t('cancel')}
             </Button>
             <Button size="sm" onClick={handleCreate} disabled={!newTitle.trim()}>
-              <Plus className="w-3.5 h-3.5 mr-1" />
               {t('createTodo')}
             </Button>
           </DialogFooter>

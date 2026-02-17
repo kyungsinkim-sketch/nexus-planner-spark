@@ -17,6 +17,7 @@ import { useTranslation } from '@/hooks/useTranslation';
 import { WidgetContainer } from './WidgetContainer';
 import { WIDGET_COMPONENTS, WIDGET_DEFINITIONS } from './widgetRegistry';
 import { Plus, Settings, X } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { EditProjectModal } from '@/components/project/EditProjectModal';
 import type { WidgetDataContext, WidgetLayoutItem, WidgetType } from '@/types/widget';
 import { GRID_BREAKPOINTS, GRID_COLS, GRID_MARGIN } from '@/types/widget';
@@ -39,9 +40,18 @@ interface LayoutItem {
 export function WidgetGrid({ context, projectKeyColor }: WidgetGridProps) {
   const { t } = useTranslation();
   const currentUser = useAppStore((s) => s.currentUser);
+  const setTodoCreateDialogOpen = useAppStore((s) => s.setTodoCreateDialogOpen);
   const isAdmin = currentUser?.role === 'ADMIN';
   const [showAddMenu, setShowAddMenu] = useState(false);
   const [showProjectSettings, setShowProjectSettings] = useState(false);
+
+  // Header actions per widget type (e.g. + button in Todos titlebar)
+  const getHeaderActions = useCallback((widgetType: string): Array<{ icon: LucideIcon; onClick: () => void; title: string }> | undefined => {
+    if (widgetType === 'todos') {
+      return [{ icon: Plus, onClick: () => setTodoCreateDialogOpen(true), title: t('newTodo') }];
+    }
+    return undefined;
+  }, [setTodoCreateDialogOpen, t]);
 
   // Get current project for settings dialog
   const projects = useAppStore((s) => s.projects);
@@ -283,6 +293,7 @@ export function WidgetGrid({ context, projectKeyColor }: WidgetGridProps) {
                     title={title}
                     icon={def.icon}
                     collapsed={item.collapsed}
+                    headerActions={getHeaderActions(widgetType)}
                     onCollapse={() => toggleWidgetCollapsed(context.type, widgetType)}
                     onRemove={() => removeWidget(context.type, widgetType)}
                     style={activeGlassStyle}

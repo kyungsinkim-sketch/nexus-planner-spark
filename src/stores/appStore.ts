@@ -45,6 +45,10 @@ interface AppState {
   // Brain AI
   brainIntelligenceEnabled: boolean;
 
+  // Widget Settings (persisted per-widget configuration)
+  widgetSettings: Record<string, Record<string, unknown>>;
+  todoCreateDialogOpen: boolean;
+
   // UI State
   selectedProjectId: string | null;
   sidebarCollapsed: boolean;
@@ -74,6 +78,8 @@ interface AppState {
   setTheme: (theme: 'light' | 'dark') => void;
   toggleTheme: () => void;
   setBrainIntelligenceEnabled: (enabled: boolean) => void;
+  updateWidgetSettings: (widgetType: string, settings: Record<string, unknown>) => void;
+  setTodoCreateDialogOpen: (open: boolean) => void;
 
   // Project Actions
   addProject: (project: Partial<Project>) => Promise<void>;
@@ -161,6 +167,8 @@ export const useAppStore = create<AppState>()(
       language: 'ko',
       theme: 'light',
       brainIntelligenceEnabled: false,
+      widgetSettings: {},
+      todoCreateDialogOpen: false,
       selectedProjectId: null,
       sidebarCollapsed: false,
       chatPanelCollapsed: false,
@@ -939,6 +947,16 @@ export const useAppStore = create<AppState>()(
         }
       },
 
+      // Widget Settings Actions
+      updateWidgetSettings: (widgetType, settings) => set((state) => ({
+        widgetSettings: {
+          ...state.widgetSettings,
+          [widgetType]: { ...(state.widgetSettings[widgetType] || {}), ...settings },
+        },
+      })),
+
+      setTodoCreateDialogOpen: (open) => set({ todoCreateDialogOpen: open }),
+
       // Settings Actions
       updateScoreSettings: (settings) => set((state) => ({
         scoreSettings: { ...state.scoreSettings, ...settings }
@@ -966,6 +984,7 @@ export const useAppStore = create<AppState>()(
         chatPanelCollapsed: state.chatPanelCollapsed,
         userWorkStatus: state.userWorkStatus,
         brainIntelligenceEnabled: state.brainIntelligenceEnabled,
+        widgetSettings: state.widgetSettings,
       }),
     }
   )

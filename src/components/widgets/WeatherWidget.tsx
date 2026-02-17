@@ -1,61 +1,145 @@
 /**
- * WeatherWidget — Shows a 7-day weather forecast.
- * Uses mock data (no API key required).
- * Seoul-based winter weather for demo.
+ * WeatherWidget — Shows a 7-day weather forecast for a selected city.
+ * Uses mock data generated based on city latitude (season-aware).
+ * City selection persisted via appStore.widgetSettings.weather.city
  */
 
-import { useMemo } from 'react';
-import { Sun, Cloud, CloudRain, CloudSnow, CloudSun, CloudDrizzle, Wind } from 'lucide-react';
+import { useState, useMemo, useEffect } from 'react';
+import { Sun, Cloud, CloudRain, CloudSnow, CloudSun, CloudDrizzle, Wind, Settings } from 'lucide-react';
+import { useAppStore } from '@/stores/appStore';
 import { useTranslation } from '@/hooks/useTranslation';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
 import type { WidgetDataContext } from '@/types/widget';
 import type { LucideIcon } from 'lucide-react';
 
 type WeatherCondition = 'sunny' | 'partlyCloudy' | 'cloudy' | 'rainy' | 'drizzle' | 'snowy' | 'windy';
 
-interface DayForecast {
-  dayOffset: number;
-  condition: WeatherCondition;
-  high: number;
-  low: number;
+interface CityWeatherDef {
+  key: string;
+  labelKo: string;
+  labelEn: string;
+  flag: string;
+  lat: number; // approximate latitude for season calc
 }
 
-// Mock 7-day forecast (Seoul winter)
-const MOCK_FORECAST: DayForecast[] = [
-  { dayOffset: 0, condition: 'partlyCloudy', high: 3, low: -4 },
-  { dayOffset: 1, condition: 'sunny', high: 5, low: -2 },
-  { dayOffset: 2, condition: 'cloudy', high: 2, low: -3 },
-  { dayOffset: 3, condition: 'snowy', high: 0, low: -7 },
-  { dayOffset: 4, condition: 'cloudy', high: 1, low: -5 },
-  { dayOffset: 5, condition: 'rainy', high: 6, low: 1 },
-  { dayOffset: 6, condition: 'sunny', high: 8, low: 0 },
+const WEATHER_CITIES: CityWeatherDef[] = [
+  { key: 'seoul',       labelKo: '서울',       labelEn: 'Seoul',        flag: '🇰🇷', lat: 37.5 },
+  { key: 'tokyo',       labelKo: '도쿄',       labelEn: 'Tokyo',        flag: '🇯🇵', lat: 35.7 },
+  { key: 'beijing',     labelKo: '베이징',     labelEn: 'Beijing',      flag: '🇨🇳', lat: 39.9 },
+  { key: 'bangkok',     labelKo: '방콕',       labelEn: 'Bangkok',      flag: '🇹🇭', lat: 13.8 },
+  { key: 'newdelhi',    labelKo: '뉴델리',     labelEn: 'New Delhi',    flag: '🇮🇳', lat: 28.6 },
+  { key: 'dubai',       labelKo: '두바이',     labelEn: 'Dubai',        flag: '🇦🇪', lat: 25.3 },
+  { key: 'london',      labelKo: '런던',       labelEn: 'London',       flag: '🇬🇧', lat: 51.5 },
+  { key: 'paris',       labelKo: '파리',       labelEn: 'Paris',        flag: '🇫🇷', lat: 48.9 },
+  { key: 'berlin',      labelKo: '베를린',     labelEn: 'Berlin',       flag: '🇩🇪', lat: 52.5 },
+  { key: 'newyork',     labelKo: '뉴욕',       labelEn: 'New York',     flag: '🇺🇸', lat: 40.7 },
+  { key: 'losangeles',  labelKo: 'LA',         labelEn: 'LA',           flag: '🇺🇸', lat: 34.1 },
+  { key: 'sydney',      labelKo: '시드니',     labelEn: 'Sydney',       flag: '🇦🇺', lat: -33.9 },
+  { key: 'singapore',   labelKo: '싱가포르',   labelEn: 'Singapore',    flag: '🇸🇬', lat: 1.3 },
+  { key: 'saopaulo',    labelKo: '상파울루',   labelEn: 'São Paulo',    flag: '🇧🇷', lat: -23.6 },
+  { key: 'moscow',      labelKo: '모스크바',   labelEn: 'Moscow',       flag: '🇷🇺', lat: 55.8 },
 ];
 
+const CONDITIONS: WeatherCondition[] = ['sunny', 'partlyCloudy', 'cloudy', 'rainy', 'drizzle', 'snowy', 'windy'];
 const CONDITION_ICONS: Record<WeatherCondition, LucideIcon> = {
-  sunny: Sun,
-  partlyCloudy: CloudSun,
-  cloudy: Cloud,
-  rainy: CloudRain,
-  drizzle: CloudDrizzle,
-  snowy: CloudSnow,
-  windy: Wind,
+  sunny: Sun, partlyCloudy: CloudSun, cloudy: Cloud,
+  rainy: CloudRain, drizzle: CloudDrizzle, snowy: CloudSnow, windy: Wind,
+};
+const CONDITION_COLORS: Record<WeatherCondition, string> = {
+  sunny: 'text-amber-400', partlyCloudy: 'text-amber-300', cloudy: 'text-gray-400',
+  rainy: 'text-blue-400', drizzle: 'text-blue-300', snowy: 'text-sky-200', windy: 'text-teal-400',
 };
 
-const CONDITION_COLORS: Record<WeatherCondition, string> = {
-  sunny: 'text-amber-400',
-  partlyCloudy: 'text-amber-300',
-  cloudy: 'text-gray-400',
-  rainy: 'text-blue-400',
-  drizzle: 'text-blue-300',
-  snowy: 'text-sky-200',
-  windy: 'text-teal-400',
-};
+/** Generate deterministic mock forecast based on city + current date */
+function generateForecast(cityKey: string, lat: number): Array<{ dayOffset: number; condition: WeatherCondition; high: number; low: number }> {
+  const today = new Date();
+  const month = today.getMonth(); // 0-11
+  const dayOfYear = Math.floor((today.getTime() - new Date(today.getFullYear(), 0, 0).getTime()) / 86400000);
+
+  // Simple season detection (northern hemisphere: Dec-Feb=winter, Jun-Aug=summer)
+  // Flip for southern hemisphere (negative lat)
+  const isNorth = lat >= 0;
+  const baseTemp = (() => {
+    // Tropical (near equator)
+    if (Math.abs(lat) < 15) return { high: 32, low: 24, variation: 3 };
+    // Subtropical
+    if (Math.abs(lat) < 30) {
+      const winterMonth = isNorth ? (month >= 11 || month <= 1) : (month >= 5 && month <= 7);
+      return winterMonth ? { high: 18, low: 8, variation: 5 } : { high: 33, low: 22, variation: 4 };
+    }
+    // Temperate
+    if (Math.abs(lat) < 50) {
+      const winterMonth = isNorth ? (month >= 11 || month <= 1) : (month >= 5 && month <= 7);
+      const summerMonth = isNorth ? (month >= 5 && month <= 7) : (month >= 11 || month <= 1);
+      if (winterMonth) return { high: 3, low: -5, variation: 4 };
+      if (summerMonth) return { high: 28, low: 18, variation: 4 };
+      return { high: 15, low: 6, variation: 5 };
+    }
+    // Cold climate
+    const winterMonth = isNorth ? (month >= 11 || month <= 2) : (month >= 5 && month <= 8);
+    return winterMonth ? { high: -5, low: -15, variation: 5 } : { high: 20, low: 10, variation: 5 };
+  })();
+
+  // Seed-based pseudo-random (deterministic per city+day)
+  const seed = cityKey.split('').reduce((s, c) => s + c.charCodeAt(0), 0) + dayOfYear;
+  const pseudoRandom = (i: number) => {
+    const x = Math.sin(seed + i * 37) * 10000;
+    return x - Math.floor(x);
+  };
+
+  return Array.from({ length: 7 }, (_, i) => {
+    const r = pseudoRandom(i);
+    const high = Math.round(baseTemp.high + (r - 0.5) * baseTemp.variation * 2);
+    const low = Math.round(baseTemp.low + (pseudoRandom(i + 100) - 0.5) * baseTemp.variation * 2);
+
+    // Determine condition based on temperature and randomness
+    let condition: WeatherCondition;
+    if (high <= 0) condition = r > 0.3 ? 'snowy' : 'cloudy';
+    else if (high <= 10) condition = r > 0.7 ? 'rainy' : r > 0.4 ? 'cloudy' : 'partlyCloudy';
+    else if (high <= 20) condition = CONDITIONS[Math.floor(r * 5)] || 'partlyCloudy';
+    else if (high <= 30) condition = r > 0.7 ? 'rainy' : r > 0.4 ? 'partlyCloudy' : 'sunny';
+    else condition = r > 0.6 ? 'sunny' : 'partlyCloudy';
+
+    return { dayOffset: i, condition, high, low: Math.min(low, high - 2) };
+  });
+}
 
 function WeatherWidget({ context: _context }: { context: WidgetDataContext }) {
   const { t, language } = useTranslation();
+  const { widgetSettings, updateWidgetSettings } = useAppStore();
+  const [showSettings, setShowSettings] = useState(false);
+
+  const selectedCityKey = useMemo(() => {
+    const stored = widgetSettings?.weather?.city;
+    return (typeof stored === 'string' && stored) ? stored : 'seoul';
+  }, [widgetSettings]);
+
+  const [tempCity, setTempCity] = useState(selectedCityKey);
+
+  useEffect(() => {
+    if (showSettings) setTempCity(selectedCityKey);
+  }, [showSettings, selectedCityKey]);
+
+  const cityDef = useMemo(
+    () => WEATHER_CITIES.find(c => c.key === selectedCityKey) || WEATHER_CITIES[0],
+    [selectedCityKey],
+  );
+
+  const forecast = useMemo(
+    () => generateForecast(selectedCityKey, cityDef.lat),
+    [selectedCityKey, cityDef.lat],
+  );
 
   const days = useMemo(() => {
     const today = new Date();
-    return MOCK_FORECAST.map((f) => {
+    return forecast.map((f) => {
       const date = new Date(today);
       date.setDate(date.getDate() + f.dayOffset);
       const dayName =
@@ -66,36 +150,96 @@ function WeatherWidget({ context: _context }: { context: WidgetDataContext }) {
             }).format(date);
       return { ...f, dayName };
     });
-  }, [t, language]);
+  }, [forecast, t, language]);
+
+  const handleSave = () => {
+    updateWidgetSettings('weather', { city: tempCity });
+    setShowSettings(false);
+  };
+
+  const cityLabel = language === 'ko' ? cityDef.labelKo : cityDef.labelEn;
 
   return (
-    <div className="grid grid-cols-7 gap-0.5 h-full items-center px-1">
-      {days.map((day) => {
-        const Icon = CONDITION_ICONS[day.condition];
-        const isToday = day.dayOffset === 0;
-        return (
-          <div
-            key={day.dayOffset}
-            className={`text-center py-1 rounded-lg transition-colors ${
-              isToday ? 'bg-primary/10' : ''
-            }`}
+    <>
+      <div className="h-full flex flex-col relative">
+        {/* City name + settings */}
+        <div className="flex items-center justify-between px-2 pb-0.5 shrink-0">
+          <span className="text-[10px] text-muted-foreground font-medium">
+            {cityDef.flag} {cityLabel}
+          </span>
+          <button
+            onClick={(e) => { e.stopPropagation(); setShowSettings(true); }}
+            className="p-1 rounded hover:bg-white/10 transition-colors"
+            title={t('settings')}
           >
-            <p
-              className={`text-xs font-medium ${
-                isToday ? 'text-primary' : 'text-foreground/70'
-              }`}
-            >
-              {day.dayName}
-            </p>
-            <Icon
-              className={`w-5 h-5 mx-auto my-1 ${CONDITION_COLORS[day.condition]}`}
-            />
-            <p className="text-xs font-semibold text-foreground">{day.high}°</p>
-            <p className="text-[10px] text-muted-foreground">{day.low}°</p>
+            <Settings className="w-3 h-3 text-muted-foreground/60 hover:text-foreground transition-colors" />
+          </button>
+        </div>
+
+        {/* 7-day forecast */}
+        <div className="grid grid-cols-7 gap-0.5 flex-1 items-center px-1">
+          {days.map((day) => {
+            const Icon = CONDITION_ICONS[day.condition];
+            const isToday = day.dayOffset === 0;
+            return (
+              <div
+                key={day.dayOffset}
+                className={`text-center py-1 rounded-lg transition-colors ${
+                  isToday ? 'bg-primary/10' : ''
+                }`}
+              >
+                <p className={`text-xs font-medium ${isToday ? 'text-primary' : 'text-foreground/70'}`}>
+                  {day.dayName}
+                </p>
+                <Icon className={`w-5 h-5 mx-auto my-1 ${CONDITION_COLORS[day.condition]}`} />
+                <p className="text-xs font-semibold text-foreground">{day.high}°</p>
+                <p className="text-[10px] text-muted-foreground">{day.low}°</p>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* City Selection Dialog */}
+      <Dialog open={showSettings} onOpenChange={setShowSettings}>
+        <DialogContent className="sm:max-w-sm" onMouseDown={(e) => e.stopPropagation()}>
+          <DialogHeader>
+            <DialogTitle>{t('weeklyWeather')} — {t('settings')}</DialogTitle>
+          </DialogHeader>
+          <p className="text-xs text-muted-foreground mb-1">
+            {language === 'ko' ? '도시를 선택하세요' : 'Select a city'}
+          </p>
+          <div className="grid grid-cols-2 gap-1.5 max-h-64 overflow-y-auto py-2">
+            {WEATHER_CITIES.map((city) => {
+              const isSelected = tempCity === city.key;
+              const label = language === 'ko' ? city.labelKo : city.labelEn;
+              return (
+                <button
+                  key={city.key}
+                  onClick={() => setTempCity(city.key)}
+                  className={`flex items-center gap-2 px-2.5 py-2 rounded-lg text-sm transition-colors border ${
+                    isSelected
+                      ? 'bg-primary/10 border-primary text-primary'
+                      : 'bg-transparent border-border text-foreground hover:bg-muted'
+                  }`}
+                >
+                  <span className="text-base">{city.flag}</span>
+                  <span className="truncate">{label}</span>
+                </button>
+              );
+            })}
           </div>
-        );
-      })}
-    </div>
+          <DialogFooter>
+            <Button variant="outline" size="sm" onClick={() => setShowSettings(false)}>
+              {t('cancel')}
+            </Button>
+            <Button size="sm" onClick={handleSave}>
+              {t('save')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 

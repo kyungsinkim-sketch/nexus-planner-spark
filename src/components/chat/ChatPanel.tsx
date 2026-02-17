@@ -38,6 +38,8 @@ import {
   Hash,
   ChevronRight,
   Brain,
+  Pin,
+  X,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { useTranslation } from '@/hooks/useTranslation';
@@ -49,7 +51,6 @@ import { BRAIN_BOT_USER_ID } from '@/types/core';
 import * as chatService from '@/services/chatService';
 import * as fileService from '@/services/fileService';
 import * as brainService from '@/services/brainService';
-import { isSupabaseConfigured } from '@/lib/supabase';
 import { isSupabaseConfigured } from '@/lib/supabase';
 import { toast } from 'sonner';
 
@@ -83,6 +84,7 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
   const [newMessage, setNewMessage] = useState('');
   const [expandedProjectId, setExpandedProjectId] = useState<string | null>(null);
   const [showCreateRoom, setShowCreateRoom] = useState(false);
+  const [pinnedAnnouncement, setPinnedAnnouncement] = useState<ChatMessage | null>(null);
   const [newRoomName, setNewRoomName] = useState('');
   const [newRoomDescription, setNewRoomDescription] = useState('');
   const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([]);
@@ -986,6 +988,23 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
             </div>
           </div>
 
+          {/* Pinned Announcement Banner */}
+          {pinnedAnnouncement && (
+            <div className="flex items-center gap-2 px-3 py-2 bg-amber-50 dark:bg-amber-950/30 border-b border-amber-200/50 dark:border-amber-800/50 shrink-0 min-w-0">
+              <Pin className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
+              <p className="text-xs text-amber-800 dark:text-amber-200 flex-1 min-w-0 truncate font-medium">
+                {pinnedAnnouncement.content}
+              </p>
+              <button
+                onClick={() => setPinnedAnnouncement(null)}
+                className="p-0.5 rounded hover:bg-amber-200/50 dark:hover:bg-amber-800/50 transition-colors shrink-0"
+                title={t('close')}
+              >
+                <X className="w-3 h-3 text-amber-600 dark:text-amber-400" />
+              </button>
+            </div>
+          )}
+
           {/* Messages */}
           <ScrollArea className="flex-1 p-3 min-w-0">
             {chatMessages.length === 0 ? (
@@ -1042,15 +1061,29 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
                                   </span>
                                 </div>
                               )}
-                              <ChatMessageBubble
-                                message={message}
-                                isCurrentUser={isCurrentUser}
-                                onVoteDecision={handleVoteDecision}
-                                onAcceptSchedule={handleAcceptSchedule}
-                                onDelete={handleDeleteMessage}
-                                onConfirmBrainAction={handleConfirmBrainAction}
-                                onRejectBrainAction={handleRejectBrainAction}
-                              />
+                              <div className="group/msg-actions relative inline-block">
+                                <ChatMessageBubble
+                                  message={message}
+                                  isCurrentUser={isCurrentUser}
+                                  onVoteDecision={handleVoteDecision}
+                                  onAcceptSchedule={handleAcceptSchedule}
+                                  onDelete={handleDeleteMessage}
+                                  onConfirmBrainAction={handleConfirmBrainAction}
+                                  onRejectBrainAction={handleRejectBrainAction}
+                                />
+                                {/* Pin as announcement hover button */}
+                                {message.messageType === 'text' && message.content && (
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); setPinnedAnnouncement(message); }}
+                                    className="absolute -top-2 right-0 opacity-0 group-hover/msg-actions:opacity-100
+                                               p-1 rounded bg-amber-100 dark:bg-amber-900/60 border border-amber-300 dark:border-amber-700
+                                               hover:bg-amber-200 dark:hover:bg-amber-800 transition-all z-10"
+                                    title={t('pinAsAnnouncement')}
+                                  >
+                                    <Pin className="w-3 h-3 text-amber-600 dark:text-amber-400" />
+                                  </button>
+                                )}
+                              </div>
                             </div>
                           </div>
                         );
@@ -1087,23 +1120,35 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
               >
                 <Paperclip className="w-4 h-4" />
               </Button>
-              <Input
+              <textarea
                 placeholder={t('typeMessage')}
                 value={newMessage}
-                onChange={(e) => setNewMessage(e.target.value)}
+                onChange={(e) => {
+                  setNewMessage(e.target.value);
+                  // Auto-resize: reset height, then set to scrollHeight
+                  e.target.style.height = 'auto';
+                  e.target.style.height = `${Math.min(e.target.scrollHeight, 96)}px`;
+                }}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && !e.nativeEvent.isComposing) {
-                    e.preventDefault();
                     if (e.metaKey || e.ctrlKey) {
                       // Cmd+Enter → Brain AI command
+                      e.preventDefault();
                       handleSendMessage(true);
-                    } else if (!e.shiftKey) {
+                    } else if (e.shiftKey) {
+                      // Shift+Enter → newline (default behavior)
+                    } else {
                       // Enter → normal send
+                      e.preventDefault();
                       handleSendMessage(false);
                     }
                   }
                 }}
-                className="flex-1 h-9 text-sm min-w-0"
+                rows={1}
+                className="flex-1 min-w-0 px-3 py-2 text-sm rounded-md border border-input bg-background
+                           placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1
+                           focus-visible:ring-ring resize-none overflow-hidden leading-normal"
+                style={{ maxHeight: '96px' }}
               />
               <Button
                 size="icon"
@@ -1115,15 +1160,18 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
                 <Send className="w-3.5 h-3.5" />
               </Button>
             </div>
-            {/* Brain shortcut hint */}
-            {selectedChat?.type === 'project' && (
-              <div className="flex items-center gap-1 mt-1 px-1">
-                <Brain className="w-3 h-3 text-violet-400" />
-                <span className="text-[10px] text-muted-foreground">
+            {/* Keyboard shortcut hints */}
+            <div className="flex items-center gap-3 mt-1 px-1">
+              <span className="text-[10px] text-muted-foreground">
+                <kbd className="px-1 py-0.5 rounded bg-muted text-[9px] font-mono">Shift</kbd>+<kbd className="px-1 py-0.5 rounded bg-muted text-[9px] font-mono">Enter</kbd> {t('newLine')}
+              </span>
+              {selectedChat?.type === 'project' && (
+                <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                  <Brain className="w-3 h-3 text-violet-400" />
                   <kbd className="px-1 py-0.5 rounded bg-muted text-[9px] font-mono">⌘</kbd>+<kbd className="px-1 py-0.5 rounded bg-muted text-[9px] font-mono">Enter</kbd> Brain AI
                 </span>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </div>
       )}
