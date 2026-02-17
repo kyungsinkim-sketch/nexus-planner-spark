@@ -1,12 +1,12 @@
 /**
- * ActivityChartWidget — Line chart of weekly activity (Dashboard only).
- * Dark card design with gradient accent lines.
+ * ActivityChartWidget — Area chart of weekly activity (Dashboard only).
+ * Dark card design with gradient accent lines. No title bar.
  */
 
 import { useMemo } from 'react';
 import { useAppStore } from '@/stores/appStore';
 import { useTranslation } from '@/hooks/useTranslation';
-import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, Tooltip, Area, AreaChart } from 'recharts';
+import { XAxis, YAxis, ResponsiveContainer, Tooltip, Area, AreaChart } from 'recharts';
 import type { WidgetDataContext } from '@/types/widget';
 
 function ActivityChartWidget({ context: _context }: { context: WidgetDataContext }) {
@@ -29,25 +29,8 @@ function ActivityChartWidget({ context: _context }: { context: WidgetDataContext
     return days;
   }, [events, messages]);
 
-  const totalEvents = data.reduce((s, d) => s + d.events, 0);
-  const totalMessages = data.reduce((s, d) => s + d.messages, 0);
-
   return (
     <div className="h-full widget-dark-card p-3 flex flex-col">
-      {/* Summary header */}
-      <div className="flex items-center gap-4 mb-2 shrink-0">
-        <div className="flex items-center gap-1.5">
-          <span className="w-2 h-2 rounded-full" style={{ background: '#818cf8' }} />
-          <span className="text-[11px] text-white/60">{t('events')}</span>
-          <span className="text-xs font-semibold text-white tabular-nums">{totalEvents}</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <span className="w-2 h-2 rounded-full" style={{ background: '#34d399' }} />
-          <span className="text-[11px] text-white/60">{t('messages')}</span>
-          <span className="text-xs font-semibold text-white tabular-nums">{totalMessages}</span>
-        </div>
-      </div>
-
       {/* Chart */}
       <div className="flex-1 min-h-0">
         <ResponsiveContainer width="100%" height="100%">

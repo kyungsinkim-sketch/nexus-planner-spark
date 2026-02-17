@@ -55,7 +55,7 @@ export function WidgetGrid({ context, projectKeyColor }: WidgetGridProps) {
     if (widgetType === 'worldClock') {
       return [{ icon: Settings, onClick: () => setWorldClockSettingsOpen(true), title: t('settings') }];
     }
-    if (widgetType === 'weather') {
+    if (widgetType === 'weather' || widgetType === 'todayWeather') {
       return [{ icon: Settings, onClick: () => setWeatherSettingsOpen(true), title: t('settings') }];
     }
     return undefined;
@@ -183,7 +183,7 @@ export function WidgetGrid({ context, projectKeyColor }: WidgetGridProps) {
   const isFramelessWidget = (widgetType: string) => widgetType === 'chat' || widgetType === 'calendar' || widgetType === 'brainChat';
 
   // Barless widgets: no title bar at all, hover-reveal settings/remove buttons in top-right corner
-  const isBarlessWidget = (widgetType: string) => widgetType === 'worldClock' || widgetType === 'weather';
+  const isBarlessWidget = (widgetType: string) => widgetType === 'worldClock' || widgetType === 'weather' || widgetType === 'todayWeather' || widgetType === 'activityChart' || widgetType === 'progressChart';
 
   // Inline style to kill transitions — applied to every grid item to guarantee
   // no slide-in animation regardless of CSS load order

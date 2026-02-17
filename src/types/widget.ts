@@ -25,7 +25,8 @@ export type WidgetType =
   | 'brainChat'
   | 'brainInsights'
   | 'worldClock'
-  | 'weather';
+  | 'weather'
+  | 'todayWeather';
 
 // Widget context — determines which data scope a widget uses
 export type WidgetContext = 'dashboard' | 'project';
