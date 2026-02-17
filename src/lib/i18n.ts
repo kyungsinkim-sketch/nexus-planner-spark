@@ -170,7 +170,7 @@ export const translations = {
     commentAdded: '댓글이 추가되었습니다',
     fileDeleted: '파일이 삭제되었습니다',
     noFiles: '파일이 없습니다',
-    today: '오늘',
+    todayLabel: '오늘',
     projectSettings: '프로젝트 설정',
     location: '장소',
     enterLocation: '장소를 입력하세요',
@@ -200,7 +200,7 @@ export const translations = {
     priority: '우선순위',
 
     // File Upload
-    addComment: '코멘트 추가',
+    addFileComment: '코멘트 추가',
     fileComment: '파일 설명...',
 
     // Events
@@ -217,7 +217,7 @@ export const translations = {
     connect: '연결',
     disconnect: '연결 해제',
     sync: '동기화',
-    autoSync: '자동 동기화',
+    autoSyncSetting: '자동 동기화',
 
     // Misc
     todaysEvents: '오늘의 일정',
@@ -1079,7 +1079,7 @@ export const translations = {
     failedToRenameFile: '파일 이름 변경 실패',
     fileMovedTo: '파일이 이동되었습니다',
     failedToMoveFile: '파일 이동 실패',
-    fileDeleted: '파일이 삭제되었습니다',
+    fileDeletedConfirm: '파일이 삭제되었습니다',
     failedToDeleteFile: '파일 삭제 실패',
     commentSaved: '코멘트가 저장되었습니다',
     failedToSaveComment: '코멘트 저장 실패',
@@ -1321,7 +1321,7 @@ export const translations = {
     commentAdded: 'Comment added',
     fileDeleted: 'File deleted',
     noFiles: 'No files yet',
-    today: 'Today',
+    todayLabel: 'Today',
     projectSettings: 'Project Settings',
     location: 'Location',
     enterLocation: 'Enter location',
@@ -1351,7 +1351,7 @@ export const translations = {
     priority: 'Priority',
 
     // File Upload
-    addComment: 'Add Comment',
+    addFileComment: 'Add Comment',
     fileComment: 'File description...',
 
     // Events
@@ -1374,7 +1374,7 @@ export const translations = {
     connect: 'Connect',
     disconnect: 'Disconnect',
     sync: 'Sync',
-    autoSync: 'Auto Sync',
+    autoSyncSetting: 'Auto Sync',
 
     // Misc
     todaysEvents: "Today's Events",
@@ -2236,7 +2236,7 @@ export const translations = {
     failedToRenameFile: 'Failed to rename file',
     fileMovedTo: 'File moved',
     failedToMoveFile: 'Failed to move file',
-    fileDeleted: 'File deleted',
+    fileDeletedConfirm: 'File deleted',
     failedToDeleteFile: 'Failed to delete file',
     commentSaved: 'Comment saved',
     failedToSaveComment: 'Failed to save comment',

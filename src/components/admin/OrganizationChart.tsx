@@ -150,7 +150,7 @@ export function OrganizationChart() {
       position: tempMember.position || 'Employee',
       team: tempMember.team || '',
       category: 'Junior',
-      status: t('employeeActive'),
+      status: '재직중' as '재직중' | '퇴사',
       join_date: new Date().toISOString().split('T')[0],
       employee_no: Math.floor(Math.random() * 9000) + 1000,
       level: 'P1',

@@ -70,7 +70,7 @@ export default function DashboardPage() {
     const now = new Date();
     const weekLater = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
     const upcomingEvents = events.filter(e => {
-        const eventDate = new Date(e.startDate);
+        const eventDate = new Date(e.startAt);
         return eventDate >= now && eventDate <= weekLater;
     }).length;
 

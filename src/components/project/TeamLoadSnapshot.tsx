@@ -29,7 +29,7 @@ export function TeamLoadSnapshot({ project }: TeamLoadSnapshotProps) {
         f => f.uploadedBy === userId
       ).length;
       const todosCompleted = personalTodos.filter(
-        t => t.userId === userId && t.status === 'COMPLETED'
+        t => t.assigneeIds?.includes(userId) && t.status === 'COMPLETED'
       ).length;
       const calendarEvents = events.filter(
         e => e.ownerId === userId

@@ -49,7 +49,7 @@ export function BrainActionBubble({
   onRejectAction,
 }: BrainActionBubbleProps) {
   const { t } = useTranslation();
-  const brainData = message.brainActionData as {
+  const brainData = (message.brainActionData as unknown) as {
     hasAction: boolean;
     replyMessage: string;
     actions: Array<{
@@ -269,8 +269,8 @@ function ActionCard({
           <ActionIcon type={action.type} />
           <span className="text-xs font-semibold">
             {action.type === 'create_todo' && t('todo')}
-            {action.type === 'create_event' && t('event')}
-            {action.type === 'share_location' && t('location')}
+            {action.type === 'create_event' && t('events')}
+            {action.type === 'share_location' && t('currentLocation')}
           </span>
         </div>
         <StatusBadge status={status} />
