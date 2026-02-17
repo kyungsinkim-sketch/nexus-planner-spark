@@ -970,14 +970,9 @@ function detectFollowUpPattern(
   }
 
   // Pattern: "~변경해줘" / "~수정해줘" / "~바꿔줘" (modification requests)
-  const modifyPattern = /(?:변경|수정|바꿔|바꾸|업데이트|취소|삭제)\s*(?:해줘|해주세요|부탁)/;
-  if (modifyPattern.test(content)) {
-    return {
-      hasAction: false,
-      replyMessage: '수정/변경 요청은 아직 지원하지 않습니다. 새 작업을 만드시려면 다음과 같이 요청해주세요:\n\n• 할 일: "민규에게 내일까지 디자인 수정 부탁"\n• 일정: "금요일 3시에 팀 미팅"',
-      actions: [],
-    };
-  }
+  // These are now handled by the LLM via update_event action type.
+  // The Korean regex parser passes them through to the LLM instead of blocking.
+  // (취소/삭제 are still not supported by regex parser — LLM handles these too)
 
   // Pattern: "누구누구" question-style (asking who/when/where)
   const questionPattern = /(?:누가|언제|어디서|몇시|어떻게)\s*(?:참석|올|가|할|하|만나)/;

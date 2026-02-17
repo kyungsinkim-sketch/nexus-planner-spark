@@ -21,7 +21,7 @@ interface CreateActionRequest {
   // From the client-side regex parser
   replyMessage: string;
   actions: {
-    type: 'create_todo' | 'create_event' | 'share_location';
+    type: 'create_todo' | 'create_event' | 'update_event' | 'share_location';
     confidence: number;
     data: Record<string, unknown>;
   }[];

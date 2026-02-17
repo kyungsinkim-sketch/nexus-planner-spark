@@ -163,6 +163,92 @@ Deno.serve(async (req) => {
         break;
       }
 
+      case 'update_event': {
+        // Find the existing event by originalTitle and update it
+        const updateData = extractedData;
+        const originalTitle = (updateData.originalTitle as string) || '';
+
+        if (!originalTitle) {
+          throw new Error('update_event requires originalTitle to find the event');
+        }
+
+        // Search for the event by title (owner's events, most recent first)
+        const { data: matchingEvents, error: searchError } = await supabase
+          .from('calendar_events')
+          .select('*')
+          .ilike('title', `%${originalTitle}%`)
+          .eq('owner_id', userId)
+          .order('created_at', { ascending: false })
+          .limit(5);
+
+        if (searchError) {
+          throw new Error(`Failed to search events: ${searchError.message}`);
+        }
+
+        // Find the best match — prefer exact title match, then most recent
+        let targetEvent = matchingEvents?.find(
+          (e: Record<string, unknown>) => (e.title as string) === originalTitle,
+        );
+        if (!targetEvent && matchingEvents && matchingEvents.length > 0) {
+          targetEvent = matchingEvents[0]; // Most recent partial match
+        }
+
+        if (!targetEvent) {
+          // Also try searching ALL events (not just owned) since RLS is relaxed
+          const { data: allEvents } = await supabase
+            .from('calendar_events')
+            .select('*')
+            .ilike('title', `%${originalTitle}%`)
+            .order('created_at', { ascending: false })
+            .limit(5);
+
+          if (allEvents && allEvents.length > 0) {
+            targetEvent = allEvents.find(
+              (e: Record<string, unknown>) => (e.title as string) === originalTitle,
+            ) || allEvents[0];
+          }
+        }
+
+        if (!targetEvent) {
+          throw new Error(`Event not found with title: "${originalTitle}"`);
+        }
+
+        // Build update object — only include fields that are provided
+        const eventUpdates: Record<string, unknown> = {};
+        if (updateData.title) eventUpdates.title = updateData.title;
+        if (updateData.startAt) eventUpdates.start_at = updateData.startAt;
+        if (updateData.endAt) eventUpdates.end_at = updateData.endAt;
+        if (updateData.location !== undefined) eventUpdates.location = updateData.location;
+        if (updateData.type) eventUpdates.type = updateData.type;
+        if (updateData.attendeeIds) {
+          const filteredIds = (updateData.attendeeIds as string[]).filter((id: string) => id !== '');
+          if (filteredIds.length > 0) eventUpdates.attendee_ids = filteredIds;
+        }
+
+        // If only startAt changed but endAt not specified, keep same duration
+        if (updateData.startAt && !updateData.endAt) {
+          const origStart = new Date(targetEvent.start_at as string).getTime();
+          const origEnd = new Date(targetEvent.end_at as string).getTime();
+          const duration = origEnd - origStart;
+          const newStart = new Date(updateData.startAt as string).getTime();
+          eventUpdates.end_at = new Date(newStart + duration).toISOString();
+        }
+
+        const { data: updatedEvent, error: updateError } = await supabase
+          .from('calendar_events')
+          .update(eventUpdates)
+          .eq('id', targetEvent.id)
+          .select()
+          .single();
+
+        if (updateError) {
+          throw new Error(`Failed to update event: ${updateError.message}`);
+        }
+
+        executedData = { eventId: updatedEvent.id, type: 'event', updated: true, ...updatedEvent };
+        break;
+      }
+
       case 'share_location': {
         // Location sharing doesn't create a DB entity — it's just surfaced in chat.
         // We mark it as executed and store the search URL.
