@@ -566,6 +566,31 @@
   background-color: color-mix(in srgb, var(--project-accent) 90%, transparent) !important;
 }
 
+/* Project accent — FullCalendar buttons */
+[style*="--project-accent"] .fc-button-primary {
+  background-color: color-mix(in srgb, var(--project-accent) 15%, transparent) !important;
+  border-color: color-mix(in srgb, var(--project-accent) 30%, transparent) !important;
+  color: var(--project-accent) !important;
+}
+[style*="--project-accent"] .fc-button-primary:hover {
+  background-color: color-mix(in srgb, var(--project-accent) 25%, transparent) !important;
+  border-color: color-mix(in srgb, var(--project-accent) 50%, transparent) !important;
+}
+[style*="--project-accent"] .fc-button-primary.fc-button-active,
+[style*="--project-accent"] .fc-button-primary:not(:disabled):active {
+  background-color: var(--project-accent) !important;
+  border-color: var(--project-accent) !important;
+  color: white !important;
+}
+[style*="--project-accent"] .fc-button-primary:focus {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--project-accent) 30%, transparent) !important;
+}
+[style*="--project-accent"] .fc-today-button:not(:disabled) {
+  background-color: var(--project-accent) !important;
+  border-color: var(--project-accent) !important;
+  color: white !important;
+}
+
 [data-widget-id="chat"] .widget-content,
 [data-widget-id="chat"] > div {
   overflow: hidden;
