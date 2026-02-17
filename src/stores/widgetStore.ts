@@ -182,7 +182,7 @@ export const useWidgetStore = create<WidgetState>()(
     }),
     {
       name: 're-be-widget-layout',
-      version: 6, // bump to force reset — brainChat in project + h:1
+      version: 7, // bump — weather split + worldClock shrink
       migrate: () => ({
         // On version mismatch, reset everything to defaults
         openTabs: [DASHBOARD_TAB],
