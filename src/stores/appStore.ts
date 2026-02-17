@@ -51,6 +51,9 @@ interface AppState {
   worldClockSettingsOpen: boolean;
   weatherSettingsOpen: boolean;
 
+  // Mock data persistence — track deleted mock event IDs across refreshes
+  deletedMockEventIds: string[];
+
   // UI State
   selectedProjectId: string | null;
   sidebarCollapsed: boolean;
@@ -175,6 +178,7 @@ export const useAppStore = create<AppState>()(
       todoCreateDialogOpen: false,
       worldClockSettingsOpen: false,
       weatherSettingsOpen: false,
+      deletedMockEventIds: [],
       selectedProjectId: null,
       sidebarCollapsed: false,
       chatPanelCollapsed: false,
@@ -553,9 +557,10 @@ export const useAppStore = create<AppState>()(
             throw error;
           }
         } else {
-          // Mock mode
+          // Mock mode — also persist the deletion so it survives refresh
           set((state) => ({
             events: state.events.filter((e) => e.id !== eventId),
+            deletedMockEventIds: [...state.deletedMockEventIds, eventId],
           }));
         }
       },
@@ -993,7 +998,15 @@ export const useAppStore = create<AppState>()(
         userWorkStatus: state.userWorkStatus,
         brainIntelligenceEnabled: state.brainIntelligenceEnabled,
         widgetSettings: state.widgetSettings,
+        deletedMockEventIds: state.deletedMockEventIds,
       }),
+      onRehydrateStorage: () => (state) => {
+        // After hydration, filter out deleted mock events so they don't reappear
+        if (state && !isSupabaseConfigured() && state.deletedMockEventIds?.length) {
+          const deletedSet = new Set(state.deletedMockEventIds);
+          state.events = state.events.filter((e) => !deletedSet.has(e.id));
+        }
+      },
     }
   )
 );

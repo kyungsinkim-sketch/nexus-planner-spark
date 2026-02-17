@@ -182,6 +182,9 @@ export function WidgetGrid({ context, projectKeyColor }: WidgetGridProps) {
   // Frameless widgets: rendered without WidgetContainer, just glass-widget + minimal drag handle
   const isFramelessWidget = (widgetType: string) => widgetType === 'chat' || widgetType === 'calendar' || widgetType === 'brainChat';
 
+  // Barless widgets: no title bar at all, hover-reveal settings/remove buttons in top-right corner
+  const isBarlessWidget = (widgetType: string) => widgetType === 'worldClock' || widgetType === 'weather';
+
   // Inline style to kill transitions — applied to every grid item to guarantee
   // no slide-in animation regardless of CSS load order
   const noTransitionStyle: React.CSSProperties = { transition: 'none' };
@@ -270,6 +273,41 @@ export function WidgetGrid({ context, projectKeyColor }: WidgetGridProps) {
                     onMouseDown={() => setActiveWidgetId(item.i)}
                   >
                     <WidgetComponent context={context} />
+                  </div>
+                ) : isBarlessWidget(widgetType) ? (
+                  // Barless: no title bar, hover-reveal settings/remove buttons at top-right
+                  <div
+                    className="glass-widget h-full widget-drag-handle group/barless relative"
+                    data-widget-id={item.i}
+                    style={activeGlassStyle}
+                    onMouseDown={() => setActiveWidgetId(item.i)}
+                  >
+                    {/* Hover-reveal action buttons */}
+                    <div className="absolute top-1.5 right-1.5 flex items-center gap-0.5 z-20
+                                    opacity-0 group-hover/barless:opacity-100 transition-opacity duration-200">
+                      {getHeaderActions(widgetType)?.map((action, idx) => (
+                        <button
+                          key={idx}
+                          onClick={(e) => { e.stopPropagation(); action.onClick(); }}
+                          className="p-1 rounded-md bg-background/80 backdrop-blur-sm border border-border/50
+                                     hover:bg-background shadow-sm transition-colors"
+                          title={action.title}
+                        >
+                          <action.icon className="w-3 h-3 text-foreground/70" />
+                        </button>
+                      ))}
+                      <button
+                        onClick={(e) => { e.stopPropagation(); removeWidget(context.type, widgetType); }}
+                        className="p-1 rounded-md bg-background/80 backdrop-blur-sm border border-border/50
+                                   hover:bg-destructive/20 shadow-sm transition-colors"
+                        title="Remove widget"
+                      >
+                        <X className="w-3 h-3 text-foreground/70" />
+                      </button>
+                    </div>
+                    <div className="h-full overflow-hidden">
+                      <WidgetComponent context={context} />
+                    </div>
                   </div>
                 ) : isFramelessWidget(widgetType) ? (
                   // Frameless: no WidgetContainer, direct embed with minimal drag handle

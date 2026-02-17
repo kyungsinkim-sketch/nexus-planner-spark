@@ -163,7 +163,7 @@ export function MentionTextarea({
   }, [value, handleAutoResize]);
 
   return (
-    <div className="relative flex-1 min-w-0">
+    <div className={`relative min-w-0 ${className}`}>
       <textarea
         ref={textareaRef}
         value={value}
@@ -171,7 +171,9 @@ export function MentionTextarea({
         onKeyDown={handleKeyDownInternal}
         placeholder={placeholder}
         rows={rows}
-        className={className}
+        className="w-full px-3 py-2 text-sm rounded-md border border-input bg-background
+                   placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1
+                   focus-visible:ring-ring resize-none overflow-hidden leading-normal"
         style={{ ...style, maxHeight: '96px' }}
         autoFocus={autoFocus}
       />

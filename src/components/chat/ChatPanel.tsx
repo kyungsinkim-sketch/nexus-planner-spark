@@ -77,7 +77,7 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
     getUserById, addMessage,
     addFileGroup, addFile, getFileGroupsByProject,
     brainIntelligenceEnabled,
-    loadEvents, loadTodos, addTodo,
+    loadEvents, loadTodos, addTodo, addEvent, updateEvent,
   } = useAppStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTab, setSelectedTab] = useState<'projects' | 'direct'>('projects');
@@ -374,7 +374,7 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
             }
           } catch (execErr) {
             console.error('[Brain] Auto-execute failed for action:', actionId, execErr);
-            // Mock mode fallback: create todo/event locally from action's extracted data
+            // Mock mode fallback: create/update todo/event locally from action's extracted data
             if (!isSupabaseConfigured()) {
               const act = action as Record<string, unknown>;
               const actionType = act.action_type || act.actionType;
@@ -388,6 +388,47 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
                   projectId: (extracted.projectId as string) || selectedChat?.id,
                 });
                 console.log('[Brain] Mock fallback: todo created locally');
+              }
+              if (actionType === 'create_event' && extracted) {
+                await addEvent({
+                  title: (extracted.title as string) || 'Untitled Event',
+                  startAt: (extracted.startAt as string) || (extracted.start as string) || new Date().toISOString(),
+                  endAt: (extracted.endAt as string) || (extracted.end as string) || new Date().toISOString(),
+                  type: (extracted.type as 'MEETING' | 'TASK' | 'DEADLINE') || 'MEETING',
+                  projectId: (extracted.projectId as string) || selectedChat?.id,
+                  ownerId: currentUser.id,
+                  source: 'PAULUS',
+                });
+                console.log('[Brain] Mock fallback: event created locally');
+              }
+              if (actionType === 'update_event' && extracted) {
+                const eventId = extracted.eventId as string;
+                if (eventId) {
+                  const updates: Record<string, unknown> = {};
+                  if (extracted.title) updates.title = extracted.title;
+                  if (extracted.startAt || extracted.start) updates.startAt = extracted.startAt || extracted.start;
+                  if (extracted.endAt || extracted.end) updates.endAt = extracted.endAt || extracted.end;
+                  if (extracted.type) updates.type = extracted.type;
+                  await updateEvent(eventId, updates);
+                  console.log('[Brain] Mock fallback: event updated locally');
+                } else {
+                  // No eventId — try to find event by title and update it
+                  const { events } = useAppStore.getState();
+                  const targetTitle = (extracted.title as string) || (extracted.originalTitle as string);
+                  if (targetTitle) {
+                    const matchEvent = events.find(e =>
+                      e.title.includes(targetTitle) || targetTitle.includes(e.title)
+                    );
+                    if (matchEvent) {
+                      const updates: Record<string, unknown> = {};
+                      if (extracted.newTitle) updates.title = extracted.newTitle;
+                      if (extracted.startAt || extracted.start || extracted.newStartAt) updates.startAt = extracted.newStartAt || extracted.startAt || extracted.start;
+                      if (extracted.endAt || extracted.end || extracted.newEndAt) updates.endAt = extracted.newEndAt || extracted.endAt || extracted.end;
+                      await updateEvent(matchEvent.id, updates);
+                      console.log('[Brain] Mock fallback: event updated by title match');
+                    }
+                  }
+                }
               }
             }
           }
@@ -419,18 +460,21 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
       console.log('[Brain] Execute result:', JSON.stringify(result));
 
       const dataType = result.executedData?.type;
+      const isEventAction = dataType === 'event' || dataType === 'update_event';
       toast.success(
         dataType === 'todo'
           ? 'Todo created successfully!'
           : dataType === 'event'
             ? 'Event created successfully!'
-            : 'Action completed!',
+            : dataType === 'update_event'
+              ? 'Event updated successfully!'
+              : 'Action completed!',
       );
 
-      // Force immediate refresh + retries for the created entity
+      // Force immediate refresh + retries for the created/updated entity
       // The edge function uses service_role key so the insert is instant
-      if (dataType === 'event' || dataType === 'todo') {
-        const loadFn = dataType === 'event' ? loadEvents : loadTodos;
+      if (isEventAction || dataType === 'todo') {
+        const loadFn = isEventAction ? loadEvents : loadTodos;
         // Immediate first attempt
         try {
           await loadFn();
@@ -1139,9 +1183,7 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
                   }
                 }}
                 rows={1}
-                className="flex-1 min-w-0 px-3 py-2 text-sm rounded-md border border-input bg-background
-                           placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1
-                           focus-visible:ring-ring resize-none overflow-hidden leading-normal"
+                className="flex-1"
                 mentionableUserIds={
                   selectedChat?.type === 'project'
                     ? projects.find(p => p.id === selectedChat.id)?.teamMemberIds
@@ -1150,7 +1192,7 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
               />
               <Button
                 size="icon"
-                className="w-8 h-8"
+                className="shrink-0 w-8 h-8"
                 onClick={() => handleSendMessage(false)}
                 disabled={!newMessage.trim()}
                 aria-label="Send message"

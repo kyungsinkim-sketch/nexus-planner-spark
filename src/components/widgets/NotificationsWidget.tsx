@@ -7,7 +7,8 @@
 
 import { useMemo, useState, useCallback } from 'react';
 import { useAppStore } from '@/stores/appStore';
-import { Bell, MessageSquare, Calendar, Check } from 'lucide-react';
+import { Bell, MessageSquare, Calendar, Check, AtSign } from 'lucide-react';
+import { BRAIN_BOT_USER_ID } from '@/types/core';
 import type { WidgetDataContext } from '@/types/widget';
 
 const DISMISSED_KEY = 'rebe-notif-dismissed';
@@ -47,10 +48,13 @@ function NotificationsWidget({ context }: { context: WidgetDataContext }) {
     }[] = [];
 
     // Recent messages from OTHER users (last 15, reversed = newest first)
+    // Exclude Brain bot messages — only show human @mention messages
     const recentMsgs = messages
       .filter((m) => {
         // Exclude own messages
         if (currentUser && m.userId === currentUser.id) return false;
+        // Exclude Brain AI bot messages
+        if (m.userId === BRAIN_BOT_USER_ID) return false;
         if (context.type === 'project' && context.projectId) {
           return m.projectId === context.projectId;
         }
@@ -59,13 +63,21 @@ function NotificationsWidget({ context }: { context: WidgetDataContext }) {
       .slice(-15)
       .reverse();
 
+    // Filter to only @mention messages that mention the current user
+    const mentionPattern = currentUser ? new RegExp(`@${currentUser.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`) : null;
+
     recentMsgs.forEach((m) => {
       const id = `msg-${m.id}`;
       if (dismissedIds.has(id)) return;
       const sender = getUserById(m.userId);
+      const isMention = mentionPattern ? mentionPattern.test(m.content) : false;
+
+      // Only show @mention messages in notifications (not all messages)
+      if (!isMention) return;
+
       items.push({
         id,
-        icon: MessageSquare,
+        icon: isMention ? AtSign : MessageSquare,
         text: m.content.slice(0, 80),
         time: m.createdAt ? new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '',
         type: 'message',
