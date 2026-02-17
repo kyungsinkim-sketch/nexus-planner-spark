@@ -193,7 +193,7 @@ export function WidgetGrid({ context, projectKeyColor }: WidgetGridProps) {
   const isFramelessWidget = (widgetType: string) => widgetType === 'chat' || widgetType === 'calendar' || widgetType === 'brainChat';
 
   // Barless widgets: no title bar at all, hover-reveal settings/remove buttons in top-right corner
-  const isBarlessWidget = (widgetType: string) => widgetType === 'worldClock' || widgetType === 'weather' || widgetType === 'todayWeather' || widgetType === 'activityChart' || widgetType === 'progressChart' || widgetType === 'health';
+  const isBarlessWidget = (widgetType: string) => widgetType === 'worldClock' || widgetType === 'weather' || widgetType === 'todayWeather' || widgetType === 'activityChart' || widgetType === 'progressChart' || widgetType === 'health' || widgetType === 'budget';
 
   // Inline style to kill transitions — applied to every grid item to guarantee
   // no slide-in animation regardless of CSS load order
