@@ -123,9 +123,12 @@ const mockBudgetData: ProjectBudget = {
   personalExpenses: [],
 };
 
+type BudgetSection = 'contract' | 'target' | 'actual' | 'profit';
+
 export function BudgetTab({ projectId }: BudgetTabProps) {
   const { t, language } = useTranslation();
   const [budget, setBudget] = useState<ProjectBudget>(mockBudgetData);
+  const [activeSection, setActiveSection] = useState<BudgetSection>('contract');
   const [expenseTab, setExpenseTab] = useState<'tax_invoice' | 'withholding' | 'corporate_card' | 'corporate_cash' | 'personal'>('tax_invoice');
 
   // Editable contract amount states
@@ -440,21 +443,22 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
 
   return (
     <div className="space-y-6">
-      {/* Summary Cards */}
+      {/* Summary Cards — Clickable Navigation */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {/* Total Contract Amount - Scroll to budget table */}
+        {/* Total Contract Amount → 입금 현황 */}
         <Card
-          className="p-5 shadow-card cursor-pointer hover:shadow-md transition-shadow hover:border-primary/30"
-          onClick={() => {
-            const budgetTable = document.getElementById('budget-plan-table');
-            if (budgetTable) {
-              budgetTable.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }
-          }}
+          className={`p-5 shadow-card cursor-pointer hover:shadow-md transition-all ${
+            activeSection === 'contract'
+              ? 'ring-2 ring-primary border-primary/50 shadow-lg'
+              : 'hover:border-primary/30'
+          }`}
+          onClick={() => setActiveSection('contract')}
         >
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-              <Banknote className="w-5 h-5 text-primary" />
+            <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+              activeSection === 'contract' ? 'bg-primary text-white' : 'bg-primary/10'
+            }`}>
+              <Banknote className={`w-5 h-5 ${activeSection === 'contract' ? '' : 'text-primary'}`} />
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm text-muted-foreground">{t('totalContractAmountLabel')}</p>
@@ -466,11 +470,20 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
           </div>
         </Card>
 
-        {/* Target Expense */}
-        <Card className="p-5 shadow-card">
+        {/* Target Expense → 예산 계획표 */}
+        <Card
+          className={`p-5 shadow-card cursor-pointer hover:shadow-md transition-all ${
+            activeSection === 'target'
+              ? 'ring-2 ring-blue-500 border-blue-500/50 shadow-lg'
+              : 'hover:border-blue-500/30'
+          }`}
+          onClick={() => setActiveSection('target')}
+        >
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
-              <TrendingDown className="w-5 h-5 text-blue-600" />
+            <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+              activeSection === 'target' ? 'bg-blue-500 text-white' : 'bg-blue-500/10'
+            }`}>
+              <TrendingDown className={`w-5 h-5 ${activeSection === 'target' ? '' : 'text-blue-600'}`} />
             </div>
             <div>
               <p className="text-sm text-muted-foreground">{t('targetExpense')}</p>
@@ -484,11 +497,20 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
           </div>
         </Card>
 
-        {/* Actual Expense */}
-        <Card className="p-5 shadow-card">
+        {/* Actual Expense → 세금계산서/원청징수/법인카드/법인현금/개인지출 */}
+        <Card
+          className={`p-5 shadow-card cursor-pointer hover:shadow-md transition-all ${
+            activeSection === 'actual'
+              ? 'ring-2 ring-orange-500 border-orange-500/50 shadow-lg'
+              : 'hover:border-orange-500/30'
+          }`}
+          onClick={() => setActiveSection('actual')}
+        >
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-orange-500/10 flex items-center justify-center">
-              <Receipt className="w-5 h-5 text-orange-600" />
+            <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+              activeSection === 'actual' ? 'bg-orange-500 text-white' : 'bg-orange-500/10'
+            }`}>
+              <Receipt className={`w-5 h-5 ${activeSection === 'actual' ? '' : 'text-orange-600'}`} />
             </div>
             <div>
               <p className="text-sm text-muted-foreground">{t('actualExpense')}</p>
@@ -502,10 +524,20 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
           </div>
         </Card>
 
-        <Card className="p-5 shadow-card">
+        {/* Actual Profit — summary only */}
+        <Card
+          className={`p-5 shadow-card cursor-pointer hover:shadow-md transition-all ${
+            activeSection === 'profit'
+              ? 'ring-2 ring-emerald-500 border-emerald-500/50 shadow-lg'
+              : 'hover:border-emerald-500/30'
+          }`}
+          onClick={() => setActiveSection('profit')}
+        >
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-emerald-500/10 flex items-center justify-center">
-              <TrendingUp className="w-5 h-5 text-emerald-600" />
+            <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+              activeSection === 'profit' ? 'bg-emerald-500 text-white' : 'bg-emerald-500/10'
+            }`}>
+              <TrendingUp className={`w-5 h-5 ${activeSection === 'profit' ? '' : 'text-emerald-600'}`} />
             </div>
             <div>
               <p className="text-sm text-muted-foreground">{t('actualProfit')}</p>
@@ -520,7 +552,7 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
         </Card>
       </div>
 
-      {/* Budget Progress */}
+      {/* Budget Progress — Always visible */}
       <Card className="p-6 shadow-card">
         <div className="flex items-center justify-between mb-4">
           <div>
@@ -543,7 +575,144 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
         </div>
       </Card>
 
-      {/* Budget Plan Section - Removed duplicate tabs */}
+      {/* ====== SECTION: 입금 현황 (Payment Schedules) — shown when 총 계약금액 is clicked ====== */}
+      {activeSection === 'contract' && (
+        <Card className="p-6 shadow-card">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-semibold text-foreground">{t('depositStatusTitle')}</h3>
+          </div>
+          <div className="space-y-3">
+            {paymentSchedules.map((schedule) => (
+              editingPaymentId === schedule.id ? (
+                <div key={schedule.id} className="flex items-center gap-3 py-2 px-3 bg-blue-50 rounded-lg">
+                  <Input
+                    value={schedule.installment}
+                    onChange={(e) => {
+                      setBudget(prev => ({
+                        ...prev,
+                        paymentSchedules: prev.paymentSchedules.map(p => p.id === schedule.id ? { ...p, installment: e.target.value } : p),
+                      }));
+                    }}
+                    className="h-8 w-[120px]"
+                    placeholder={t('installment')}
+                  />
+                  <Input
+                    type="date"
+                    value={schedule.expectedDate}
+                    onChange={(e) => {
+                      setBudget(prev => ({
+                        ...prev,
+                        paymentSchedules: prev.paymentSchedules.map(p => p.id === schedule.id ? { ...p, expectedDate: e.target.value } : p),
+                      }));
+                    }}
+                    className="h-8 w-[150px]"
+                  />
+                  <div className="flex-1">
+                    <Input
+                      value={schedule.expectedAmount.toLocaleString('ko-KR')}
+                      onChange={(e) => {
+                        const value = parseCurrency(e.target.value);
+                        setBudget(prev => ({
+                          ...prev,
+                          paymentSchedules: prev.paymentSchedules.map(p => p.id === schedule.id ? { ...p, expectedAmount: value } : p),
+                        }));
+                      }}
+                      className="h-8 text-right"
+                      placeholder={t('expectedAmount')}
+                    />
+                  </div>
+                  <div className="flex gap-1">
+                    <Button size="icon" variant="ghost" className="h-7 w-7 text-emerald-600" onClick={() => handleSavePayment(schedule)}>
+                      <Check className="w-4 h-4" />
+                    </Button>
+                    <Button size="icon" variant="ghost" className="h-7 w-7 text-muted-foreground" onClick={() => setEditingPaymentId(null)}>
+                      <X className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div
+                  key={schedule.id}
+                  className="flex items-center justify-between py-2 border-b last:border-b-0 hover:bg-muted/30 px-2 -mx-2 rounded cursor-pointer group"
+                  onClick={() => setEditingPaymentId(schedule.id)}
+                >
+                  <div className="flex items-center gap-3">
+                    <Badge variant={schedule.expectedAmount > 0 ? 'default' : 'outline'}>
+                      {schedule.installment}
+                    </Badge>
+                    <span className="text-sm text-muted-foreground">
+                      {t('expectedDate')}: {schedule.expectedDate || t('undetermined')}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <div className="text-right">
+                      <p className="font-medium">{formatCurrency(schedule.expectedAmount)}</p>
+                    </div>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-7 w-7 text-destructive opacity-0 group-hover:opacity-100"
+                      onClick={(e) => { e.stopPropagation(); handleDeletePayment(schedule.id); }}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+              )
+            ))}
+
+            {/* Add New Payment Row */}
+            {isAddingPayment ? (
+              <div className="flex items-center gap-3 py-2 px-3 bg-emerald-50 rounded-lg">
+                <Input
+                  value={tempPayment.installment || ''}
+                  onChange={(e) => setTempPayment(prev => ({ ...prev, installment: e.target.value }))}
+                  className="h-8 w-[120px]"
+                  placeholder={`${paymentSchedules.length + 1}${t('installmentSuffix')}`}
+                />
+                <Input
+                  type="date"
+                  value={tempPayment.expectedDate || ''}
+                  onChange={(e) => setTempPayment(prev => ({ ...prev, expectedDate: e.target.value }))}
+                  className="h-8 w-[150px]"
+                />
+                <div className="flex-1">
+                  <Input
+                    value={(tempPayment.expectedAmount || 0).toLocaleString('ko-KR')}
+                    onChange={(e) => setTempPayment(prev => ({ ...prev, expectedAmount: parseCurrency(e.target.value) }))}
+                    className="h-8 text-right"
+                    placeholder={t('expectedAmount')}
+                  />
+                </div>
+                <div className="flex gap-1">
+                  <Button size="icon" variant="ghost" className="h-7 w-7 text-emerald-600" onClick={handleAddPayment}>
+                    <Check className="w-4 h-4" />
+                  </Button>
+                  <Button size="icon" variant="ghost" className="h-7 w-7 text-muted-foreground" onClick={() => { setIsAddingPayment(false); setTempPayment({}); }}>
+                    <X className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <button
+                className="w-full py-2 text-center text-muted-foreground hover:bg-emerald-50 rounded border border-dashed"
+                onClick={() => setIsAddingPayment(true)}
+              >
+                <Plus className="w-4 h-4 inline mr-2" />
+                {t('addPaymentItem')}
+              </button>
+            )}
+
+            <div className="flex items-center justify-between pt-2 font-semibold border-t">
+              <span>{t('totalExpectedAmount')}</span>
+              <span>{formatCurrency(paymentSchedules.reduce((sum, p) => sum + p.expectedAmount, 0))}</span>
+            </div>
+          </div>
+        </Card>
+      )}
+
+      {/* ====== SECTION: 예산 계획표 (Budget Plan Table) — shown when 목표지출비용 is clicked ====== */}
+      {activeSection === 'target' && (
       <Card className="shadow-card" id="budget-plan-table">
         <div className="p-4 border-b flex items-center justify-between">
           <div>
@@ -798,8 +967,10 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
           </Table>
         </div>
       </Card>
+      )}
 
-      {/* Actual Expense Section */}
+      {/* ====== SECTION: 실제지출 (Expense Tabs) — shown when 실제지출 is clicked ====== */}
+      {activeSection === 'actual' && (
       <div className="space-y-4">
         <Tabs value={expenseTab} onValueChange={(val) => setExpenseTab(val as typeof expenseTab)}>
           <div className="flex items-center justify-between">
@@ -1535,140 +1706,34 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
           </TabsContent>
         </Tabs>
       </div>
+      )}
 
-      {/* Payment Schedule Summary */}
-      <Card className="p-6 shadow-card">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="font-semibold text-foreground">{t('depositStatusTitle')}</h3>
-        </div>
-        <div className="space-y-3">
-          {paymentSchedules.map((schedule) => (
-            editingPaymentId === schedule.id ? (
-              <div key={schedule.id} className="flex items-center gap-3 py-2 px-3 bg-blue-50 rounded-lg">
-                <Input
-                  value={schedule.installment}
-                  onChange={(e) => {
-                    setBudget(prev => ({
-                      ...prev,
-                      paymentSchedules: prev.paymentSchedules.map(p => p.id === schedule.id ? { ...p, installment: e.target.value } : p),
-                    }));
-                  }}
-                  className="h-8 w-[120px]"
-                  placeholder={t('installment')}
-                />
-                <Input
-                  type="date"
-                  value={schedule.expectedDate}
-                  onChange={(e) => {
-                    setBudget(prev => ({
-                      ...prev,
-                      paymentSchedules: prev.paymentSchedules.map(p => p.id === schedule.id ? { ...p, expectedDate: e.target.value } : p),
-                    }));
-                  }}
-                  className="h-8 w-[150px]"
-                />
-                <div className="flex-1">
-                  <Input
-                    value={schedule.expectedAmount.toLocaleString('ko-KR')}
-                    onChange={(e) => {
-                      const value = parseCurrency(e.target.value);
-                      setBudget(prev => ({
-                        ...prev,
-                        paymentSchedules: prev.paymentSchedules.map(p => p.id === schedule.id ? { ...p, expectedAmount: value } : p),
-                      }));
-                    }}
-                    className="h-8 text-right"
-                    placeholder={t('expectedAmount')}
-                  />
-                </div>
-                <div className="flex gap-1">
-                  <Button size="icon" variant="ghost" className="h-7 w-7 text-emerald-600" onClick={() => handleSavePayment(schedule)}>
-                    <Check className="w-4 h-4" />
-                  </Button>
-                  <Button size="icon" variant="ghost" className="h-7 w-7 text-muted-foreground" onClick={() => setEditingPaymentId(null)}>
-                    <X className="w-4 h-4" />
-                  </Button>
-                </div>
+      {/* ====== SECTION: 실제수익 (Profit Summary) — shown when 실제수익 is clicked ====== */}
+      {activeSection === 'profit' && (
+        <Card className="p-6 shadow-card">
+          <div className="space-y-4">
+            <h3 className="font-semibold text-foreground">{t('actualProfit')} {t('summary')}</h3>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="p-4 rounded-lg bg-muted/30">
+                <p className="text-sm text-muted-foreground mb-1">{t('totalContractAmountLabel')}</p>
+                <p className="text-lg font-semibold">{formatCurrency(summary.totalWithVat)}</p>
               </div>
-            ) : (
-              <div
-                key={schedule.id}
-                className="flex items-center justify-between py-2 border-b last:border-b-0 hover:bg-muted/30 px-2 -mx-2 rounded cursor-pointer group"
-                onClick={() => setEditingPaymentId(schedule.id)}
-              >
-                <div className="flex items-center gap-3">
-                  <Badge variant={schedule.expectedAmount > 0 ? 'default' : 'outline'}>
-                    {schedule.installment}
-                  </Badge>
-                  <span className="text-sm text-muted-foreground">
-                    {t('expectedDate')}: {schedule.expectedDate || t('undetermined')}
-                  </span>
-                </div>
-                <div className="flex items-center gap-4">
-                  <div className="text-right">
-                    <p className="font-medium">{formatCurrency(schedule.expectedAmount)}</p>
-                  </div>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className="h-7 w-7 text-destructive opacity-0 group-hover:opacity-100"
-                    onClick={(e) => { e.stopPropagation(); handleDeletePayment(schedule.id); }}
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                </div>
+              <div className="p-4 rounded-lg bg-muted/30">
+                <p className="text-sm text-muted-foreground mb-1">{t('actualExpense')}</p>
+                <p className="text-lg font-semibold">{formatCurrency(summary.actualExpenseWithVat)}</p>
               </div>
-            )
-          ))}
-
-          {/* Add New Payment Row */}
-          {isAddingPayment ? (
-            <div className="flex items-center gap-3 py-2 px-3 bg-emerald-50 rounded-lg">
-              <Input
-                value={tempPayment.installment || ''}
-                onChange={(e) => setTempPayment(prev => ({ ...prev, installment: e.target.value }))}
-                className="h-8 w-[120px]"
-                placeholder={`${paymentSchedules.length + 1}${t('installmentSuffix')}`}
-              />
-              <Input
-                type="date"
-                value={tempPayment.expectedDate || ''}
-                onChange={(e) => setTempPayment(prev => ({ ...prev, expectedDate: e.target.value }))}
-                className="h-8 w-[150px]"
-              />
-              <div className="flex-1">
-                <Input
-                  value={(tempPayment.expectedAmount || 0).toLocaleString('ko-KR')}
-                  onChange={(e) => setTempPayment(prev => ({ ...prev, expectedAmount: parseCurrency(e.target.value) }))}
-                  className="h-8 text-right"
-                  placeholder={t('expectedAmount')}
-                />
+              <div className="p-4 rounded-lg bg-emerald-50 dark:bg-emerald-950/30">
+                <p className="text-sm text-muted-foreground mb-1">{t('actualProfit')} (VAT {t('vatIncludedClickBudget')})</p>
+                <p className="text-2xl font-bold text-emerald-600">{formatCurrency(summary.actualProfitWithVat)}</p>
               </div>
-              <div className="flex gap-1">
-                <Button size="icon" variant="ghost" className="h-7 w-7 text-emerald-600" onClick={handleAddPayment}>
-                  <Check className="w-4 h-4" />
-                </Button>
-                <Button size="icon" variant="ghost" className="h-7 w-7 text-muted-foreground" onClick={() => { setIsAddingPayment(false); setTempPayment({}); }}>
-                  <X className="w-4 h-4" />
-                </Button>
+              <div className="p-4 rounded-lg bg-emerald-50 dark:bg-emerald-950/30">
+                <p className="text-sm text-muted-foreground mb-1">{t('profitRateLabel')}</p>
+                <p className="text-2xl font-bold text-emerald-600">{profitRate}%</p>
               </div>
             </div>
-          ) : (
-            <button
-              className="w-full py-2 text-center text-muted-foreground hover:bg-emerald-50 rounded border border-dashed"
-              onClick={() => setIsAddingPayment(true)}
-            >
-              <Plus className="w-4 h-4 inline mr-2" />
-              {t('addPaymentItem')}
-            </button>
-          )}
-
-          <div className="flex items-center justify-between pt-2 font-semibold border-t">
-            <span>{t('totalExpectedAmount')}</span>
-            <span>{formatCurrency(paymentSchedules.reduce((sum, p) => sum + p.expectedAmount, 0))}</span>
           </div>
-        </div>
-      </Card>
+        </Card>
+      )}
     </div>
   );
 }

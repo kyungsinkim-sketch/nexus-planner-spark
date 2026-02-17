@@ -31,29 +31,29 @@ function BudgetWidget({ context }: { context: WidgetDataContext }) {
     new Intl.NumberFormat('ko-KR', { maximumFractionDigits: 0 }).format(v);
 
   return (
-    <div className="h-full widget-dark-card progress-gradient-bg p-3 flex flex-col justify-between">
+    <div className="h-full widget-dark-card progress-gradient-bg p-3 flex flex-col justify-center">
       {/* Summary row */}
-      <div className="flex items-center justify-between flex-1 min-h-0">
+      <div className="flex items-center justify-between">
         <div>
           <p className="text-[10px] text-white/50 mb-0.5">전체 예산</p>
           <p className="text-lg font-bold text-white tabular-nums leading-tight">{fmt(totalBudget)}원</p>
         </div>
-        <div className="text-right">
-          <p className="text-[10px] text-white/50 mb-0.5">집행률</p>
-          <p className="text-lg font-bold text-white tabular-nums leading-tight">{usagePercent}%</p>
+        <div className="flex items-center gap-2">
+          <div className="text-right">
+            <p className="text-[10px] text-white/50 mb-0.5">집행률</p>
+            <p className="text-lg font-bold text-white tabular-nums leading-tight">{usagePercent}%</p>
+          </div>
+          {/* Small budget management button */}
+          <button
+            onClick={(e) => { e.stopPropagation(); navigate(`/projects/${project.id}/budget`); }}
+            className="p-1.5 rounded-lg bg-white/15 hover:bg-white/25 text-white/70 hover:text-white
+                       transition-colors backdrop-blur-sm border border-white/10 shrink-0"
+            title={t('budgetManagement')}
+          >
+            <DollarSign className="w-3.5 h-3.5" />
+          </button>
         </div>
       </div>
-
-      {/* Budget management button */}
-      <button
-        onClick={() => navigate(`/projects/${project.id}/budget`)}
-        className="mt-2 w-full flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg
-                   bg-white/15 hover:bg-white/25 text-white text-xs font-medium
-                   transition-colors backdrop-blur-sm border border-white/10"
-      >
-        <DollarSign className="w-3.5 h-3.5" />
-        {t('budgetManagement')}
-      </button>
     </div>
   );
 }
