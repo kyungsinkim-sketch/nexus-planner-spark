@@ -86,9 +86,9 @@ export function TabBar() {
                 className={cn(
                   'flex items-center gap-1.5 px-3 text-xs font-medium transition-all min-w-0 max-w-[180px] shrink-0 relative',
                   isActive && !isDashboard
-                    ? 'text-white rounded-b-lg rounded-t-none'
+                    ? 'text-white rounded-b-[var(--widget-radius)] rounded-t-none'
                     : isActive && isDashboard
-                      ? 'text-foreground rounded-b-lg rounded-t-none'
+                      ? 'text-foreground rounded-b-[var(--widget-radius)] rounded-t-none'
                       : 'text-muted-foreground hover:bg-white/8 hover:text-foreground rounded-lg',
                 )}
                 style={
