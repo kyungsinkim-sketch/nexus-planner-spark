@@ -1,24 +1,27 @@
 /**
  * FilesWidget — Flat file list with type icons and descriptions.
- * Double-click opens a preview popup with download/delete/comment actions.
+ * Inline delete button per row.
+ * Click opens preview popup with threaded comments (user-attributed).
  */
 
-import { useMemo, useState, useCallback, useEffect } from 'react';
+import { useMemo, useState, useCallback, useEffect, useRef } from 'react';
 import { useAppStore } from '@/stores/appStore';
 import { getFileDownloadUrl } from '@/services/fileService';
 import { isSupabaseConfigured } from '@/lib/supabase';
+import { useTranslation } from '@/hooks/useTranslation';
 import {
   FileText, Image, FileSpreadsheet, Presentation, Film,
   FileArchive, File, Music, Code, Download, Trash2,
-  MessageSquare, X, Eye,
+  MessageSquare, X, Eye, Send,
 } from 'lucide-react';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
-import type { FileItem } from '@/types/core';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { toast } from 'sonner';
+import type { FileItem, FileComment } from '@/types/core';
 import type { WidgetDataContext } from '@/types/widget';
 
 function getFileInfo(fileName: string, fileType?: string) {
@@ -44,26 +47,19 @@ function getFileInfo(fileName: string, fileType?: string) {
   return { icon: File, label: ext.toUpperCase() || 'File', color: 'text-muted-foreground', previewable: false };
 }
 
-/** Check if file is an image type that can show a thumbnail */
 function isImageFile(fileName: string, fileType?: string) {
   const ext = fileName.split('.').pop()?.toLowerCase() || '';
   return /^(jpg|jpeg|png|gif|webp|svg|bmp|ico|tiff)$/.test(ext) || fileType?.startsWith('image');
 }
 
-/** Check if file is a PDF */
 function isPdfFile(fileName: string, fileType?: string) {
   const ext = fileName.split('.').pop()?.toLowerCase() || '';
   return ext === 'pdf' || fileType === 'application/pdf';
 }
 
-/** Get the public URL for a stored file (for thumbnails) */
 function getFileUrl(storagePath?: string): string | null {
   if (!storagePath || !isSupabaseConfigured()) return null;
-  try {
-    return getFileDownloadUrl(storagePath);
-  } catch {
-    return null;
-  }
+  try { return getFileDownloadUrl(storagePath); } catch { return null; }
 }
 
 function formatSize(size?: string) {
@@ -77,9 +73,11 @@ function formatSize(size?: string) {
 }
 
 function FilesWidget({ context }: { context: WidgetDataContext }) {
-  const { fileGroups, files, loadFileGroups } = useAppStore();
+  const { fileGroups, files, loadFileGroups, currentUser, users } = useAppStore();
+  const { t } = useTranslation();
   const [selectedFile, setSelectedFile] = useState<FileItem | null>(null);
-  const [comment, setComment] = useState('');
+  const [newComment, setNewComment] = useState('');
+  const commentsEndRef = useRef<HTMLDivElement>(null);
 
   // Load file groups on mount / when project context changes
   useEffect(() => {
@@ -96,9 +94,7 @@ function FilesWidget({ context }: { context: WidgetDataContext }) {
     );
     return files
       .filter((f) => {
-        // Include files in project's file groups
         if (f.fileGroupId && projectGroupIds.has(f.fileGroupId)) return true;
-        // Include chat-uploaded files without a group (loaded by getFilesByProject)
         if (!f.fileGroupId && f.source === 'CHAT') return true;
         return false;
       })
@@ -108,33 +104,51 @@ function FilesWidget({ context }: { context: WidgetDataContext }) {
 
   const handleFileClick = useCallback((file: FileItem) => {
     setSelectedFile(file);
-    setComment(file.comment || '');
+    setNewComment('');
   }, []);
 
+  const getUserById = useCallback((userId: string) => {
+    return users.find(u => u.id === userId);
+  }, [users]);
+
   const handleAddComment = useCallback(() => {
-    if (!selectedFile || !comment.trim()) return;
-    // Update file comment in store
+    if (!selectedFile || !newComment.trim() || !currentUser) return;
     const { files: allStoreFiles } = useAppStore.getState();
     const idx = allStoreFiles.findIndex((f) => f.id === selectedFile.id);
-    if (idx !== -1) {
-      const updated = [...allStoreFiles];
-      updated[idx] = { ...updated[idx], comment: comment.trim() };
-      useAppStore.setState({ files: updated });
-      setSelectedFile({ ...selectedFile, comment: comment.trim() });
-    }
-  }, [selectedFile, comment]);
+    if (idx === -1) return;
 
-  const handleDelete = useCallback(() => {
-    if (!selectedFile) return;
+    const comment: FileComment = {
+      id: `fc_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+      userId: currentUser.id,
+      content: newComment.trim(),
+      createdAt: new Date().toISOString(),
+    };
+    const updated = [...allStoreFiles];
+    const existingComments = updated[idx].comments || [];
+    updated[idx] = { ...updated[idx], comments: [...existingComments, comment] };
+    useAppStore.setState({ files: updated });
+    setSelectedFile(updated[idx]);
+    setNewComment('');
+    toast.success(t('commentAdded'));
+
+    // Scroll to bottom of comments
+    setTimeout(() => commentsEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 50);
+
+    // TODO: Notify project participants when notification system is available
+  }, [selectedFile, newComment, currentUser, t, context]);
+
+  const handleDeleteFile = useCallback((fileId: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
     const { files: allStoreFiles } = useAppStore.getState();
-    useAppStore.setState({ files: allStoreFiles.filter((f) => f.id !== selectedFile.id) });
-    setSelectedFile(null);
-  }, [selectedFile]);
+    useAppStore.setState({ files: allStoreFiles.filter((f) => f.id !== fileId) });
+    if (selectedFile?.id === fileId) setSelectedFile(null);
+    toast.success(t('fileDeleted'));
+  }, [selectedFile, t]);
 
   if (allFiles.length === 0) {
     return (
       <div className="flex items-center justify-center h-full text-muted-foreground/60 text-sm">
-        No files yet
+        {t('noFiles')}
       </div>
     );
   }
@@ -148,11 +162,12 @@ function FilesWidget({ context }: { context: WidgetDataContext }) {
           const isImage = isImageFile(f.name, f.type);
           const isPdf = isPdfFile(f.name, f.type);
           const fileUrl = (isImage || isPdf) ? getFileUrl(f.storagePath) : null;
+          const commentCount = f.comments?.length || 0;
 
           return (
             <div
               key={f.id}
-              className="flex items-center gap-2.5 px-2 py-1.5 rounded-lg hover:bg-white/5 transition-colors cursor-pointer"
+              className="flex items-center gap-2.5 px-2 py-1.5 rounded-lg hover:bg-white/5 transition-colors cursor-pointer group"
               onClick={() => handleFileClick(f)}
               title="Click to preview"
             >
@@ -160,10 +175,8 @@ function FilesWidget({ context }: { context: WidgetDataContext }) {
               {isImage && fileUrl ? (
                 <div className="shrink-0 w-8 h-8 rounded overflow-hidden bg-muted">
                   <img
-                    src={fileUrl}
-                    alt={f.name}
-                    className="w-full h-full object-cover"
-                    loading="lazy"
+                    src={fileUrl} alt={f.name}
+                    className="w-full h-full object-cover" loading="lazy"
                     onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
                   />
                 </div>
@@ -181,9 +194,21 @@ function FilesWidget({ context }: { context: WidgetDataContext }) {
                 <p className="text-[10px] text-muted-foreground">
                   {info.label}
                   {f.size ? ` · ${formatSize(f.size)}` : ''}
-                  {f.comment ? ` — ${f.comment}` : ''}
+                  {commentCount > 0 && (
+                    <span className="ml-1 text-primary">
+                      💬 {commentCount}
+                    </span>
+                  )}
                 </p>
               </div>
+              {/* Inline delete button */}
+              <button
+                onClick={(e) => handleDeleteFile(f.id, e)}
+                className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-red-500/10 transition-all shrink-0"
+                title={t('delete')}
+              >
+                <Trash2 className="w-3.5 h-3.5 text-red-500" />
+              </button>
             </div>
           );
         })}
@@ -195,6 +220,7 @@ function FilesWidget({ context }: { context: WidgetDataContext }) {
           {selectedFile && (() => {
             const info = getFileInfo(selectedFile.name, selectedFile.type);
             const Icon = info.icon;
+            const comments = selectedFile.comments || [];
             return (
               <>
                 <DialogHeader>
@@ -212,23 +238,12 @@ function FilesWidget({ context }: { context: WidgetDataContext }) {
                     const isPdf_ = isPdfFile(selectedFile.name, selectedFile.type);
 
                     if (isImg && previewUrl) {
-                      return (
-                        <img
-                          src={previewUrl}
-                          alt={selectedFile.name}
-                          className="max-w-full max-h-[70vh] object-contain mx-auto"
-                          loading="lazy"
-                        />
-                      );
+                      return <img src={previewUrl} alt={selectedFile.name} className="max-w-full max-h-[50vh] object-contain mx-auto" loading="lazy" />;
                     }
                     if (isPdf_ && previewUrl) {
                       return (
-                        <div className="w-full h-[70vh]">
-                          <iframe
-                            src={`${previewUrl}#toolbar=0`}
-                            className="w-full h-full border-0"
-                            title={selectedFile.name}
-                          />
+                        <div className="w-full h-[50vh]">
+                          <iframe src={`${previewUrl}#toolbar=0`} className="w-full h-full border-0" title={selectedFile.name} />
                         </div>
                       );
                     }
@@ -271,31 +286,81 @@ function FilesWidget({ context }: { context: WidgetDataContext }) {
 
                 <Separator />
 
-                {/* Comment */}
+                {/* Threaded Comments */}
                 <div className="space-y-2">
                   <label className="text-xs font-medium text-foreground flex items-center gap-1">
-                    <MessageSquare className="w-3 h-3" /> Comment
+                    <MessageSquare className="w-3 h-3" /> {t('comments')} ({comments.length})
                   </label>
+
+                  {comments.length > 0 && (
+                    <div className="space-y-2 max-h-40 overflow-y-auto">
+                      {comments.map((c) => {
+                        const user = getUserById(c.userId);
+                        const initials = user?.name?.split(' ').map(n => n[0]).join('') || '?';
+                        return (
+                          <div key={c.id} className="flex gap-2">
+                            <Avatar className="w-6 h-6 shrink-0">
+                              <AvatarFallback className="text-[9px] bg-primary/10 text-primary">
+                                {initials}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-xs font-medium text-foreground">{user?.name || 'Unknown'}</span>
+                                <span className="text-[10px] text-muted-foreground">
+                                  {new Date(c.createdAt).toLocaleString(undefined, {
+                                    month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
+                                  })}
+                                </span>
+                              </div>
+                              <p className="text-xs text-foreground/80 whitespace-pre-wrap break-words">{c.content}</p>
+                            </div>
+                          </div>
+                        );
+                      })}
+                      <div ref={commentsEndRef} />
+                    </div>
+                  )}
+
+                  {/* New comment input */}
                   <div className="flex gap-2">
-                    <Input
-                      value={comment}
-                      onChange={(e) => setComment(e.target.value)}
-                      placeholder="Add a comment..."
-                      className="h-8 text-xs flex-1"
-                      onKeyDown={(e) => { if (e.key === 'Enter') handleAddComment(); }}
+                    <textarea
+                      value={newComment}
+                      onChange={(e) => setNewComment(e.target.value)}
+                      placeholder={t('addComment')}
+                      rows={1}
+                      className="flex-1 px-3 py-2 text-xs rounded-md border border-input bg-background
+                                 placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1
+                                 focus-visible:ring-ring resize-none overflow-hidden leading-normal"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+                          e.preventDefault();
+                          handleAddComment();
+                        }
+                      }}
+                      onInput={(e) => {
+                        const target = e.target as HTMLTextAreaElement;
+                        target.style.height = 'auto';
+                        target.style.height = `${Math.min(target.scrollHeight, 64)}px`;
+                      }}
                     />
-                    <Button size="sm" variant="outline" className="h-8 text-xs" onClick={handleAddComment}>
-                      Save
+                    <Button
+                      size="icon"
+                      className="w-8 h-8 shrink-0"
+                      onClick={handleAddComment}
+                      disabled={!newComment.trim()}
+                    >
+                      <Send className="w-3.5 h-3.5" />
                     </Button>
                   </div>
                 </div>
 
                 <DialogFooter className="gap-2">
                   <Button variant="outline" size="sm" className="gap-1.5">
-                    <Download className="w-3.5 h-3.5" /> Download
+                    <Download className="w-3.5 h-3.5" /> {t('download')}
                   </Button>
-                  <Button variant="destructive" size="sm" className="gap-1.5" onClick={handleDelete}>
-                    <Trash2 className="w-3.5 h-3.5" /> Delete
+                  <Button variant="destructive" size="sm" className="gap-1.5" onClick={() => handleDeleteFile(selectedFile.id)}>
+                    <Trash2 className="w-3.5 h-3.5" /> {t('delete')}
                   </Button>
                 </DialogFooter>
               </>

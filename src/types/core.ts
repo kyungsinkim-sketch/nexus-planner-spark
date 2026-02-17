@@ -341,6 +341,13 @@ export interface FileGroup {
   title: string;
 }
 
+export interface FileComment {
+  id: string;
+  userId: string;
+  content: string;
+  createdAt: string;
+}
+
 export interface FileItem {
   id: string;
   fileGroupId: string | null;
@@ -351,7 +358,8 @@ export interface FileItem {
   type?: string;
   isImportant?: boolean;
   source?: 'UPLOAD' | 'CHAT';
-  comment?: string; // Comment for searchability
+  comment?: string; // Legacy single comment for searchability
+  comments?: FileComment[]; // Threaded comments
   storagePath?: string; // Supabase Storage path for download
 }
 

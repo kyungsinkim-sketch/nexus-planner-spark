@@ -14,6 +14,7 @@ import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { useAppStore } from '@/stores/appStore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { MentionTextarea } from '@/components/ui/mention-textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -1120,25 +1121,18 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
               >
                 <Paperclip className="w-4 h-4" />
               </Button>
-              <textarea
+              <MentionTextarea
                 placeholder={t('typeMessage')}
                 value={newMessage}
-                onChange={(e) => {
-                  setNewMessage(e.target.value);
-                  // Auto-resize: reset height, then set to scrollHeight
-                  e.target.style.height = 'auto';
-                  e.target.style.height = `${Math.min(e.target.scrollHeight, 96)}px`;
-                }}
+                onChange={setNewMessage}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && !e.nativeEvent.isComposing) {
                     if (e.metaKey || e.ctrlKey) {
-                      // Cmd+Enter → Brain AI command
                       e.preventDefault();
                       handleSendMessage(true);
                     } else if (e.shiftKey) {
                       // Shift+Enter → newline (default behavior)
                     } else {
-                      // Enter → normal send
                       e.preventDefault();
                       handleSendMessage(false);
                     }
@@ -1148,7 +1142,11 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
                 className="flex-1 min-w-0 px-3 py-2 text-sm rounded-md border border-input bg-background
                            placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1
                            focus-visible:ring-ring resize-none overflow-hidden leading-normal"
-                style={{ maxHeight: '96px' }}
+                mentionableUserIds={
+                  selectedChat?.type === 'project'
+                    ? projects.find(p => p.id === selectedChat.id)?.teamMemberIds
+                    : undefined
+                }
               />
               <Button
                 size="icon"

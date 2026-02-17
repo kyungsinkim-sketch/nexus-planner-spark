@@ -48,6 +48,8 @@ interface AppState {
   // Widget Settings (persisted per-widget configuration)
   widgetSettings: Record<string, Record<string, unknown>>;
   todoCreateDialogOpen: boolean;
+  worldClockSettingsOpen: boolean;
+  weatherSettingsOpen: boolean;
 
   // UI State
   selectedProjectId: string | null;
@@ -80,6 +82,8 @@ interface AppState {
   setBrainIntelligenceEnabled: (enabled: boolean) => void;
   updateWidgetSettings: (widgetType: string, settings: Record<string, unknown>) => void;
   setTodoCreateDialogOpen: (open: boolean) => void;
+  setWorldClockSettingsOpen: (open: boolean) => void;
+  setWeatherSettingsOpen: (open: boolean) => void;
 
   // Project Actions
   addProject: (project: Partial<Project>) => Promise<void>;
@@ -169,6 +173,8 @@ export const useAppStore = create<AppState>()(
       brainIntelligenceEnabled: false,
       widgetSettings: {},
       todoCreateDialogOpen: false,
+      worldClockSettingsOpen: false,
+      weatherSettingsOpen: false,
       selectedProjectId: null,
       sidebarCollapsed: false,
       chatPanelCollapsed: false,
@@ -956,6 +962,8 @@ export const useAppStore = create<AppState>()(
       })),
 
       setTodoCreateDialogOpen: (open) => set({ todoCreateDialogOpen: open }),
+      setWorldClockSettingsOpen: (open) => set({ worldClockSettingsOpen: open }),
+      setWeatherSettingsOpen: (open) => set({ weatherSettingsOpen: open }),
 
       // Settings Actions
       updateScoreSettings: (settings) => set((state) => ({

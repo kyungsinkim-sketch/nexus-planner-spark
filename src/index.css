@@ -489,48 +489,6 @@
   background: color-mix(in srgb, var(--project-accent) 10%, hsl(222 47% 11%));
 }
 
-/* Project accent — button override */
-[style*="--project-accent"] .btn-project-accent {
-  background-color: var(--project-accent);
-  color: white;
-}
-[style*="--project-accent"] .btn-project-accent:hover {
-  filter: brightness(1.1);
-}
-
-/* Project accent — FullCalendar event colors */
-[style*="--project-accent"] .fc-event {
-  background-color: var(--project-accent) !important;
-  border-color: var(--project-accent) !important;
-}
-[style*="--project-accent"] .fc-event-dot {
-  background-color: var(--project-accent) !important;
-}
-
-/* Project accent — Checkbox/toggle checked state */
-[style*="--project-accent"] [data-state="checked"] {
-  background-color: var(--project-accent);
-  border-color: var(--project-accent);
-}
-
-/* Project accent — progress bar */
-[style*="--project-accent"] .progress-accent {
-  background-color: var(--project-accent);
-}
-
-/* Project accent — primary button override within project tabs */
-[style*="--project-accent"] button[class*="bg-primary"] {
-  background-color: var(--project-accent);
-}
-[style*="--project-accent"] button[class*="bg-primary"]:hover {
-  filter: brightness(1.1);
-}
-
-/* Project accent — focus ring */
-[style*="--project-accent"] .ring-project-accent {
-  --tw-ring-color: var(--project-accent);
-}
-
 /* Chat widget — constrain ALL content to widget width */
 [data-widget-id="chat"] .widget-content,
 [data-widget-id="chat"] > div {
