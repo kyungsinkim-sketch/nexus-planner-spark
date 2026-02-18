@@ -9,7 +9,7 @@
  * - Event resize to adjust duration
  */
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
@@ -26,23 +26,35 @@ import type { WidgetDataContext } from '@/types/widget';
 function CalendarWidget({ context }: { context: WidgetDataContext }) {
   const { events, getProjectById, updateEvent, deleteEvent, loadEvents } = useAppStore();
 
+  // Debounced loadEvents to prevent rapid-fire calls that cause AbortError cascades
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const debouncedLoadEvents = useCallback(() => {
+    if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+    debounceTimerRef.current = setTimeout(() => {
+      loadEvents();
+    }, 500);
+  }, [loadEvents]);
+
   // Subscribe to realtime calendar_events changes so brain-created events
   // appear without page refresh
   useEffect(() => {
     const unsubscribe = subscribeToEvents((event, eventType) => {
       console.log('[CalendarWidget] Realtime event:', eventType, event?.id, event?.title);
-      loadEvents();
+      debouncedLoadEvents();
     });
-    return () => unsubscribe();
-  }, [loadEvents]);
+    return () => {
+      unsubscribe();
+      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+    };
+  }, [debouncedLoadEvents]);
 
-  // Also refresh events periodically when the widget mounts or regains focus
+  // Also refresh events when the widget mounts or regains focus (debounced)
   useEffect(() => {
     loadEvents();
-    const onFocus = () => loadEvents();
+    const onFocus = () => debouncedLoadEvents();
     window.addEventListener('focus', onFocus);
     return () => window.removeEventListener('focus', onFocus);
-  }, [loadEvents]);
+  }, [loadEvents, debouncedLoadEvents]);
 
   // Event detail panel
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);

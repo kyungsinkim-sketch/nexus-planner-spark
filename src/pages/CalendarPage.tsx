@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
@@ -82,16 +82,26 @@ export default function CalendarPage() {
   const [isPanelOpen, setIsPanelOpen] = useState(false);
   const [currentView, setCurrentView] = useState<string>('dayGridMonth');
 
+  // Debounced loadEvents to prevent rapid-fire calls that cause AbortError cascades
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const debouncedLoadEvents = useCallback(() => {
+    if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+    debounceTimerRef.current = setTimeout(() => {
+      loadEvents();
+    }, 500);
+  }, [loadEvents]);
+
   // Realtime subscription — refresh events when calendar_events table changes
   useEffect(() => {
     const unsubscribe = subscribeToEvents(() => {
-      // When any calendar event is inserted/updated/deleted, reload all events
-      loadEvents();
+      // When any calendar event is inserted/updated/deleted, reload all events (debounced)
+      debouncedLoadEvents();
     });
     return () => {
       unsubscribe();
+      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
     };
-  }, [loadEvents]);
+  }, [debouncedLoadEvents]);
 
   // New event modal state
   const [showNewEventModal, setShowNewEventModal] = useState(false);

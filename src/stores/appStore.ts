@@ -410,11 +410,27 @@ export const useAppStore = create<AppState>()(
           return;
         }
 
+        // Concurrency guard — prevent multiple simultaneous loadEvents calls
+        // which cause AbortError cascades when requests overlap
+        const state = get();
+        if ((state as unknown as Record<string, boolean>)._loadingEvents) {
+          return;
+        }
+        (state as unknown as Record<string, boolean>)._loadingEvents = true;
+
         try {
           const events = await eventService.getEvents();
           set({ events });
         } catch (error) {
-          console.error('Failed to load events:', error);
+          // AbortError is expected during rapid navigation/focus changes — suppress
+          const msg = (error as Error).message || '';
+          if (msg.includes('AbortError') || msg.includes('signal is aborted')) {
+            console.warn('[Events] Request aborted (non-fatal, likely rapid refresh)');
+          } else {
+            console.error('Failed to load events:', error);
+          }
+        } finally {
+          (get() as unknown as Record<string, boolean>)._loadingEvents = false;
         }
       },
 
