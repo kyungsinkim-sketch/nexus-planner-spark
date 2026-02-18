@@ -1231,8 +1231,19 @@ export const useAppStore = create<AppState>()(
         const email = state.gmailMessages.find(m => m.id === messageId);
         if (!email) return;
 
+        // Build context for Brain AI — projects + users
+        const brainContext = {
+          projects: state.projects.map(p => ({
+            id: p.id, title: p.title, client: p.client,
+            status: p.status, teamMemberIds: p.teamMemberIds,
+          })),
+          users: state.users.map(u => ({
+            id: u.id, name: u.name, department: u.department, role: u.role,
+          })),
+        };
+
         try {
-          const suggestions = await gmailService.analyzeSingleEmail(state.currentUser.id, email);
+          const suggestions = await gmailService.analyzeSingleEmail(state.currentUser.id, email, brainContext);
           if (suggestions.length > 0) {
             // Patch emailId to match the actual email (mock data may have different IDs)
             const patchedSuggestions = suggestions.map(s => ({
@@ -1282,8 +1293,17 @@ export const useAppStore = create<AppState>()(
             .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
             .slice(0, 50); // keep max 50
 
-          // Analyze new messages with Brain AI
-          const suggestions = await gmailService.analyzeWithBrain(state.currentUser!.id, trulyNew);
+          // Analyze new messages with Brain AI — include project/user context
+          const brainCtx = {
+            projects: state.projects.map(p => ({
+              id: p.id, title: p.title, client: p.client,
+              status: p.status, teamMemberIds: p.teamMemberIds,
+            })),
+            users: state.users.map(u => ({
+              id: u.id, name: u.name, department: u.department, role: u.role,
+            })),
+          };
+          const suggestions = await gmailService.analyzeWithBrain(state.currentUser!.id, trulyNew, brainCtx);
           const existingSugIds = new Set(state.emailSuggestions.map(s => s.id));
           const newSuggestions = suggestions.filter(s => !existingSugIds.has(s.id));
 

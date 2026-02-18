@@ -57,9 +57,15 @@ export async function fetchNewEmails(
 
 // ─── Analyze Emails with Brain AI ───────────────────
 
+export interface BrainContext {
+  projects: Array<{ id: string; title: string; client: string; status: string; teamMemberIds?: string[] }>;
+  users: Array<{ id: string; name: string; department?: string; role: string }>;
+}
+
 export async function analyzeWithBrain(
   userId: string,
   messages: GmailMessage[],
+  context?: BrainContext,
 ): Promise<EmailBrainSuggestion[]> {
   if (isMockMode()) {
     // Return mock suggestions for development
@@ -70,7 +76,7 @@ export async function analyzeWithBrain(
 
   try {
     const { data, error } = await supabase.functions.invoke('gmail-brain-analyze', {
-      body: { userId, messages },
+      body: { userId, messages, context },
     });
 
     if (error) {
@@ -204,6 +210,7 @@ export async function trashGmailMessage(
 export async function analyzeSingleEmail(
   userId: string,
   message: GmailMessage,
+  context?: BrainContext,
 ): Promise<EmailBrainSuggestion[]> {
-  return analyzeWithBrain(userId, [message]);
+  return analyzeWithBrain(userId, [message], context);
 }
