@@ -74,6 +74,10 @@ interface AppState {
   brainNotifications: BrainNotification[];
   brainReports: BrainReport[];
 
+  // Track locally-trashed Gmail message IDs so they don't reappear on sync
+  // (server-side trash requires gmail.modify scope which may not be granted yet)
+  trashedGmailMessageIds: string[];
+
   // Mock data persistence — track deleted mock event IDs across refreshes
   deletedMockEventIds: string[];
 
@@ -299,6 +303,7 @@ export const useAppStore = create<AppState>()(
       gmailSyncing: false,
       brainNotifications: [],
       brainReports: [],
+      trashedGmailMessageIds: [],
       deletedMockEventIds: [],
       selectedProjectId: null,
       sidebarCollapsed: false,
@@ -1183,9 +1188,11 @@ export const useAppStore = create<AppState>()(
         if (!state.currentUser) return;
 
         // Always remove from local list immediately for better UX
+        // Also persist the trashed ID so syncGmail won't re-add it
         set({
           gmailMessages: state.gmailMessages.filter(m => m.id !== messageId),
           emailSuggestions: state.emailSuggestions.filter(s => s.emailId !== messageId),
+          trashedGmailMessageIds: [...state.trashedGmailMessageIds, messageId],
         });
 
         // Try server-side trash (may fail if gmail.modify scope not granted)
@@ -1250,7 +1257,10 @@ export const useAppStore = create<AppState>()(
             }
             existingById.set(msg.id, msg); // always update with fresh data
           }
+          // Filter out locally-trashed messages so they don't reappear
+          const trashedSet = new Set(get().trashedGmailMessageIds);
           const allMessages = Array.from(existingById.values())
+            .filter(m => !trashedSet.has(m.id))
             .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
             .slice(0, 50); // keep max 50
 
@@ -1474,7 +1484,7 @@ export const useAppStore = create<AppState>()(
     }),
     {
       name: 're-be-storage',
-      version: 3, // v2: clear garbled gmail cache, v3: add brainNotifications + brainReports
+      version: 4, // v2: clear garbled gmail cache, v3: add brainNotifications + brainReports, v4: trashedGmailMessageIds
       migrate: (persisted, version) => {
         const state = persisted as Record<string, unknown>;
         if (version < 2) {
@@ -1485,6 +1495,10 @@ export const useAppStore = create<AppState>()(
           // Initialize new Brain AI state
           state.brainNotifications = [];
           state.brainReports = [];
+        }
+        if (version < 4) {
+          // Initialize trashed Gmail message IDs tracker
+          state.trashedGmailMessageIds = [];
         }
         return state;
       },
@@ -1507,6 +1521,7 @@ export const useAppStore = create<AppState>()(
         gmailMessages: state.gmailMessages,
         emailSuggestions: state.emailSuggestions,
         gmailLastSyncAt: state.gmailLastSyncAt,
+        trashedGmailMessageIds: state.trashedGmailMessageIds,
         brainNotifications: state.brainNotifications,
         brainReports: state.brainReports,
       }),
