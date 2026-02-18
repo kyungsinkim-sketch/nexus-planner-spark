@@ -6,9 +6,14 @@
  * - Transcript timeline with speaker colors
  * - Brain analysis cards (summary, decisions, events, todos, quotes)
  * - Action buttons to create calendar events / todos from analysis
+ *
+ * Optimizations:
+ * - React.memo on TranscriptTimeline and BrainAnalysisView
+ * - Memoized sections array in BrainAnalysisView
+ * - Stable callbacks with useCallback
  */
 
-import { useState, useRef, useMemo } from 'react';
+import { useState, useRef, useMemo, useCallback, memo } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -16,7 +21,6 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
 import {
   Brain,
   Calendar,
@@ -34,7 +38,6 @@ import {
   Clock,
 } from 'lucide-react';
 import { useTranslation } from '@/hooks/useTranslation';
-import { useAppStore } from '@/stores/appStore';
 import type { VoiceRecording, TranscriptSegment, VoiceBrainAnalysis } from '@/types/core';
 
 interface TranscriptViewDialogProps {
@@ -70,7 +73,7 @@ function formatTime(seconds: number): string {
 
 // ─── Transcript Section ──────────────────────────────
 
-function TranscriptTimeline({
+const TranscriptTimeline = memo(function TranscriptTimeline({
   segments,
   onSeek,
 }: {
@@ -121,11 +124,11 @@ function TranscriptTimeline({
       })}
     </div>
   );
-}
+});
 
 // ─── Brain Analysis Section ──────────────────────────
 
-function BrainAnalysisView({
+const BrainAnalysisView = memo(function BrainAnalysisView({
   analysis,
   onAddEvent,
   onAddTodo,
@@ -137,7 +140,8 @@ function BrainAnalysisView({
   const { t } = useTranslation();
   const [expandedSection, setExpandedSection] = useState<string | null>('summary');
 
-  const sections = [
+  // Memoize sections array to avoid recreating JSX on every render when only expandedSection changes
+  const sections = useMemo(() => [
     {
       id: 'summary',
       icon: Brain,
@@ -243,7 +247,11 @@ function BrainAnalysisView({
         </div>
       ) : null,
     },
-  ];
+  ], [analysis, t, onAddEvent, onAddTodo]);
+
+  const handleToggle = useCallback((sectionId: string) => {
+    setExpandedSection(prev => prev === sectionId ? null : sectionId);
+  }, []);
 
   return (
     <div className="space-y-1">
@@ -255,7 +263,7 @@ function BrainAnalysisView({
         return (
           <div key={section.id} className="rounded-md border border-border/30">
             <button
-              onClick={() => setExpandedSection(isExpanded ? null : section.id)}
+              onClick={() => handleToggle(section.id)}
               className="w-full flex items-center gap-1.5 px-2 py-1.5 text-[10px] font-medium hover:bg-muted/30 transition-colors"
             >
               <Icon className={`w-3 h-3 ${section.color}`} />
@@ -275,7 +283,7 @@ function BrainAnalysisView({
       })}
     </div>
   );
-}
+});
 
 // ─── Main Dialog ─────────────────────────────────────
 
@@ -288,33 +296,35 @@ function TranscriptViewDialog({
   const audioRef = useRef<HTMLAudioElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
 
-  const handleSeek = (time: number) => {
+  const handleSeek = useCallback((time: number) => {
     if (audioRef.current) {
       audioRef.current.currentTime = time;
       audioRef.current.play();
       setIsPlaying(true);
     }
-  };
+  }, []);
 
-  const togglePlay = () => {
+  const togglePlay = useCallback(() => {
     if (!audioRef.current) return;
     if (isPlaying) {
       audioRef.current.pause();
     } else {
       audioRef.current.play();
     }
-    setIsPlaying(!isPlaying);
-  };
+    setIsPlaying(prev => !prev);
+  }, [isPlaying]);
 
-  const handleAddEvent = (event: VoiceBrainAnalysis['suggestedEvents'][0]) => {
+  const handleAudioEnded = useCallback(() => setIsPlaying(false), []);
+
+  const handleAddEvent = useCallback((event: VoiceBrainAnalysis['suggestedEvents'][0]) => {
     // TODO: Integrate with calendar event creation
     console.log('[TranscriptView] Add event:', event);
-  };
+  }, []);
 
-  const handleAddTodo = (todo: VoiceBrainAnalysis['actionItems'][0]) => {
+  const handleAddTodo = useCallback((todo: VoiceBrainAnalysis['actionItems'][0]) => {
     // TODO: Integrate with todo creation
     console.log('[TranscriptView] Add todo:', todo);
-  };
+  }, []);
 
   if (!recording) return null;
 
@@ -348,7 +358,7 @@ function TranscriptViewDialog({
               <audio
                 ref={audioRef}
                 src={recording.audioUrl}
-                onEnded={() => setIsPlaying(false)}
+                onEnded={handleAudioEnded}
                 className="hidden"
               />
               <div className="flex-1 text-[10px] text-muted-foreground">

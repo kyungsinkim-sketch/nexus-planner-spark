@@ -1256,6 +1256,7 @@ export const useAppStore = create<AppState>()(
         const state = get();
         if (!state.currentUser) return;
 
+        const userId = state.currentUser.id;
         const recordingId = crypto.randomUUID();
         const recording: VoiceRecording = {
           id: recordingId,
@@ -1266,80 +1267,59 @@ export const useAppStore = create<AppState>()(
           duration: 0,
           status: 'uploading',
           createdAt: new Date().toISOString(),
-          createdBy: state.currentUser.id,
+          createdBy: userId,
+        };
+
+        // Helper: update a single recording in the array (avoids repeating map logic)
+        const patchRecording = (updates: Partial<VoiceRecording>) => {
+          set((s) => ({
+            voiceRecordings: s.voiceRecordings.map(r =>
+              r.id === recordingId ? { ...r, ...updates } : r
+            ),
+          }));
         };
 
         // Add to state immediately
         set({ voiceRecordings: [recording, ...state.voiceRecordings] });
 
         try {
-          // Get duration
-          const duration = await audioService.getAudioDuration(blob);
+          // Upload to Supabase Storage (get duration in parallel)
+          const [duration, { storagePath, publicUrl }] = await Promise.all([
+            audioService.getAudioDuration(blob),
+            audioService.uploadAudio(blob, userId, metadata),
+          ]);
 
-          // Upload to Supabase Storage
-          const { storagePath, publicUrl } = await audioService.uploadAudio(
-            blob, state.currentUser.id, metadata,
-          );
-
-          // Update with URL + duration
-          set((s) => ({
-            voiceRecordings: s.voiceRecordings.map(r =>
-              r.id === recordingId
-                ? { ...r, audioUrl: publicUrl, audioStoragePath: storagePath, duration, status: 'transcribing' as const }
-                : r
-            ),
-          }));
+          // Update with URL + duration → transition to transcribing
+          patchRecording({ audioUrl: publicUrl, audioStoragePath: storagePath, duration, status: 'transcribing' });
 
           // Start transcription
-          const transcript = await audioService.transcribeAudio(
-            state.currentUser!.id, recordingId, storagePath,
-          );
+          const transcript = await audioService.transcribeAudio(userId, recordingId, storagePath);
+          patchRecording({ transcript, status: 'analyzing' });
 
-          set((s) => ({
-            voiceRecordings: s.voiceRecordings.map(r =>
-              r.id === recordingId
-                ? { ...r, transcript, status: 'analyzing' as const }
-                : r
-            ),
-          }));
-
-          // Start Brain analysis
+          // Build brain context (only active projects to reduce payload)
           const brainContext = {
-            projects: state.projects.map(p => ({
-              id: p.id, title: p.title, client: p.client,
-              status: p.status, teamMemberIds: p.teamMemberIds,
-            })),
+            projects: state.projects
+              .filter(p => p.status === 'ACTIVE')
+              .map(p => ({
+                id: p.id, title: p.title, client: p.client,
+                status: p.status, teamMemberIds: p.teamMemberIds,
+              })),
             users: state.users.map(u => ({
               id: u.id, name: u.name, department: u.department, role: u.role,
             })),
           };
 
-          const analysis = await audioService.analyzeTranscript(
-            state.currentUser!.id, recordingId, transcript, brainContext,
-          );
-
-          set((s) => ({
-            voiceRecordings: s.voiceRecordings.map(r =>
-              r.id === recordingId
-                ? { ...r, brainAnalysis: analysis, status: 'completed' as const }
-                : r
-            ),
-          }));
+          const analysis = await audioService.analyzeTranscript(userId, recordingId, transcript, brainContext);
+          patchRecording({ brainAnalysis: analysis, status: 'completed' });
         } catch (err) {
           console.error('[VoiceRecording] Pipeline error:', err);
-          set((s) => ({
-            voiceRecordings: s.voiceRecordings.map(r =>
-              r.id === recordingId
-                ? { ...r, status: 'error' as const, errorMessage: (err as Error).message }
-                : r
-            ),
-          }));
+          patchRecording({ status: 'error', errorMessage: (err as Error).message });
         }
       },
 
       uploadVoiceFile: async (file: File, metadata: RecordingMetadata) => {
-        const blob = new Blob([file], { type: file.type });
-        await get().startVoiceRecording(blob, metadata);
+        // Reuse the file directly as a Blob (File extends Blob — no copy needed)
+        await get().startVoiceRecording(file, metadata);
       },
 
       updateVoiceRecording: (id: string, updates: Partial<VoiceRecording>) => {

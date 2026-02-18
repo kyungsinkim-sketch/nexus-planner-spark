@@ -10,6 +10,11 @@
  *
  * Request: { userId, recordingId, audioStoragePath }
  * Response: { transcript: TranscriptSegment[] }
+ *
+ * Optimizations:
+ * - Chunked base64 encoding to avoid stack overflow on large arrays
+ * - Shared segment parsing helper (DRY)
+ * - Error handler correctly scopes recordingId
  */
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
@@ -26,42 +31,115 @@ interface TranscriptSegment {
   endTime: number;
 }
 
-// ─── Google Cloud STT v2 ─────────────────────────────
+// ─── Chunked Base64 ─────────────────────────────────
+// btoa(String.fromCharCode(...largeArray)) causes stack overflow.
+// Process in 32KB chunks instead.
+
+function uint8ArrayToBase64(bytes: Uint8Array): string {
+  const CHUNK_SIZE = 0x8000; // 32KB per chunk
+  const parts: string[] = [];
+  for (let i = 0; i < bytes.length; i += CHUNK_SIZE) {
+    const chunk = bytes.subarray(i, i + CHUNK_SIZE);
+    parts.push(String.fromCharCode(...chunk));
+  }
+  return btoa(parts.join(''));
+}
+
+// ─── Segment Parser ─────────────────────────────────
+// Shared between sync and async recognize responses.
+
+function parseWordsToSegments(results: Array<Record<string, unknown>>): TranscriptSegment[] {
+  const segments: TranscriptSegment[] = [];
+  let currentSpeaker = '';
+  let currentText = '';
+  let currentStart = 0;
+  let currentEnd = 0;
+
+  for (const result of results) {
+    const alt = (result.alternatives as Array<Record<string, unknown>>)?.[0];
+    if (!alt) continue;
+
+    const words = (alt.words as Array<Record<string, unknown>>) || [];
+
+    if (words.length === 0) {
+      const transcript = alt.transcript as string;
+      if (transcript) {
+        segments.push({ speaker: '화자 1', text: transcript.trim(), startTime: 0, endTime: 0 });
+      }
+      continue;
+    }
+
+    for (const word of words) {
+      const speakerTag = (word.speakerTag as number) || 1;
+      const speaker = `화자 ${speakerTag}`;
+      const startSec = parseFloat(((word.startTime as string) || '0').replace('s', ''));
+      const endSec = parseFloat(((word.endTime as string) || '0').replace('s', ''));
+
+      if (speaker !== currentSpeaker && currentText) {
+        segments.push({ speaker: currentSpeaker, text: currentText.trim(), startTime: currentStart, endTime: currentEnd });
+        currentText = '';
+      }
+
+      if (!currentText) {
+        currentSpeaker = speaker;
+        currentStart = startSec;
+      }
+
+      currentText += (currentText ? ' ' : '') + (word.word as string);
+      currentEnd = endSec;
+    }
+  }
+
+  // Push last segment
+  if (currentText) {
+    segments.push({ speaker: currentSpeaker, text: currentText.trim(), startTime: currentStart, endTime: currentEnd });
+  }
+
+  // Fallback: if no segments from word-level, use result-level transcripts
+  if (segments.length === 0) {
+    for (const result of results) {
+      const transcript = (result.alternatives as Array<Record<string, unknown>>)?.[0]?.transcript as string;
+      if (transcript) {
+        segments.push({ speaker: '화자 1', text: transcript.trim(), startTime: 0, endTime: 0 });
+      }
+    }
+  }
+
+  return segments;
+}
+
+// ─── Google Cloud STT (sync) ────────────────────────
 
 async function transcribeWithGoogleSTT(
   audioBytes: Uint8Array,
   apiKey: string,
 ): Promise<TranscriptSegment[]> {
-  const audioContent = btoa(String.fromCharCode(...audioBytes));
-
-  const requestBody = {
-    config: {
-      encoding: 'WEBM_OPUS',
-      sampleRateHertz: 48000,
-      languageCode: 'ko-KR',
-      alternativeLanguageCodes: ['en-US'],
-      enableAutomaticPunctuation: true,
-      enableWordTimeOffsets: true,
-      enableWordConfidence: true,
-      diarizationConfig: {
-        enableSpeakerDiarization: true,
-        minSpeakerCount: 1,
-        maxSpeakerCount: 6,
-      },
-      model: 'latest_long',
-      useEnhanced: true,
-    },
-    audio: {
-      content: audioContent,
-    },
-  };
+  const audioContent = uint8ArrayToBase64(audioBytes);
 
   const response = await fetch(
     `https://speech.googleapis.com/v1/speech:recognize?key=${apiKey}`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(requestBody),
+      body: JSON.stringify({
+        config: {
+          encoding: 'WEBM_OPUS',
+          sampleRateHertz: 48000,
+          languageCode: 'ko-KR',
+          alternativeLanguageCodes: ['en-US'],
+          enableAutomaticPunctuation: true,
+          enableWordTimeOffsets: true,
+          enableWordConfidence: true,
+          diarizationConfig: {
+            enableSpeakerDiarization: true,
+            minSpeakerCount: 1,
+            maxSpeakerCount: 6,
+          },
+          model: 'latest_long',
+          useEnhanced: true,
+        },
+        audio: { content: audioContent },
+      }),
     },
   );
 
@@ -71,132 +149,48 @@ async function transcribeWithGoogleSTT(
   }
 
   const data = await response.json();
-  const results = data.results || [];
-
-  // Parse Google STT response into TranscriptSegment[]
-  const segments: TranscriptSegment[] = [];
-  let currentSpeaker = '';
-  let currentText = '';
-  let currentStart = 0;
-  let currentEnd = 0;
-
-  for (const result of results) {
-    const alt = result.alternatives?.[0];
-    if (!alt) continue;
-
-    const words = alt.words || [];
-
-    if (words.length === 0) {
-      // No word-level info — use the whole transcript as one segment
-      segments.push({
-        speaker: '화자 1',
-        text: alt.transcript?.trim() || '',
-        startTime: 0,
-        endTime: 0,
-      });
-      continue;
-    }
-
-    for (const word of words) {
-      const speakerTag = word.speakerTag || 1;
-      const speaker = `화자 ${speakerTag}`;
-      const startSec = parseFloat(word.startTime?.replace('s', '') || '0');
-      const endSec = parseFloat(word.endTime?.replace('s', '') || '0');
-
-      if (speaker !== currentSpeaker && currentText) {
-        // Speaker changed — push previous segment
-        segments.push({
-          speaker: currentSpeaker,
-          text: currentText.trim(),
-          startTime: currentStart,
-          endTime: currentEnd,
-        });
-        currentText = '';
-      }
-
-      if (!currentText) {
-        currentSpeaker = speaker;
-        currentStart = startSec;
-      }
-
-      currentText += (currentText ? ' ' : '') + word.word;
-      currentEnd = endSec;
-    }
-  }
-
-  // Push last segment
-  if (currentText) {
-    segments.push({
-      speaker: currentSpeaker,
-      text: currentText.trim(),
-      startTime: currentStart,
-      endTime: currentEnd,
-    });
-  }
-
-  // Fallback: if no segments from word-level parsing, use result-level transcripts
-  if (segments.length === 0) {
-    for (const result of results) {
-      const transcript = result.alternatives?.[0]?.transcript;
-      if (transcript) {
-        segments.push({
-          speaker: '화자 1',
-          text: transcript.trim(),
-          startTime: 0,
-          endTime: 0,
-        });
-      }
-    }
-  }
-
-  return segments;
+  return parseWordsToSegments(data.results || []);
 }
 
-// ─── Long audio: use async recognize for files > 1 minute ──
+// ─── Long audio: async recognize for files > 10MB ───
 
 async function transcribeLongAudio(
   audioBytes: Uint8Array,
   apiKey: string,
 ): Promise<TranscriptSegment[]> {
-  // For MVP, use synchronous recognize with chunking if needed
-  // Google STT sync API supports up to ~1 minute of audio
-  // For longer audio, we'd use longrunningrecognize (async)
-
   const audioSizeMB = audioBytes.length / (1024 * 1024);
   console.log(`[voice-transcribe] Audio size: ${audioSizeMB.toFixed(1)} MB`);
 
-  // Try synchronous first (works for < ~1 min / ~10MB)
+  // Synchronous API for smaller files (< ~10MB / ~1 min)
   if (audioBytes.length < 10 * 1024 * 1024) {
     return transcribeWithGoogleSTT(audioBytes, apiKey);
   }
 
-  // For longer audio, use longrunningrecognize
-  const audioContent = btoa(String.fromCharCode(...audioBytes));
-
-  const requestBody = {
-    config: {
-      encoding: 'WEBM_OPUS',
-      sampleRateHertz: 48000,
-      languageCode: 'ko-KR',
-      enableAutomaticPunctuation: true,
-      enableWordTimeOffsets: true,
-      diarizationConfig: {
-        enableSpeakerDiarization: true,
-        minSpeakerCount: 1,
-        maxSpeakerCount: 6,
-      },
-      model: 'latest_long',
-      useEnhanced: true,
-    },
-    audio: { content: audioContent },
-  };
+  // Async API for larger files
+  const audioContent = uint8ArrayToBase64(audioBytes);
 
   const opResponse = await fetch(
     `https://speech.googleapis.com/v1/speech:longrunningrecognize?key=${apiKey}`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(requestBody),
+      body: JSON.stringify({
+        config: {
+          encoding: 'WEBM_OPUS',
+          sampleRateHertz: 48000,
+          languageCode: 'ko-KR',
+          enableAutomaticPunctuation: true,
+          enableWordTimeOffsets: true,
+          diarizationConfig: {
+            enableSpeakerDiarization: true,
+            minSpeakerCount: 1,
+            maxSpeakerCount: 6,
+          },
+          model: 'latest_long',
+          useEnhanced: true,
+        },
+        audio: { content: audioContent },
+      }),
     },
   );
 
@@ -208,7 +202,7 @@ async function transcribeLongAudio(
   const operation = await opResponse.json();
   const operationName = operation.name;
 
-  // Poll for completion (max 5 minutes)
+  // Poll for completion (max 5 minutes, 60 polls × 5s)
   for (let i = 0; i < 60; i++) {
     await new Promise(r => setTimeout(r, 5000));
 
@@ -218,41 +212,10 @@ async function transcribeLongAudio(
     const pollData = await pollResponse.json();
 
     if (pollData.done) {
-      const results = pollData.response?.results || [];
-      const segments: TranscriptSegment[] = [];
-
-      for (const result of results) {
-        const transcript = result.alternatives?.[0]?.transcript;
-        const words = result.alternatives?.[0]?.words || [];
-
-        if (words.length > 0) {
-          let currentSpeaker = '';
-          let currentText = '';
-          let currentStart = 0;
-          let currentEnd = 0;
-
-          for (const word of words) {
-            const speaker = `화자 ${word.speakerTag || 1}`;
-            const startSec = parseFloat(word.startTime?.replace('s', '') || '0');
-            const endSec = parseFloat(word.endTime?.replace('s', '') || '0');
-
-            if (speaker !== currentSpeaker && currentText) {
-              segments.push({ speaker: currentSpeaker, text: currentText.trim(), startTime: currentStart, endTime: currentEnd });
-              currentText = '';
-            }
-            if (!currentText) { currentSpeaker = speaker; currentStart = startSec; }
-            currentText += (currentText ? ' ' : '') + word.word;
-            currentEnd = endSec;
-          }
-          if (currentText) {
-            segments.push({ speaker: currentSpeaker, text: currentText.trim(), startTime: currentStart, endTime: currentEnd });
-          }
-        } else if (transcript) {
-          segments.push({ speaker: '화자 1', text: transcript.trim(), startTime: 0, endTime: 0 });
-        }
+      if (pollData.error) {
+        throw new Error(`Google STT async error: ${JSON.stringify(pollData.error)}`);
       }
-
-      return segments;
+      return parseWordsToSegments(pollData.response?.results || []);
     }
   }
 
@@ -266,8 +229,13 @@ Deno.serve(async (req) => {
     return new Response('ok', { headers: corsHeaders });
   }
 
+  // Parse body once and keep recordingId in outer scope for error handling
+  let recordingId: string | undefined;
+
   try {
-    const { userId, recordingId, audioStoragePath } = await req.json();
+    const body = await req.json();
+    const { userId, audioStoragePath } = body;
+    recordingId = body.recordingId;
 
     if (!userId || !recordingId || !audioStoragePath) {
       return new Response(
@@ -328,12 +296,9 @@ Deno.serve(async (req) => {
   } catch (err) {
     console.error('[voice-transcribe] Error:', err);
 
-    // Try to update recording status to error
-    try {
-      const { recordingId } = await (async () => {
-        try { return await req.clone().json(); } catch { return {}; }
-      })();
-      if (recordingId) {
+    // Update recording status to error (best effort)
+    if (recordingId) {
+      try {
         const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
         const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
         const supabase = createClient(supabaseUrl, supabaseServiceKey);
@@ -341,8 +306,8 @@ Deno.serve(async (req) => {
           .from('voice_recordings')
           .update({ status: 'error', error_message: (err as Error).message })
           .eq('id', recordingId);
-      }
-    } catch { /* best effort */ }
+      } catch { /* best effort */ }
+    }
 
     return new Response(
       JSON.stringify({ error: (err as Error).message }),

@@ -27,6 +27,7 @@ const DEFAULT_DASHBOARD_LAYOUT: WidgetLayoutItem[] = [
   { i: 'brainChat',       x: 6,  y: 4,  w: 3, h: 1, minW: 3, minH: 1 },
   { i: 'inspiration',     x: 0,  y: 6,  w: 6, h: 2, minW: 3, minH: 1 },
   { i: 'email',           x: 6,  y: 6,  w: 3, h: 4, minW: 3, minH: 3 },
+  { i: 'voiceRecorder',   x: 0,  y: 8,  w: 4, h: 4, minW: 3, minH: 3 },
 ];
 
 // Default layout for Project tabs (12-col grid)
@@ -191,7 +192,7 @@ export const useWidgetStore = create<WidgetState>()(
     }),
     {
       name: 're-be-widget-layout',
-      version: 15, // bump — add Gmail email widget to dashboard
+      version: 16, // bump — add voiceRecorder widget to dashboard
       migrate: () => ({
         // On version mismatch, reset everything to defaults
         openTabs: [DASHBOARD_TAB],

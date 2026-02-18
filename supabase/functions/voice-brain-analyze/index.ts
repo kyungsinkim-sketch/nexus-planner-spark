@@ -11,6 +11,12 @@
  *
  * Request: { userId, recordingId, transcript, context? }
  * Response: { analysis: VoiceBrainAnalysis }
+ *
+ * Optimizations:
+ * - Error code differentiation: 429 → 429, 529 → 503 (not all 500)
+ * - recordingId properly scoped for error handler
+ * - Context payload trimmed (only active projects)
+ * - Retry logic with exponential backoff
  */
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
@@ -36,12 +42,23 @@ interface BrainContext {
   users?: Array<{ id: string; name: string; department?: string; role: string }>;
 }
 
+// Custom error for API status propagation
+class ApiError extends Error {
+  constructor(message: string, public statusCode: number) {
+    super(message);
+    this.name = 'ApiError';
+  }
+}
+
+const EMPTY_ANALYSIS = { summary: '', decisions: [], suggestedEvents: [], actionItems: [], followups: [], keyQuotes: [] };
+
 // ─── System Prompt ───────────────────────────────────
 
 function buildSystemPrompt(context?: BrainContext): string {
   let contextSection = '';
 
   if (context?.projects?.length) {
+    // Only include active projects to reduce token usage
     const activeProjects = context.projects.filter(p => p.status === 'ACTIVE');
     if (activeProjects.length > 0) {
       const lines = activeProjects.map(p => `  - ID: ${p.id} | "${p.title}" (클라이언트: ${p.client})`).join('\n');
@@ -167,13 +184,13 @@ ${transcriptText}`;
       const jsonMatch = content.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {
         console.warn('[voice-brain-analyze] No JSON object found in response');
-        return { summary: '', decisions: [], suggestedEvents: [], actionItems: [], followups: [], keyQuotes: [] };
+        return { ...EMPTY_ANALYSIS };
       }
 
       const parsed = tryParseJson(jsonMatch[0]);
       if (!parsed) {
         console.warn('[voice-brain-analyze] JSON parse failed after repair');
-        return { summary: '', decisions: [], suggestedEvents: [], actionItems: [], followups: [], keyQuotes: [] };
+        return { ...EMPTY_ANALYSIS };
       }
 
       return parsed;
@@ -181,21 +198,26 @@ ${transcriptText}`;
 
     const status = response.status;
     if (status === 429 && attempt < 2) {
-      console.warn(`[voice-brain-analyze] Rate limited, retry ${attempt + 1}/2 after 10s`);
-      await sleep(10_000);
+      const waitMs = (attempt + 1) * 10_000; // 10s, 20s
+      console.warn(`[voice-brain-analyze] Rate limited, retry ${attempt + 1}/2 after ${waitMs / 1000}s`);
+      await sleep(waitMs);
       continue;
     }
     if (status === 529 && attempt < 2) {
-      console.warn(`[voice-brain-analyze] Overloaded, retry ${attempt + 1}/2 after 5s`);
-      await sleep(5_000);
+      const waitMs = (attempt + 1) * 5_000; // 5s, 10s
+      console.warn(`[voice-brain-analyze] Overloaded, retry ${attempt + 1}/2 after ${waitMs / 1000}s`);
+      await sleep(waitMs);
       continue;
     }
 
+    // Propagate status code for proper client-side handling
     const errText = await response.text();
-    throw new Error(`Claude API error: ${status} - ${errText}`);
+    if (status === 429) throw new ApiError(`Rate limited: ${errText}`, 429);
+    if (status === 529) throw new ApiError(`Overloaded: ${errText}`, 503);
+    throw new ApiError(`Claude API error: ${status} - ${errText}`, 500);
   }
 
-  throw new Error('All retries exhausted');
+  throw new ApiError('All retries exhausted', 503);
 }
 
 function formatTime(seconds: number): string {
@@ -211,8 +233,13 @@ Deno.serve(async (req) => {
     return new Response('ok', { headers: corsHeaders });
   }
 
+  // Parse body once; keep recordingId in outer scope for error handler
+  let recordingId: string | undefined;
+
   try {
-    const { userId, recordingId, transcript, context } = await req.json();
+    const body = await req.json();
+    const { userId, transcript, context } = body;
+    recordingId = body.recordingId;
 
     if (!userId || !recordingId || !transcript?.length) {
       return new Response(
@@ -258,10 +285,9 @@ Deno.serve(async (req) => {
   } catch (err) {
     console.error('[voice-brain-analyze] Error:', err);
 
-    // Try to update recording status
-    try {
-      const body = await req.clone().json().catch(() => ({}));
-      if (body.recordingId) {
+    // Update recording status to error (best effort)
+    if (recordingId) {
+      try {
         const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
         const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
         const supabase = createClient(supabaseUrl, supabaseServiceKey);
@@ -269,12 +295,14 @@ Deno.serve(async (req) => {
           .from('voice_recordings')
           .update({ status: 'error', error_message: (err as Error).message })
           .eq('id', recordingId);
-      }
-    } catch { /* best effort */ }
+      } catch { /* best effort */ }
+    }
 
+    // Propagate API error status codes to client
+    const statusCode = (err as ApiError).statusCode || 500;
     return new Response(
       JSON.stringify({ error: (err as Error).message }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      { status: statusCode, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
     );
   }
 });

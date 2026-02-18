@@ -5,9 +5,16 @@
  * 1. Record — Browser microphone recording with waveform visualization
  * 2. Upload — Drag & drop or file picker for audio files
  * 3. History — List of past recordings with status and Brain results
+ *
+ * Optimizations:
+ * - React.memo on sub-components to prevent unnecessary re-renders
+ * - Reusable dataArray buffer in WaveformCanvas (avoids GC pressure)
+ * - Stable callback refs to minimize re-renders
+ * - Sorted recordings memoized to avoid sort on every render
+ * - Lazy-loaded TranscriptViewDialog
  */
 
-import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo, memo, lazy, Suspense } from 'react';
 import { useAppStore } from '@/stores/appStore';
 import { useTranslation } from '@/hooks/useTranslation';
 import {
@@ -43,20 +50,22 @@ import {
   resumeRecording,
   cancelRecording,
   getAnalyserNode,
-  getRecordingState,
   getRecordingDuration,
   validateAudioFile,
-  getAudioDuration,
 } from '@/services/audioService';
-import TranscriptViewDialog from './TranscriptViewDialog';
+
+// Lazy-load the transcript dialog — only needed when user clicks a recording
+const TranscriptViewDialog = lazy(() => import('./TranscriptViewDialog'));
 
 type TabMode = 'record' | 'upload' | 'history';
 
 // ─── Waveform Visualizer ─────────────────────────────
 
-function WaveformCanvas({ isRecording }: { isRecording: boolean }) {
+const WaveformCanvas = memo(function WaveformCanvas({ isRecording }: { isRecording: boolean }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationRef = useRef<number>(0);
+  // Reuse buffer to avoid GC pressure during animation
+  const dataArrayRef = useRef<Uint8Array | null>(null);
 
   useEffect(() => {
     if (!isRecording) {
@@ -67,21 +76,25 @@ function WaveformCanvas({ isRecording }: { isRecording: boolean }) {
     const draw = () => {
       const canvas = canvasRef.current;
       const analyser = getAnalyserNode();
-      if (!canvas || !analyser) return;
+      if (!canvas || !analyser) {
+        animationRef.current = requestAnimationFrame(draw);
+        return;
+      }
 
       const ctx = canvas.getContext('2d');
       if (!ctx) return;
 
+      // Allocate buffer once, reuse across frames
       const bufferLength = analyser.frequencyBinCount;
-      const dataArray = new Uint8Array(bufferLength);
-      analyser.getByteTimeDomainData(dataArray);
+      if (!dataArrayRef.current || dataArrayRef.current.length !== bufferLength) {
+        dataArrayRef.current = new Uint8Array(bufferLength);
+      }
+      analyser.getByteTimeDomainData(dataArrayRef.current);
 
       const w = canvas.width;
       const h = canvas.height;
 
-      ctx.fillStyle = 'rgba(0, 0, 0, 0)';
       ctx.clearRect(0, 0, w, h);
-
       ctx.lineWidth = 2;
       ctx.strokeStyle = 'hsl(var(--primary))';
       ctx.beginPath();
@@ -90,7 +103,7 @@ function WaveformCanvas({ isRecording }: { isRecording: boolean }) {
       let x = 0;
 
       for (let i = 0; i < bufferLength; i++) {
-        const v = dataArray[i] / 128.0;
+        const v = dataArrayRef.current[i] / 128.0;
         const y = (v * h) / 2;
         if (i === 0) ctx.moveTo(x, y);
         else ctx.lineTo(x, y);
@@ -104,11 +117,14 @@ function WaveformCanvas({ isRecording }: { isRecording: boolean }) {
     };
 
     // Small delay to allow analyser to initialize
-    setTimeout(() => {
+    const timer = setTimeout(() => {
       animationRef.current = requestAnimationFrame(draw);
     }, 100);
 
-    return () => cancelAnimationFrame(animationRef.current);
+    return () => {
+      clearTimeout(timer);
+      cancelAnimationFrame(animationRef.current);
+    };
   }, [isRecording]);
 
   return (
@@ -119,11 +135,11 @@ function WaveformCanvas({ isRecording }: { isRecording: boolean }) {
       className="w-full h-[60px] rounded-md bg-muted/20"
     />
   );
-}
+});
 
 // ─── Recording Timer ─────────────────────────────────
 
-function RecordingTimer({ isRecording }: { isRecording: boolean }) {
+const RecordingTimer = memo(function RecordingTimer({ isRecording }: { isRecording: boolean }) {
   const [seconds, setSeconds] = useState(0);
 
   useEffect(() => {
@@ -145,11 +161,11 @@ function RecordingTimer({ isRecording }: { isRecording: boolean }) {
       {mm}:{ss}
     </span>
   );
-}
+});
 
 // ─── Status Icon ─────────────────────────────────────
 
-function RecordingStatusIcon({ status }: { status: VoiceRecording['status'] }) {
+const RecordingStatusIcon = memo(function RecordingStatusIcon({ status }: { status: VoiceRecording['status'] }) {
   switch (status) {
     case 'uploading':
     case 'transcribing':
@@ -162,7 +178,7 @@ function RecordingStatusIcon({ status }: { status: VoiceRecording['status'] }) {
     default:
       return <Clock className="w-3.5 h-3.5 text-muted-foreground" />;
   }
-}
+});
 
 const STATUS_LABELS: Record<string, string> = {
   uploading: '업로드 중',
@@ -172,23 +188,81 @@ const STATUS_LABELS: Record<string, string> = {
   error: '오류',
 };
 
+function formatDuration(seconds: number): string {
+  if (!seconds) return '0:00';
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return `${m}:${String(s).padStart(2, '0')}`;
+}
+
+// ─── Recording List Item ────────────────────────────
+
+const RecordingListItem = memo(function RecordingListItem({
+  recording,
+  projectTitle,
+  onSelect,
+}: {
+  recording: VoiceRecording;
+  projectTitle: string | null;
+  onSelect: (recording: VoiceRecording) => void;
+}) {
+  const handleClick = useCallback(() => onSelect(recording), [recording, onSelect]);
+
+  return (
+    <button
+      onClick={handleClick}
+      className="w-full text-left px-2 py-1.5 rounded-md hover:bg-muted/50 transition-colors"
+    >
+      <div className="flex items-center gap-1.5">
+        <RecordingStatusIcon status={recording.status} />
+        <span className="text-xs font-medium truncate flex-1">
+          {recording.title}
+        </span>
+        <span className="text-[9px] text-muted-foreground shrink-0">
+          {formatDuration(recording.duration)}
+        </span>
+      </div>
+      <div className="flex items-center gap-1.5 mt-0.5 pl-5">
+        <span className="text-[9px] text-muted-foreground/60">
+          {STATUS_LABELS[recording.status] || recording.status}
+        </span>
+        {projectTitle && (
+          <span className="inline-flex items-center gap-0.5 text-[8px] px-1 py-0.5 rounded bg-violet-500/10 text-violet-600 dark:text-violet-400">
+            <FolderOpen className="w-2 h-2" />
+            {projectTitle}
+          </span>
+        )}
+        {recording.brainAnalysis && (
+          <Brain className="w-2.5 h-2.5 text-primary" />
+        )}
+      </div>
+    </button>
+  );
+});
+
 // ─── Main Widget ─────────────────────────────────────
 
 function VoiceRecorderWidget({ context }: { context: WidgetDataContext }) {
   const { t } = useTranslation();
-  const {
-    projects,
-    currentUser,
-    voiceRecordings,
-    startVoiceRecording,
-    stopVoiceRecording,
-    uploadVoiceFile,
-  } = useAppStore();
+
+  // Use selector pattern to minimize re-renders — only subscribe to what we need
+  const projects = useAppStore(s => s.projects);
+  const currentUser = useAppStore(s => s.currentUser);
+  const voiceRecordings = useAppStore(s => s.voiceRecordings);
+  const startVoiceRecordingAction = useAppStore(s => s.startVoiceRecording);
+  const uploadVoiceFileAction = useAppStore(s => s.uploadVoiceFile);
 
   const activeProjects = useMemo(
     () => projects.filter(p => p.status === 'ACTIVE'),
     [projects],
   );
+
+  // Build project lookup map once
+  const projectMap = useMemo(() => {
+    const map = new Map<string, string>();
+    projects.forEach(p => map.set(p.id, p.title));
+    return map;
+  }, [projects]);
 
   const [tab, setTab] = useState<TabMode>('record');
   const [isRecording, setIsRecording] = useState(false);
@@ -200,13 +274,13 @@ function VoiceRecorderWidget({ context }: { context: WidgetDataContext }) {
   const [selectedRecording, setSelectedRecording] = useState<VoiceRecording | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Filter recordings by context
-  const filteredRecordings = useMemo(() => {
-    if (context.type === 'project' && context.projectId) {
-      return voiceRecordings.filter(r => r.projectId === context.projectId);
-    }
-    return voiceRecordings;
-  }, [voiceRecordings, context]);
+  // Filter and sort recordings — memoized to avoid recomputing on every render
+  const sortedRecordings = useMemo(() => {
+    const list = context.type === 'project' && context.projectId
+      ? voiceRecordings.filter(r => r.projectId === context.projectId)
+      : voiceRecordings;
+    return [...list].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }, [voiceRecordings, context.type, context.projectId]);
 
   // ─── Record handlers ───────
   const handleStartRecording = useCallback(async () => {
@@ -233,12 +307,12 @@ function VoiceRecorderWidget({ context }: { context: WidgetDataContext }) {
   const handleStopRecording = useCallback(async () => {
     setIsProcessing(true);
     try {
-      const { blob, duration } = await stopRecording();
+      const { blob } = await stopRecording();
       setIsRecording(false);
       setIsPaused(false);
 
       if (blob.size > 0 && currentUser) {
-        await startVoiceRecording(blob, {
+        await startVoiceRecordingAction(blob, {
           title: title || `녹음 ${new Date().toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}`,
           projectId: projectId || undefined,
         });
@@ -250,7 +324,7 @@ function VoiceRecorderWidget({ context }: { context: WidgetDataContext }) {
     } finally {
       setIsProcessing(false);
     }
-  }, [title, projectId, currentUser, startVoiceRecording]);
+  }, [title, projectId, currentUser, startVoiceRecordingAction]);
 
   const handleCancelRecording = useCallback(() => {
     cancelRecording();
@@ -271,8 +345,7 @@ function VoiceRecorderWidget({ context }: { context: WidgetDataContext }) {
 
     setIsProcessing(true);
     try {
-      const duration = await getAudioDuration(file);
-      await uploadVoiceFile(file, {
+      await uploadVoiceFileAction(file, {
         title: title || file.name.replace(/\.[^.]+$/, ''),
         projectId: projectId || undefined,
       });
@@ -283,7 +356,7 @@ function VoiceRecorderWidget({ context }: { context: WidgetDataContext }) {
     } finally {
       setIsProcessing(false);
     }
-  }, [title, projectId, currentUser, uploadVoiceFile]);
+  }, [title, projectId, currentUser, uploadVoiceFileAction]);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -291,12 +364,37 @@ function VoiceRecorderWidget({ context }: { context: WidgetDataContext }) {
     handleFileSelect(e.dataTransfer.files);
   }, [handleFileSelect]);
 
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOver(true);
+  }, []);
+
+  const handleDragLeave = useCallback(() => setDragOver(false), []);
+
+  const handleFileInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    handleFileSelect(e.target.files);
+  }, [handleFileSelect]);
+
+  const handleOpenFileInput = useCallback(() => fileInputRef.current?.click(), []);
+
+  const handleProjectChange = useCallback((v: string) => setProjectId(v === '__none__' ? '' : v), []);
+
+  const handleTitleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => setTitle(e.target.value), []);
+
+  const handleDialogClose = useCallback((open: boolean) => {
+    if (!open) setSelectedRecording(null);
+  }, []);
+
+  const handleSelectRecording = useCallback((recording: VoiceRecording) => {
+    setSelectedRecording(recording);
+  }, []);
+
   // ─── Tab buttons ───────
-  const tabs: { key: TabMode; icon: typeof Mic; label: string }[] = [
+  const tabs = useMemo<Array<{ key: TabMode; icon: typeof Mic; label: string }>>(() => [
     { key: 'record', icon: Mic, label: t('voiceRecorderRecord') },
     { key: 'upload', icon: Upload, label: t('voiceRecorderUpload') },
     { key: 'history', icon: List, label: t('voiceRecorderHistory') },
-  ];
+  ], [t]);
 
   return (
     <div className="flex flex-col h-full">
@@ -329,11 +427,11 @@ function VoiceRecorderWidget({ context }: { context: WidgetDataContext }) {
                 <div className="w-full space-y-2">
                   <Input
                     value={title}
-                    onChange={(e) => setTitle(e.target.value)}
+                    onChange={handleTitleChange}
                     placeholder={t('voiceRecorderTitlePlaceholder')}
                     className="h-8 text-xs"
                   />
-                  <Select value={projectId || '__none__'} onValueChange={(v) => setProjectId(v === '__none__' ? '' : v)}>
+                  <Select value={projectId || '__none__'} onValueChange={handleProjectChange}>
                     <SelectTrigger className="h-8 text-xs">
                       <SelectValue placeholder={t('brainFieldProjectNone')} />
                     </SelectTrigger>
@@ -408,11 +506,11 @@ function VoiceRecorderWidget({ context }: { context: WidgetDataContext }) {
             <div className="space-y-2">
               <Input
                 value={title}
-                onChange={(e) => setTitle(e.target.value)}
+                onChange={handleTitleChange}
                 placeholder={t('voiceRecorderTitlePlaceholder')}
                 className="h-8 text-xs"
               />
-              <Select value={projectId || '__none__'} onValueChange={(v) => setProjectId(v === '__none__' ? '' : v)}>
+              <Select value={projectId || '__none__'} onValueChange={handleProjectChange}>
                 <SelectTrigger className="h-8 text-xs">
                   <SelectValue placeholder={t('brainFieldProjectNone')} />
                 </SelectTrigger>
@@ -427,10 +525,10 @@ function VoiceRecorderWidget({ context }: { context: WidgetDataContext }) {
 
             {/* Drop zone */}
             <div
-              onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
-              onDragLeave={() => setDragOver(false)}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
               onDrop={handleDrop}
-              onClick={() => fileInputRef.current?.click()}
+              onClick={handleOpenFileInput}
               className={`flex-1 flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed cursor-pointer transition-colors ${
                 dragOver
                   ? 'border-primary bg-primary/5'
@@ -455,7 +553,7 @@ function VoiceRecorderWidget({ context }: { context: WidgetDataContext }) {
               type="file"
               accept="audio/*"
               className="hidden"
-              onChange={(e) => handleFileSelect(e.target.files)}
+              onChange={handleFileInputChange}
             />
           </div>
         )}
@@ -463,71 +561,37 @@ function VoiceRecorderWidget({ context }: { context: WidgetDataContext }) {
         {/* ───── History Mode ───── */}
         {tab === 'history' && (
           <div className="space-y-1">
-            {filteredRecordings.length === 0 ? (
+            {sortedRecordings.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-8 text-muted-foreground/60 gap-1">
                 <FileAudio className="w-5 h-5" />
                 <span className="text-xs">{t('voiceRecorderNoRecordings')}</span>
               </div>
             ) : (
-              filteredRecordings
-                .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-                .map(recording => {
-                  const project = recording.projectId
-                    ? projects.find(p => p.id === recording.projectId)
-                    : null;
-
-                  return (
-                    <button
-                      key={recording.id}
-                      onClick={() => setSelectedRecording(recording)}
-                      className="w-full text-left px-2 py-1.5 rounded-md hover:bg-muted/50 transition-colors"
-                    >
-                      <div className="flex items-center gap-1.5">
-                        <RecordingStatusIcon status={recording.status} />
-                        <span className="text-xs font-medium truncate flex-1">
-                          {recording.title}
-                        </span>
-                        <span className="text-[9px] text-muted-foreground shrink-0">
-                          {formatDuration(recording.duration)}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-1.5 mt-0.5 pl-5">
-                        <span className="text-[9px] text-muted-foreground/60">
-                          {STATUS_LABELS[recording.status] || recording.status}
-                        </span>
-                        {project && (
-                          <span className="inline-flex items-center gap-0.5 text-[8px] px-1 py-0.5 rounded bg-violet-500/10 text-violet-600 dark:text-violet-400">
-                            <FolderOpen className="w-2 h-2" />
-                            {project.title}
-                          </span>
-                        )}
-                        {recording.brainAnalysis && (
-                          <Brain className="w-2.5 h-2.5 text-primary" />
-                        )}
-                      </div>
-                    </button>
-                  );
-                })
+              sortedRecordings.map(recording => (
+                <RecordingListItem
+                  key={recording.id}
+                  recording={recording}
+                  projectTitle={recording.projectId ? projectMap.get(recording.projectId) || null : null}
+                  onSelect={handleSelectRecording}
+                />
+              ))
             )}
           </div>
         )}
       </div>
 
-      {/* Transcript View Dialog */}
-      <TranscriptViewDialog
-        open={!!selectedRecording}
-        onOpenChange={(open) => { if (!open) setSelectedRecording(null); }}
-        recording={selectedRecording}
-      />
+      {/* Transcript View Dialog — lazy-loaded */}
+      {selectedRecording && (
+        <Suspense fallback={null}>
+          <TranscriptViewDialog
+            open={!!selectedRecording}
+            onOpenChange={handleDialogClose}
+            recording={selectedRecording}
+          />
+        </Suspense>
+      )}
     </div>
   );
-}
-
-function formatDuration(seconds: number): string {
-  if (!seconds) return '0:00';
-  const m = Math.floor(seconds / 60);
-  const s = seconds % 60;
-  return `${m}:${String(s).padStart(2, '0')}`;
 }
 
 export default VoiceRecorderWidget;
