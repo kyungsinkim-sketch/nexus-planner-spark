@@ -185,7 +185,7 @@ export function NewProjectModal({ open, onOpenChange }: NewProjectModalProps) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Create New Project</DialogTitle>
           <DialogDescription>
@@ -313,8 +313,8 @@ export function NewProjectModal({ open, onOpenChange }: NewProjectModalProps) {
             </div>
           </div>
 
-          {/* Dates & Budget */}
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {/* Dates */}
+          <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="startDate">Start Date *</Label>
               <Input
@@ -335,15 +335,17 @@ export function NewProjectModal({ open, onOpenChange }: NewProjectModalProps) {
                 required
               />
             </div>
-            <div className="space-y-2 lg:col-span-1 sm:col-span-2">
-              <Label>Budget</Label>
-              <CurrencyInput
-                value={formData.budget}
-                currency={formData.currency}
-                onValueChange={(value) => setFormData(prev => ({ ...prev, budget: value }))}
-                onCurrencyChange={(currency) => setFormData(prev => ({ ...prev, currency }))}
-              />
-            </div>
+          </div>
+
+          {/* Budget — full width */}
+          <div className="space-y-2">
+            <Label>Budget</Label>
+            <CurrencyInput
+              value={formData.budget}
+              currency={formData.currency}
+              onValueChange={(value) => setFormData(prev => ({ ...prev, budget: value }))}
+              onCurrencyChange={(currency) => setFormData(prev => ({ ...prev, currency }))}
+            />
           </div>
 
           {/* PM Selection */}

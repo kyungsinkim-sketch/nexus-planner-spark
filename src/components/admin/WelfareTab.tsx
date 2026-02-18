@@ -50,6 +50,20 @@ const timeSlots = [
     '오후 1시', '오후 2시', '오후 3시', '오후 4시', '오후 5시'
 ];
 
+// Format date to YYYY-MM-DD in LOCAL timezone (avoids UTC date-shift bug)
+const toLocalDateStr = (d: Date): string => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+};
+
+// Parse YYYY-MM-DD string to local Date (avoids UTC midnight bug)
+const parseLocalDate = (dateStr: string, hour = 0): Date => {
+    const [y, m, d] = dateStr.split('-').map(Number);
+    return new Date(y, m - 1, d, hour, 0, 0, 0);
+};
+
 // Convert time slot to hour (24-hour format)
 const timeSlotToHour = (slot: string): number => {
     const hourMap: { [key: string]: number } = {
@@ -69,8 +83,8 @@ export function WelfareTab() {
 
     // Locker assignments state
     const [lockerAssignments, setLockerAssignments] = useState<LockerAssignment[]>(() => {
-        const today = new Date().toISOString().slice(0, 10);
-        const monthAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+        const today = toLocalDateStr(new Date());
+        const monthAgo = toLocalDateStr(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000));
         return [
             { lockerNumber: 1, userId: 'u1', userName: '이지우', assignedDate: monthAgo },
             { lockerNumber: 2, userId: 'u2', userName: '정승제', assignedDate: monthAgo },
@@ -103,7 +117,7 @@ export function WelfareTab() {
     // Training records state - now session-based instead of user-based
     const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
     const [currentRecordsDate, setCurrentRecordsDate] = useState(() => {
-        return new Date().toISOString().slice(0, 10);
+        return toLocalDateStr(new Date());
     });
 
     // Current week dates (for calendar view) — default to current week's Monday
@@ -144,7 +158,7 @@ export function WelfareTab() {
 
     // Get sessions for a specific date and time
     const getSessionsForSlot = (date: Date, timeSlot: string) => {
-        const dateStr = date.toISOString().split('T')[0];
+        const dateStr = toLocalDateStr(date);
         return trainingSessions.filter(s => s.date === dateStr && s.timeSlot === timeSlot);
     };
 
@@ -163,7 +177,7 @@ export function WelfareTab() {
         }
 
         // Empty slot → open create dialog
-        setSelectedDate(date.toISOString().split('T')[0]);
+        setSelectedDate(toLocalDateStr(date));
         setSelectedTimeSlot(timeSlot);
         setSelectedUserId('');
         setIsBookingDialogOpen(true);
@@ -175,7 +189,7 @@ export function WelfareTab() {
 
         // Check if new slot is occupied (unless it's the same slot)
         if (editTimeSlot !== editingSession.timeSlot || editDate !== editingSession.date) {
-            const targetDate = new Date(editDate);
+            const targetDate = parseLocalDate(editDate);
             const occupied = getSessionsForSlot(targetDate, editTimeSlot);
             if (occupied.length > 0 && occupied[0].id !== editingSession.id) {
                 toast.error(t('slotAlreadyBooked'));
@@ -198,8 +212,7 @@ export function WelfareTab() {
         if (editTimeSlot !== oldTimeSlot || editDate !== oldDate) {
             const eventTitle = t('renatusTrainingEvent');
             const oldHour = timeSlotToHour(oldTimeSlot);
-            const oldStart = new Date(oldDate);
-            oldStart.setHours(oldHour, 0, 0, 0);
+            const oldStart = parseLocalDate(oldDate, oldHour);
 
             const matchingEvent = events.find(
                 e => e.title === eventTitle &&
@@ -209,10 +222,8 @@ export function WelfareTab() {
 
             if (matchingEvent) {
                 const newHour = timeSlotToHour(editTimeSlot);
-                const newStart = new Date(editDate);
-                newStart.setHours(newHour, 0, 0, 0);
-                const newEnd = new Date(newStart);
-                newEnd.setHours(newHour + 1, 0, 0, 0);
+                const newStart = parseLocalDate(editDate, newHour);
+                const newEnd = parseLocalDate(editDate, newHour + 1);
                 try {
                     await updateEvent(matchingEvent.id, {
                         startAt: newStart.toISOString(),
@@ -234,8 +245,7 @@ export function WelfareTab() {
         // Delete matching calendar event
         const eventTitle = t('renatusTrainingEvent');
         const hour = timeSlotToHour(editingSession.timeSlot);
-        const startDate = new Date(editingSession.date);
-        startDate.setHours(hour, 0, 0, 0);
+        const startDate = parseLocalDate(editingSession.date, hour);
 
         const matchingEvent = events.find(
             e => e.title === eventTitle &&
@@ -268,7 +278,7 @@ export function WelfareTab() {
     const handleDrop = async (date: Date, timeSlot: string) => {
         if (!dragSession) return;
 
-        const dateStr = date.toISOString().split('T')[0];
+        const dateStr = toLocalDateStr(date);
 
         // Skip if dropping on same slot
         if (dragSession.timeSlot === timeSlot && dragSession.date === dateStr) {
@@ -299,8 +309,7 @@ export function WelfareTab() {
         // Sync calendar: find matching event and update it
         const eventTitle = t('renatusTrainingEvent');
         const oldHour = timeSlotToHour(oldTimeSlot);
-        const oldStart = new Date(oldDate);
-        oldStart.setHours(oldHour, 0, 0, 0);
+        const oldStart = parseLocalDate(oldDate, oldHour);
 
         const matchingEvent = events.find(
             e => e.title === eventTitle &&
@@ -310,10 +319,8 @@ export function WelfareTab() {
 
         if (matchingEvent) {
             const newHour = timeSlotToHour(timeSlot);
-            const newStart = new Date(dateStr);
-            newStart.setHours(newHour, 0, 0, 0);
-            const newEnd = new Date(newStart);
-            newEnd.setHours(newHour + 1, 0, 0, 0);
+            const newStart = parseLocalDate(dateStr, newHour);
+            const newEnd = parseLocalDate(dateStr, newHour + 1);
             try {
                 await updateEvent(matchingEvent.id, {
                     startAt: newStart.toISOString(),
@@ -353,10 +360,10 @@ export function WelfareTab() {
 
         // Add to user's personal calendar (single event only)
         const hour = timeSlotToHour(selectedTimeSlot);
-        const startDate = new Date(selectedDate);
-        startDate.setHours(hour, 0, 0, 0);
-        const endDate = new Date(startDate);
-        endDate.setHours(hour + 1, 0, 0, 0);
+        // Parse date parts locally to avoid UTC date-shift bug
+        const [y, m, d] = selectedDate.split('-').map(Number);
+        const startDate = new Date(y, m - 1, d, hour, 0, 0, 0);
+        const endDate = new Date(y, m - 1, d, hour + 1, 0, 0, 0);
 
         // Check for existing duplicate event before creating
         const { events: existingEvents } = useAppStore.getState();
@@ -422,7 +429,7 @@ export function WelfareTab() {
             lockerNumber: selectedLockerNumber,
             userId: selectedUserId,
             userName: user.name,
-            assignedDate: new Date().toISOString().split('T')[0],
+            assignedDate: toLocalDateStr(new Date()),
         };
 
         setLockerAssignments([...lockerAssignments, newAssignment]);

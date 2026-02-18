@@ -125,9 +125,42 @@ const mockBudgetData: ProjectBudget = {
 
 type BudgetSection = 'contract' | 'target' | 'actual' | 'profit';
 
+// Empty budget template for new projects
+const emptyBudgetData: ProjectBudget = {
+  summary: {
+    id: '',
+    projectId: '',
+    companyName: '',
+    contractName: '',
+    department: '',
+    author: '',
+    shootingDate: '',
+    phase: '',
+    totalContractAmount: 0,
+    vatAmount: 0,
+    totalWithVat: 0,
+    targetExpenseWithVat: 0,
+    targetProfitWithVat: 0,
+    actualExpenseWithVat: 0,
+    actualProfitWithVat: 0,
+    actualExpenseWithoutVat: 0,
+    actualProfitWithoutVat: 0,
+  },
+  paymentSchedules: [],
+  lineItems: [],
+  taxInvoices: [],
+  withholdingPayments: [],
+  corporateCardExpenses: [],
+  corporateCashExpenses: [],
+  personalExpenses: [],
+};
+
 export function BudgetTab({ projectId }: BudgetTabProps) {
   const { t, language } = useTranslation();
-  const [budget, setBudget] = useState<ProjectBudget>(mockBudgetData);
+  // Only use mock data for the original project p1 (2025 data); new projects start empty
+  const [budget, setBudget] = useState<ProjectBudget>(
+    projectId === 'p1' ? mockBudgetData : { ...emptyBudgetData, summary: { ...emptyBudgetData.summary, projectId } }
+  );
   const [activeSection, setActiveSection] = useState<BudgetSection>('contract');
   const [expenseTab, setExpenseTab] = useState<'tax_invoice' | 'withholding' | 'corporate_card' | 'corporate_cash' | 'personal'>('tax_invoice');
 
