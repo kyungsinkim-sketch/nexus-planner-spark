@@ -34,7 +34,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { User, UserRole } from '@/types/core';
-import { Shield, UserPlus, Trash2, Edit, Sparkles, Bell, Save, Database, Brain } from 'lucide-react';
+import { Shield, UserPlus, Trash2, Edit, Sparkles, Bell, Save, Database, Brain, KeyRound, Mail } from 'lucide-react';
 import { toast } from 'sonner';
 import { useTranslation } from '@/hooks/useTranslation';
 
@@ -79,6 +79,13 @@ export function AdminSettingsTab() {
     const [newUserName, setNewUserName] = useState('');
     const [newUserEmail, setNewUserEmail] = useState('');
     const [newUserRole, setNewUserRole] = useState<UserRole>('MEMBER');
+
+    // Password reset dialog state
+    const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
+    const [passwordTarget, setPasswordTarget] = useState<{ id: string; name: string; email?: string } | null>(null);
+    const [newPasswordValue, setNewPasswordValue] = useState('');
+    const [confirmPasswordValue, setConfirmPasswordValue] = useState('');
+    const [isResettingPassword, setIsResettingPassword] = useState(false);
 
     // Inspiration quotes state
     const [quotes, setQuotes] = useState([
@@ -227,6 +234,34 @@ export function AdminSettingsTab() {
             toast.error(message);
         }
     }, [loadUsers]);
+
+    // Password reset handler
+    const handleResetPassword = async () => {
+        if (!passwordTarget) return;
+        if (newPasswordValue.length < 6) {
+            toast.error('비밀번호는 최소 6자 이상이어야 합니다');
+            return;
+        }
+        if (newPasswordValue !== confirmPasswordValue) {
+            toast.error('비밀번호가 일치하지 않습니다');
+            return;
+        }
+        setIsResettingPassword(true);
+        try {
+            if (isSupabaseConfigured()) {
+                const { error } = await supabase.auth.admin.updateUserById(passwordTarget.id, {
+                    password: newPasswordValue,
+                });
+                if (error) throw error;
+            }
+            toast.success(`${passwordTarget.name}님의 비밀번호가 변경되었습니다`);
+            setPasswordDialogOpen(false);
+        } catch (error: unknown) {
+            toast.error('비밀번호 변경 실패: ' + (error instanceof Error ? error.message : ''));
+        } finally {
+            setIsResettingPassword(false);
+        }
+    };
 
     // Quote management functions
     const handleAddQuote = () => {
@@ -401,6 +436,7 @@ export function AdminSettingsTab() {
                             <TableHeader>
                                 <TableRow>
                                     <TableHead>{t('name')}</TableHead>
+                                    <TableHead>이메일</TableHead>
                                     <TableHead>{t('department')}</TableHead>
                                     <TableHead>{t('role')}</TableHead>
                                     <TableHead>{t('accessLevel')}</TableHead>
@@ -411,6 +447,12 @@ export function AdminSettingsTab() {
                                 {users.map((user) => (
                                     <TableRow key={user.id}>
                                         <TableCell className="font-medium">{user.name}</TableCell>
+                                        <TableCell>
+                                            <span className="text-xs text-muted-foreground flex items-center gap-1">
+                                                <Mail className="w-3 h-3" />
+                                                {(user as unknown as { email?: string }).email || `${user.name.toLowerCase().replace(/\s+/g, '.')}@paulus.pro`}
+                                            </span>
+                                        </TableCell>
                                         <TableCell>{user.department || 'N/A'}</TableCell>
                                         <TableCell>
                                             <Select
@@ -443,14 +485,30 @@ export function AdminSettingsTab() {
                                             </div>
                                         </TableCell>
                                         <TableCell className="text-right">
-                                            <Button
-                                                variant="ghost"
-                                                size="icon"
-                                                onClick={() => handleDeleteUser(user.id, user.name)}
-                                                disabled={user.role === 'ADMIN'}
-                                            >
-                                                <Trash2 className="w-4 h-4 text-destructive" />
-                                            </Button>
+                                            <div className="flex gap-1 justify-end">
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    onClick={() => {
+                                                        setPasswordTarget({ id: user.id, name: user.name, email: (user as unknown as { email?: string }).email });
+                                                        setNewPasswordValue('');
+                                                        setConfirmPasswordValue('');
+                                                        setPasswordDialogOpen(true);
+                                                    }}
+                                                    title="비밀번호 변경"
+                                                >
+                                                    <KeyRound className="w-4 h-4 text-amber-600" />
+                                                </Button>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    onClick={() => handleDeleteUser(user.id, user.name)}
+                                                    disabled={user.role === 'ADMIN'}
+                                                    title="삭제"
+                                                >
+                                                    <Trash2 className="w-4 h-4 text-destructive" />
+                                                </Button>
+                                            </div>
                                         </TableCell>
                                     </TableRow>
                                 ))}
@@ -760,6 +818,52 @@ export function AdminSettingsTab() {
                     </CardContent>
                 </Card>
             </TabsContent>
+
+            {/* Password Reset Dialog */}
+            <Dialog open={passwordDialogOpen} onOpenChange={setPasswordDialogOpen}>
+                <DialogContent className="max-w-sm">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <KeyRound className="w-5 h-5 text-amber-500" />
+                            비밀번호 변경
+                        </DialogTitle>
+                        <DialogDescription>
+                            {passwordTarget?.name}님의 비밀번호를 변경합니다
+                            {passwordTarget?.email && (
+                                <span className="block text-xs mt-1">{passwordTarget.email}</span>
+                            )}
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-3">
+                        <div className="space-y-1.5">
+                            <Label>새 비밀번호</Label>
+                            <Input
+                                type="password"
+                                placeholder="6자 이상 입력"
+                                value={newPasswordValue}
+                                onChange={(e) => setNewPasswordValue(e.target.value)}
+                            />
+                        </div>
+                        <div className="space-y-1.5">
+                            <Label>비밀번호 확인</Label>
+                            <Input
+                                type="password"
+                                placeholder="비밀번호 재입력"
+                                value={confirmPasswordValue}
+                                onChange={(e) => setConfirmPasswordValue(e.target.value)}
+                            />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setPasswordDialogOpen(false)}>
+                            취소
+                        </Button>
+                        <Button onClick={handleResetPassword} disabled={isResettingPassword || !newPasswordValue}>
+                            {isResettingPassword ? '변경 중...' : '비밀번호 변경'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
 
             {/* Brain AI Tab */}
             <TabsContent value="ai" className="space-y-4">

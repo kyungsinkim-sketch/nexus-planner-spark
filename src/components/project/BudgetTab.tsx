@@ -90,7 +90,7 @@ const mockBudgetData: ProjectBudget = {
   paymentSchedules: [
     { id: 'ps-1', projectId: 'p1', installment: '1차(선금)', expectedAmount: 100000000, expectedDate: '2025-09-30', actualAmount: 0, balance: 312059000 },
     { id: 'ps-2', projectId: 'p1', installment: '2차(중도)', expectedAmount: 100000000, expectedDate: '2025-11-30', actualAmount: 0, balance: 312059000 },
-    { id: 'ps-3', projectId: 'p1', installment: '3차(잔액)', expectedAmount: 112059000, expectedDate: '2026-02-28', actualAmount: 0, balance: 312059000 },
+    { id: 'ps-3', projectId: 'p1', installment: '3차(잔액)', expectedAmount: 112059000, expectedDate: '2025-12-31', actualAmount: 0, balance: 312059000 },
   ],
   lineItems: [
     // 스텝 인건비 / 장비 - 촬영

@@ -19,6 +19,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
 import { Calendar, Clock, Dumbbell, Users, CheckCircle, ChevronLeft, ChevronRight, TrendingUp } from 'lucide-react';
 import { toast } from 'sonner';
 import { useTranslation } from '@/hooks/useTranslation';
@@ -91,6 +92,8 @@ export function WelfareTab() {
     const [selectedTimeSlot, setSelectedTimeSlot] = useState('');
     const [selectedUserId, setSelectedUserId] = useState('');
     const [selectedLockerNumber, setSelectedLockerNumber] = useState(0);
+    const [userSearchQuery, setUserSearchQuery] = useState('');
+    const [showUserDropdown, setShowUserDropdown] = useState(false);
 
     // Training records state - now session-based instead of user-based
     const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
@@ -616,7 +619,10 @@ export function WelfareTab() {
             </Tabs>
 
             {/* Booking Dialog */}
-            <Dialog open={isBookingDialogOpen} onOpenChange={setIsBookingDialogOpen}>
+            <Dialog open={isBookingDialogOpen} onOpenChange={(open) => {
+                setIsBookingDialogOpen(open);
+                if (!open) { setUserSearchQuery(''); setShowUserDropdown(false); }
+            }}>
                 <DialogContent>
                     <DialogHeader>
                         <DialogTitle>{t('trainingBooking')}</DialogTitle>
@@ -625,20 +631,43 @@ export function WelfareTab() {
                         </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4">
-                        <div>
+                        <div className="relative">
                             <label className="text-sm font-medium">{t('selectUserLabel')}</label>
-                            <Select value={selectedUserId} onValueChange={setSelectedUserId}>
-                                <SelectTrigger>
-                                    <SelectValue placeholder={t('selectUserLabel')} />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {users.map((user) => (
-                                        <SelectItem key={user.id} value={user.id}>
-                                            {user.name}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                            <Input
+                                placeholder={t('selectUserLabel')}
+                                value={userSearchQuery}
+                                onChange={(e) => {
+                                    setUserSearchQuery(e.target.value);
+                                    setShowUserDropdown(true);
+                                    if (!e.target.value) setSelectedUserId('');
+                                }}
+                                onFocus={() => setShowUserDropdown(true)}
+                            />
+                            {showUserDropdown && userSearchQuery && (
+                                <div className="absolute z-50 w-full mt-1 bg-popover border border-border rounded-md shadow-lg max-h-[200px] overflow-y-auto">
+                                    {users
+                                        .filter(u => u.name.toLowerCase().includes(userSearchQuery.toLowerCase()))
+                                        .map((user) => (
+                                            <button
+                                                key={user.id}
+                                                type="button"
+                                                className={`w-full text-left px-3 py-2 text-sm hover:bg-muted transition-colors ${selectedUserId === user.id ? 'bg-primary/10 text-primary font-medium' : ''}`}
+                                                onClick={() => {
+                                                    setSelectedUserId(user.id);
+                                                    setUserSearchQuery(user.name);
+                                                    setShowUserDropdown(false);
+                                                }}
+                                            >
+                                                <span>{user.name}</span>
+                                                <span className="text-xs text-muted-foreground ml-2">{user.department}</span>
+                                            </button>
+                                        ))
+                                    }
+                                    {users.filter(u => u.name.toLowerCase().includes(userSearchQuery.toLowerCase())).length === 0 && (
+                                        <div className="px-3 py-2 text-sm text-muted-foreground">검색 결과 없음</div>
+                                    )}
+                                </div>
+                            )}
                         </div>
                     </div>
                     <DialogFooter>
@@ -651,27 +680,53 @@ export function WelfareTab() {
             </Dialog>
 
             {/* Locker Assignment Dialog */}
-            <Dialog open={isLockerDialogOpen} onOpenChange={setIsLockerDialogOpen}>
+            <Dialog open={isLockerDialogOpen} onOpenChange={(open) => {
+                setIsLockerDialogOpen(open);
+                if (!open) { setUserSearchQuery(''); setShowUserDropdown(false); }
+            }}>
                 <DialogContent>
                     <DialogHeader>
                         <DialogTitle>{t('lockerAssignment').replace('{n}', String(selectedLockerNumber))}</DialogTitle>
                         <DialogDescription>{t('selectUserForLocker')}</DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4">
-                        <div>
+                        <div className="relative">
                             <label className="text-sm font-medium">{t('selectUserLabel')}</label>
-                            <Select value={selectedUserId} onValueChange={setSelectedUserId}>
-                                <SelectTrigger>
-                                    <SelectValue placeholder={t('selectUserLabel')} />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {users.map((user) => (
-                                        <SelectItem key={user.id} value={user.id}>
-                                            {user.name}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                            <Input
+                                placeholder={t('selectUserLabel')}
+                                value={userSearchQuery}
+                                onChange={(e) => {
+                                    setUserSearchQuery(e.target.value);
+                                    setShowUserDropdown(true);
+                                    if (!e.target.value) setSelectedUserId('');
+                                }}
+                                onFocus={() => setShowUserDropdown(true)}
+                            />
+                            {showUserDropdown && userSearchQuery && (
+                                <div className="absolute z-50 w-full mt-1 bg-popover border border-border rounded-md shadow-lg max-h-[200px] overflow-y-auto">
+                                    {users
+                                        .filter(u => u.name.toLowerCase().includes(userSearchQuery.toLowerCase()))
+                                        .map((user) => (
+                                            <button
+                                                key={user.id}
+                                                type="button"
+                                                className={`w-full text-left px-3 py-2 text-sm hover:bg-muted transition-colors ${selectedUserId === user.id ? 'bg-primary/10 text-primary font-medium' : ''}`}
+                                                onClick={() => {
+                                                    setSelectedUserId(user.id);
+                                                    setUserSearchQuery(user.name);
+                                                    setShowUserDropdown(false);
+                                                }}
+                                            >
+                                                <span>{user.name}</span>
+                                                <span className="text-xs text-muted-foreground ml-2">{user.department}</span>
+                                            </button>
+                                        ))
+                                    }
+                                    {users.filter(u => u.name.toLowerCase().includes(userSearchQuery.toLowerCase())).length === 0 && (
+                                        <div className="px-3 py-2 text-sm text-muted-foreground">검색 결과 없음</div>
+                                    )}
+                                </div>
+                            )}
                         </div>
                     </div>
                     <DialogFooter>

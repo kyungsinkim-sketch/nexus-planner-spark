@@ -24,7 +24,7 @@ export default function DepositStatusPage() {
   const [deposits, setDeposits] = useState<DepositItem[]>([
     { id: 'ps-1', installment: t('firstInstallmentAdvance'), expectedDate: '2025-09-30', expectedAmount: 100000000 },
     { id: 'ps-2', installment: t('secondInstallmentInterim'), expectedDate: '2025-11-30', expectedAmount: 100000000 },
-    { id: 'ps-3', installment: t('thirdInstallmentBalance'), expectedDate: '2026-02-28', expectedAmount: 112059000 },
+    { id: 'ps-3', installment: t('thirdInstallmentBalance'), expectedDate: '2025-12-31', expectedAmount: 112059000 },
   ]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isAdding, setIsAdding] = useState(false);

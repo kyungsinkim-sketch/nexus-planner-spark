@@ -111,6 +111,25 @@ function BrainChatWidget({ context }: { context: WidgetDataContext }) {
       if (createdEvent) await loadEvents();
       if (createdTodo) {
         await loadTodos();
+        // Smart dedup: remove duplicate todos with same title
+        const { personalTodos, deleteTodo: delTodo } = useAppStore.getState();
+        for (const action of actions) {
+          const act = action as Record<string, unknown>;
+          const extracted = (act.extracted_data || act.extractedData) as Record<string, unknown> | undefined;
+          const todoTitle = (extracted?.title as string) || '';
+          if (todoTitle) {
+            const dupes = personalTodos.filter(td => td.title === todoTitle);
+            if (dupes.length > 1) {
+              const sorted = [...dupes].sort((a, b) =>
+                new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
+              );
+              for (let d = 1; d < sorted.length; d++) {
+                await delTodo(sorted[d].id);
+                console.log(`[BrainWidget] Dedup: removed older todo "${sorted[d].title}" (${sorted[d].id})`);
+              }
+            }
+          }
+        }
         for (let retry = 1; retry <= 2; retry++) {
           await new Promise(r => setTimeout(r, 1000));
           await loadTodos().catch(() => {});

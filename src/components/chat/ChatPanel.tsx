@@ -384,10 +384,24 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
               console.log(`[Brain] Auto-executed ${isUpdate ? 'event update' : 'event creation'} from chat, refreshed`);
             }
             if (dataType === 'todo') {
-              // Immediate + retries to handle DB replication lag
               await loadTodos();
+              // Smart dedup: remove duplicate todos with same title
+              const todoExecData = execResult.executedData as Record<string, unknown>;
+              const todoTitle = (todoExecData.title as string) || '';
+              if (todoTitle) {
+                const { personalTodos, deleteTodo } = useAppStore.getState();
+                const dupes = personalTodos.filter(td => td.title === todoTitle);
+                if (dupes.length > 1) {
+                  const sorted = [...dupes].sort((a, b) =>
+                    new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
+                  );
+                  for (let d = 1; d < sorted.length; d++) {
+                    await deleteTodo(sorted[d].id);
+                    console.log(`[Brain] Dedup: removed older todo "${sorted[d].title}" (${sorted[d].id})`);
+                  }
+                }
+              }
               console.log('[Brain] Auto-executed todo from chat, refreshed');
-              // Retry twice with 1s delays for consistency
               for (let retry = 1; retry <= 2; retry++) {
                 await new Promise(r => setTimeout(r, 1000));
                 await loadTodos().catch(() => {});
@@ -1134,21 +1148,13 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
                                   onVoteDecision={handleVoteDecision}
                                   onAcceptSchedule={handleAcceptSchedule}
                                   onDelete={handleDeleteMessage}
+                                  onPin={(msgId) => {
+                                    const msg = chatMessages.find(m => m.id === msgId);
+                                    if (msg) setPinnedAnnouncement(msg);
+                                  }}
                                   onConfirmBrainAction={handleConfirmBrainAction}
                                   onRejectBrainAction={handleRejectBrainAction}
                                 />
-                                {/* Pin as announcement hover button */}
-                                {message.messageType === 'text' && message.content && (
-                                  <button
-                                    onClick={(e) => { e.stopPropagation(); setPinnedAnnouncement(message); }}
-                                    className="absolute -top-2 right-0 opacity-0 group-hover/msg-actions:opacity-100
-                                               p-1 rounded bg-amber-100 dark:bg-amber-900/60 border border-amber-300 dark:border-amber-700
-                                               hover:bg-amber-200 dark:hover:bg-amber-800 transition-all z-10"
-                                    title={t('pinAsAnnouncement')}
-                                  >
-                                    <Pin className="w-3 h-3 text-amber-600 dark:text-amber-400" />
-                                  </button>
-                                )}
                               </div>
                             </div>
                           </div>

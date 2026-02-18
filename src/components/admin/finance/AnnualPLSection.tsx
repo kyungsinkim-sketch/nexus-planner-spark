@@ -83,39 +83,32 @@ export function AnnualPLSection({ year }: AnnualPLSectionProps) {
   const compareData = annualFinancials.find(f => f.year !== year);
 
   const actual2025Key = t('plActual2025');
-  const target2026Key = t('plTarget2026');
 
-  // 비교 차트 데이터
+  // 비교 차트 데이터 (only 2025 actual data)
   const comparisonChartData = [
     {
       name: t('plRevenueLabel'),
       [actual2025Key]: annualFinancials[0].revenue / 100000000,
-      [target2026Key]: annualFinancials[1].revenue / 100000000,
     },
     ...(annualFinancials[0].investment > 0 ? [{
       name: t('plInvestmentLabel'),
       [actual2025Key]: annualFinancials[0].investment / 100000000,
-      [target2026Key]: annualFinancials[1].investment / 100000000,
     }] : []),
     {
       name: t('overheadCost'),
       [actual2025Key]: annualFinancials[0].overhead.total / 100000000,
-      [target2026Key]: annualFinancials[1].overhead.total / 100000000,
     },
     {
       name: t('laborCost'),
       [actual2025Key]: annualFinancials[0].productionPayroll.total / 100000000,
-      [target2026Key]: annualFinancials[1].productionPayroll.total / 100000000,
     },
     {
       name: t('plProductionCostLabel'),
       [actual2025Key]: annualFinancials[0].productionCost.total / 100000000,
-      [target2026Key]: annualFinancials[1].productionCost.total / 100000000,
     },
     {
       name: t('netProfit'),
       [actual2025Key]: annualFinancials[0].netProfit / 100000000,
-      [target2026Key]: annualFinancials[1].netProfit / 100000000,
     },
   ];
 
@@ -310,7 +303,6 @@ export function AnnualPLSection({ year }: AnnualPLSectionProps) {
               />
               <Legend />
               <Bar dataKey={actual2025Key} fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-              <Bar dataKey={target2026Key} fill="hsl(var(--primary) / 0.4)" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </CardContent>

@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Check, X, Trash2, Search, Download, Edit2, KeyRound, Mail } from 'lucide-react';
+import { Check, X, Trash2, Search, Download, Edit2, KeyRound, Mail, UserPlus, ArrowUpDown } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -25,12 +25,30 @@ import { isSupabaseConfigured, supabase } from '@/lib/supabase';
 interface Employee extends AdminEmployee {
   monthsWorked: string;
   yearsWorked: string;
-  birthDate: string; // Not in DB yet, mock or calculate
+  birthDate: string;
+  englishName: string;
 }
+
+// Derive English name from email: "kyungsin.kim@paulus.pro" → "Kim, Kyungsin"
+function deriveEnglishName(email?: string): string {
+  if (!email) return '-';
+  const localPart = email.split('@')[0];
+  // Handle formats: "firstname.lastname", "firstname", "something@naver.com" etc
+  const parts = localPart.split('.');
+  if (parts.length >= 2) {
+    const firstName = parts[0].charAt(0).toUpperCase() + parts[0].slice(1).toLowerCase();
+    const lastName = parts[parts.length - 1].charAt(0).toUpperCase() + parts[parts.length - 1].slice(1).toLowerCase();
+    return `${lastName}, ${firstName}`;
+  }
+  // Single name
+  return localPart.charAt(0).toUpperCase() + localPart.slice(1).toLowerCase();
+}
+
+type SortField = 'join_date' | 'position' | 'level' | 'class_level' | 'annual_salary';
 
 export function EmployeeList() {
   const { t } = useTranslation();
-  const { employees: dbEmployees, updateEmployee, deleteEmployee, isLoading } = useAdminEmployees();
+  const { employees: dbEmployees, updateEmployee, deleteEmployee, addEmployee, isLoading } = useAdminEmployees();
   const { currentUser } = useAppStore();
   const isAdmin = currentUser?.role === 'ADMIN';
 
@@ -39,6 +57,8 @@ export function EmployeeList() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [filterDepartment, setFilterDepartment] = useState<string>('all');
+  const [sortField, setSortField] = useState<SortField>('join_date');
+  const [sortAsc, setSortAsc] = useState(true);
 
   // Password reset dialog state
   const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
@@ -46,6 +66,14 @@ export function EmployeeList() {
   const [newPasswordValue, setNewPasswordValue] = useState('');
   const [confirmPasswordValue, setConfirmPasswordValue] = useState('');
   const [isResettingPassword, setIsResettingPassword] = useState(false);
+
+  // Add employee dialog state
+  const [addDialogOpen, setAddDialogOpen] = useState(false);
+  const [newEmpData, setNewEmpData] = useState({
+    name: '', email: '', department: '', position: '',
+    level: 'P', class_level: 'A', join_date: '', status: '재직중' as string,
+    annual_salary: 0, monthly_salary: 0,
+  });
 
   // Tenure calculation helper
   const calculateTenure = (joinDate: string) => {
@@ -68,7 +96,8 @@ export function EmployeeList() {
           ...emp,
           monthsWorked: tenure.months,
           yearsWorked: tenure.years,
-          birthDate: '000101' // Placeholder or parsing from Personal ID if exists
+          birthDate: '000101',
+          englishName: deriveEnglishName(emp.email),
         };
       });
       setEmployees(mapped);
@@ -83,16 +112,48 @@ export function EmployeeList() {
     return Number(value.replace(/[^0-9]/g, '')) || 0;
   };
 
-  const filteredEmployees = employees.filter(emp => {
-    const matchesSearch = emp.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      emp.department.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      emp.position.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = filterStatus === 'all' || emp.status === filterStatus;
-    const matchesDepartment = filterDepartment === 'all' || emp.department === filterDepartment;
-    return matchesSearch && matchesStatus && matchesDepartment;
-  });
+  const filteredEmployees = employees
+    .filter(emp => {
+      const matchesSearch = emp.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        emp.department.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        emp.position.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (emp.englishName || '').toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesStatus = filterStatus === 'all' || emp.status === filterStatus;
+      const matchesDepartment = filterDepartment === 'all' || emp.department === filterDepartment;
+      return matchesSearch && matchesStatus && matchesDepartment;
+    })
+    .sort((a, b) => {
+      let cmp = 0;
+      switch (sortField) {
+        case 'join_date':
+          cmp = new Date(a.join_date).getTime() - new Date(b.join_date).getTime();
+          break;
+        case 'position':
+          cmp = a.position.localeCompare(b.position);
+          break;
+        case 'level':
+          cmp = a.level.localeCompare(b.level);
+          break;
+        case 'class_level':
+          cmp = a.class_level.localeCompare(b.class_level);
+          break;
+        case 'annual_salary':
+          cmp = a.annual_salary - b.annual_salary;
+          break;
+      }
+      return sortAsc ? cmp : -cmp;
+    });
 
   const departments = [...new Set(employees.map(e => e.department))];
+
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortAsc(!sortAsc);
+    } else {
+      setSortField(field);
+      setSortAsc(true);
+    }
+  };
 
   const handleSave = (id: string) => {
     const emp = employees.find(e => e.id === id);
@@ -109,7 +170,7 @@ export function EmployeeList() {
         annual_salary: emp.annual_salary,
         monthly_salary: emp.monthly_salary,
         status: emp.status,
-        contact: emp.phone, // mapping contact to phone
+        contact: emp.phone,
         email: emp.email
       }
     });
@@ -119,6 +180,12 @@ export function EmployeeList() {
 
   const handleUpdate = (id: string, field: keyof Employee, value: string | number) => {
     setEmployees(prev => prev.map(emp => emp.id === id ? { ...emp, [field]: value } : emp));
+  };
+
+  const handleStatusChange = (id: string, newStatus: string) => {
+    setEmployees(prev => prev.map(emp => emp.id === id ? { ...emp, status: newStatus } : emp));
+    updateEmployee({ id, updates: { status: newStatus } });
+    toast.success(`상태가 '${newStatus}'(으)로 변경되었습니다`);
   };
 
   const handleDelete = (id: string) => {
@@ -148,7 +215,6 @@ export function EmployeeList() {
     setIsResettingPassword(true);
     try {
       if (isSupabaseConfigured()) {
-        // Admin password reset via Supabase admin API
         const { error } = await supabase.auth.admin.updateUserById(passwordTarget.id, {
           password: newPasswordValue,
         });
@@ -157,16 +223,56 @@ export function EmployeeList() {
       toast.success(`${passwordTarget.name}님의 비밀번호가 변경되었습니다`);
       setPasswordDialogOpen(false);
     } catch (error: unknown) {
-      // If admin API fails, try service role approach
       toast.error('비밀번호 변경 실패: ' + (error instanceof Error ? error.message : ''));
     } finally {
       setIsResettingPassword(false);
     }
   };
 
+  const handleAddEmployee = () => {
+    if (!newEmpData.name || !newEmpData.join_date) {
+      toast.error('이름과 입사일은 필수입니다');
+      return;
+    }
+    const newId = `emp-${Date.now()}`;
+    const newNo = employees.length + 1;
+    addEmployee?.({
+      id: newId,
+      employee_no: newNo,
+      name: newEmpData.name,
+      email: newEmpData.email || `${newEmpData.name.toLowerCase().replace(/\s+/g, '.')}@paulus.pro`,
+      status: newEmpData.status,
+      join_date: newEmpData.join_date,
+      department: newEmpData.department || 'Production',
+      position: newEmpData.position || 'Junior',
+      category: 'Junior',
+      level: newEmpData.level,
+      class_level: newEmpData.class_level,
+      annual_salary: newEmpData.annual_salary,
+      monthly_salary: newEmpData.monthly_salary || Math.round(newEmpData.annual_salary / 12),
+    });
+    toast.success(`${newEmpData.name}님이 추가되었습니다`);
+    setAddDialogOpen(false);
+    setNewEmpData({
+      name: '', email: '', department: '', position: '',
+      level: 'P', class_level: 'A', join_date: '', status: '재직중',
+      annual_salary: 0, monthly_salary: 0,
+    });
+  };
+
   if (isLoading && employees.length === 0) {
     return <div className="p-8 text-center text-muted-foreground">Loading employee list...</div>;
   }
+
+  const SortButton = ({ field, label }: { field: SortField; label: string }) => (
+    <button
+      className="flex items-center gap-1 hover:text-foreground transition-colors"
+      onClick={() => handleSort(field)}
+    >
+      {label}
+      <ArrowUpDown className={`w-3 h-3 ${sortField === field ? 'text-primary' : 'text-muted-foreground/50'}`} />
+    </button>
+  );
 
   return (
     <div className="space-y-4">
@@ -189,6 +295,7 @@ export function EmployeeList() {
             <SelectContent>
               <SelectItem value="all">All Status</SelectItem>
               <SelectItem value="재직중">{t('employeeActive')}</SelectItem>
+              <SelectItem value="휴직중">휴직중</SelectItem>
               <SelectItem value="퇴사">{t('employeeInactive')}</SelectItem>
             </SelectContent>
           </Select>
@@ -203,6 +310,12 @@ export function EmployeeList() {
               ))}
             </SelectContent>
           </Select>
+          {isAdmin && (
+            <Button size="sm" className="gap-2" onClick={() => setAddDialogOpen(true)}>
+              <UserPlus className="w-4 h-4" />
+              신규 입사자 추가
+            </Button>
+          )}
           <Button variant="outline" size="sm" className="gap-2">
             <Download className="w-4 h-4" />
             {t('export')}
@@ -218,14 +331,15 @@ export function EmployeeList() {
               <TableRow className="bg-muted/50">
                 <TableHead className="w-[60px] text-center">No.</TableHead>
                 <TableHead className="w-[80px] text-center">{t('status')}</TableHead>
-                <TableHead>{t('joinDate')}</TableHead>
+                <TableHead><SortButton field="join_date" label={t('joinDate')} /></TableHead>
                 <TableHead>{t('name')}</TableHead>
+                <TableHead>영문이름</TableHead>
                 <TableHead>이메일</TableHead>
                 <TableHead>{t('department')}</TableHead>
-                <TableHead>{t('position')}</TableHead>
-                <TableHead>{t('grade')}</TableHead>
-                <TableHead>{t('classLevel')}</TableHead>
-                <TableHead className="text-right">{t('annualSalary')}</TableHead>
+                <TableHead><SortButton field="position" label={t('position')} /></TableHead>
+                <TableHead><SortButton field="level" label={t('grade')} /></TableHead>
+                <TableHead><SortButton field="class_level" label={t('classLevel')} /></TableHead>
+                <TableHead className="text-right"><SortButton field="annual_salary" label={t('annualSalary')} /></TableHead>
                 <TableHead className="text-right">{t('monthlySalary')}</TableHead>
                 <TableHead className="w-[100px]"></TableHead>
               </TableRow>
@@ -246,6 +360,7 @@ export function EmployeeList() {
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="재직중">{t('employeeActive')}</SelectItem>
+                            <SelectItem value="휴직중">휴직중</SelectItem>
                             <SelectItem value="퇴사">{t('employeeInactive')}</SelectItem>
                           </SelectContent>
                         </Select>
@@ -259,7 +374,15 @@ export function EmployeeList() {
                         />
                       </TableCell>
                       <TableCell>
-                        <span className="text-xs text-muted-foreground">{emp.email || '-'}</span>
+                        <span className="text-xs text-muted-foreground">{emp.englishName}</span>
+                      </TableCell>
+                      <TableCell>
+                        <Input
+                          value={emp.email || ''}
+                          onChange={(e) => handleUpdate(emp.id, 'email', e.target.value)}
+                          className="h-8 w-[160px]"
+                          placeholder="email@paulus.pro"
+                        />
                       </TableCell>
                       <TableCell>
                         <Input
@@ -318,9 +441,28 @@ export function EmployeeList() {
                     <TableRow className="group hover:bg-muted/50">
                       <TableCell className="text-center text-muted-foreground">{emp.employee_no}</TableCell>
                       <TableCell className="text-center">
-                        <Badge variant={emp.status === '재직중' ? 'default' : 'secondary'} className={emp.status === '재직중' ? 'bg-green-100 text-green-700 hover:bg-green-200' : ''}>
-                          {emp.status === '재직중' ? t('employeeActive') : t('employeeInactive')}
-                        </Badge>
+                        <Select
+                          value={emp.status}
+                          onValueChange={(val) => handleStatusChange(emp.id, val)}
+                        >
+                          <SelectTrigger className="h-7 w-[80px] border-0 bg-transparent p-0 justify-center">
+                            <Badge
+                              variant={emp.status === '재직중' ? 'default' : 'secondary'}
+                              className={`whitespace-nowrap cursor-pointer ${
+                                emp.status === '재직중' ? 'bg-green-100 text-green-700 hover:bg-green-200' :
+                                emp.status === '휴직중' ? 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200' :
+                                'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                              }`}
+                            >
+                              {emp.status}
+                            </Badge>
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="재직중">{t('employeeActive')}</SelectItem>
+                            <SelectItem value="휴직중">휴직중</SelectItem>
+                            <SelectItem value="퇴사">{t('employeeInactive')}</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </TableCell>
                       <TableCell>
                         <div className="flex flex-col">
@@ -329,6 +471,9 @@ export function EmployeeList() {
                         </div>
                       </TableCell>
                       <TableCell className="font-medium">{emp.name}</TableCell>
+                      <TableCell>
+                        <span className="text-xs text-muted-foreground">{emp.englishName}</span>
+                      </TableCell>
                       <TableCell>
                         <span className="text-xs text-muted-foreground flex items-center gap-1">
                           <Mail className="w-3 h-3" />
@@ -407,6 +552,104 @@ export function EmployeeList() {
             <Button onClick={handleResetPassword} disabled={isResettingPassword || !newPasswordValue}>
               {isResettingPassword ? '변경 중...' : '비밀번호 변경'}
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Employee Dialog */}
+      <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <UserPlus className="w-5 h-5 text-primary" />
+              신규 입사자 등록
+            </DialogTitle>
+            <DialogDescription>
+              새로운 임직원 정보를 입력해주세요
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4 grid-cols-2">
+            <div className="space-y-1.5">
+              <Label>이름 *</Label>
+              <Input
+                placeholder="홍길동"
+                value={newEmpData.name}
+                onChange={(e) => setNewEmpData(prev => ({ ...prev, name: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>이메일</Label>
+              <Input
+                placeholder="gildong.hong@paulus.pro"
+                value={newEmpData.email}
+                onChange={(e) => setNewEmpData(prev => ({ ...prev, email: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>입사일 *</Label>
+              <Input
+                type="date"
+                value={newEmpData.join_date}
+                onChange={(e) => setNewEmpData(prev => ({ ...prev, join_date: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>부서</Label>
+              <Select value={newEmpData.department || 'Production'} onValueChange={(v) => setNewEmpData(prev => ({ ...prev, department: v }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {departments.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>직책</Label>
+              <Input
+                placeholder="Assistant Director"
+                value={newEmpData.position}
+                onChange={(e) => setNewEmpData(prev => ({ ...prev, position: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>등급</Label>
+              <Select value={newEmpData.level} onValueChange={(v) => setNewEmpData(prev => ({ ...prev, level: v }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="D1">D1 (Director)</SelectItem>
+                  <SelectItem value="L2">L2 (Leader)</SelectItem>
+                  <SelectItem value="L1">L1 (Leader)</SelectItem>
+                  <SelectItem value="S2">S2 (Senior)</SelectItem>
+                  <SelectItem value="S1">S1 (Senior)</SelectItem>
+                  <SelectItem value="P1">P1 (Junior)</SelectItem>
+                  <SelectItem value="P">P (Junior)</SelectItem>
+                  <SelectItem value="Intern">Intern</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>연봉</Label>
+              <Input
+                type="number"
+                placeholder="35000000"
+                value={newEmpData.annual_salary || ''}
+                onChange={(e) => {
+                  const val = Number(e.target.value) || 0;
+                  setNewEmpData(prev => ({ ...prev, annual_salary: val, monthly_salary: Math.round(val / 12) }));
+                }}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>월급 (자동계산)</Label>
+              <Input
+                type="number"
+                value={newEmpData.monthly_salary || ''}
+                onChange={(e) => setNewEmpData(prev => ({ ...prev, monthly_salary: Number(e.target.value) || 0 }))}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAddDialogOpen(false)}>취소</Button>
+            <Button onClick={handleAddEmployee}>등록</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
