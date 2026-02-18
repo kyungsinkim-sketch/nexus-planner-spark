@@ -8,7 +8,7 @@
 import { useMemo, useState, useCallback } from 'react';
 import { useAppStore } from '@/stores/appStore';
 import { useTranslation } from '@/hooks/useTranslation';
-import { Bell, MessageSquare, Calendar, Check, AtSign } from 'lucide-react';
+import { Bell, MessageSquare, Calendar, Check, AtSign, Megaphone } from 'lucide-react';
 import { BRAIN_BOT_USER_ID } from '@/types/core';
 import type { WidgetDataContext } from '@/types/widget';
 
@@ -25,7 +25,7 @@ function saveDismissedIds(ids: Set<string>) {
 
 function NotificationsWidget({ context }: { context: WidgetDataContext }) {
   const { t } = useTranslation();
-  const { messages, events, currentUser, getUserById } = useAppStore();
+  const { messages, events, currentUser, getUserById, companyNotifications, dismissCompanyNotification } = useAppStore();
   const [dismissedIds, setDismissedIds] = useState<Set<string>>(getDismissedIds);
 
   const dismiss = useCallback((id: string) => {
@@ -127,8 +127,27 @@ function NotificationsWidget({ context }: { context: WidgetDataContext }) {
         });
       });
 
-    return items.slice(0, 12);
-  }, [messages, events, context, dismissedIds, currentUser, getUserById]);
+    // Company-wide notifications from admin (show newest first, before other items)
+    const companyItems: typeof items = [];
+    companyNotifications
+      .slice()
+      .reverse()
+      .forEach((cn) => {
+        const id = `company-${cn.id}`;
+        if (dismissedIds.has(id)) return;
+        const sender = getUserById(cn.sentBy);
+        companyItems.push({
+          id,
+          icon: Megaphone,
+          text: `${cn.title}: ${cn.message}`,
+          time: new Date(cn.sentAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          type: 'message',
+          senderName: sender?.name || 'Admin',
+        });
+      });
+
+    return [...companyItems, ...items].slice(0, 15);
+  }, [messages, events, context, dismissedIds, currentUser, getUserById, companyNotifications]);
 
   const handleDismissAll = useCallback(() => {
     setDismissedIds((prev) => {

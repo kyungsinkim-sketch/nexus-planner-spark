@@ -122,8 +122,8 @@ export function TabLayout() {
                     }}
                   />
                 )}
-                {/* Widget grid with project accent color */}
-                <div className="relative h-full z-10">
+                {/* Widget grid with project accent color — scrollable when content exceeds viewport */}
+                <div className="relative h-full z-10 overflow-y-auto overflow-x-hidden">
                   <WidgetGrid context={context} projectKeyColor={keyColor} />
                 </div>
               </div>

@@ -52,6 +52,7 @@ export function WidgetGrid({ context, projectKeyColor }: WidgetGridProps) {
   const currentUser = useAppStore((s) => s.currentUser);
   const setTodoCreateDialogOpen = useAppStore((s) => s.setTodoCreateDialogOpen);
   const setProjectCreateDialogOpen = useAppStore((s) => s.setProjectCreateDialogOpen);
+  const setImportantNoteAddOpen = useAppStore((s) => s.setImportantNoteAddOpen);
   const setWorldClockSettingsOpen = useAppStore((s) => s.setWorldClockSettingsOpen);
   const setWeatherSettingsOpen = useAppStore((s) => s.setWeatherSettingsOpen);
   const isAdmin = currentUser?.role === 'ADMIN';
@@ -67,6 +68,9 @@ export function WidgetGrid({ context, projectKeyColor }: WidgetGridProps) {
     if (widgetType === 'projects') {
       return [{ icon: Plus, onClick: () => setProjectCreateDialogOpen(true), title: t('newProject') }];
     }
+    if (widgetType === 'importantNotes') {
+      return [{ icon: Plus, onClick: () => setImportantNoteAddOpen(true), title: t('addNote') }];
+    }
     if (widgetType === 'worldClock') {
       return [{ icon: Settings, onClick: () => setWorldClockSettingsOpen(true), title: t('settings') }];
     }
@@ -74,7 +78,7 @@ export function WidgetGrid({ context, projectKeyColor }: WidgetGridProps) {
       return [{ icon: Settings, onClick: () => setWeatherSettingsOpen(true), title: t('settings') }];
     }
     return undefined;
-  }, [setTodoCreateDialogOpen, setProjectCreateDialogOpen, setWorldClockSettingsOpen, setWeatherSettingsOpen, t]);
+  }, [setTodoCreateDialogOpen, setProjectCreateDialogOpen, setImportantNoteAddOpen, setWorldClockSettingsOpen, setWeatherSettingsOpen, t]);
 
   // Get current project for settings dialog
   const projects = useAppStore((s) => s.projects);
@@ -113,11 +117,13 @@ export function WidgetGrid({ context, projectKeyColor }: WidgetGridProps) {
     initialWidth: 1280,
   });
 
-  // Dynamically compute rowHeight so grid fills the container vertically
+  // Dynamically compute rowHeight so grid fills the container vertically.
+  // Measure the PARENT element (scroll container) height, not the grid itself,
+  // so that adding more widgets beyond viewport doesn't cause a feedback loop.
   const [containerHeight, setContainerHeight] = useState(0);
   const heightObserverRef = useRef<ResizeObserver | null>(null);
   useEffect(() => {
-    const el = containerRef.current;
+    const el = containerRef.current?.parentElement || containerRef.current;
     if (!el) return;
     const measure = () => setContainerHeight(el.clientHeight);
     measure();

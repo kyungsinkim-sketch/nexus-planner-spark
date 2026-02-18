@@ -57,6 +57,22 @@ export interface Deliverable {
   createdAt: string;
 }
 
+// Inspiration Quote — admin-managed, displayed on dashboard
+export interface InspirationQuote {
+  id: string;
+  text: string;
+  author: string;
+}
+
+// Company-wide notification — broadcast from admin to all users
+export interface CompanyNotification {
+  id: string;
+  title: string;
+  message: string;
+  sentBy: string;       // admin userId
+  sentAt: string;
+}
+
 // Important Note — project-lifetime text note extracted from chat
 export interface ImportantNote {
   id: string;

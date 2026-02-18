@@ -72,7 +72,11 @@ const initialRolePermissions = {
 
 export function AdminSettingsTab() {
     const { t } = useTranslation();
-    const { users, currentUser, brainIntelligenceEnabled, setBrainIntelligenceEnabled } = useAppStore();
+    const {
+        users, currentUser, brainIntelligenceEnabled, setBrainIntelligenceEnabled,
+        inspirationQuotes: quotes, addQuote, updateQuote, removeQuote: storeRemoveQuote,
+        broadcastNotification,
+    } = useAppStore();
     const [selectedTab, setSelectedTab] = useState('users');
 
     // Role permissions state
@@ -92,17 +96,13 @@ export function AdminSettingsTab() {
     const [confirmPasswordValue, setConfirmPasswordValue] = useState('');
     const [isResettingPassword, setIsResettingPassword] = useState(false);
 
-    // Inspiration quotes state
-    const [quotes, setQuotes] = useState([
-        { id: '1', text: "Every line drawn is a step into a new possibility.", author: "Kai Anderson" },
-        { id: '2', text: "Design is not just what it looks like. Design is how it works.", author: "Steve Jobs" },
-        { id: '3', text: "Creativity is intelligence having fun.", author: "Albert Einstein" },
-        { id: '4', text: "The best way to predict the future is to create it.", author: "Peter Drucker" },
-        { id: '5', text: "Innovation distinguishes between a leader and a follower.", author: "Steve Jobs" },
-    ]);
+    // Inspiration quotes form state
     const [newQuoteText, setNewQuoteText] = useState('');
     const [newQuoteAuthor, setNewQuoteAuthor] = useState('');
     const [editingQuote, setEditingQuote] = useState<string | null>(null);
+    // Local editing state for quote text/author during inline edit
+    const [editQuoteText, setEditQuoteText] = useState('');
+    const [editQuoteAuthor, setEditQuoteAuthor] = useState('');
 
     // Notification state
     const [notificationTitle, setNotificationTitle] = useState('');
@@ -376,20 +376,23 @@ export function AdminSettingsTab() {
             return;
         }
 
-        const newQuote = {
-            id: Date.now().toString(),
-            text: newQuoteText,
-            author: newQuoteAuthor,
-        };
-
-        setQuotes([...quotes, newQuote]);
+        addQuote({ text: newQuoteText, author: newQuoteAuthor });
         setNewQuoteText('');
         setNewQuoteAuthor('');
         toast.success('Quote added successfully');
     };
 
-    const handleUpdateQuote = (id: string, text: string, author: string) => {
-        setQuotes(quotes.map(q => q.id === id ? { ...q, text, author } : q));
+    const handleStartEditQuote = (id: string) => {
+        const q = quotes.find(q => q.id === id);
+        if (q) {
+            setEditingQuote(id);
+            setEditQuoteText(q.text);
+            setEditQuoteAuthor(q.author);
+        }
+    };
+
+    const handleUpdateQuote = (id: string) => {
+        updateQuote(id, { text: editQuoteText, author: editQuoteAuthor });
         setEditingQuote(null);
         toast.success('Quote updated successfully');
     };
@@ -399,19 +402,18 @@ export function AdminSettingsTab() {
             toast.error('You must have at least one quote');
             return;
         }
-        setQuotes(quotes.filter(q => q.id !== id));
+        storeRemoveQuote(id);
         toast.success('Quote deleted successfully');
     };
 
-    // Notification function
+    // Notification function — broadcasts to all users
     const handleSendNotification = () => {
         if (!notificationTitle || !notificationMessage) {
             toast.error('Please fill in both title and message');
             return;
         }
-
-        // TODO: Implement actual notification sending
-        toast.success('Notification sent to all users');
+        broadcastNotification(notificationTitle, notificationMessage);
+        toast.success(t('notificationSentToAll'));
         setNotificationTitle('');
         setNotificationMessage('');
     };
@@ -747,23 +749,19 @@ export function AdminSettingsTab() {
                                     {editingQuote === quote.id ? (
                                         <div className="space-y-3">
                                             <Textarea
-                                                value={quote.text}
-                                                onChange={(e) => setQuotes(quotes.map(q =>
-                                                    q.id === quote.id ? { ...q, text: e.target.value } : q
-                                                ))}
+                                                value={editQuoteText}
+                                                onChange={(e) => setEditQuoteText(e.target.value)}
                                                 rows={3}
                                             />
                                             <Input
-                                                value={quote.author}
-                                                onChange={(e) => setQuotes(quotes.map(q =>
-                                                    q.id === quote.id ? { ...q, author: e.target.value } : q
-                                                ))}
+                                                value={editQuoteAuthor}
+                                                onChange={(e) => setEditQuoteAuthor(e.target.value)}
                                                 placeholder="Author"
                                             />
                                             <div className="flex gap-2">
                                                 <Button
                                                     size="sm"
-                                                    onClick={() => handleUpdateQuote(quote.id, quote.text, quote.author)}
+                                                    onClick={() => handleUpdateQuote(quote.id)}
                                                 >
                                                     <Save className="w-4 h-4 mr-2" />
                                                     Save
@@ -780,7 +778,7 @@ export function AdminSettingsTab() {
                                     ) : (
                                         <>
                                             <blockquote className="italic text-foreground mb-2">
-                                                "{quote.text}"
+                                                &ldquo;{quote.text}&rdquo;
                                             </blockquote>
                                             <div className="flex items-center justify-between">
                                                 <p className="text-sm text-muted-foreground">— {quote.author}</p>
@@ -788,7 +786,7 @@ export function AdminSettingsTab() {
                                                     <Button
                                                         variant="ghost"
                                                         size="icon"
-                                                        onClick={() => setEditingQuote(quote.id)}
+                                                        onClick={() => handleStartEditQuote(quote.id)}
                                                     >
                                                         <Edit className="w-4 h-4" />
                                                     </Button>

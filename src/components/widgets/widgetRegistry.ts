@@ -27,6 +27,7 @@ import {
   Cloud,
   CalendarCheck,
   StickyNote,
+  Sparkles,
 } from 'lucide-react';
 import type { WidgetDefinition, WidgetType, WidgetDataContext } from '@/types/widget';
 
@@ -52,6 +53,7 @@ export const WIDGET_COMPONENTS: Record<WidgetType, ComponentType<{ context: Widg
   todayWeather:   lazy(() => import('./TodayWeatherWidget')),
   todaySchedule:  lazy(() => import('./TodayScheduleWidget')),
   importantNotes: lazy(() => import('./ImportantNotesWidget')),
+  inspiration:    lazy(() => import('./InspirationWidget')),
 };
 
 // Widget definitions (metadata)
@@ -216,5 +218,13 @@ export const WIDGET_DEFINITIONS: Record<WidgetType, WidgetDefinition> = {
     defaultSize: { w: 3, h: 3 },
     minSize: { w: 2, h: 2 },
     contexts: ['project'],
+  },
+  inspiration: {
+    type: 'inspiration',
+    titleKey: 'inspirationQuotes',
+    icon: Sparkles,
+    defaultSize: { w: 4, h: 2 },
+    minSize: { w: 3, h: 1 },
+    contexts: ['dashboard'],
   },
 };

@@ -3,13 +3,13 @@
  *
  * Notes are auto-extracted from chat when keywords like '중요한', '기억해주세요'
  * are detected. Text-only items with no dates — persist through project lifetime.
- * Users can also manually add/remove notes.
+ * Users can also manually add notes via the + button in the widget title bar.
  */
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useAppStore } from '@/stores/appStore';
 import { useTranslation } from '@/hooks/useTranslation';
-import { StickyNote, X, Plus, MessageSquare } from 'lucide-react';
+import { StickyNote, X, MessageSquare } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -17,9 +17,12 @@ import type { WidgetDataContext } from '@/types/widget';
 
 function ImportantNotesWidget({ context }: { context: WidgetDataContext }) {
   const { t } = useTranslation();
-  const { importantNotes, addImportantNote, removeImportantNote, currentUser, getUserById } = useAppStore();
+  const {
+    importantNotes, addImportantNote, removeImportantNote,
+    currentUser, getUserById,
+    importantNoteAddOpen, setImportantNoteAddOpen,
+  } = useAppStore();
   const [newNote, setNewNote] = useState('');
-  const [showInput, setShowInput] = useState(false);
 
   const projectId = context.projectId || '';
 
@@ -29,6 +32,13 @@ function ImportantNotesWidget({ context }: { context: WidgetDataContext }) {
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   }, [importantNotes, projectId]);
 
+  // Listen for title-bar + button click
+  useEffect(() => {
+    if (importantNoteAddOpen) {
+      // Focus will be handled by autoFocus on the input
+    }
+  }, [importantNoteAddOpen]);
+
   const handleAdd = () => {
     if (!newNote.trim() || !currentUser || !projectId) return;
     addImportantNote({
@@ -37,7 +47,7 @@ function ImportantNotesWidget({ context }: { context: WidgetDataContext }) {
       createdBy: currentUser.id,
     });
     setNewNote('');
-    setShowInput(false);
+    setImportantNoteAddOpen(false);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -46,34 +56,15 @@ function ImportantNotesWidget({ context }: { context: WidgetDataContext }) {
       handleAdd();
     }
     if (e.key === 'Escape') {
-      setShowInput(false);
+      setImportantNoteAddOpen(false);
       setNewNote('');
     }
   };
 
   return (
     <div className="h-full flex flex-col p-3 gap-2">
-      {/* Header with add button */}
-      <div className="flex items-center justify-between shrink-0">
-        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          <StickyNote className="w-3.5 h-3.5" />
-          <span>{notes.length} {t('importantNotesCount')}</span>
-        </div>
-        {!showInput && (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-6 px-2 text-xs"
-            onClick={() => setShowInput(true)}
-          >
-            <Plus className="w-3 h-3 mr-1" />
-            {t('addNote')}
-          </Button>
-        )}
-      </div>
-
-      {/* Input area */}
-      {showInput && (
+      {/* Input area (triggered by title bar + button) */}
+      {importantNoteAddOpen && (
         <div className="flex gap-1.5 shrink-0">
           <Input
             value={newNote}
@@ -90,7 +81,7 @@ function ImportantNotesWidget({ context }: { context: WidgetDataContext }) {
             variant="ghost"
             size="sm"
             className="h-7 px-1.5"
-            onClick={() => { setShowInput(false); setNewNote(''); }}
+            onClick={() => { setImportantNoteAddOpen(false); setNewNote(''); }}
           >
             <X className="w-3 h-3" />
           </Button>

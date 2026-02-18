@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { User, Project, CalendarEvent, ChatMessage, ChatRoom, ChatMessageType, LocationShare, ScheduleShare, DecisionShare, FileGroup, FileItem, PerformanceSnapshot, PortfolioItem, PeerFeedback, ProjectContribution, ScoreSettings, UserWorkStatus, PersonalTodo, ImportantNote } from '@/types/core';
+import { User, Project, CalendarEvent, ChatMessage, ChatRoom, ChatMessageType, LocationShare, ScheduleShare, DecisionShare, FileGroup, FileItem, PerformanceSnapshot, PortfolioItem, PeerFeedback, ProjectContribution, ScoreSettings, UserWorkStatus, PersonalTodo, ImportantNote, InspirationQuote, CompanyNotification } from '@/types/core';
 import { mockUsers, mockProjects, mockEvents, mockMessages, mockFileGroups, mockFiles, mockPerformanceSnapshots, mockPortfolioItems, mockPeerFeedback, mockProjectContributions, mockPersonalTodos, currentUser } from '@/mock/data';
 import { Language, getTranslation } from '@/lib/i18n';
 import { isSupabaseConfigured } from '@/lib/supabase';
@@ -32,6 +32,8 @@ interface AppState {
   projectContributions: ProjectContribution[];
   personalTodos: PersonalTodo[];
   importantNotes: ImportantNote[];
+  inspirationQuotes: InspirationQuote[];
+  companyNotifications: CompanyNotification[];
   scoreSettings: ScoreSettings;
 
   // User Work Status
@@ -50,6 +52,7 @@ interface AppState {
   widgetSettings: Record<string, Record<string, unknown>>;
   todoCreateDialogOpen: boolean;
   projectCreateDialogOpen: boolean;
+  importantNoteAddOpen: boolean;
   worldClockSettingsOpen: boolean;
   weatherSettingsOpen: boolean;
 
@@ -88,6 +91,7 @@ interface AppState {
   updateWidgetSettings: (widgetType: string, settings: Record<string, unknown>) => void;
   setTodoCreateDialogOpen: (open: boolean) => void;
   setProjectCreateDialogOpen: (open: boolean) => void;
+  setImportantNoteAddOpen: (open: boolean) => void;
   setWorldClockSettingsOpen: (open: boolean) => void;
   setWeatherSettingsOpen: (open: boolean) => void;
 
@@ -138,6 +142,15 @@ interface AppState {
   addImportantNote: (note: Omit<ImportantNote, 'id' | 'createdAt'>) => void;
   removeImportantNote: (noteId: string) => void;
   getImportantNotesByProject: (projectId: string) => ImportantNote[];
+
+  // Inspiration Quotes Actions
+  addQuote: (quote: Omit<InspirationQuote, 'id'>) => void;
+  updateQuote: (id: string, updates: Partial<InspirationQuote>) => void;
+  removeQuote: (id: string) => void;
+
+  // Company Notification Actions
+  broadcastNotification: (title: string, message: string) => void;
+  dismissCompanyNotification: (id: string) => void;
 
   // Settings Actions
   updateScoreSettings: (settings: Partial<ScoreSettings>) => void;
@@ -225,6 +238,14 @@ export const useAppStore = create<AppState>()(
       projectContributions: isSupabaseConfigured() ? [] : mockProjectContributions,
       personalTodos: isSupabaseConfigured() ? [] : mockPersonalTodos,
       importantNotes: [],
+      inspirationQuotes: [
+        { id: '1', text: "Every line drawn is a step into a new possibility.", author: "Kai Anderson" },
+        { id: '2', text: "Design is not just what it looks like. Design is how it works.", author: "Steve Jobs" },
+        { id: '3', text: "Creativity is intelligence having fun.", author: "Albert Einstein" },
+        { id: '4', text: "The best way to predict the future is to create it.", author: "Peter Drucker" },
+        { id: '5', text: "Innovation distinguishes between a leader and a follower.", author: "Steve Jobs" },
+      ],
+      companyNotifications: [],
       scoreSettings: { financialWeight: 70, peerWeight: 30 },
       userWorkStatus: 'NOT_AT_WORK',
       language: 'ko',
@@ -233,6 +254,7 @@ export const useAppStore = create<AppState>()(
       widgetSettings: {},
       todoCreateDialogOpen: false,
       projectCreateDialogOpen: false,
+      importantNoteAddOpen: false,
       worldClockSettingsOpen: false,
       weatherSettingsOpen: false,
       deletedMockEventIds: [],
@@ -1068,6 +1090,41 @@ export const useAppStore = create<AppState>()(
       getImportantNotesByProject: (projectId) =>
         get().importantNotes.filter((n) => n.projectId === projectId),
 
+      // Inspiration Quotes Actions
+      addQuote: (quote) => set((state) => ({
+        inspirationQuotes: [...state.inspirationQuotes, {
+          ...quote,
+          id: `q-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
+        }],
+      })),
+      updateQuote: (id, updates) => set((state) => ({
+        inspirationQuotes: state.inspirationQuotes.map((q) =>
+          q.id === id ? { ...q, ...updates } : q
+        ),
+      })),
+      removeQuote: (id) => set((state) => ({
+        inspirationQuotes: state.inspirationQuotes.filter((q) => q.id !== id),
+      })),
+
+      // Company Notification Actions
+      broadcastNotification: (title, message) => {
+        const { currentUser } = get();
+        if (!currentUser) return;
+        const notification: CompanyNotification = {
+          id: `cn-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
+          title,
+          message,
+          sentBy: currentUser.id,
+          sentAt: new Date().toISOString(),
+        };
+        set((state) => ({
+          companyNotifications: [...state.companyNotifications, notification],
+        }));
+      },
+      dismissCompanyNotification: (id) => set((state) => ({
+        companyNotifications: state.companyNotifications.filter((n) => n.id !== id),
+      })),
+
       // Widget Settings Actions
       updateWidgetSettings: (widgetType, settings) => set((state) => ({
         widgetSettings: {
@@ -1078,6 +1135,7 @@ export const useAppStore = create<AppState>()(
 
       setTodoCreateDialogOpen: (open) => set({ todoCreateDialogOpen: open }),
       setProjectCreateDialogOpen: (open) => set({ projectCreateDialogOpen: open }),
+      setImportantNoteAddOpen: (open) => set({ importantNoteAddOpen: open }),
       setWorldClockSettingsOpen: (open) => set({ worldClockSettingsOpen: open }),
       setWeatherSettingsOpen: (open) => set({ weatherSettingsOpen: open }),
 
@@ -1112,6 +1170,8 @@ export const useAppStore = create<AppState>()(
         deletedMockEventIds: state.deletedMockEventIds,
         theme: state.theme,
         importantNotes: state.importantNotes,
+        inspirationQuotes: state.inspirationQuotes,
+        companyNotifications: state.companyNotifications,
       }),
       merge: (persisted, current) => {
         const merged = { ...current, ...(persisted as Partial<AppState>) };
