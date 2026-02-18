@@ -57,6 +57,16 @@ export interface Deliverable {
   createdAt: string;
 }
 
+// Important Note — project-lifetime text note extracted from chat
+export interface ImportantNote {
+  id: string;
+  projectId: string;
+  content: string;
+  sourceMessageId?: string;   // chat message that triggered it
+  createdBy: string;          // userId who sent the message
+  createdAt: string;
+}
+
 // Personal To-do
 export type TodoPriority = 'LOW' | 'NORMAL' | 'HIGH';
 export type TodoStatus = 'PENDING' | 'COMPLETED';

@@ -40,9 +40,10 @@ const DEFAULT_PROJECT_LAYOUT: WidgetLayoutItem[] = [
   { i: 'chat',           x: 9,  y: 0,  w: 3, h: 10, minW: 2, minH: 3 },
   { i: 'todos',          x: 7,  y: 4,  w: 2, h: 2, minW: 2, minH: 2 },
   { i: 'actions',        x: 7,  y: 6,  w: 2, h: 2, minW: 2, minH: 2 },
-  { i: 'files',          x: 0,  y: 8,  w: 3, h: 2, minW: 2, minH: 2 },
-  { i: 'brainInsights',  x: 3,  y: 8,  w: 3, h: 2, minW: 3, minH: 2 },
-  { i: 'teamLoad',       x: 6,  y: 8,  w: 3, h: 2, minW: 3, minH: 2 },
+  { i: 'importantNotes', x: 7,  y: 8,  w: 2, h: 2, minW: 2, minH: 2 },
+  { i: 'files',          x: 0,  y: 10, w: 3, h: 2, minW: 2, minH: 2 },
+  { i: 'brainInsights',  x: 3,  y: 10, w: 3, h: 2, minW: 3, minH: 2 },
+  { i: 'teamLoad',       x: 6,  y: 10, w: 3, h: 2, minW: 3, minH: 2 },
 ];
 
 // Dashboard tab is always present
@@ -187,7 +188,7 @@ export const useWidgetStore = create<WidgetState>()(
     }),
     {
       name: 're-be-widget-layout',
-      version: 10, // bump — add todaySchedule widget + weather minH:1
+      version: 11, // bump — add importantNotes widget to project layout
       migrate: () => ({
         // On version mismatch, reset everything to defaults
         openTabs: [DASHBOARD_TAB],

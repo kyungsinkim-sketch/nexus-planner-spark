@@ -66,9 +66,12 @@ function CalendarWidget({ context }: { context: WidgetDataContext }) {
     () =>
       filteredEvents.map((event) => {
         const project = event.projectId ? getProjectById(event.projectId) : null;
-        // Project events use keyColor, Google events use a distinct teal, fallback to primary
-        const color = project?.keyColor
-          || (event.source === 'GOOGLE' ? 'hsl(200 80% 50%)' : 'hsl(234 89% 60%)');
+        // R_TRAINING always uses purple; project events use keyColor;
+        // Google events use teal; fallback to primary
+        const color = event.type === 'R_TRAINING'
+          ? 'hsl(270 70% 55%)'
+          : project?.keyColor
+            || (event.source === 'GOOGLE' ? 'hsl(200 80% 50%)' : 'hsl(234 89% 60%)');
         return {
           id: event.id,
           title: event.title,

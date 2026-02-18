@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { User, Project, CalendarEvent, ChatMessage, ChatRoom, ChatMessageType, LocationShare, ScheduleShare, DecisionShare, FileGroup, FileItem, PerformanceSnapshot, PortfolioItem, PeerFeedback, ProjectContribution, ScoreSettings, UserWorkStatus, PersonalTodo } from '@/types/core';
+import { User, Project, CalendarEvent, ChatMessage, ChatRoom, ChatMessageType, LocationShare, ScheduleShare, DecisionShare, FileGroup, FileItem, PerformanceSnapshot, PortfolioItem, PeerFeedback, ProjectContribution, ScoreSettings, UserWorkStatus, PersonalTodo, ImportantNote } from '@/types/core';
 import { mockUsers, mockProjects, mockEvents, mockMessages, mockFileGroups, mockFiles, mockPerformanceSnapshots, mockPortfolioItems, mockPeerFeedback, mockProjectContributions, mockPersonalTodos, currentUser } from '@/mock/data';
 import { Language, getTranslation } from '@/lib/i18n';
 import { isSupabaseConfigured } from '@/lib/supabase';
@@ -31,6 +31,7 @@ interface AppState {
   peerFeedback: PeerFeedback[];
   projectContributions: ProjectContribution[];
   personalTodos: PersonalTodo[];
+  importantNotes: ImportantNote[];
   scoreSettings: ScoreSettings;
 
   // User Work Status
@@ -133,6 +134,11 @@ interface AppState {
   deleteTodo: (todoId: string) => Promise<void>;
   completeTodo: (todoId: string) => Promise<void>;
 
+  // Important Notes Actions
+  addImportantNote: (note: Omit<ImportantNote, 'id' | 'createdAt'>) => void;
+  removeImportantNote: (noteId: string) => void;
+  getImportantNotesByProject: (projectId: string) => ImportantNote[];
+
   // Settings Actions
   updateScoreSettings: (settings: Partial<ScoreSettings>) => void;
 
@@ -149,6 +155,21 @@ interface AppState {
   getPortfolioByUser: (userId: string) => PortfolioItem[];
   getFeedbackByProject: (projectId: string) => PeerFeedback[];
   getContributionsByProject: (projectId: string) => ProjectContribution[];
+}
+
+/**
+ * Detect whether a chat message should be auto-extracted as an Important Note.
+ * Keywords: '중요한', '기억해', '기억해주세요', '잊지마', '잊지 마', '꼭 기억', 'important', 'remember'
+ * EXCEPT: if the message matches '~해주세요' action-request pattern → goes to todos instead
+ */
+function shouldExtractAsImportantNote(content: string): boolean {
+  const text = content.toLowerCase();
+  // Action requests go to todos, not important notes
+  // Pattern: ends with verb + 해주세요 (e.g., 확인해주세요, 수정해주세요, 보내주세요)
+  if (/[가-힣]+해\s*주세요/.test(content) && !text.includes('기억해')) return false;
+  // Check for important note keywords
+  const keywords = ['중요한', '기억해', '기억해주세요', '잊지마', '잊지 마', '꼭 기억', 'important', 'remember this', '꼭 참고'];
+  return keywords.some(kw => text.includes(kw));
 }
 
 export const useAppStore = create<AppState>()(
@@ -171,6 +192,7 @@ export const useAppStore = create<AppState>()(
       peerFeedback: isSupabaseConfigured() ? [] : mockPeerFeedback,
       projectContributions: isSupabaseConfigured() ? [] : mockProjectContributions,
       personalTodos: isSupabaseConfigured() ? [] : mockPersonalTodos,
+      importantNotes: [],
       scoreSettings: { financialWeight: 70, peerWeight: 30 },
       userWorkStatus: 'NOT_AT_WORK',
       language: 'ko',
@@ -605,12 +627,14 @@ export const useAppStore = create<AppState>()(
       },
 
       sendProjectMessage: async (projectId, content, attachmentId?) => {
-        const { currentUser } = get();
+        const { currentUser, addImportantNote } = get();
         if (!currentUser) return;
 
+        let messageId = '';
         if (isSupabaseConfigured()) {
           try {
             const message = await chatService.sendProjectMessage(projectId, currentUser.id, content, attachmentId);
+            messageId = message.id;
             set((state) => ({ messages: [...state.messages, message] }));
           } catch (error) {
             console.error('Failed to send message:', error);
@@ -618,8 +642,9 @@ export const useAppStore = create<AppState>()(
           }
         } else {
           // Mock mode
+          messageId = `m${Date.now()}`;
           const message: ChatMessage = {
-            id: `m${Date.now()}`,
+            id: messageId,
             projectId,
             userId: currentUser.id,
             content,
@@ -628,6 +653,11 @@ export const useAppStore = create<AppState>()(
             messageType: 'text',
           };
           set((state) => ({ messages: [...state.messages, message] }));
+        }
+
+        // Auto-extract important notes from message content
+        if (projectId && shouldExtractAsImportantNote(content)) {
+          addImportantNote({ projectId, content, sourceMessageId: messageId, createdBy: currentUser.id });
         }
       },
 
@@ -752,12 +782,14 @@ export const useAppStore = create<AppState>()(
       },
 
       sendRoomMessage: async (roomId, projectId, content, options) => {
-        const { currentUser } = get();
+        const { currentUser, addImportantNote } = get();
         if (!currentUser) return;
 
+        let messageId = '';
         if (isSupabaseConfigured()) {
           try {
             const message = await chatService.sendRoomMessage(roomId, projectId, currentUser.id, content, options);
+            messageId = message.id;
             set((state) => ({ messages: [...state.messages, message] }));
           } catch (error) {
             console.error('Failed to send room message:', error);
@@ -765,8 +797,9 @@ export const useAppStore = create<AppState>()(
           }
         } else {
           // Mock mode
+          messageId = `m${Date.now()}`;
           const message: ChatMessage = {
-            id: `m${Date.now()}`,
+            id: messageId,
             projectId,
             userId: currentUser.id,
             content,
@@ -778,6 +811,11 @@ export const useAppStore = create<AppState>()(
             decisionData: options?.decisionData,
           };
           set((state) => ({ messages: [...state.messages, message] }));
+        }
+
+        // Auto-extract important notes from text messages
+        if (projectId && (!options?.messageType || options.messageType === 'text') && shouldExtractAsImportantNote(content)) {
+          addImportantNote({ projectId, content, sourceMessageId: messageId, createdBy: currentUser.id });
         }
       },
 
@@ -976,6 +1014,22 @@ export const useAppStore = create<AppState>()(
         }
       },
 
+      // Important Notes Actions
+      addImportantNote: (note) => set((state) => ({
+        importantNotes: [...state.importantNotes, {
+          ...note,
+          id: `note-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+          createdAt: new Date().toISOString(),
+        }],
+      })),
+
+      removeImportantNote: (noteId) => set((state) => ({
+        importantNotes: state.importantNotes.filter((n) => n.id !== noteId),
+      })),
+
+      getImportantNotesByProject: (projectId) =>
+        get().importantNotes.filter((n) => n.projectId === projectId),
+
       // Widget Settings Actions
       updateWidgetSettings: (widgetType, settings) => set((state) => ({
         widgetSettings: {
@@ -1019,6 +1073,7 @@ export const useAppStore = create<AppState>()(
         widgetSettings: state.widgetSettings,
         deletedMockEventIds: state.deletedMockEventIds,
         theme: state.theme,
+        importantNotes: state.importantNotes,
       }),
       merge: (persisted, current) => {
         const merged = { ...current, ...(persisted as Partial<AppState>) };

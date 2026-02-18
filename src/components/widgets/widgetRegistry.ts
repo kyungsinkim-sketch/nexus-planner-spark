@@ -26,6 +26,7 @@ import {
   CloudSun,
   Cloud,
   CalendarCheck,
+  StickyNote,
 } from 'lucide-react';
 import type { WidgetDefinition, WidgetType, WidgetDataContext } from '@/types/widget';
 
@@ -50,6 +51,7 @@ export const WIDGET_COMPONENTS: Record<WidgetType, ComponentType<{ context: Widg
   weather:        lazy(() => import('./WeatherWidget')),
   todayWeather:   lazy(() => import('./TodayWeatherWidget')),
   todaySchedule:  lazy(() => import('./TodayScheduleWidget')),
+  importantNotes: lazy(() => import('./ImportantNotesWidget')),
 };
 
 // Widget definitions (metadata)
@@ -206,5 +208,13 @@ export const WIDGET_DEFINITIONS: Record<WidgetType, WidgetDefinition> = {
     defaultSize: { w: 3, h: 3 },
     minSize: { w: 2, h: 2 },
     contexts: ['dashboard', 'project'],
+  },
+  importantNotes: {
+    type: 'importantNotes',
+    titleKey: 'importantNotes',
+    icon: StickyNote,
+    defaultSize: { w: 3, h: 3 },
+    minSize: { w: 2, h: 2 },
+    contexts: ['project'],
   },
 };

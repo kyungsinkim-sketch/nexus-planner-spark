@@ -27,7 +27,8 @@ export type WidgetType =
   | 'worldClock'
   | 'weather'
   | 'todayWeather'
-  | 'todaySchedule';
+  | 'todaySchedule'
+  | 'importantNotes';
 
 // Widget context — determines which data scope a widget uses
 export type WidgetContext = 'dashboard' | 'project';

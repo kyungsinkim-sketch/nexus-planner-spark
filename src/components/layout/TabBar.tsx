@@ -28,6 +28,20 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTranslation } from '@/hooks/useTranslation';
+
+/**
+ * Determine whether text on a given hex background should be dark or light.
+ * Uses relative luminance formula (WCAG 2.0).
+ */
+function shouldUseDarkText(hex: string): boolean {
+  const c = hex.replace('#', '');
+  if (c.length < 6) return false;
+  const r = parseInt(c.substring(0, 2), 16) / 255;
+  const g = parseInt(c.substring(2, 4), 16) / 255;
+  const b = parseInt(c.substring(4, 6), 16) / 255;
+  const luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  return luminance > 0.55;
+}
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   DropdownMenu,
@@ -102,6 +116,8 @@ export function TabBar() {
         {openTabs.map((tab) => {
           const isActive = tab.id === activeTabId && !isOnSubRoute;
           const isDashboard = tab.type === 'dashboard';
+          // For active project tabs, decide text color based on background luminance
+          const useDarkText = isActive && !isDashboard && tab.keyColor ? shouldUseDarkText(tab.keyColor) : false;
 
           return (
               <button
@@ -114,7 +130,7 @@ export function TabBar() {
                 className={cn(
                   'flex items-center gap-1.5 px-3 text-xs font-medium transition-all min-w-0 max-w-[180px] shrink-0 relative',
                   isActive && !isDashboard
-                    ? 'text-white rounded-b-[var(--widget-radius)] rounded-t-none'
+                    ? `${useDarkText ? 'text-gray-900' : 'text-white'} rounded-b-[var(--widget-radius)] rounded-t-none`
                     : isActive && isDashboard
                       ? 'text-foreground rounded-b-[var(--widget-radius)] rounded-t-none'
                       : 'text-muted-foreground hover:bg-white/8 hover:text-foreground rounded-lg',
@@ -131,7 +147,7 @@ export function TabBar() {
                   <LayoutDashboard className="w-3.5 h-3.5 shrink-0" />
                 ) : (
                   <div
-                    className={cn('w-2.5 h-2.5 rounded-full shrink-0', isActive && 'bg-white/40')}
+                    className={cn('w-2.5 h-2.5 rounded-full shrink-0', isActive && (useDarkText ? 'bg-black/20' : 'bg-white/40'))}
                     style={!isActive ? { backgroundColor: tab.keyColor || 'hsl(234 89% 60%)' } : undefined}
                   />
                 )}
@@ -141,7 +157,7 @@ export function TabBar() {
                     onClick={(e) => { e.stopPropagation(); closeProjectTab(tab.id); }}
                     className={cn(
                       'p-0.5 rounded transition-colors ml-0.5 shrink-0',
-                      isActive ? 'hover:bg-white/30' : 'hover:bg-white/20',
+                      isActive ? (useDarkText ? 'hover:bg-black/15' : 'hover:bg-white/30') : 'hover:bg-white/20',
                     )}
                   >
                     <X className="w-3 h-3" />
