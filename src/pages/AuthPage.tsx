@@ -64,8 +64,8 @@ export function AuthPage() {
             </div>
           </div>
           <CardTitle className="text-2xl font-bold">Re-Be.io</CardTitle>
-          <CardDescription>
-            Creative Process & Production Collaboration
+          <CardDescription className="text-sm italic tracking-wide">
+            Record. Reflect. Realize Better.
           </CardDescription>
         </CardHeader>
 

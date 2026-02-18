@@ -19,23 +19,27 @@ export function TeamLoadSnapshot({ project }: TeamLoadSnapshotProps) {
   const teamMemberIds = project.teamMemberIds || [];
   if (teamMemberIds.length === 0) return null;
 
-  // Calculate real data per user for this project
+  // Calculate real data per user for THIS project only
   const loadData = useMemo(() => {
     const inputs = teamMemberIds.map(userId => {
+      // Chat messages in this project
       const chatMessages = messages.filter(
         m => m.projectId === project.id && m.userId === userId
       ).length;
+      // Files uploaded by user (project-scoped if fileGroupId matches)
       const fileUploads = files.filter(
         f => f.uploadedBy === userId
       ).length;
-      const todosCompleted = personalTodos.filter(
-        t => t.assigneeIds?.includes(userId) && t.status === 'COMPLETED'
+      // Todos assigned to user IN this project (both pending and completed count as load)
+      const todosAssigned = personalTodos.filter(
+        t => t.projectId === project.id && t.assigneeIds?.includes(userId)
       ).length;
-      const calendarEvents = events.filter(
-        e => e.ownerId === userId
+      // Calendar events owned by user IN this project
+      const calendarEventsCount = events.filter(
+        e => e.projectId === project.id && e.ownerId === userId
       ).length;
 
-      return { userId, chatMessages, fileUploads, todosCompleted, calendarEvents };
+      return { userId, chatMessages, fileUploads, todosCompleted: todosAssigned, calendarEvents: calendarEventsCount };
     });
 
     return calculateTeamLoad(inputs);
@@ -49,10 +53,10 @@ export function TeamLoadSnapshot({ project }: TeamLoadSnapshotProps) {
         <h3 className="text-lg font-semibold text-foreground">Team Load Snapshot</h3>
       </div>
       <p className="text-xs text-muted-foreground mb-4 flex items-center gap-3 flex-wrap">
-        <span className="flex items-center gap-1"><MessageSquare className="w-3 h-3" /> Chat {WEIGHTS.chat * 100}%</span>
-        <span className="flex items-center gap-1"><FileUp className="w-3 h-3" /> File {WEIGHTS.file * 100}%</span>
-        <span className="flex items-center gap-1"><CheckSquare className="w-3 h-3" /> Todo {WEIGHTS.todo * 100}%</span>
-        <span className="flex items-center gap-1"><CalendarDays className="w-3 h-3" /> Calendar {WEIGHTS.calendar * 100}%</span>
+        <span className="flex items-center gap-1"><MessageSquare className="w-3 h-3" /> 채팅 {WEIGHTS.chat * 100}%</span>
+        <span className="flex items-center gap-1"><FileUp className="w-3 h-3" /> 파일 {WEIGHTS.file * 100}%</span>
+        <span className="flex items-center gap-1"><CheckSquare className="w-3 h-3" /> 할일 {WEIGHTS.todo * 100}%</span>
+        <span className="flex items-center gap-1"><CalendarDays className="w-3 h-3" /> 일정 {WEIGHTS.calendar * 100}%</span>
       </p>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

@@ -42,9 +42,16 @@ interface ContractRecord {
   }[];
 }
 
-// Generate contract data from real project data
-const generateContractData = (): ContractRecord[] => {
-  return mockProjects.map((project, idx) => {
+// Generate contract data from real project data, filtered by year
+const generateContractData = (filterYear?: number): ContractRecord[] => {
+  const filtered = filterYear
+    ? mockProjects.filter(project => {
+        const startYear = new Date(project.startDate).getFullYear();
+        const endYear = new Date(project.endDate).getFullYear();
+        return startYear <= filterYear && endYear >= filterYear;
+      })
+    : mockProjects;
+  return filtered.map((project, idx) => {
     const financial = projectFinancials.find(f => f.projectId === project.id);
     const amount = financial?.contractAmount || project.budget || 0;
     
@@ -79,14 +86,13 @@ const generateContractData = (): ContractRecord[] => {
   });
 };
 
-const contractData = generateContractData();
-
 interface ContractStatusSectionProps {
   year: number;
 }
 
 export function ContractStatusSection({ year }: ContractStatusSectionProps) {
   const { t } = useTranslation();
+  const contractData = generateContractData(year);
   const [searchTerm, setSearchTerm] = useState('');
   const [expandedProjects, setExpandedProjects] = useState<string[]>([contractData[0]?.id]);
   const [sortBy, setSortBy] = useState<'date' | 'amount'>('date');

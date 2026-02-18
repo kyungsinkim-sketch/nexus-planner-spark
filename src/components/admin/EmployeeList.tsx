@@ -5,11 +5,22 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Check, X, Trash2, Search, Download } from 'lucide-react';
+import { Check, X, Trash2, Search, Download, Edit2, KeyRound, Mail } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { useTranslation } from '@/hooks/useTranslation';
 import { useAdminEmployees } from '@/hooks/useAdmin';
 import { AdminEmployee } from '@/types/admin';
+import { useAppStore } from '@/stores/appStore';
+import { isSupabaseConfigured, supabase } from '@/lib/supabase';
 
 interface Employee extends AdminEmployee {
   monthsWorked: string;
@@ -20,12 +31,21 @@ interface Employee extends AdminEmployee {
 export function EmployeeList() {
   const { t } = useTranslation();
   const { employees: dbEmployees, updateEmployee, deleteEmployee, isLoading } = useAdminEmployees();
+  const { currentUser } = useAppStore();
+  const isAdmin = currentUser?.role === 'ADMIN';
 
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [filterDepartment, setFilterDepartment] = useState<string>('all');
+
+  // Password reset dialog state
+  const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
+  const [passwordTarget, setPasswordTarget] = useState<{ id: string; name: string; email?: string } | null>(null);
+  const [newPasswordValue, setNewPasswordValue] = useState('');
+  const [confirmPasswordValue, setConfirmPasswordValue] = useState('');
+  const [isResettingPassword, setIsResettingPassword] = useState(false);
 
   // Tenure calculation helper
   const calculateTenure = (joinDate: string) => {
@@ -107,6 +127,43 @@ export function EmployeeList() {
     }
   };
 
+  const openPasswordDialog = (emp: Employee) => {
+    setPasswordTarget({ id: emp.id, name: emp.name, email: emp.email });
+    setNewPasswordValue('');
+    setConfirmPasswordValue('');
+    setPasswordDialogOpen(true);
+  };
+
+  const handleResetPassword = async () => {
+    if (!passwordTarget) return;
+    if (newPasswordValue.length < 6) {
+      toast.error('비밀번호는 최소 6자 이상이어야 합니다');
+      return;
+    }
+    if (newPasswordValue !== confirmPasswordValue) {
+      toast.error('비밀번호가 일치하지 않습니다');
+      return;
+    }
+
+    setIsResettingPassword(true);
+    try {
+      if (isSupabaseConfigured()) {
+        // Admin password reset via Supabase admin API
+        const { error } = await supabase.auth.admin.updateUserById(passwordTarget.id, {
+          password: newPasswordValue,
+        });
+        if (error) throw error;
+      }
+      toast.success(`${passwordTarget.name}님의 비밀번호가 변경되었습니다`);
+      setPasswordDialogOpen(false);
+    } catch (error: unknown) {
+      // If admin API fails, try service role approach
+      toast.error('비밀번호 변경 실패: ' + (error instanceof Error ? error.message : ''));
+    } finally {
+      setIsResettingPassword(false);
+    }
+  };
+
   if (isLoading && employees.length === 0) {
     return <div className="p-8 text-center text-muted-foreground">Loading employee list...</div>;
   }
@@ -163,6 +220,7 @@ export function EmployeeList() {
                 <TableHead className="w-[80px] text-center">{t('status')}</TableHead>
                 <TableHead>{t('joinDate')}</TableHead>
                 <TableHead>{t('name')}</TableHead>
+                <TableHead>이메일</TableHead>
                 <TableHead>{t('department')}</TableHead>
                 <TableHead>{t('position')}</TableHead>
                 <TableHead>{t('grade')}</TableHead>
@@ -199,6 +257,9 @@ export function EmployeeList() {
                           onChange={(e) => handleUpdate(emp.id, 'name', e.target.value)}
                           className="h-8 w-[100px]"
                         />
+                      </TableCell>
+                      <TableCell>
+                        <span className="text-xs text-muted-foreground">{emp.email || '-'}</span>
                       </TableCell>
                       <TableCell>
                         <Input
@@ -268,6 +329,12 @@ export function EmployeeList() {
                         </div>
                       </TableCell>
                       <TableCell className="font-medium">{emp.name}</TableCell>
+                      <TableCell>
+                        <span className="text-xs text-muted-foreground flex items-center gap-1">
+                          <Mail className="w-3 h-3" />
+                          {emp.email || '-'}
+                        </span>
+                      </TableCell>
                       <TableCell>{emp.department}</TableCell>
                       <TableCell>{emp.position}</TableCell>
                       <TableCell><Badge variant="outline">{emp.level}</Badge></TableCell>
@@ -276,11 +343,15 @@ export function EmployeeList() {
                       <TableCell className="text-right text-muted-foreground">{formatCurrency(emp.monthly_salary)}</TableCell>
                       <TableCell>
                         <div className="flex gap-1 justify-end opacity-0 group-hover:opacity-100 transition-opacity">
-                          <Button size="icon" variant="ghost" className="h-8 w-8 text-blue-600" onClick={() => setEditingId(emp.id)}>
-                            <Search className="w-4 h-4" />
-                            {/* Reusing Search icon as Edit icon temporarily or need to import Edit2 */}
+                          <Button size="icon" variant="ghost" className="h-8 w-8 text-blue-600" onClick={() => setEditingId(emp.id)} title="수정">
+                            <Edit2 className="w-4 h-4" />
                           </Button>
-                          <Button size="icon" variant="ghost" className="h-8 w-8 text-red-600" onClick={() => handleDelete(emp.id)}>
+                          {isAdmin && (
+                            <Button size="icon" variant="ghost" className="h-8 w-8 text-amber-600" onClick={() => openPasswordDialog(emp)} title="비밀번호 변경">
+                              <KeyRound className="w-4 h-4" />
+                            </Button>
+                          )}
+                          <Button size="icon" variant="ghost" className="h-8 w-8 text-red-600" onClick={() => handleDelete(emp.id)} title="삭제">
                             <Trash2 className="w-4 h-4" />
                           </Button>
                         </div>
@@ -293,6 +364,52 @@ export function EmployeeList() {
           </Table>
         </div>
       </Card>
+
+      {/* Password Reset Dialog (Admin only) */}
+      <Dialog open={passwordDialogOpen} onOpenChange={setPasswordDialogOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <KeyRound className="w-5 h-5 text-amber-500" />
+              비밀번호 변경
+            </DialogTitle>
+            <DialogDescription>
+              {passwordTarget?.name}님의 비밀번호를 변경합니다
+              {passwordTarget?.email && (
+                <span className="block text-xs mt-1">{passwordTarget.email}</span>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <Label>새 비밀번호</Label>
+              <Input
+                type="password"
+                placeholder="6자 이상 입력"
+                value={newPasswordValue}
+                onChange={(e) => setNewPasswordValue(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>비밀번호 확인</Label>
+              <Input
+                type="password"
+                placeholder="비밀번호 재입력"
+                value={confirmPasswordValue}
+                onChange={(e) => setConfirmPasswordValue(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPasswordDialogOpen(false)}>
+              취소
+            </Button>
+            <Button onClick={handleResetPassword} disabled={isResettingPassword || !newPasswordValue}>
+              {isResettingPassword ? '변경 중...' : '비밀번호 변경'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -43,8 +43,8 @@ interface ExpenseItem {
   note?: string;
 }
 
-// Generate expense data from real projects
-const generateExpenseItems = () => {
+// Generate expense data from real projects, filtered by year
+const generateExpenseItems = (filterYear?: number) => {
   const taxInvoices: ExpenseItem[] = [];
   const withholding: ExpenseItem[] = [];
   const corporateCard: ExpenseItem[] = [];
@@ -53,6 +53,12 @@ const generateExpenseItems = () => {
   projectFinancials.forEach((fin, idx) => {
     const project = mockProjects.find(p => p.id === fin.projectId);
     if (!project || fin.actualExpense === 0) return;
+    // Year filter: project must overlap with the selected year
+    if (filterYear) {
+      const startYear = new Date(project.startDate).getFullYear();
+      const endYear = new Date(project.endDate).getFullYear();
+      if (startYear > filterYear || endYear < filterYear) return;
+    }
 
     const projectName = project.title.length > 25 ? project.title.substring(0, 25) + '...' : project.title;
     const baseDate = project.startDate.substring(0, 7); // YYYY-MM
@@ -119,8 +125,6 @@ const generateExpenseItems = () => {
   return { taxInvoices, withholding, corporateCard, personalExpense };
 };
 
-const { taxInvoices: mockTaxInvoices, withholding: mockWithholding, corporateCard: mockCorporateCard, personalExpense: mockPersonalExpense } = generateExpenseItems();
-
 type SortBy = 'date' | 'project' | 'amount';
 
 interface ExpenseDetailSectionProps {
@@ -134,8 +138,15 @@ export function ExpenseDetailSection({ year }: ExpenseDetailSectionProps) {
   const [sortBy, setSortBy] = useState<SortBy>('date');
   const [filterProject, setFilterProject] = useState<string>('all');
 
+  // Generate expense data filtered by the selected year
+  const { taxInvoices: mockTaxInvoices, withholding: mockWithholding, corporateCard: mockCorporateCard, personalExpense: mockPersonalExpense } = generateExpenseItems(year);
+
   const projects = mockProjects
-    .filter(p => projectFinancials.find(f => f.projectId === p.id && f.actualExpense > 0))
+    .filter(p => {
+      const startYear = new Date(p.startDate).getFullYear();
+      const endYear = new Date(p.endDate).getFullYear();
+      return startYear <= year && endYear >= year && projectFinancials.find(f => f.projectId === p.id && f.actualExpense > 0);
+    })
     .map(p => ({ id: p.id, name: p.title.length > 20 ? p.title.substring(0, 20) + '...' : p.title }));
 
   const filterAndSort = (items: ExpenseItem[]) => {

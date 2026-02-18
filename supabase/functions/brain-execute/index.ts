@@ -90,12 +90,17 @@ Deno.serve(async (req) => {
         executedData = { todoId: todo.id, type: 'todo', ...todo };
 
         // Also create calendar events for each assignee (auto-sync)
+        // Use KST timezone to ensure single-day events stay on the correct date
+        const dueDateStr = todoData.dueDate as string;
+        const todoStartAt = dueDateStr ? `${dueDateStr.substring(0, 10)}T00:00:00+09:00` : null;
+        const todoEndAt = dueDateStr ? `${dueDateStr.substring(0, 10)}T23:59:59+09:00` : null;
+
         for (const assigneeId of assigneeIds.filter((id: string) => id !== '')) {
           await supabase.from('calendar_events').insert({
             title: `[Todo] ${todoData.title}`,
             type: 'TODO',
-            start_at: todoData.dueDate,
-            end_at: todoData.dueDate,
+            start_at: todoStartAt,
+            end_at: todoEndAt,
             project_id: todoData.projectId || null,
             owner_id: assigneeId,
             due_date: todoData.dueDate,
@@ -111,13 +116,33 @@ Deno.serve(async (req) => {
         const eventData = extractedData;
         const attendeeIds = (eventData.attendeeIds as string[]) || [];
 
+        // Normalize date strings — if bare date (YYYY-MM-DD), add KST timezone
+        // to prevent UTC conversion from shifting to a different date
+        const normalizeToKST = (dt: unknown): string | null => {
+          if (!dt || typeof dt !== 'string') return null;
+          // If it's already a full ISO datetime or has timezone, keep as-is
+          if (dt.includes('T') && dt.length > 11) return dt;
+          // Bare date string (YYYY-MM-DD) → add time with KST offset
+          return `${dt.substring(0, 10)}T00:00:00+09:00`;
+        };
+
+        let eventStartAt = normalizeToKST(eventData.startAt);
+        let eventEndAt = normalizeToKST(eventData.endAt);
+
+        // If start and end are the same day (both are bare dates), make end = 23:59:59
+        if (eventStartAt && eventEndAt &&
+            eventStartAt.substring(0, 10) === eventEndAt.substring(0, 10) &&
+            eventStartAt.includes('T00:00:00')) {
+          eventEndAt = `${eventEndAt.substring(0, 10)}T23:59:59+09:00`;
+        }
+
         // Build the event insert object
         const filteredAttendeeIds = attendeeIds.filter((id: string) => id !== '');
         const eventInsert: Record<string, unknown> = {
           title: eventData.title,
           type: eventData.type || 'MEETING',
-          start_at: eventData.startAt,
-          end_at: eventData.endAt,
+          start_at: eventStartAt,
+          end_at: eventEndAt,
           project_id: eventData.projectId || null,
           owner_id: userId,
           source: 'PAULUS',

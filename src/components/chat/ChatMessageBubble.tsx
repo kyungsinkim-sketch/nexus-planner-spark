@@ -19,6 +19,7 @@ import {
   Eye,
   X,
   Trash2,
+  Pin,
 } from 'lucide-react';
 import { useAppStore } from '@/stores/appStore';
 import { useTranslation } from '@/hooks/useTranslation';
@@ -33,11 +34,12 @@ interface ChatMessageBubbleProps {
   onVoteDecision?: (messageId: string, optionId: string, reason: string) => void;
   onAcceptSchedule?: (messageId: string) => void;
   onDelete?: (messageId: string) => void;
+  onPin?: (messageId: string) => void;
   onConfirmBrainAction?: (actionId: string) => void;
   onRejectBrainAction?: (actionId: string) => void;
 }
 
-export function ChatMessageBubble({ message, isCurrentUser, onVoteDecision, onAcceptSchedule, onDelete, onConfirmBrainAction, onRejectBrainAction }: ChatMessageBubbleProps) {
+export function ChatMessageBubble({ message, isCurrentUser, onVoteDecision, onAcceptSchedule, onDelete, onPin, onConfirmBrainAction, onRejectBrainAction }: ChatMessageBubbleProps) {
   const { messageType } = message;
 
   // Brain AI bot message
@@ -53,7 +55,7 @@ export function ChatMessageBubble({ message, isCurrentUser, onVoteDecision, onAc
 
   if (messageType === 'location' && message.locationData) {
     return (
-      <MessageWrapper isCurrentUser={isCurrentUser} onDelete={onDelete} messageId={message.id}>
+      <MessageWrapper isCurrentUser={isCurrentUser} onDelete={onDelete} onPin={onPin} messageId={message.id}>
         <LocationBubble data={message.locationData} isCurrentUser={isCurrentUser} />
       </MessageWrapper>
     );
@@ -61,7 +63,7 @@ export function ChatMessageBubble({ message, isCurrentUser, onVoteDecision, onAc
 
   if (messageType === 'schedule' && message.scheduleData) {
     return (
-      <MessageWrapper isCurrentUser={isCurrentUser} onDelete={onDelete} messageId={message.id}>
+      <MessageWrapper isCurrentUser={isCurrentUser} onDelete={onDelete} onPin={onPin} messageId={message.id}>
         <ScheduleBubble
           data={message.scheduleData}
           isCurrentUser={isCurrentUser}
@@ -73,7 +75,7 @@ export function ChatMessageBubble({ message, isCurrentUser, onVoteDecision, onAc
 
   if (messageType === 'decision' && message.decisionData) {
     return (
-      <MessageWrapper isCurrentUser={isCurrentUser} onDelete={onDelete} messageId={message.id}>
+      <MessageWrapper isCurrentUser={isCurrentUser} onDelete={onDelete} onPin={onPin} messageId={message.id}>
         <DecisionBubble
           data={message.decisionData}
           messageId={message.id}
@@ -86,7 +88,7 @@ export function ChatMessageBubble({ message, isCurrentUser, onVoteDecision, onAc
 
   if (messageType === 'file') {
     return (
-      <MessageWrapper isCurrentUser={isCurrentUser} onDelete={onDelete} messageId={message.id}>
+      <MessageWrapper isCurrentUser={isCurrentUser} onDelete={onDelete} onPin={onPin} messageId={message.id}>
         <FileBubble message={message} isCurrentUser={isCurrentUser} />
       </MessageWrapper>
     );
@@ -94,7 +96,7 @@ export function ChatMessageBubble({ message, isCurrentUser, onVoteDecision, onAc
 
   // Default text message
   return (
-    <MessageWrapper isCurrentUser={isCurrentUser} onDelete={onDelete} messageId={message.id}>
+    <MessageWrapper isCurrentUser={isCurrentUser} onDelete={onDelete} onPin={onPin} messageId={message.id}>
       <div
         className={`w-fit rounded-2xl px-4 py-2 text-sm max-w-full whitespace-pre-wrap ${
           isCurrentUser
@@ -109,25 +111,40 @@ export function ChatMessageBubble({ message, isCurrentUser, onVoteDecision, onAc
   );
 }
 
-// Wrapper that adds hover delete button
-function MessageWrapper({ children, isCurrentUser, onDelete, messageId }: {
+// Wrapper that adds hover pin (left) and delete (right) buttons
+function MessageWrapper({ children, isCurrentUser, onDelete, onPin, messageId }: {
   children: React.ReactNode;
   isCurrentUser: boolean;
   onDelete?: (messageId: string) => void;
+  onPin?: (messageId: string) => void;
   messageId: string;
 }) {
-  if (!isCurrentUser || !onDelete) return <div className="max-w-full overflow-hidden">{children}</div>;
+  const hasActions = isCurrentUser && (onDelete || onPin);
+  if (!hasActions) return <div className="max-w-full overflow-hidden">{children}</div>;
 
   return (
-    <div className="group/msg relative w-fit max-w-full overflow-hidden">
+    <div className="group/msg relative w-fit max-w-full overflow-visible">
       {children}
-      <button
-        onClick={() => onDelete(messageId)}
-        className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover/msg:opacity-100 transition-opacity shadow-sm hover:bg-destructive/90"
-        title="Delete message"
-      >
-        <Trash2 className="w-3 h-3" />
-      </button>
+      {/* Pin button — left side */}
+      {onPin && (
+        <button
+          onClick={() => onPin(messageId)}
+          className="absolute -top-2 -left-2 w-6 h-6 rounded-full bg-amber-500 text-white flex items-center justify-center opacity-0 group-hover/msg:opacity-100 transition-opacity shadow-sm hover:bg-amber-600 z-10"
+          title="Pin message"
+        >
+          <Pin className="w-3 h-3" />
+        </button>
+      )}
+      {/* Delete button — right side */}
+      {onDelete && (
+        <button
+          onClick={() => onDelete(messageId)}
+          className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover/msg:opacity-100 transition-opacity shadow-sm hover:bg-destructive/90 z-10"
+          title="Delete message"
+        >
+          <Trash2 className="w-3 h-3" />
+        </button>
+      )}
     </div>
   );
 }

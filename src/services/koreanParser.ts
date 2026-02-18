@@ -794,13 +794,14 @@ function parseDateTimeExpression(text: string): { dateTime: string | null; endDa
     baseDate.setHours(10, 0, 0, 0);
   }
 
-  const startAt = baseDate.toISOString();
+  // Use toLocalISOString to preserve KST timezone and prevent UTC date shifting
+  const startAt = toLocalISOString(baseDate);
   let endDateTime: string | null = null;
 
   if (timeInfo.endHour !== null) {
     const endDate = new Date(baseDate);
     endDate.setHours(timeInfo.endHour, timeInfo.endMinute, 0, 0);
-    endDateTime = endDate.toISOString();
+    endDateTime = toLocalISOString(endDate);
   }
 
   return { dateTime: startAt, endDateTime };
@@ -913,7 +914,7 @@ function extractTimeFromText(text: string): string | null {
     baseDate.setHours(10, 0, 0, 0);
   }
 
-  return baseDate.toISOString();
+  return toLocalISOString(baseDate);
 }
 
 // ============================================================
@@ -1081,10 +1082,30 @@ function toISODate(date: Date): string {
 }
 
 /**
+ * Convert a Date to ISO datetime string using LOCAL timezone.
+ * Prevents UTC conversion from shifting dates in KST (UTC+9).
+ */
+function toLocalISOString(date: Date): string {
+  const y = date.getFullYear();
+  const mo = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  const h = String(date.getHours()).padStart(2, '0');
+  const mi = String(date.getMinutes()).padStart(2, '0');
+  const s = String(date.getSeconds()).padStart(2, '0');
+  // Compute timezone offset (e.g., +09:00 for KST)
+  const offset = -date.getTimezoneOffset();
+  const sign = offset >= 0 ? '+' : '-';
+  const absOffset = Math.abs(offset);
+  const oh = String(Math.floor(absOffset / 60)).padStart(2, '0');
+  const om = String(absOffset % 60).padStart(2, '0');
+  return `${y}-${mo}-${d}T${h}:${mi}:${s}${sign}${oh}:${om}`;
+}
+
+/**
  * Add hours to an ISO datetime string.
  */
 function addHours(isoStr: string, hours: number): string {
   const date = new Date(isoStr);
   date.setHours(date.getHours() + hours);
-  return date.toISOString();
+  return toLocalISOString(date);
 }

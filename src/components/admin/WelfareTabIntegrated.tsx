@@ -19,7 +19,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { Calendar, Clock, Dumbbell, Users, CheckCircle, ChevronLeft, ChevronRight, TrendingUp, Loader2 } from 'lucide-react';
+import { Calendar, Clock, Dumbbell, Users, CheckCircle, ChevronLeft, ChevronRight, TrendingUp, Loader2, Copy, CalendarPlus } from 'lucide-react';
 import { toast } from 'sonner';
 import { useTranslation } from '@/hooks/useTranslation';
 import { useAppStore } from '@/stores/appStore';
@@ -181,7 +181,24 @@ export function WelfareTabIntegrated() {
                 setTrainingSessions(prev => [...prev, newSession]);
             }
 
+            // Sync to personal calendar as "Renatus" event
+            const user = users.find(u => u.id === selectedUserId);
+            const hour = timeSlotToHour(selectedTimeSlot);
+            const startAt = `${selectedDate}T${String(hour).padStart(2, '0')}:00:00+09:00`;
+            const endAt = `${selectedDate}T${String(hour + 1).padStart(2, '0')}:00:00+09:00`;
+            addEvent({
+                id: `renatus-${Date.now()}`,
+                title: `[Renatus] ${user?.name || 'Training'}`,
+                type: 'TRAINING',
+                startAt,
+                endAt,
+                ownerId: selectedUserId,
+                projectId: undefined,
+                source: 'PAULUS',
+            });
+
             toast.success('Training session booked successfully');
+            toast.info('개인 캘린더에 Renatus 일정이 추가되었습니다');
             setIsBookingDialogOpen(false);
             setSelectedDate('');
             setSelectedTimeSlot('');
@@ -192,6 +209,66 @@ export function WelfareTabIntegrated() {
         } finally {
             setIsLoading(false);
         }
+    };
+
+    // Clone current week's sessions to next week
+    const handleCloneToNextWeek = () => {
+        const nextWeekStart = new Date(currentWeekStart);
+        nextWeekStart.setDate(nextWeekStart.getDate() + 7);
+
+        // Get sessions from current week
+        const currentWeekSessions = trainingSessions.filter(s => {
+            const sessionDate = new Date(s.date);
+            const weekEnd = new Date(currentWeekStart);
+            weekEnd.setDate(weekEnd.getDate() + 7);
+            return sessionDate >= currentWeekStart && sessionDate < weekEnd;
+        });
+
+        if (currentWeekSessions.length === 0) {
+            toast.error('현재 주에 복사할 세션이 없습니다');
+            return;
+        }
+
+        // Clone each session to the corresponding day next week
+        const newSessions: TrainingSession[] = currentWeekSessions.map(session => {
+            const sessionDate = new Date(session.date);
+            const dayOffset = Math.floor((sessionDate.getTime() - currentWeekStart.getTime()) / (1000 * 60 * 60 * 24));
+            const newDate = new Date(nextWeekStart);
+            newDate.setDate(newDate.getDate() + dayOffset);
+            const dateStr = newDate.toISOString().split('T')[0];
+
+            return {
+                ...session,
+                id: `clone-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+                date: dateStr,
+                trainerConfirmed: false,
+                traineeConfirmed: false,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+            };
+        });
+
+        setTrainingSessions(prev => [...prev, ...newSessions]);
+
+        // Also add calendar events for each cloned session
+        newSessions.forEach(session => {
+            const hour = timeSlotToHour(session.timeSlot);
+            const startAt = `${session.date}T${String(hour).padStart(2, '0')}:00:00+09:00`;
+            const endAt = `${session.date}T${String(hour + 1).padStart(2, '0')}:00:00+09:00`;
+            addEvent({
+                id: `renatus-${session.id}`,
+                title: `[Renatus] ${session.userName}`,
+                type: 'TRAINING',
+                startAt,
+                endAt,
+                ownerId: session.userId,
+                projectId: undefined,
+                source: 'PAULUS',
+            });
+        });
+
+        toast.success(`${newSessions.length}개 세션이 다음 주로 복사되었습니다`);
+        toast.info('개인 캘린더에도 Renatus 일정이 반영되었습니다');
     };
 
     const handleAssignLocker = async () => {
@@ -393,11 +470,17 @@ export function WelfareTabIntegrated() {
                                 <ChevronRight className="w-4 h-4" />
                             </Button>
                         </div>
-                        <Button onClick={() => setIsBookingDialogOpen(true)} disabled={isLoading}>
-                            {isLoading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                            <Dumbbell className="w-4 h-4 mr-2" />
-                            Book Session
-                        </Button>
+                        <div className="flex gap-2">
+                            <Button variant="outline" onClick={handleCloneToNextWeek} disabled={isLoading} className="gap-1.5">
+                                <Copy className="w-4 h-4" />
+                                다음 주 복사
+                            </Button>
+                            <Button onClick={() => setIsBookingDialogOpen(true)} disabled={isLoading}>
+                                {isLoading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                                <Dumbbell className="w-4 h-4 mr-2" />
+                                Book Session
+                            </Button>
+                        </div>
                     </div>
 
                     {/* Weekly Calendar Grid */}

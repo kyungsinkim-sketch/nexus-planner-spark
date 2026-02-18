@@ -14,7 +14,7 @@ export const mockEmployees: AdminEmployee[] = [
     position: 'Chief Executive Officer', category: 'C-lev',
     level: 'D1', class_level: '-',
     annual_salary: 111137280, monthly_salary: 9261440,
-    phone: '01093090391', email: '',
+    phone: '01093090391', email: 'kyungsin.kim@paulus.pro',
   },
   {
     id: 'emp-2', employee_no: 2, name: '사판 카디르', status: '재직중',
@@ -22,7 +22,7 @@ export const mockEmployees: AdminEmployee[] = [
     position: 'Creative Director', category: 'Leader',
     level: 'L2', class_level: 'A',
     annual_salary: 70985000, monthly_salary: 5915420,
-    phone: '01029910391', email: '',
+    phone: '01029910391', email: 'sapan.kadir@paulus.pro',
   },
   {
     id: 'emp-3', employee_no: 3, name: '장요한', status: '재직중',
@@ -30,7 +30,7 @@ export const mockEmployees: AdminEmployee[] = [
     position: 'Director', category: 'Leader',
     level: 'L1', class_level: 'E',
     annual_salary: 69900000, monthly_salary: 5825000,
-    phone: '01067760318', email: '',
+    phone: '01067760318', email: 'john.jang@paulus.pro',
   },
   {
     id: 'emp-4', employee_no: 4, name: '박민규', status: '재직중',
@@ -38,7 +38,7 @@ export const mockEmployees: AdminEmployee[] = [
     position: 'Producer', category: 'Leader',
     level: 'L1', class_level: 'B',
     annual_salary: 62475000, monthly_salary: 5206250,
-    phone: '01025542863', email: '',
+    phone: '01025542863', email: 'minkyu.park@paulus.pro',
   },
   {
     id: 'emp-5', employee_no: 5, name: '임혁', status: '재직중',
@@ -46,7 +46,7 @@ export const mockEmployees: AdminEmployee[] = [
     position: 'Director', category: 'Senior',
     level: 'S1', class_level: 'C',
     annual_salary: 46972750, monthly_salary: 3914400,
-    phone: '01091249262', email: '',
+    phone: '01091249262', email: 'hyuk.lim@paulus.pro',
   },
   {
     id: 'emp-6', employee_no: 6, name: '이정헌', status: '재직중',
@@ -54,7 +54,7 @@ export const mockEmployees: AdminEmployee[] = [
     position: '3D Designer', category: 'Senior',
     level: 'S1', class_level: 'A',
     annual_salary: 40000000, monthly_salary: 3333340,
-    phone: '01050230483', email: '',
+    phone: '01050230483', email: 'junghun.lee@paulus.pro',
   },
   {
     id: 'emp-7', employee_no: 7, name: '홍원준', status: '재직중',
@@ -62,7 +62,7 @@ export const mockEmployees: AdminEmployee[] = [
     position: 'Executive Producer', category: 'Leader',
     level: 'L1', class_level: 'C',
     annual_salary: 66010000, monthly_salary: 5500840,
-    phone: '01034341916', email: '',
+    phone: '01034341916', email: 'wonjun.hong@paulus.pro',
   },
   {
     id: 'emp-8', employee_no: 8, name: '백송희', status: '재직중',
@@ -70,7 +70,7 @@ export const mockEmployees: AdminEmployee[] = [
     position: 'Line Producer', category: 'Senior',
     level: 'S1', class_level: 'C',
     annual_salary: 44950000, monthly_salary: 3745840,
-    phone: '01080786808', email: '',
+    phone: '01080786808', email: 'songhee.baek@paulus.pro',
   },
   {
     id: 'emp-9', employee_no: 9, name: '정승채', status: '재직중',
@@ -78,7 +78,7 @@ export const mockEmployees: AdminEmployee[] = [
     position: 'Managing Director', category: 'Senior',
     level: 'S2', class_level: 'C',
     annual_salary: 54950000, monthly_salary: 4579170,
-    phone: '01073213025', email: '',
+    phone: '01073213025', email: 'seungchae.jung@paulus.pro',
   },
   {
     id: 'emp-10', employee_no: 10, name: '한상현', status: '재직중',
@@ -86,7 +86,7 @@ export const mockEmployees: AdminEmployee[] = [
     position: 'Editing Director', category: 'Senior',
     level: 'S1', class_level: 'D',
     annual_salary: 47871750, monthly_salary: 3989320,
-    phone: '01077941013', email: '',
+    phone: '01077941013', email: 'sanghyun.han@paulus.pro',
   },
   {
     id: 'emp-11', employee_no: 11, name: '김현진', status: '재직중',
@@ -94,7 +94,7 @@ export const mockEmployees: AdminEmployee[] = [
     position: 'Assistant Director', category: 'Junior',
     level: 'P', class_level: 'E',
     annual_salary: 34900000, monthly_salary: 2908340,
-    phone: '01053252452', email: '',
+    phone: '01053252452', email: 'hyunjin.kim@paulus.pro',
   },
   {
     id: 'emp-12', employee_no: 12, name: '안지민', status: '재직중',
@@ -102,7 +102,7 @@ export const mockEmployees: AdminEmployee[] = [
     position: 'Senior Art Director', category: 'Senior',
     level: 'S1', class_level: 'C-',
     annual_salary: 44000000, monthly_salary: 3666670,
-    phone: '01055132209', email: '',
+    phone: '01055132209', email: 'jimin.ahn@paulus.pro',
   },
   {
     id: 'emp-13', employee_no: 13, name: '티아고 소우자', status: '재직중',
@@ -110,7 +110,7 @@ export const mockEmployees: AdminEmployee[] = [
     position: 'Senior 3D Designer', category: 'Mid',
     level: 'S2', class_level: 'D',
     annual_salary: 57420000, monthly_salary: 4785000,
-    phone: '01066296632', email: '',
+    phone: '01066296632', email: 'tiago.souza@paulus.pro',
   },
   {
     id: 'emp-14', employee_no: 14, name: '표인하', status: '재직중',
@@ -126,7 +126,7 @@ export const mockEmployees: AdminEmployee[] = [
     position: 'Art Director', category: 'Junior',
     level: 'P', class_level: 'D',
     annual_salary: 34094700, monthly_salary: 2841230,
-    phone: '01067570491', email: '',
+    phone: '01067570491', email: 'jisu.lee@paulus.pro',
   },
   {
     id: 'emp-16', employee_no: 16, name: '이지우', status: '재직중',
@@ -134,7 +134,7 @@ export const mockEmployees: AdminEmployee[] = [
     position: 'Assistant Director', category: 'Junior',
     level: 'P', class_level: 'C',
     annual_salary: 31997880, monthly_salary: 2666490,
-    phone: '01091279626', email: '',
+    phone: '01091279626', email: 'jiwoo.lee@paulus.pro',
   },
   {
     id: 'emp-17', employee_no: 17, name: '고민혁', status: '재직중',
@@ -190,7 +190,7 @@ export const mockEmployees: AdminEmployee[] = [
     position: 'MASTER', category: 'C-lev',
     level: 'D1', class_level: '-',
     annual_salary: 24000000, monthly_salary: 2000000,
-    phone: '01072731188', email: '',
+    phone: '01072731188', email: 'hongtack.kim@paulus.pro',
   },
   {
     id: 'emp-24', employee_no: 24, name: '김광수', status: '재직중',
@@ -198,7 +198,7 @@ export const mockEmployees: AdminEmployee[] = [
     position: 'Master Trainer', category: 'Leader',
     level: 'L2', class_level: '-',
     annual_salary: 50400000, monthly_salary: 4200000,
-    phone: '01090722391', email: '',
+    phone: '01090722391', email: 'kwangsu.kim@paulus.pro',
   },
 ];
 
