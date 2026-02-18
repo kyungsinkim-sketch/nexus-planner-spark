@@ -28,6 +28,7 @@ import {
   CalendarCheck,
   StickyNote,
   Sparkles,
+  Mail,
 } from 'lucide-react';
 import type { WidgetDefinition, WidgetType, WidgetDataContext } from '@/types/widget';
 
@@ -54,6 +55,7 @@ export const WIDGET_COMPONENTS: Record<WidgetType, ComponentType<{ context: Widg
   todaySchedule:  lazy(() => import('./TodayScheduleWidget')),
   importantNotes: lazy(() => import('./ImportantNotesWidget')),
   inspiration:    lazy(() => import('./InspirationWidget')),
+  email:          lazy(() => import('./EmailWidget')),
 };
 
 // Widget definitions (metadata)
@@ -225,6 +227,14 @@ export const WIDGET_DEFINITIONS: Record<WidgetType, WidgetDefinition> = {
     icon: Sparkles,
     defaultSize: { w: 4, h: 2 },
     minSize: { w: 3, h: 1 },
+    contexts: ['dashboard'],
+  },
+  email: {
+    type: 'email',
+    titleKey: 'email',
+    icon: Mail,
+    defaultSize: { w: 4, h: 4 },
+    minSize: { w: 3, h: 3 },
     contexts: ['dashboard'],
   },
 };

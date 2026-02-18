@@ -442,6 +442,61 @@ export type EventType = CalendarEvent['type'];
 export type ProjectStatus = Project['status'];
 export type FileCategory = FileGroup['category'];
 
+// ============================================================
+// Gmail + Brain Email Analysis Types
+// ============================================================
+
+export interface GmailMessage {
+  id: string;
+  threadId: string;
+  from: string;          // "Name <email>"
+  to: string[];
+  cc?: string[];
+  subject: string;
+  body: string;          // plain text (stripped HTML)
+  date: string;          // ISO string
+  isUnread: boolean;
+  snippet: string;       // short preview
+}
+
+export interface GmailThread {
+  id: string;
+  snippet: string;
+  messages: GmailMessage[];
+  latestDate: string;    // for sorting
+}
+
+// Date inconsistency detected by Brain (e.g. "3/6(금)" but 3/6 is Thursday)
+export interface DateInconsistency {
+  mentioned: string;     // "3/6(금)" — expression in email
+  actualDay: string;     // "목요일" — actual day of week
+  correction: string;    // "3/6은 목요일입니다. 3/7(금) 확인 필요"
+}
+
+export type EmailIntentType =
+  | 'meeting_request'
+  | 'schedule_change'
+  | 'deadline'
+  | 'info_share'
+  | 'action_required'
+  | 'location_compare';
+
+// Brain email analysis result — one per email
+export interface EmailBrainSuggestion {
+  id: string;
+  emailId: string;
+  threadId: string;
+  intent: EmailIntentType;
+  summary: string;                        // 1-line Korean summary
+  dateInconsistency?: DateInconsistency;
+  suggestedEvent?: BrainExtractedEvent;   // Calendar event suggestion (includes location)
+  suggestedTodo?: BrainExtractedTodo;     // Todo suggestion
+  suggestedNote?: string;                 // Important note content (location comparison, decisions, etc.)
+  suggestedReplyDraft?: string;           // Reply draft
+  confidence: number;                     // 0-1
+  status: BrainActionStatus;              // pending → confirmed → executed
+}
+
 // Google Calendar Integration
 export type GoogleCalendarSyncStatus = 'DISCONNECTED' | 'CONNECTED' | 'SYNCING' | 'ERROR';
 

@@ -1,4 +1,4 @@
-import { User, Project, CalendarEvent, ChatMessage, FileGroup, FileItem, PerformanceSnapshot, PortfolioItem, PeerFeedback, ProjectContribution, PersonalTodo } from '@/types/core';
+import { User, Project, CalendarEvent, ChatMessage, FileGroup, FileItem, PerformanceSnapshot, PortfolioItem, PeerFeedback, ProjectContribution, PersonalTodo, GmailMessage, EmailBrainSuggestion } from '@/types/core';
 
 // Helper to generate dates relative to today
 const today = new Date();
@@ -1031,6 +1031,115 @@ export const mockPersonalTodos: PersonalTodo[] = [
     priority: 'NORMAL',
     status: 'PENDING',
     createdAt: dateFrom(2025, 12, 10),
+  },
+];
+
+// ============================================================
+// Mock Gmail Data — for Email Widget development
+// ============================================================
+
+export const mockGmailMessages: GmailMessage[] = [
+  {
+    id: 'gm1',
+    threadId: 'gt1',
+    from: '김민수 <minsu.kim@hyundai-glovis.com>',
+    to: ['kyungsin.kim@paulus.pro'],
+    subject: '3월 촬영 일정 조율 건',
+    body: '안녕하세요, 김경신 대표님.\n\n3월 촬영 일정 관련하여 연락드립니다.\n3/6(금) 오전 10시에 강남 사무실에서 촬영 전 미팅을 하고 싶습니다.\n촬영 장소는 강남 스튜디오 또는 성수동 창고형 스튜디오 중 선택해 주시면 감사하겠습니다.\n\n강남 스튜디오: 접근성 좋고, 주차 편리. 일일 대관료 150만원\n성수동 스튜디오: 분위기 있고 공간 넓음. 일일 대관료 200만원\n\n참고로 납품 마감은 3/28(금)까지입니다.\n\n감사합니다.\n김민수 드림',
+    date: addDays(-1),
+    isUnread: true,
+    snippet: '3월 촬영 일정 관련하여 연락드립니다. 3/6(금) 오전 10시에 강남 사무실에서...',
+  },
+  {
+    id: 'gm2',
+    threadId: 'gt2',
+    from: '이수진 <soojin.lee@wfp.org>',
+    to: ['kyungsin.kim@paulus.pro'],
+    cc: ['minkyu.park@paulus.pro'],
+    subject: 'WFP 다큐멘터리 후반작업 관련',
+    body: '안녕하세요, 파울루스 팀.\n\nWFP 다큐멘터리 후반작업 진행 상황을 확인하고자 합니다.\n다음 주 화요일(3/11)까지 1차 편집본 전달이 가능할까요?\n\n또한 나레이션 녹음 일정도 잡아야 하는데,\n성우 스케줄을 확인하시고 가능 일자를 알려주세요.\n\n감사합니다.\n이수진',
+    date: addDays(-2),
+    isUnread: true,
+    snippet: 'WFP 다큐멘터리 후반작업 진행 상황을 확인하고자 합니다...',
+  },
+  {
+    id: 'gm3',
+    threadId: 'gt3',
+    from: '박철수 <cspark@hd-construction.co.kr>',
+    to: ['kyungsin.kim@paulus.pro'],
+    subject: '네오리빙 홍보영상 수정 요청',
+    body: '김경신 대표님,\n\n전달해 주신 네오리빙 홍보영상 1차 시안 잘 확인했습니다.\n아래 수정 사항을 반영하여 2차 시안을 부탁드립니다:\n\n1. 인트로 부분 로고 애니메이션 속도 조절 (현재 너무 빠름)\n2. 배경 음악 볼륨 낮추기 (인터뷰 목소리가 안들림)\n3. 마지막 컷에 고객 문의 전화번호 추가\n\n2차 시안은 이번 주 금요일까지 가능할까요?\n\n감사합니다.',
+    date: addDays(0),
+    isUnread: true,
+    snippet: '전달해 주신 네오리빙 홍보영상 1차 시안 잘 확인했습니다...',
+  },
+  {
+    id: 'gm4',
+    threadId: 'gt4',
+    from: '정하영 <hayoung@shuttl.com>',
+    to: ['kyungsin.kim@paulus.pro', 'minkyu.park@paulus.pro'],
+    subject: '셔클 2차 촬영 장소 후보 공유',
+    body: '안녕하세요,\n\n셔클 홍보영상 2차 촬영 장소 후보를 공유드립니다.\n\n후보 A: 잠실 롯데월드타워 전망대 (서울)\n- 도심 전경 촬영 가능, 야경 포함\n- 대관 비용: 300만원 / 4시간\n\n후보 B: 인천 송도 센트럴파크 (인천)\n- 자연+도시 배경, 넓은 공간\n- 대관 비용: 무료 (공공장소)\n\n후보 C: 가평 자라섬 (경기)\n- 자연 배경, 드론 촬영 가능\n- 대관 비용: 50만원\n\n내부 논의 후 결정해 주세요.\n감사합니다.',
+    date: addDays(-3),
+    isUnread: false,
+    snippet: '셔클 홍보영상 2차 촬영 장소 후보를 공유드립니다...',
+  },
+];
+
+export const mockEmailSuggestions: EmailBrainSuggestion[] = [
+  {
+    id: 'es1',
+    emailId: 'gm1',
+    threadId: 'gt1',
+    intent: 'meeting_request',
+    summary: '현대글로비스 김민수 과장 — 3/6 촬영 미팅 요청 (날짜 불일치 감지)',
+    dateInconsistency: {
+      mentioned: '3/6(금)',
+      actualDay: '목요일',
+      correction: '3/6은 목요일입니다. 3/7(금) 또는 3/6(목) 확인이 필요합니다.',
+    },
+    suggestedEvent: {
+      title: '현대글로비스 촬영 미팅',
+      startAt: new Date(new Date().getFullYear(), 2, 7, 10, 0).toISOString(), // 3/7 10:00
+      endAt: new Date(new Date().getFullYear(), 2, 7, 11, 0).toISOString(),
+      location: '강남 사무실',
+      attendeeIds: ['u1'],
+      type: 'MEETING',
+      projectId: 'p1',
+    },
+    suggestedNote: '촬영 장소 비교:\n• 강남 스튜디오: 접근성 좋음, 주차 편리, 150만원/일\n• 성수동 스튜디오: 분위기 있음, 공간 넓음, 200만원/일',
+    suggestedReplyDraft: '김민수 과장님, 안녕하세요.\n\n미팅 일정 확인 감사합니다.\n다만 3/6은 금요일이 아닌 목요일인데, 3/6(목) 또는 3/7(금) 중 어느 날짜가 맞으실까요?\n\n촬영 장소는 내부 검토 후 회신드리겠습니다.\n\n감사합니다.\n김경신 드림',
+    confidence: 0.92,
+    status: 'pending',
+  },
+  {
+    id: 'es2',
+    emailId: 'gm2',
+    threadId: 'gt2',
+    intent: 'deadline',
+    summary: 'WFP 이수진 — 3/11(화)까지 1차 편집본 전달 요청 + 나레이션 일정 조율',
+    suggestedTodo: {
+      title: 'WFP 다큐멘터리 1차 편집본 전달',
+      assigneeNames: ['박민규'],
+      assigneeIds: ['u3'],
+      dueDate: new Date(new Date().getFullYear(), 2, 11).toISOString(),
+      priority: 'HIGH',
+      projectId: 'p7',
+    },
+    suggestedReplyDraft: '이수진님, 안녕하세요.\n\n1차 편집본은 3/11(화)까지 전달 가능합니다.\n나레이션 녹음 가능 일정은 확인 후 이번 주 내로 안내드리겠습니다.\n\n감사합니다.\n김경신 드림',
+    confidence: 0.88,
+    status: 'pending',
+  },
+  {
+    id: 'es3',
+    emailId: 'gm4',
+    threadId: 'gt4',
+    intent: 'location_compare',
+    summary: '셔클 정하영 — 2차 촬영 장소 후보 3곳 비교 (롯데월드타워/송도/가평)',
+    suggestedNote: '셔클 2차 촬영 장소 비교:\n• 후보A 잠실 롯데월드타워: 도심 전경+야경, 300만원/4h\n• 후보B 인천 송도 센트럴파크: 자연+도시, 무료\n• 후보C 가평 자라섬: 자연, 드론 가능, 50만원',
+    suggestedReplyDraft: '정하영님, 안녕하세요.\n\n촬영 장소 후보 공유 감사합니다.\n내부 검토 후 이번 주 내로 결정 사항 안내드리겠습니다.\n\n감사합니다.\n김경신 드림',
+    confidence: 0.85,
+    status: 'pending',
   },
 ];
 

@@ -1,7 +1,8 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { User, Project, CalendarEvent, ChatMessage, ChatRoom, ChatMessageType, LocationShare, ScheduleShare, DecisionShare, FileGroup, FileItem, PerformanceSnapshot, PortfolioItem, PeerFeedback, ProjectContribution, ScoreSettings, UserWorkStatus, PersonalTodo, ImportantNote, InspirationQuote, CompanyNotification } from '@/types/core';
+import { User, Project, CalendarEvent, ChatMessage, ChatRoom, ChatMessageType, LocationShare, ScheduleShare, DecisionShare, FileGroup, FileItem, PerformanceSnapshot, PortfolioItem, PeerFeedback, ProjectContribution, ScoreSettings, UserWorkStatus, PersonalTodo, ImportantNote, InspirationQuote, CompanyNotification, GmailMessage, EmailBrainSuggestion } from '@/types/core';
 import { mockUsers, mockProjects, mockEvents, mockMessages, mockFileGroups, mockFiles, mockPerformanceSnapshots, mockPortfolioItems, mockPeerFeedback, mockProjectContributions, mockPersonalTodos, currentUser } from '@/mock/data';
+import * as gmailService from '@/services/gmailService';
 import { Language, getTranslation } from '@/lib/i18n';
 import { isSupabaseConfigured } from '@/lib/supabase';
 import * as projectService from '@/services/projectService';
@@ -62,6 +63,12 @@ interface AppState {
 
   // Notification dismiss state — shared across all notification widget instances
   dismissedNotificationIds: string[];
+
+  // Gmail + Brain Email Analysis
+  gmailMessages: GmailMessage[];
+  emailSuggestions: EmailBrainSuggestion[];
+  gmailLastSyncAt: string | null;
+  gmailSyncing: boolean;
 
   // Mock data persistence — track deleted mock event IDs across refreshes
   deletedMockEventIds: string[];
@@ -161,6 +168,12 @@ interface AppState {
   // Company Notification Actions
   broadcastNotification: (title: string, message: string) => void;
   dismissCompanyNotification: (id: string) => void;
+
+  // Gmail + Brain Email Actions
+  syncGmail: () => Promise<void>;
+  confirmEmailSuggestion: (suggestionId: string) => Promise<void>;
+  rejectEmailSuggestion: (suggestionId: string) => void;
+  sendEmailReply: (suggestionId: string, editedBody?: string) => Promise<void>;
 
   // Settings Actions
   updateScoreSettings: (settings: Partial<ScoreSettings>) => void;
@@ -269,6 +282,10 @@ export const useAppStore = create<AppState>()(
       weatherSettingsOpen: false,
       notificationSoundEnabled: true,
       dismissedNotificationIds: [],
+      gmailMessages: [],
+      emailSuggestions: [],
+      gmailLastSyncAt: null,
+      gmailSyncing: false,
       deletedMockEventIds: [],
       selectedProjectId: null,
       sidebarCollapsed: false,
@@ -1146,6 +1163,147 @@ export const useAppStore = create<AppState>()(
         companyNotifications: state.companyNotifications.filter((n) => n.id !== id),
       })),
 
+      // ── Gmail + Brain Email Actions ──────────────────
+
+      syncGmail: async () => {
+        const state = get();
+        if (!state.currentUser || state.gmailSyncing) return;
+        set({ gmailSyncing: true });
+        try {
+          const { messages: newMessages } = await gmailService.fetchNewEmails(state.currentUser.id);
+          if (newMessages.length === 0) {
+            set({ gmailSyncing: false, gmailLastSyncAt: new Date().toISOString() });
+            return;
+          }
+          // Merge new messages (avoid duplicates)
+          const existingIds = new Set(state.gmailMessages.map(m => m.id));
+          const trulyNew = newMessages.filter(m => !existingIds.has(m.id));
+          const allMessages = [...trulyNew, ...state.gmailMessages].slice(0, 50); // keep max 50
+
+          // Analyze new messages with Brain AI
+          const suggestions = await gmailService.analyzeWithBrain(state.currentUser!.id, trulyNew);
+          const existingSugIds = new Set(state.emailSuggestions.map(s => s.id));
+          const newSuggestions = suggestions.filter(s => !existingSugIds.has(s.id));
+
+          set({
+            gmailMessages: allMessages,
+            emailSuggestions: [...newSuggestions, ...state.emailSuggestions],
+            gmailLastSyncAt: new Date().toISOString(),
+            gmailSyncing: false,
+          });
+
+          // Notification sound for new suggestions
+          if (newSuggestions.length > 0 && state.notificationSoundEnabled) {
+            playNotificationSound('alert');
+          }
+        } catch (err) {
+          console.error('[Gmail] Sync error:', err);
+          set({ gmailSyncing: false });
+        }
+      },
+
+      confirmEmailSuggestion: async (suggestionId) => {
+        const state = get();
+        const suggestion = state.emailSuggestions.find(s => s.id === suggestionId);
+        if (!suggestion || !state.currentUser) return;
+
+        // Update status to confirmed first
+        set({
+          emailSuggestions: state.emailSuggestions.map(s =>
+            s.id === suggestionId ? { ...s, status: 'confirmed' as const } : s
+          ),
+        });
+
+        try {
+          // Create event if suggested
+          if (suggestion.suggestedEvent) {
+            const event = suggestion.suggestedEvent;
+            await get().addEvent({
+              title: event.title,
+              type: event.type,
+              startAt: event.startAt,
+              endAt: event.endAt,
+              projectId: event.projectId,
+              ownerId: state.currentUser!.id,
+              source: 'PAULUS',
+              location: event.location,
+              locationUrl: event.locationUrl,
+              attendeeIds: event.attendeeIds,
+            });
+          }
+
+          // Create todo if suggested
+          if (suggestion.suggestedTodo) {
+            const todo = suggestion.suggestedTodo;
+            await get().addTodo({
+              title: todo.title,
+              assigneeIds: todo.assigneeIds.length > 0 ? todo.assigneeIds : [state.currentUser!.id],
+              requestedById: state.currentUser!.id,
+              projectId: todo.projectId,
+              dueDate: todo.dueDate,
+              priority: todo.priority,
+              status: 'PENDING',
+            });
+          }
+
+          // Create important note if suggested
+          if (suggestion.suggestedNote) {
+            const email = state.gmailMessages.find(m => m.id === suggestion.emailId);
+            get().addImportantNote({
+              projectId: suggestion.suggestedEvent?.projectId || suggestion.suggestedTodo?.projectId || '',
+              content: suggestion.suggestedNote,
+              createdBy: state.currentUser!.id,
+              sourceMessageId: email ? `email-${email.id}` : undefined,
+            });
+          }
+
+          // Mark as executed
+          set({
+            emailSuggestions: get().emailSuggestions.map(s =>
+              s.id === suggestionId ? { ...s, status: 'executed' as const } : s
+            ),
+          });
+        } catch (err) {
+          console.error('[Gmail] Confirm suggestion error:', err);
+          set({
+            emailSuggestions: get().emailSuggestions.map(s =>
+              s.id === suggestionId ? { ...s, status: 'failed' as const } : s
+            ),
+          });
+        }
+      },
+
+      rejectEmailSuggestion: (suggestionId) => set((state) => ({
+        emailSuggestions: state.emailSuggestions.map(s =>
+          s.id === suggestionId ? { ...s, status: 'rejected' as const } : s
+        ),
+      })),
+
+      sendEmailReply: async (suggestionId, editedBody) => {
+        const state = get();
+        const suggestion = state.emailSuggestions.find(s => s.id === suggestionId);
+        if (!suggestion || !state.currentUser) return;
+        const email = state.gmailMessages.find(m => m.id === suggestion.emailId);
+        if (!email) return;
+
+        const body = editedBody || suggestion.suggestedReplyDraft || '';
+        // Extract email address from "Name <email>" format
+        const fromMatch = email.from.match(/<(.+?)>/);
+        const replyTo = fromMatch ? fromMatch[1] : email.from;
+
+        const result = await gmailService.sendReply(state.currentUser.id, {
+          threadId: suggestion.threadId,
+          messageId: suggestion.emailId,
+          body,
+          to: replyTo,
+          subject: `Re: ${email.subject}`,
+        });
+
+        if (!result.success) {
+          console.error('[Gmail] Reply send error:', result.error);
+        }
+      },
+
       // Widget Settings Actions
       updateWidgetSettings: (widgetType, settings) => set((state) => ({
         widgetSettings: {
@@ -1204,6 +1362,9 @@ export const useAppStore = create<AppState>()(
         messages: state.messages,
         notificationSoundEnabled: state.notificationSoundEnabled,
         dismissedNotificationIds: state.dismissedNotificationIds,
+        gmailMessages: state.gmailMessages,
+        emailSuggestions: state.emailSuggestions,
+        gmailLastSyncAt: state.gmailLastSyncAt,
       }),
       merge: (persisted, current) => {
         const merged = { ...current, ...(persisted as Partial<AppState>) };

@@ -1179,6 +1179,19 @@ export const translations = {
     openInMaps: '지도에서 열기',
 
     brainAiActive: 'AI 활성',
+
+    // Gmail + Brain Email
+    email: '이메일',
+    gmailConnect: 'Gmail 연동',
+    gmailNotConnected: 'Gmail이 연동되어 있지 않습니다',
+    gmailSync: '동기화',
+    noNewEmails: '새 이메일이 없습니다',
+    replyDraft: '답장 초안',
+    sendReply: '보내기',
+    sending: '전송 중...',
+    typeReply: '답장을 입력하세요...',
+    confirmSuggestionToo: 'Brain 제안도 함께 확인',
+    cancel: '취소',
   },
   en: {
     // Navigation
@@ -2366,6 +2379,19 @@ export const translations = {
     openInMaps: 'Open in Maps',
 
     brainAiActive: 'AI Active',
+
+    // Gmail + Brain Email
+    email: 'Email',
+    gmailConnect: 'Connect Gmail',
+    gmailNotConnected: 'Gmail is not connected',
+    gmailSync: 'Sync',
+    noNewEmails: 'No new emails',
+    replyDraft: 'Reply Draft',
+    sendReply: 'Send',
+    sending: 'Sending...',
+    typeReply: 'Type your reply...',
+    confirmSuggestionToo: 'Also confirm Brain suggestion',
+    cancel: 'Cancel',
   },
 } as const;
 
