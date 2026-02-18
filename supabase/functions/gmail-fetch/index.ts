@@ -13,6 +13,7 @@
  */
 
 import { createClient } from 'jsr:@supabase/supabase-js@2';
+import { ensureValidToken, type GoogleTokenRow } from '../_shared/gcal-client.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -105,13 +106,27 @@ function parseGmailMessage(raw: Record<string, unknown>): GmailMessage {
 
 // ─── Gmail API calls ─────────────────────────────────
 
-async function getAccessToken(supabase: ReturnType<typeof createClient>, userId: string): Promise<string | null> {
-  const { data } = await supabase
+async function getValidAccessToken(
+  supabase: ReturnType<typeof createClient>,
+  userId: string,
+): Promise<{ accessToken: string } | { error: string; status: number }> {
+  const { data: tokenRow } = await supabase
     .from('google_calendar_tokens')
-    .select('access_token, refresh_token')
+    .select('id, user_id, access_token, refresh_token, token_type, expires_at, scope, connected_email, calendar_id, auto_sync, last_sync_at, sync_status, sync_error')
     .eq('user_id', userId)
     .single();
-  return data?.access_token || null;
+
+  if (!tokenRow?.access_token) {
+    return { error: 'Gmail not connected', status: 401 };
+  }
+
+  try {
+    const accessToken = await ensureValidToken(supabase, tokenRow as GoogleTokenRow);
+    return { accessToken };
+  } catch (err) {
+    console.error('[gmail-fetch] Token refresh failed:', err);
+    return { error: 'Token refresh failed. Please reconnect Google Calendar.', status: 401 };
+  }
 }
 
 async function fetchMessageIds(accessToken: string, maxResults = 20): Promise<{ ids: string[]; historyId: string }> {
@@ -202,13 +217,15 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
     );
 
-    const accessToken = await getAccessToken(supabase, userId);
-    if (!accessToken) {
+    // Get valid access token (auto-refresh if expired)
+    const tokenResult = await getValidAccessToken(supabase, userId);
+    if ('error' in tokenResult) {
       return new Response(
-        JSON.stringify({ error: 'Gmail not connected', newMessages: [] }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        JSON.stringify({ error: tokenResult.error, newMessages: [] }),
+        { status: tokenResult.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       );
     }
+    const { accessToken } = tokenResult;
 
     // Check for existing sync state
     const { data: syncState } = await supabase
