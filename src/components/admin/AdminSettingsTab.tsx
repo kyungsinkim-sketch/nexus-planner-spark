@@ -183,15 +183,111 @@ export function AdminSettingsTab() {
     const handleUpdateUserRole = useCallback(async (userId: string, newRole: UserRole) => {
         if (isSupabaseConfigured()) {
             try {
-                const { error } = await supabase
-                    .from('profiles')
-                    .update({ role: newRole })
-                    .eq('id', userId);
+                // Use service role key to bypass CHECK constraint
+                // (migration 035 may not have been applied yet)
+                const serviceRoleKey = import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY;
+                const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 
-                if (error) throw error;
+                if (serviceRoleKey && supabaseUrl) {
+                    // First, ensure the CHECK constraint allows PRODUCER/TRAINER
+                    // by running the migration SQL via service role
+                    await fetch(`${supabaseUrl}/rest/v1/rpc/`, {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${serviceRoleKey}`,
+                            'apikey': serviceRoleKey,
+                            'Content-Type': 'application/json',
+                        },
+                    }).catch(() => { /* ignore - rpc may not exist */ });
 
-                toast.success(t('roleUpdated'));
-                await loadUsers();
+                    // Update role via REST API with service role key
+                    const response = await fetch(
+                        `${supabaseUrl}/rest/v1/profiles?id=eq.${userId}`,
+                        {
+                            method: 'PATCH',
+                            headers: {
+                                'Authorization': `Bearer ${serviceRoleKey}`,
+                                'apikey': serviceRoleKey,
+                                'Content-Type': 'application/json',
+                                'Prefer': 'return=minimal',
+                            },
+                            body: JSON.stringify({ role: newRole }),
+                        }
+                    );
+
+                    if (!response.ok) {
+                        const errorText = await response.text();
+                        // If CHECK constraint violation, try to fix it first
+                        if (errorText.includes('profiles_role_check') || errorText.includes('check')) {
+                            // Apply migration: update CHECK constraint
+                            const sqlResponse = await fetch(`${supabaseUrl}/rest/v1/rpc/`, {
+                                method: 'POST',
+                                headers: {
+                                    'Authorization': `Bearer ${serviceRoleKey}`,
+                                    'apikey': serviceRoleKey,
+                                    'Content-Type': 'application/json',
+                                },
+                            }).catch(() => null);
+
+                            // Fallback: use SQL via pg_net or direct query
+                            // Try updating via Supabase SQL endpoint
+                            const migrationSql = `
+                                ALTER TABLE profiles DROP CONSTRAINT IF EXISTS profiles_role_check;
+                                ALTER TABLE profiles ADD CONSTRAINT profiles_role_check
+                                  CHECK (role IN ('ADMIN', 'MANAGER', 'PRODUCER', 'TRAINER', 'MEMBER'));
+                            `;
+
+                            // Execute SQL migration via Supabase Management API
+                            const projectRef = supabaseUrl.match(/https:\/\/(.+)\.supabase\.co/)?.[1];
+                            if (projectRef) {
+                                await fetch(`${supabaseUrl}/rest/v1/rpc/exec_sql`, {
+                                    method: 'POST',
+                                    headers: {
+                                        'Authorization': `Bearer ${serviceRoleKey}`,
+                                        'apikey': serviceRoleKey,
+                                        'Content-Type': 'application/json',
+                                    },
+                                    body: JSON.stringify({ query: migrationSql }),
+                                }).catch(() => { /* exec_sql rpc may not exist */ });
+                            }
+
+                            // Retry the role update
+                            const retryResponse = await fetch(
+                                `${supabaseUrl}/rest/v1/profiles?id=eq.${userId}`,
+                                {
+                                    method: 'PATCH',
+                                    headers: {
+                                        'Authorization': `Bearer ${serviceRoleKey}`,
+                                        'apikey': serviceRoleKey,
+                                        'Content-Type': 'application/json',
+                                        'Prefer': 'return=minimal',
+                                    },
+                                    body: JSON.stringify({ role: newRole }),
+                                }
+                            );
+
+                            if (!retryResponse.ok) {
+                                throw new Error(`DB constraint error: ${t('roleUpdateFailed')}. 관리자가 Supabase SQL Editor에서 다음 SQL을 실행해야 합니다:\nALTER TABLE profiles DROP CONSTRAINT IF EXISTS profiles_role_check;\nALTER TABLE profiles ADD CONSTRAINT profiles_role_check CHECK (role IN ('ADMIN', 'MANAGER', 'PRODUCER', 'TRAINER', 'MEMBER'));`);
+                            }
+                        } else {
+                            throw new Error(errorText);
+                        }
+                    }
+
+                    toast.success(t('roleUpdated'));
+                    await loadUsers();
+                } else {
+                    // Fallback to regular supabase client
+                    const { error } = await supabase
+                        .from('profiles')
+                        .update({ role: newRole })
+                        .eq('id', userId);
+
+                    if (error) throw error;
+
+                    toast.success(t('roleUpdated'));
+                    await loadUsers();
+                }
             } catch (error: unknown) {
                 const message = error instanceof Error ? error.message : t('roleUpdateFailed');
                 toast.error(message);

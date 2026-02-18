@@ -24,11 +24,12 @@ import { TabBar } from './TabBar';
 import { WidgetGrid } from '@/components/widgets/WidgetGrid';
 import { useWidgetStore } from '@/stores/widgetStore';
 import { useAppStore } from '@/stores/appStore';
+import { NewProjectModal } from '@/components/project/NewProjectModal';
 import type { WidgetDataContext } from '@/types/widget';
 
 export function TabLayout() {
   const { openTabs, activeTabId } = useWidgetStore();
-  const { projects } = useAppStore();
+  const { projects, projectCreateDialogOpen, setProjectCreateDialogOpen } = useAppStore();
   const location = useLocation();
 
   // If we're on a sub-route (admin, settings), show Outlet instead of widget grid
@@ -133,6 +134,9 @@ export function TabLayout() {
 
       {/* Bottom tab bar — always visible */}
       <TabBar />
+
+      {/* Global New Project Modal — triggered from TabBar + button */}
+      <NewProjectModal open={projectCreateDialogOpen} onOpenChange={setProjectCreateDialogOpen} />
     </div>
   );
 }

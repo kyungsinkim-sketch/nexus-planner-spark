@@ -48,6 +48,7 @@ function TodosWidget({ context }: { context: WidgetDataContext }) {
   // Create dialog state
   const [newTitle, setNewTitle] = useState('');
   const [newDueDate, setNewDueDate] = useState('');
+  const [newTime, setNewTime] = useState('');
   const [newPriority, setNewPriority] = useState<'HIGH' | 'NORMAL' | 'LOW'>('NORMAL');
   const [selectedAssignees, setSelectedAssignees] = useState<User[]>([]);
 
@@ -77,6 +78,7 @@ function TodosWidget({ context }: { context: WidgetDataContext }) {
     if (todoCreateDialogOpen) {
       setNewTitle('');
       setNewDueDate('');
+      setNewTime('');
       setNewPriority('NORMAL');
       setSelectedAssignees(currentUser ? [currentUser] : []);
     }
@@ -119,25 +121,44 @@ function TodosWidget({ context }: { context: WidgetDataContext }) {
     // Sync to calendar as TODO event
     try {
       const dueDate = new Date(todoDueDate);
-      dueDate.setHours(9, 0, 0, 0); // Default to 9:00 AM
-      const endDate = new Date(dueDate);
-      endDate.setHours(10, 0, 0, 0); // 1 hour duration
-      await addEvent({
-        title: `📋 ${newTitle.trim()}`,
-        type: 'TODO',
-        startAt: dueDate.toISOString(),
-        endAt: endDate.toISOString(),
-        ownerId: currentUser.id,
-        projectId: todoProjectId,
-        source: 'PAULUS',
-      });
+      if (newTime) {
+        // User specified a time → create timed event
+        const [hours, minutes] = newTime.split(':').map(Number);
+        dueDate.setHours(hours, minutes, 0, 0);
+        const endDate = new Date(dueDate);
+        endDate.setHours(hours + 1, minutes, 0, 0); // 1 hour duration
+        await addEvent({
+          title: `📋 ${newTitle.trim()}`,
+          type: 'TODO',
+          startAt: dueDate.toISOString(),
+          endAt: endDate.toISOString(),
+          ownerId: currentUser.id,
+          projectId: todoProjectId,
+          source: 'PAULUS',
+        });
+      } else {
+        // No time → create all-day event
+        dueDate.setHours(0, 0, 0, 0);
+        const endDate = new Date(dueDate);
+        endDate.setDate(endDate.getDate() + 1); // Next day for all-day event
+        await addEvent({
+          title: `📋 ${newTitle.trim()}`,
+          type: 'TODO',
+          startAt: dueDate.toISOString(),
+          endAt: endDate.toISOString(),
+          allDay: true,
+          ownerId: currentUser.id,
+          projectId: todoProjectId,
+          source: 'PAULUS',
+        });
+      }
     } catch {
       // Calendar sync is best-effort, don't block todo creation
     }
 
     toast.success(t('todoCreated'));
     setTodoCreateDialogOpen(false);
-  }, [newTitle, newDueDate, newPriority, selectedAssignees, currentUser, context, addTodo, addEvent, setTodoCreateDialogOpen, t]);
+  }, [newTitle, newDueDate, newTime, newPriority, selectedAssignees, currentUser, context, addTodo, addEvent, setTodoCreateDialogOpen, t]);
 
   // Checkbox click → complete
   const handleToggle = async (e: React.MouseEvent, todoId: string, currentStatus: string) => {
@@ -370,16 +391,32 @@ function TodosWidget({ context }: { context: WidgetDataContext }) {
               />
             </div>
 
-            {/* Due Date */}
-            <div>
-              <label className="text-xs font-medium text-muted-foreground mb-1 block">
-                {t('dueDate')}
-              </label>
-              <Input
-                type="date"
-                value={newDueDate}
-                onChange={(e) => setNewDueDate(e.target.value)}
-              />
+            {/* Due Date & Time */}
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-xs font-medium text-muted-foreground mb-1 block">
+                  {t('dueDate')}
+                </label>
+                <Input
+                  type="date"
+                  value={newDueDate}
+                  onChange={(e) => setNewDueDate(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground mb-1 block">
+                  {t('time')}
+                </label>
+                <Input
+                  type="time"
+                  value={newTime}
+                  onChange={(e) => setNewTime(e.target.value)}
+                  placeholder={t('allDay')}
+                />
+                {!newTime && (
+                  <p className="text-[10px] text-muted-foreground mt-0.5">{t('allDay')}</p>
+                )}
+              </div>
             </div>
 
             {/* Priority */}

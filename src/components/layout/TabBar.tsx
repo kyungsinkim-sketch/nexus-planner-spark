@@ -25,6 +25,7 @@ import {
   Plane,
   Film,
   MapPinned,
+  Plus,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTranslation } from '@/hooks/useTranslation';
@@ -64,8 +65,10 @@ export function TabBar() {
     signOut,
     theme,
     toggleTheme,
+    setTodoCreateDialogOpen,
+    setProjectCreateDialogOpen,
   } = useAppStore();
-  const isAdmin = currentUser?.role === 'ADMIN';
+  const isAdmin = currentUser?.role === 'ADMIN' || currentUser?.role === 'MANAGER';
   const currentStatus = workStatusConfig[userWorkStatus];
   const isDark = theme === 'dark';
   // Whether we're on a sub-route (admin, settings, budget, deposits)
@@ -126,6 +129,30 @@ export function TabBar() {
               </button>
             );
         })}
+      </div>
+
+      {/* === Quick Add Button === */}
+      <div className="flex items-center shrink-0 ml-1 self-center">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              className="flex items-center justify-center w-7 h-7 rounded-full bg-primary text-primary-foreground shadow-md hover:bg-primary/90 transition-colors"
+              title={t('create')}
+            >
+              <Plus className="w-4 h-4" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent side="top" align="center" className="w-44">
+            <DropdownMenuItem onClick={() => setTodoCreateDialogOpen(true)} className="gap-2">
+              <Check className="w-4 h-4" />
+              <span>{t('newTodo')}</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setProjectCreateDialogOpen(true)} className="gap-2">
+              <LayoutDashboard className="w-4 h-4" />
+              <span>{t('newProject')}</span>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       {/* === Right: Controls === */}

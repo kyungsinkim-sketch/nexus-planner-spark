@@ -141,6 +141,7 @@ export interface CalendarEvent {
   googleEventId?: string;
   todoId?: string; // Link to PersonalTodo
   deliverableId?: string; // Link to Deliverable
+  allDay?: boolean; // All-day event (no specific time)
   attendeeIds?: string[]; // Invited user IDs
   location?: string; // Location text (e.g., "강남역 9번출구")
   locationUrl?: string; // Map URL for the location

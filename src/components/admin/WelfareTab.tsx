@@ -105,6 +105,15 @@ export function WelfareTab() {
     const [showUserDropdown, setShowUserDropdown] = useState(false);
     const [isCreatingBooking, setIsCreatingBooking] = useState(false);
 
+    // Edit booking dialog state
+    const [isEditBookingOpen, setIsEditBookingOpen] = useState(false);
+    const [editingSession, setEditingSession] = useState<TrainingSession | null>(null);
+    const [editTimeSlot, setEditTimeSlot] = useState('');
+    const [editDate, setEditDate] = useState('');
+
+    // Drag-and-drop state
+    const [dragSession, setDragSession] = useState<TrainingSession | null>(null);
+
     // Training records state - now session-based instead of user-based
     const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
     const [currentRecordsDate, setCurrentRecordsDate] = useState(() => {
@@ -157,16 +166,97 @@ export function WelfareTab() {
     const handleCalendarCellClick = (date: Date, timeSlot: string) => {
         const sessions = getSessionsForSlot(date, timeSlot);
 
-        // Check if slot is already occupied (1 person per hour limit)
+        // If slot is occupied → open edit dialog
         if (sessions.length >= 1) {
-            toast.error(t('slotAlreadyBooked'));
+            const session = sessions[0];
+            setEditingSession(session);
+            setEditTimeSlot(session.timeSlot);
+            setEditDate(session.date);
+            setIsEditBookingOpen(true);
             return;
         }
 
+        // Empty slot → open create dialog
         setSelectedDate(date.toISOString().split('T')[0]);
         setSelectedTimeSlot(timeSlot);
         setSelectedUserId('');
         setIsBookingDialogOpen(true);
+    };
+
+    // Handle edit booking save (change time/date)
+    const handleSaveEditBooking = () => {
+        if (!editingSession) return;
+
+        // Check if new slot is occupied (unless it's the same slot)
+        if (editTimeSlot !== editingSession.timeSlot || editDate !== editingSession.date) {
+            const targetDate = new Date(editDate);
+            const occupied = getSessionsForSlot(targetDate, editTimeSlot);
+            if (occupied.length > 0 && occupied[0].id !== editingSession.id) {
+                toast.error(t('slotAlreadyBooked'));
+                return;
+            }
+        }
+
+        setTrainingSessions(prev =>
+            prev.map(s =>
+                s.id === editingSession.id
+                    ? { ...s, timeSlot: editTimeSlot, date: editDate }
+                    : s
+            )
+        );
+        toast.success(t('bookingUpdated') || '예약이 수정되었습니다');
+        setIsEditBookingOpen(false);
+        setEditingSession(null);
+    };
+
+    // Handle delete booking
+    const handleDeleteBooking = () => {
+        if (!editingSession) return;
+        setTrainingSessions(prev => prev.filter(s => s.id !== editingSession.id));
+        toast.success(t('bookingDeleted') || '예약이 삭제되었습니다');
+        setIsEditBookingOpen(false);
+        setEditingSession(null);
+    };
+
+    // Drag-and-drop handlers
+    const handleDragStart = (session: TrainingSession) => {
+        setDragSession(session);
+    };
+
+    const handleDragOver = (e: React.DragEvent) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+    };
+
+    const handleDrop = (date: Date, timeSlot: string) => {
+        if (!dragSession) return;
+
+        const dateStr = date.toISOString().split('T')[0];
+
+        // Skip if dropping on same slot
+        if (dragSession.timeSlot === timeSlot && dragSession.date === dateStr) {
+            setDragSession(null);
+            return;
+        }
+
+        // Check if target slot is occupied
+        const occupied = getSessionsForSlot(date, timeSlot);
+        if (occupied.length > 0) {
+            toast.error(t('slotAlreadyBooked'));
+            setDragSession(null);
+            return;
+        }
+
+        // Move session to new slot
+        setTrainingSessions(prev =>
+            prev.map(s =>
+                s.id === dragSession.id
+                    ? { ...s, timeSlot, date: dateStr }
+                    : s
+            )
+        );
+        toast.success(t('bookingMoved') || '예약이 이동되었습니다');
+        setDragSession(null);
     };
 
     // Handle booking creation (with guard to prevent duplicate events)
@@ -363,7 +453,7 @@ export function WelfareTab() {
                                 <div>
                                     <CardTitle>{t('weeklyBookingStatus')}</CardTitle>
                                     <CardDescription>
-                                        {t('clickCellToBook')}
+                                        {t('clickCellToBookOrEdit')}
                                     </CardDescription>
                                 </div>
                                 <div className="flex gap-2">
@@ -404,21 +494,28 @@ export function WelfareTab() {
                                                 {weekDates.map((date, idx) => {
                                                     const sessions = getSessionsForSlot(date, timeSlot);
                                                     const isOccupied = sessions.length >= 1;
+                                                    const isDragOver = dragSession && !isOccupied;
                                                     return (
                                                         <td
                                                             key={idx}
                                                             className={`border p-2 text-sm cursor-pointer transition-colors ${isOccupied
-                                                                ? 'bg-primary/10'
-                                                                : 'hover:bg-muted/50'
+                                                                ? 'bg-primary/10 hover:bg-primary/20'
+                                                                : isDragOver ? 'bg-emerald-100 dark:bg-emerald-900/30' : 'hover:bg-muted/50'
                                                                 }`}
                                                             onClick={() => handleCalendarCellClick(date, timeSlot)}
+                                                            onDragOver={handleDragOver}
+                                                            onDrop={() => handleDrop(date, timeSlot)}
                                                         >
                                                             {sessions.length > 0 ? (
                                                                 <div className="space-y-1">
                                                                     {sessions.map(session => (
                                                                         <div
                                                                             key={session.id}
-                                                                            className="text-xs bg-primary/20 px-2 py-1 rounded font-medium text-center"
+                                                                            draggable
+                                                                            onDragStart={() => handleDragStart(session)}
+                                                                            onDragEnd={() => setDragSession(null)}
+                                                                            className="text-xs bg-primary/20 px-2 py-1 rounded font-medium text-center cursor-grab active:cursor-grabbing hover:bg-primary/30 transition-colors select-none"
+                                                                            title={`${session.userName} — ${t('edit')}`}
                                                                         >
                                                                             {session.userName}
                                                                         </div>
@@ -712,6 +809,78 @@ export function WelfareTab() {
                             {t('cancel')}
                         </Button>
                         <Button onClick={handleCreateBooking} disabled={isCreatingBooking}>{t('createBooking')}</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Edit Booking Dialog */}
+            <Dialog open={isEditBookingOpen} onOpenChange={(open) => {
+                setIsEditBookingOpen(open);
+                if (!open) setEditingSession(null);
+            }}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>{t('edit')} — {editingSession?.userName}</DialogTitle>
+                        <DialogDescription>
+                            {t('trainingBooking')} {editingSession?.date} {editingSession?.timeSlot}
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                        {/* Date */}
+                        <div>
+                            <label className="text-sm font-medium">{t('date')}</label>
+                            <Input
+                                type="date"
+                                value={editDate}
+                                onChange={(e) => setEditDate(e.target.value)}
+                            />
+                        </div>
+                        {/* Time Slot */}
+                        <div>
+                            <label className="text-sm font-medium">{t('timeLabel')}</label>
+                            <Select value={editTimeSlot} onValueChange={setEditTimeSlot}>
+                                <SelectTrigger>
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {timeSlots.map((slot) => (
+                                        <SelectItem key={slot} value={slot}>{slot}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        {/* Confirmation Status */}
+                        {editingSession && (
+                            <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                                <span className="flex items-center gap-1">
+                                    Trainer: {editingSession.trainerConfirmed
+                                        ? <CheckCircle className="w-3 h-3 text-green-500" />
+                                        : <Clock className="w-3 h-3 text-amber-500" />}
+                                </span>
+                                <span className="flex items-center gap-1">
+                                    Trainee: {editingSession.traineeConfirmed
+                                        ? <CheckCircle className="w-3 h-3 text-green-500" />
+                                        : <Clock className="w-3 h-3 text-amber-500" />}
+                                </span>
+                            </div>
+                        )}
+                    </div>
+                    <DialogFooter className="flex justify-between sm:justify-between">
+                        <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={handleDeleteBooking}
+                        >
+                            {t('delete')}
+                        </Button>
+                        <div className="flex gap-2">
+                            <Button variant="outline" size="sm" onClick={() => setIsEditBookingOpen(false)}>
+                                {t('cancel')}
+                            </Button>
+                            <Button size="sm" onClick={handleSaveEditBooking}>
+                                {t('save')}
+                            </Button>
+                        </div>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
