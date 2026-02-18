@@ -211,7 +211,7 @@ export function WidgetGrid({ context, projectKeyColor }: WidgetGridProps) {
   return (
     <div
       ref={containerRef}
-      className="min-h-full w-full"
+      className="h-full w-full"
       style={{
         ...(projectKeyColor ? { '--project-accent': projectKeyColor } as React.CSSProperties : {}),
       }}

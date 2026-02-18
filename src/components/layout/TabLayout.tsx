@@ -60,8 +60,8 @@ export function TabLayout() {
           <Outlet />
         </div>
       ) : (
-        /* Widget grid area — scrollable when widgets extend beyond viewport */
-        <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden relative">
+        /* Widget grid area — constrained to viewport */
+        <div className="flex-1 min-h-0 overflow-hidden relative">
           {openTabs.map((tab) => {
             const context: WidgetDataContext = {
               type: tab.type,
@@ -100,11 +100,9 @@ export function TabLayout() {
                 key={tab.id}
                 style={{
                   ...areaStyle,
-                  // Use min-height so tabs can grow beyond viewport for scroll
-                  position: isActive ? ('relative' as const) : ('absolute' as const),
-                  ...(isActive ? {} : { inset: 0 }),
-                  minHeight: '100%',
-                  width: '100%',
+                  // Opacity-based show/hide for smooth dissolve transition
+                  position: 'absolute' as const,
+                  inset: 0,
                   opacity: isActive ? 1 : 0,
                   visibility: isActive ? ('visible' as const) : ('hidden' as const),
                   transition: 'opacity 0.15s ease-out',
@@ -125,7 +123,7 @@ export function TabLayout() {
                   />
                 )}
                 {/* Widget grid with project accent color */}
-                <div className="relative min-h-full z-10">
+                <div className="relative h-full z-10">
                   <WidgetGrid context={context} projectKeyColor={keyColor} />
                 </div>
               </div>
