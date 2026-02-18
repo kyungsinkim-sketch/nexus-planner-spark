@@ -1,13 +1,16 @@
 /**
- * NotificationsWidget — Shows unread notifications from OTHER users.
- * - Excludes current user's own messages
- * - Click notification → dismiss globally (synced across all widget instances)
- * - Dismissed IDs stored in appStore (persisted across refreshes)
- * - Events filtered by currentUser.ownerId to prevent cross-user leaking
+ * NotificationsWidget — Shows unread notifications.
+ * - Chat messages from other users (all messages, not just @mentions)
+ * - @mentions highlighted with AtSign icon
+ * - Upcoming events (owned by current user only)
+ * - Company-wide notifications from admin
+ * - Click message notification → dismiss + open project tab (chat visible)
+ * - Dismissed IDs stored in appStore (synced across all widget instances)
  */
 
 import { useMemo, useCallback } from 'react';
 import { useAppStore } from '@/stores/appStore';
+import { useWidgetStore } from '@/stores/widgetStore';
 import { useTranslation } from '@/hooks/useTranslation';
 import { Bell, MessageSquare, Calendar, Check, AtSign, Megaphone } from 'lucide-react';
 import { BRAIN_BOT_USER_ID } from '@/types/core';
@@ -16,42 +19,40 @@ import type { WidgetDataContext } from '@/types/widget';
 function NotificationsWidget({ context }: { context: WidgetDataContext }) {
   const { t } = useTranslation();
   const {
-    messages, events, currentUser, getUserById,
+    messages, events, currentUser, getUserById, projects,
     companyNotifications,
     dismissedNotificationIds, dismissNotification, dismissAllNotifications,
   } = useAppStore();
+  const { openProjectTab } = useWidgetStore();
 
   const dismissedSet = useMemo(() => new Set(dismissedNotificationIds), [dismissedNotificationIds]);
 
-  // Build notification list — exclude own messages
+  // Build notification list
   const notifications = useMemo(() => {
     const items: {
       id: string;
       icon: typeof Bell;
       text: string;
       time: string;
-      type: 'message' | 'event';
+      type: 'message' | 'event' | 'company';
       senderName?: string;
       projectId?: string;
+      isMention?: boolean;
     }[] = [];
 
-    // Recent messages from OTHER users (last 15, reversed = newest first)
-    // Exclude Brain bot messages — only show human @mention messages
+    // Recent messages from OTHER users (last 20, newest first)
     const recentMsgs = messages
       .filter((m) => {
-        // Exclude own messages
         if (currentUser && m.userId === currentUser.id) return false;
-        // Exclude Brain AI bot messages
         if (m.userId === BRAIN_BOT_USER_ID) return false;
         if (context.type === 'project' && context.projectId) {
           return m.projectId === context.projectId;
         }
         return true;
       })
-      .slice(-15)
+      .slice(-20)
       .reverse();
 
-    // Filter to only @mention messages that mention the current user
     const mentionTag = currentUser ? `@${currentUser.name}` : null;
 
     recentMsgs.forEach((m) => {
@@ -59,9 +60,6 @@ function NotificationsWidget({ context }: { context: WidgetDataContext }) {
       if (dismissedSet.has(id)) return;
       const sender = getUserById(m.userId);
       const isMention = mentionTag ? m.content.includes(mentionTag) : false;
-
-      // Only show @mention messages in notifications (not all messages)
-      if (!isMention) return;
 
       items.push({
         id,
@@ -71,17 +69,17 @@ function NotificationsWidget({ context }: { context: WidgetDataContext }) {
         type: 'message',
         senderName: sender?.name,
         projectId: m.projectId,
+        isMention,
       });
     });
 
-    // Upcoming events (next 24h) — only show current user's events
+    // Upcoming events (next 24h) — only current user's events
     const now = new Date();
     const next24h = new Date(now.getTime() + 24 * 60 * 60 * 1000);
     const todayStr = now.toDateString();
     const tomorrowStr = new Date(now.getTime() + 24 * 60 * 60 * 1000).toDateString();
     events
       .filter((e) => {
-        // Only show events owned by the current user
         if (currentUser && e.ownerId && e.ownerId !== currentUser.id) return false;
         const start = new Date(e.startAt);
         const match = start >= now && start <= next24h;
@@ -114,7 +112,7 @@ function NotificationsWidget({ context }: { context: WidgetDataContext }) {
         });
       });
 
-    // Company-wide notifications from admin (show newest first, before other items)
+    // Company-wide notifications (newest first, shown before other items)
     const companyItems: typeof items = [];
     companyNotifications
       .slice()
@@ -128,12 +126,17 @@ function NotificationsWidget({ context }: { context: WidgetDataContext }) {
           icon: Megaphone,
           text: `${cn.title}: ${cn.message}`,
           time: new Date(cn.sentAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          type: 'message',
+          type: 'company',
           senderName: sender?.name || 'Admin',
         });
       });
 
-    return [...companyItems, ...items].slice(0, 15);
+    // Sort: @mentions first, then company, then regular messages, then events
+    const mentionItems = items.filter((i) => i.isMention);
+    const msgItems = items.filter((i) => i.type === 'message' && !i.isMention);
+    const eventItems = items.filter((i) => i.type === 'event');
+
+    return [...companyItems, ...mentionItems, ...msgItems, ...eventItems].slice(0, 20);
   }, [messages, events, context, dismissedSet, currentUser, getUserById, companyNotifications, t]);
 
   const handleDismissAll = useCallback(() => {
@@ -142,7 +145,14 @@ function NotificationsWidget({ context }: { context: WidgetDataContext }) {
 
   const handleClick = useCallback((n: typeof notifications[0]) => {
     dismissNotification(n.id);
-  }, [dismissNotification]);
+    // Navigate to project chat: open the project tab (chat widget is in project layout)
+    if (n.projectId && n.type === 'message') {
+      const project = projects.find((p) => p.id === n.projectId);
+      if (project) {
+        openProjectTab(project.id, project.title, project.keyColor);
+      }
+    }
+  }, [dismissNotification, projects, openProjectTab]);
 
   if (notifications.length === 0) {
     return (
@@ -170,14 +180,22 @@ function NotificationsWidget({ context }: { context: WidgetDataContext }) {
           return (
             <div
               key={n.id}
-              className="flex items-start gap-2 p-1.5 rounded hover:bg-white/5 transition-colors group cursor-pointer"
+              className={`flex items-start gap-2 p-1.5 rounded transition-colors group cursor-pointer ${
+                n.isMention
+                  ? 'bg-primary/5 hover:bg-primary/10 border-l-2 border-primary/40'
+                  : 'hover:bg-white/5'
+              }`}
               onClick={() => handleClick(n)}
-              title={t('clickToDismiss')}
+              title={n.projectId ? t('clickToOpenChat') : t('clickToDismiss')}
             >
-              <Icon className="w-3.5 h-3.5 text-muted-foreground shrink-0 mt-0.5" />
+              <Icon className={`w-3.5 h-3.5 shrink-0 mt-0.5 ${
+                n.isMention ? 'text-primary' : 'text-muted-foreground'
+              }`} />
               <div className="flex-1 min-w-0">
                 {n.senderName && (
-                  <span className="text-[10px] font-medium text-primary/80">{n.senderName}</span>
+                  <span className={`text-[10px] font-medium ${
+                    n.isMention ? 'text-primary' : 'text-primary/80'
+                  }`}>{n.senderName}</span>
                 )}
                 <p className="text-xs text-foreground truncate">{n.text}</p>
               </div>
