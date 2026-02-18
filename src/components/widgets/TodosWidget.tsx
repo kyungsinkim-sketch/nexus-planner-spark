@@ -77,7 +77,7 @@ function TodosWidget({ context }: { context: WidgetDataContext }) {
   useEffect(() => {
     if (todoCreateDialogOpen) {
       setNewTitle('');
-      setNewDueDate('');
+      setNewDueDate(new Date().toISOString().slice(0, 10)); // default: today
       setNewTime('');
       setNewPriority('NORMAL');
       setSelectedAssignees(currentUser ? [currentUser] : []);

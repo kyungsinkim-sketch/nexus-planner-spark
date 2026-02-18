@@ -15,7 +15,6 @@ import {
   Settings,
   Moon,
   Sun,
-  Languages,
   Building2,
   Coffee,
   Dumbbell,
@@ -65,10 +64,10 @@ export function TabBar() {
     signOut,
     theme,
     toggleTheme,
-    setTodoCreateDialogOpen,
     setProjectCreateDialogOpen,
   } = useAppStore();
   const isAdmin = currentUser?.role === 'ADMIN' || currentUser?.role === 'MANAGER';
+  const isOnAdminRoute = location.pathname === '/admin';
   const currentStatus = workStatusConfig[userWorkStatus];
   const isDark = theme === 'dark';
   // Whether we're on a sub-route (admin, settings, budget, deposits)
@@ -76,10 +75,32 @@ export function TabBar() {
 
   return (
     <div className="glass-tabbar flex items-stretch h-12 px-2 gap-1 shrink-0 z-30">
-      {/* === Left: Project Tabs === */}
+      {/* === Left: Tabs (Admin + Dashboard + Projects + New) === */}
       <div className="flex items-stretch gap-1 flex-1 min-w-0 overflow-x-auto scrollbar-hide">
+        {/* Admin Tab (before Dashboard) — visible to ADMIN & MANAGER */}
+        {isAdmin && (
+          <button
+            onClick={() => navigate('/admin')}
+            className={cn(
+              'flex items-center gap-1.5 px-3 text-xs font-medium transition-all shrink-0 relative',
+              isOnAdminRoute
+                ? 'text-foreground rounded-b-[var(--widget-radius)] rounded-t-none'
+                : 'text-muted-foreground hover:bg-white/8 hover:text-foreground rounded-lg',
+            )}
+            style={
+              isOnAdminRoute
+                ? { backgroundColor: isDark ? 'hsl(340 80% 18%)' : 'hsl(340 60% 88%)' }
+                : undefined
+            }
+          >
+            <Crown className="w-3.5 h-3.5 shrink-0" />
+            <span className="truncate">{t('admin')}</span>
+          </button>
+        )}
+
+        {/* Dashboard & Project Tabs */}
         {openTabs.map((tab) => {
-          const isActive = tab.id === activeTabId;
+          const isActive = tab.id === activeTabId && !isOnSubRoute;
           const isDashboard = tab.type === 'dashboard';
 
           return (
@@ -129,30 +150,15 @@ export function TabBar() {
               </button>
             );
         })}
-      </div>
 
-      {/* === Quick Add Button === */}
-      <div className="flex items-center shrink-0 ml-1 self-center">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button
-              className="flex items-center justify-center w-7 h-7 rounded-full bg-primary text-primary-foreground shadow-md hover:bg-primary/90 transition-colors"
-              title={t('create')}
-            >
-              <Plus className="w-4 h-4" />
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent side="top" align="center" className="w-44">
-            <DropdownMenuItem onClick={() => setTodoCreateDialogOpen(true)} className="gap-2">
-              <Check className="w-4 h-4" />
-              <span>{t('newTodo')}</span>
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setProjectCreateDialogOpen(true)} className="gap-2">
-              <LayoutDashboard className="w-4 h-4" />
-              <span>{t('newProject')}</span>
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        {/* + New Project button — after the last project tab */}
+        <button
+          onClick={() => setProjectCreateDialogOpen(true)}
+          className="flex items-center justify-center w-7 h-7 rounded-full text-muted-foreground hover:bg-white/10 hover:text-foreground transition-colors shrink-0 self-center"
+          title={t('newProject')}
+        >
+          <Plus className="w-4 h-4" />
+        </button>
       </div>
 
       {/* === Right: Controls === */}
@@ -177,17 +183,6 @@ export function TabBar() {
 
         {/* Divider */}
         <div className="w-px h-5 bg-white/10 mx-1" />
-
-        {/* Admin */}
-        {isAdmin && (
-          <button
-            onClick={() => navigate('/admin')}
-            className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-white/10 transition-colors"
-            title="Admin"
-          >
-            <Crown className="w-4 h-4" />
-          </button>
-        )}
 
         {/* Settings */}
         <button

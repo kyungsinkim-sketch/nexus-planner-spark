@@ -61,25 +61,11 @@ const timeSlotToHour = (slot: string): number => {
 
 export function WelfareTab() {
     const { t } = useTranslation();
-    const { users, currentUser, addEvent } = useAppStore();
+    const { users, currentUser, addEvent, events, updateEvent, deleteEvent } = useAppStore();
     const [selectedTab, setSelectedTab] = useState('calendar');
 
-    // Training sessions state - dates relative to current week
-    const [trainingSessions, setTrainingSessions] = useState<TrainingSession[]>(() => {
-        const today = new Date();
-        const toDateStr = (d: Date) => d.toISOString().slice(0, 10);
-        const daysAgo = (n: number) => { const d = new Date(today); d.setDate(d.getDate() - n); return toDateStr(d); };
-        return [
-            { id: '1', userId: 'u1', userName: '김현진', date: toDateStr(today), timeSlot: '오전 9시', trainerConfirmed: false, traineeConfirmed: false },
-            { id: '2', userId: 'u2', userName: '홍원준', date: toDateStr(today), timeSlot: '오전 10시', trainerConfirmed: false, traineeConfirmed: false },
-            { id: '3', userId: 'u3', userName: 'KS', date: toDateStr(today), timeSlot: '오후 2시', exerciseContent: 'Bench Press 3 sets, Squat 5 sets', trainerConfirmed: true, traineeConfirmed: true },
-            { id: '4', userId: 'u4', userName: '이분이', date: toDateStr(today), timeSlot: '오후 3시', trainerConfirmed: false, traineeConfirmed: false },
-            // Historical records for KS
-            { id: '5', userId: 'u3', userName: 'KS', date: daysAgo(3), timeSlot: '오전 11시', exerciseContent: 'Deadlift 4 sets, Rows 3 sets', trainerConfirmed: true, traineeConfirmed: true },
-            { id: '6', userId: 'u3', userName: 'KS', date: daysAgo(7), timeSlot: '오전 10시', exerciseContent: 'Squats 5 sets, Lunges 3 sets', trainerConfirmed: true, traineeConfirmed: true },
-            { id: '7', userId: 'u3', userName: 'KS', date: daysAgo(10), timeSlot: '오후 2시', exerciseContent: 'Pull-ups 4 sets, Dips 3 sets', trainerConfirmed: true, traineeConfirmed: false },
-        ];
-    });
+    // Training sessions state — starts empty (no mock data)
+    const [trainingSessions, setTrainingSessions] = useState<TrainingSession[]>([]);
 
     // Locker assignments state
     const [lockerAssignments, setLockerAssignments] = useState<LockerAssignment[]>(() => {
@@ -184,7 +170,7 @@ export function WelfareTab() {
     };
 
     // Handle edit booking save (change time/date)
-    const handleSaveEditBooking = () => {
+    const handleSaveEditBooking = async () => {
         if (!editingSession) return;
 
         // Check if new slot is occupied (unless it's the same slot)
@@ -197,6 +183,9 @@ export function WelfareTab() {
             }
         }
 
+        const oldTimeSlot = editingSession.timeSlot;
+        const oldDate = editingSession.date;
+
         setTrainingSessions(prev =>
             prev.map(s =>
                 s.id === editingSession.id
@@ -204,16 +193,64 @@ export function WelfareTab() {
                     : s
             )
         );
-        toast.success(t('bookingUpdated') || '예약이 수정되었습니다');
+
+        // Sync calendar event if time/date changed
+        if (editTimeSlot !== oldTimeSlot || editDate !== oldDate) {
+            const eventTitle = t('renatusTrainingEvent');
+            const oldHour = timeSlotToHour(oldTimeSlot);
+            const oldStart = new Date(oldDate);
+            oldStart.setHours(oldHour, 0, 0, 0);
+
+            const matchingEvent = events.find(
+                e => e.title === eventTitle &&
+                     e.ownerId === editingSession.userId &&
+                     e.startAt === oldStart.toISOString()
+            );
+
+            if (matchingEvent) {
+                const newHour = timeSlotToHour(editTimeSlot);
+                const newStart = new Date(editDate);
+                newStart.setHours(newHour, 0, 0, 0);
+                const newEnd = new Date(newStart);
+                newEnd.setHours(newHour + 1, 0, 0, 0);
+                try {
+                    await updateEvent(matchingEvent.id, {
+                        startAt: newStart.toISOString(),
+                        endAt: newEnd.toISOString(),
+                    });
+                } catch { /* best-effort */ }
+            }
+        }
+
+        toast.success(`${editingSession.userName} ${t('bookingUpdated')}`);
         setIsEditBookingOpen(false);
         setEditingSession(null);
     };
 
     // Handle delete booking
-    const handleDeleteBooking = () => {
+    const handleDeleteBooking = async () => {
         if (!editingSession) return;
+
+        // Delete matching calendar event
+        const eventTitle = t('renatusTrainingEvent');
+        const hour = timeSlotToHour(editingSession.timeSlot);
+        const startDate = new Date(editingSession.date);
+        startDate.setHours(hour, 0, 0, 0);
+
+        const matchingEvent = events.find(
+            e => e.title === eventTitle &&
+                 e.ownerId === editingSession.userId &&
+                 e.startAt === startDate.toISOString()
+        );
+
+        if (matchingEvent) {
+            try {
+                await deleteEvent(matchingEvent.id);
+            } catch { /* best-effort */ }
+        }
+
         setTrainingSessions(prev => prev.filter(s => s.id !== editingSession.id));
-        toast.success(t('bookingDeleted') || '예약이 삭제되었습니다');
+        toast.success(`${editingSession.userName} ${t('bookingDeleted')}`);
         setIsEditBookingOpen(false);
         setEditingSession(null);
     };
@@ -228,7 +265,7 @@ export function WelfareTab() {
         e.dataTransfer.dropEffect = 'move';
     };
 
-    const handleDrop = (date: Date, timeSlot: string) => {
+    const handleDrop = async (date: Date, timeSlot: string) => {
         if (!dragSession) return;
 
         const dateStr = date.toISOString().split('T')[0];
@@ -247,6 +284,9 @@ export function WelfareTab() {
             return;
         }
 
+        const oldTimeSlot = dragSession.timeSlot;
+        const oldDate = dragSession.date;
+
         // Move session to new slot
         setTrainingSessions(prev =>
             prev.map(s =>
@@ -255,7 +295,34 @@ export function WelfareTab() {
                     : s
             )
         );
-        toast.success(t('bookingMoved') || '예약이 이동되었습니다');
+
+        // Sync calendar: find matching event and update it
+        const eventTitle = t('renatusTrainingEvent');
+        const oldHour = timeSlotToHour(oldTimeSlot);
+        const oldStart = new Date(oldDate);
+        oldStart.setHours(oldHour, 0, 0, 0);
+
+        const matchingEvent = events.find(
+            e => e.title === eventTitle &&
+                 e.ownerId === dragSession.userId &&
+                 e.startAt === oldStart.toISOString()
+        );
+
+        if (matchingEvent) {
+            const newHour = timeSlotToHour(timeSlot);
+            const newStart = new Date(dateStr);
+            newStart.setHours(newHour, 0, 0, 0);
+            const newEnd = new Date(newStart);
+            newEnd.setHours(newHour + 1, 0, 0, 0);
+            try {
+                await updateEvent(matchingEvent.id, {
+                    startAt: newStart.toISOString(),
+                    endAt: newEnd.toISOString(),
+                });
+            } catch { /* best-effort */ }
+        }
+
+        toast.success(`${dragSession.userName} ${t('bookingMoved')}`);
         setDragSession(null);
     };
 

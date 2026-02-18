@@ -18,8 +18,9 @@ export default function BudgetPage() {
   const { getProjectById, currentUser } = useAppStore();
   const project = projectId ? getProjectById(projectId) : null;
 
-  // Admin-only guard
-  if (!currentUser || currentUser.role !== 'ADMIN') {
+  // Budget access guard — ADMIN, MANAGER, PRODUCER
+  const hasBudgetAccess = currentUser && ['ADMIN', 'MANAGER', 'PRODUCER'].includes(currentUser.role);
+  if (!hasBudgetAccess) {
     return (
       <div className="flex items-center justify-center h-full">
         <p className="text-muted-foreground">{t('adminOnly')}</p>

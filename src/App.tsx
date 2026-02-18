@@ -43,7 +43,18 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 function AdminRoute({ children }: { children: React.ReactNode }) {
   const { currentUser } = useAppStore();
 
-  if (!currentUser || currentUser.role !== 'ADMIN') {
+  if (!currentUser || (currentUser.role !== 'ADMIN' && currentUser.role !== 'MANAGER')) {
+    return <Navigate to="/" replace />;
+  }
+
+  return <>{children}</>;
+}
+
+// Budget Route Guard — ADMIN, MANAGER, PRODUCER
+function BudgetRoute({ children }: { children: React.ReactNode }) {
+  const { currentUser } = useAppStore();
+
+  if (!currentUser || !['ADMIN', 'MANAGER', 'PRODUCER'].includes(currentUser.role)) {
     return <Navigate to="/" replace />;
   }
 
@@ -110,7 +121,7 @@ const App = () => {
                   <Route path="/admin" element={<AdminRoute><AdminPage /></AdminRoute>} />
                   <Route path="/settings" element={<SettingsPage />} />
                   <Route path="/projects/:projectId/deposits" element={<DepositStatusPage />} />
-                  <Route path="/projects/:projectId/budget" element={<AdminRoute><BudgetPage /></AdminRoute>} />
+                  <Route path="/projects/:projectId/budget" element={<BudgetRoute><BudgetPage /></BudgetRoute>} />
 
                   {/* Legacy routes redirect to root (now widget-based) */}
                   <Route path="/calendar" element={<Navigate to="/" replace />} />
