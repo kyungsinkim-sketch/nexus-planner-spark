@@ -1,8 +1,12 @@
 /**
  * gmail-trash — Move a Gmail message to trash.
  *
+ * Returns 200 for ALL cases (success or failure) to avoid Supabase client
+ * throwing FunctionsHttpError which pollutes browser console.
+ * Client checks response.success to determine outcome.
+ *
  * Request body: { userId, messageId }
- * Response: { success: true } or { error: string }
+ * Response: { success: true } or { success: false, error: string }
  */
 
 import { createClient } from 'jsr:@supabase/supabase-js@2';
@@ -15,6 +19,13 @@ const corsHeaders = {
 
 const GMAIL_API = 'https://gmail.googleapis.com/gmail/v1';
 
+function jsonResponse(body: Record<string, unknown>) {
+  return new Response(
+    JSON.stringify(body),
+    { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+  );
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -24,10 +35,7 @@ Deno.serve(async (req) => {
     const { userId, messageId } = await req.json();
 
     if (!userId || !messageId) {
-      return new Response(
-        JSON.stringify({ error: 'Missing required fields (userId, messageId)' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
-      );
+      return jsonResponse({ success: false, error: 'Missing required fields (userId, messageId)' });
     }
 
     const supabase = createClient(
@@ -42,21 +50,15 @@ Deno.serve(async (req) => {
       .single();
 
     if (!tokenRow?.access_token) {
-      return new Response(
-        JSON.stringify({ error: 'Gmail not connected' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
-      );
+      return jsonResponse({ success: false, error: 'Gmail not connected. Please reconnect Google Calendar.' });
     }
 
     let accessToken: string;
     try {
       accessToken = await ensureValidToken(supabase, tokenRow as GoogleTokenRow);
     } catch (err) {
-      console.error('[gmail-trash] Token refresh failed:', err);
-      return new Response(
-        JSON.stringify({ error: 'Token refresh failed. Please reconnect Google Calendar.' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
-      );
+      console.warn('[gmail-trash] Token refresh failed:', err);
+      return jsonResponse({ success: false, error: 'Token refresh failed. Please reconnect Google Calendar.' });
     }
 
     // Move message to trash via Gmail API
@@ -67,22 +69,16 @@ Deno.serve(async (req) => {
 
     if (!res.ok) {
       const errData = await res.text();
-      console.error('[gmail-trash] Gmail API error:', errData);
-      return new Response(
-        JSON.stringify({ error: `Gmail trash failed: ${res.status}` }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
-      );
+      console.warn('[gmail-trash] Gmail API error:', res.status, errData);
+      return jsonResponse({
+        success: false,
+        error: `Gmail API ${res.status}: insufficient permission. Reconnect Google Calendar with updated scopes.`,
+      });
     }
 
-    return new Response(
-      JSON.stringify({ success: true }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
-    );
+    return jsonResponse({ success: true });
   } catch (err) {
-    console.error('[gmail-trash] Error:', err);
-    return new Response(
-      JSON.stringify({ error: (err as Error).message }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
-    );
+    console.warn('[gmail-trash] Error:', err);
+    return jsonResponse({ success: false, error: (err as Error).message });
   }
 });

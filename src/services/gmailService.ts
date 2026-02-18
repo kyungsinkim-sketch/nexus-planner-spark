@@ -146,17 +146,19 @@ export async function trashGmailMessage(
     });
 
     if (error) {
-      console.error('[Gmail] Trash error:', error);
+      // Expected: gmail.modify scope not yet granted — non-critical
+      console.warn('[Gmail] Trash server error (local removed):', error.message);
       return { success: false, error: error.message };
     }
 
     if (data?.error) {
+      console.warn('[Gmail] Trash API error (local removed):', data.error);
       return { success: false, error: data.error };
     }
 
     return { success: true };
   } catch (err) {
-    console.error('[Gmail] Trash exception:', err);
+    console.warn('[Gmail] Trash exception (local removed):', (err as Error).message);
     return { success: false, error: (err as Error).message };
   }
 }
