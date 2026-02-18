@@ -18,6 +18,18 @@ const corsHeaders = {
 
 const GMAIL_API = 'https://gmail.googleapis.com/gmail/v1';
 
+/** RFC 2047 B-encoding for non-ASCII header values (Korean, etc.) */
+function encodeRfc2047(str: string): string {
+  // Check if all ASCII — if so, no encoding needed
+  if (/^[\x20-\x7E]*$/.test(str)) return str;
+  // UTF-8 → bytes → base64
+  const utf8Bytes = new TextEncoder().encode(str);
+  let binary = '';
+  for (const b of utf8Bytes) binary += String.fromCharCode(b);
+  return `=?UTF-8?B?${btoa(binary)}?=`;
+}
+
+/** Build raw base64url-encoded MIME message for Gmail API */
 function encodeMimeMessage(params: {
   to: string;
   subject: string;
@@ -27,7 +39,7 @@ function encodeMimeMessage(params: {
 }): string {
   const mimeMessage = [
     `To: ${params.to}`,
-    `Subject: ${params.subject}`,
+    `Subject: ${encodeRfc2047(params.subject)}`,
     `In-Reply-To: <${params.inReplyTo}>`,
     `References: <${params.inReplyTo}>`,
     'Content-Type: text/plain; charset=UTF-8',
@@ -36,13 +48,14 @@ function encodeMimeMessage(params: {
     params.body,
   ].join('\r\n');
 
-  // Base64url encode
-  const encoded = btoa(unescape(encodeURIComponent(mimeMessage)))
+  // UTF-8 encode → base64url for Gmail API raw field
+  const utf8Bytes = new TextEncoder().encode(mimeMessage);
+  let binary = '';
+  for (const b of utf8Bytes) binary += String.fromCharCode(b);
+  return btoa(binary)
     .replace(/\+/g, '-')
     .replace(/\//g, '_')
     .replace(/=+$/, '');
-
-  return encoded;
 }
 
 Deno.serve(async (req) => {

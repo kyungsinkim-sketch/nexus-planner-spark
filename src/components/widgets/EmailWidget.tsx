@@ -332,14 +332,26 @@ function EmailWidget({ context: _context }: { context: WidgetDataContext }) {
     });
   }, [currentUser]);
 
-  // Auto-sync on mount + 5-minute interval
+  // Auto-sync on mount + 1-minute interval + visibility-based sync
   useEffect(() => {
     if (!currentUser || isConnected === false) return;
     // Initial sync
     syncGmail();
-    // Polling every 5 minutes
-    const interval = setInterval(() => syncGmail(), 5 * 60 * 1000);
-    return () => clearInterval(interval);
+    // Polling every 60 seconds for near-realtime feel
+    const interval = setInterval(() => syncGmail(), 60 * 1000);
+    // Sync when tab regains visibility (user returns from another app/tab)
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') syncGmail();
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    // Sync on window focus (e.g. Alt-Tab back)
+    const handleFocus = () => syncGmail();
+    window.addEventListener('focus', handleFocus);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibility);
+      window.removeEventListener('focus', handleFocus);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUser, isConnected]);
 

@@ -30,7 +30,7 @@ interface ComposeEmailDialogProps {
 
 export function ComposeEmailDialog({ open, onOpenChange, replyToMessage }: ComposeEmailDialogProps) {
   const { t } = useTranslation();
-  const { composeEmail, replyToEmail } = useAppStore();
+  const { composeEmail, replyToEmail, syncGmail } = useAppStore();
 
   const isReply = !!replyToMessage;
 
@@ -81,6 +81,8 @@ export function ComposeEmailDialog({ open, onOpenChange, replyToMessage }: Compo
       if (result.success) {
         toast.success(t('emailSent'));
         onOpenChange(false);
+        // Trigger sync after short delay so sent email appears
+        setTimeout(() => syncGmail(), 1500);
       } else {
         toast.error(t('emailSendFailed') + (result.error ? `: ${result.error}` : ''));
       }
