@@ -208,13 +208,14 @@ export async function listGoogleEvents(
   if (syncToken) {
     params.set('syncToken', syncToken);
   } else {
-    // Initial sync: fetch events from 1 year ago to 1 year in the future
+    // Initial sync: fetch events from 3 months ago to 6 months in the future
+    // (narrower window to avoid Edge Function timeout on first sync)
     const timeMin = new Date();
-    timeMin.setFullYear(timeMin.getFullYear() - 1);
+    timeMin.setMonth(timeMin.getMonth() - 3);
     params.set('timeMin', timeMin.toISOString());
 
     const timeMax = new Date();
-    timeMax.setFullYear(timeMax.getFullYear() + 1);
+    timeMax.setMonth(timeMax.getMonth() + 6);
     params.set('timeMax', timeMax.toISOString());
   }
 

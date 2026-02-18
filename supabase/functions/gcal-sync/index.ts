@@ -103,6 +103,20 @@ Deno.serve(async (req) => {
       let nextSyncToken: string | null = null;
       let needsFullSync = false;
 
+      // Pre-load all existing Google event IDs for this user (single query)
+      const { data: existingEvents } = await supabase
+        .from('calendar_events')
+        .select('id, google_event_id, title, start_at, end_at, location')
+        .eq('owner_id', userId)
+        .not('google_event_id', 'is', null);
+
+      const existingByGoogleId = new Map<string, { id: string; title: string; start_at: string; end_at: string; location: string | null }>();
+      for (const evt of existingEvents || []) {
+        if (evt.google_event_id) {
+          existingByGoogleId.set(evt.google_event_id, evt);
+        }
+      }
+
       do {
         let response;
         try {
@@ -131,21 +145,16 @@ Deno.serve(async (req) => {
 
         const googleEvents: GoogleEvent[] = response.items || [];
 
+        // Batch: collect inserts and updates
+        const toInsert: Array<Record<string, unknown>> = [];
+        const toUpdate: Array<{ id: string; data: Record<string, unknown> }> = [];
+        const toDelete: string[] = [];
+
         for (const gEvent of googleEvents) {
           if (gEvent.status === 'cancelled') {
-            // Delete the corresponding local event
-            const { data: existing } = await supabase
-              .from('calendar_events')
-              .select('id')
-              .eq('google_event_id', gEvent.id)
-              .eq('owner_id', userId)
-              .maybeSingle();
-
+            const existing = existingByGoogleId.get(gEvent.id);
             if (existing) {
-              await supabase
-                .from('calendar_events')
-                .delete()
-                .eq('id', existing.id);
+              toDelete.push(existing.id);
               deleted++;
             }
             continue;
@@ -154,37 +163,56 @@ Deno.serve(async (req) => {
           const dbInsert = googleEventToDbInsert(gEvent, userId);
           if (!dbInsert) continue;
 
-          // Check if this Google event already exists in our DB
-          const { data: existing } = await supabase
-            .from('calendar_events')
-            .select('id, title, start_at, end_at, location')
-            .eq('google_event_id', gEvent.id)
-            .eq('owner_id', userId)
-            .maybeSingle();
-
+          const existing = existingByGoogleId.get(gEvent.id);
           if (existing) {
-            // Update existing event
-            await supabase
-              .from('calendar_events')
-              .update({
+            toUpdate.push({
+              id: existing.id,
+              data: {
                 title: dbInsert.title,
                 start_at: dbInsert.start_at,
                 end_at: dbInsert.end_at,
                 location: dbInsert.location,
-              })
-              .eq('id', existing.id);
+              },
+            });
           } else {
-            // Insert new event
-            const { error: insertError } = await supabase
-              .from('calendar_events')
-              .insert(dbInsert);
+            toInsert.push(dbInsert);
+            imported++;
+          }
+        }
 
-            if (!insertError) {
-              imported++;
-            } else {
-              console.error('[gcal-sync] Failed to insert event:', insertError, gEvent.summary);
+        // Execute batch delete
+        if (toDelete.length > 0) {
+          await supabase
+            .from('calendar_events')
+            .delete()
+            .in('id', toDelete);
+        }
+
+        // Execute batch insert
+        if (toInsert.length > 0) {
+          const { error: insertError } = await supabase
+            .from('calendar_events')
+            .insert(toInsert);
+          if (insertError) {
+            console.error('[gcal-sync] Batch insert error:', insertError);
+            // Try one-by-one as fallback (some may be duplicates)
+            for (const item of toInsert) {
+              const { error } = await supabase.from('calendar_events').insert(item);
+              if (error) {
+                console.error('[gcal-sync] Insert failed:', error, item);
+                imported--; // Revert count
+              }
             }
           }
+        }
+
+        // Execute batch updates (Supabase doesn't support multi-row update, but we can parallelize)
+        if (toUpdate.length > 0) {
+          await Promise.all(
+            toUpdate.map(({ id, data }) =>
+              supabase.from('calendar_events').update(data).eq('id', id)
+            ),
+          );
         }
 
         pageToken = response.nextPageToken || null;
@@ -231,37 +259,34 @@ Deno.serve(async (req) => {
         .is('google_event_id', null);
 
       if (localEvents && localEvents.length > 0) {
-        for (const localEvent of localEvents) {
-          try {
-            const googleEvent = await createGoogleEvent(
-              accessToken,
-              dbEventToGoogleEvent(localEvent),
-              tokenRow.calendar_id || 'primary',
-            );
+        // Limit to 10 events per sync to avoid timeout
+        const batch = localEvents.slice(0, 10);
+        await Promise.all(
+          batch.map(async (localEvent) => {
+            try {
+              const googleEvent = await createGoogleEvent(
+                accessToken,
+                dbEventToGoogleEvent(localEvent),
+                tokenRow.calendar_id || 'primary',
+              );
 
-            // Update local event with the Google event ID
-            await supabase
-              .from('calendar_events')
-              .update({ google_event_id: googleEvent.id })
-              .eq('id', localEvent.id);
+              // Update local event with the Google event ID
+              await supabase
+                .from('calendar_events')
+                .update({ google_event_id: googleEvent.id })
+                .eq('id', localEvent.id);
 
-            exported++;
-          } catch (err) {
-            console.error('[gcal-sync] Failed to export event:', localEvent.title, err);
-            // Continue with other events
-          }
-        }
+              exported++;
+            } catch (err) {
+              console.error('[gcal-sync] Failed to export event:', localEvent.title, err);
+            }
+          }),
+        );
       }
     } catch (err) {
       console.error('[gcal-sync] Phase 2 (push) error:', err);
       // Non-fatal: we still completed the pull
     }
-
-    // ─── Phase 3: Sync deletions Re-Be → Google ─────────
-    // (Events that were deleted locally but still exist in Google)
-    // This is handled reactively: when user deletes a GOOGLE-sourced event,
-    // the frontend calls the delete endpoint which also deletes from Google.
-    // We don't need to scan for deletions during sync.
 
     // 4. Update sync status
     await supabase
