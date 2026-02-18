@@ -1170,15 +1170,28 @@ export const useAppStore = create<AppState>()(
         if (!state.currentUser || state.gmailSyncing) return;
         set({ gmailSyncing: true });
         try {
-          const { messages: newMessages } = await gmailService.fetchNewEmails(state.currentUser.id);
+          // If cache is empty (first load or after migrate), force full fetch
+          const needsFullFetch = state.gmailMessages.length === 0;
+          const { messages: newMessages } = await gmailService.fetchNewEmails(
+            state.currentUser.id,
+            needsFullFetch,
+          );
           if (newMessages.length === 0) {
             set({ gmailSyncing: false, gmailLastSyncAt: new Date().toISOString() });
             return;
           }
-          // Merge new messages (avoid duplicates)
-          const existingIds = new Set(state.gmailMessages.map(m => m.id));
-          const trulyNew = newMessages.filter(m => !existingIds.has(m.id));
-          const allMessages = [...trulyNew, ...state.gmailMessages].slice(0, 50); // keep max 50
+          // Merge new messages — replace existing by ID (to fix stale/garbled cache)
+          const existingById = new Map(state.gmailMessages.map(m => [m.id, m]));
+          const trulyNew: typeof newMessages = [];
+          for (const msg of newMessages) {
+            if (!existingById.has(msg.id)) {
+              trulyNew.push(msg);
+            }
+            existingById.set(msg.id, msg); // always update with fresh data
+          }
+          const allMessages = Array.from(existingById.values())
+            .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+            .slice(0, 50); // keep max 50
 
           // Analyze new messages with Brain AI
           const suggestions = await gmailService.analyzeWithBrain(state.currentUser!.id, trulyNew);
@@ -1346,6 +1359,15 @@ export const useAppStore = create<AppState>()(
     }),
     {
       name: 're-be-storage',
+      version: 2, // Bump to clear stale gmailMessages cache (garbled Korean fix)
+      migrate: (persisted, version) => {
+        const state = persisted as Record<string, unknown>;
+        if (version < 2) {
+          // Clear cached gmail messages so they're re-fetched with correct UTF-8 encoding
+          state.gmailMessages = [];
+        }
+        return state;
+      },
       partialize: (state) => ({
         language: state.language,
         sidebarCollapsed: state.sidebarCollapsed,

@@ -23,6 +23,7 @@ function isMockMode(): boolean {
 
 export async function fetchNewEmails(
   userId: string,
+  forceFullSync = false,
 ): Promise<{ messages: GmailMessage[]; historyId?: string }> {
   if (isMockMode()) {
     // Return mock data in development
@@ -31,7 +32,7 @@ export async function fetchNewEmails(
 
   try {
     const { data, error } = await supabase.functions.invoke('gmail-fetch', {
-      body: { userId },
+      body: { userId, forceFullSync },
     });
 
     if (error) {

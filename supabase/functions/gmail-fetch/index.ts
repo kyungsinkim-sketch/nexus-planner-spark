@@ -234,7 +234,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { userId } = await req.json();
+    const { userId, forceFullSync } = await req.json();
     if (!userId) {
       return new Response(
         JSON.stringify({ error: 'Missing userId' }),
@@ -264,10 +264,19 @@ Deno.serve(async (req) => {
       .eq('user_id', userId)
       .single();
 
+    // If forceFullSync requested, clear sync state to trigger full fetch
+    if (forceFullSync && syncState?.history_id) {
+      console.log('[gmail-fetch] forceFullSync requested, clearing history_id');
+      await supabase
+        .from('gmail_sync_state')
+        .delete()
+        .eq('user_id', userId);
+    }
+
     let messageIds: string[] = [];
     let nextHistoryId = '';
 
-    if (syncState?.history_id) {
+    if (syncState?.history_id && !forceFullSync) {
       // Incremental sync
       try {
         const result = await fetchNewMessageIdsByHistory(accessToken, syncState.history_id);
