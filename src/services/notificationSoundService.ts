@@ -8,8 +8,24 @@
  */
 
 let audioContext: AudioContext | null = null;
+let userHasInteracted = false;
 
-function getAudioContext(): AudioContext {
+// Track first user interaction — AudioContext requires a user gesture
+if (typeof document !== 'undefined') {
+  const markInteracted = () => {
+    userHasInteracted = true;
+    document.removeEventListener('click', markInteracted);
+    document.removeEventListener('keydown', markInteracted);
+    document.removeEventListener('touchstart', markInteracted);
+  };
+  document.addEventListener('click', markInteracted, { once: true });
+  document.addEventListener('keydown', markInteracted, { once: true });
+  document.addEventListener('touchstart', markInteracted, { once: true });
+}
+
+function getAudioContext(): AudioContext | null {
+  // Don't create AudioContext before user interaction (Chrome autoplay policy)
+  if (!userHasInteracted) return null;
   if (!audioContext) {
     audioContext = new AudioContext();
   }
@@ -36,6 +52,7 @@ function playTone(frequency: number, duration: number, startTime: number, ctx: A
 export function playNotificationSound(type: 'message' | 'alert' = 'message') {
   try {
     const ctx = getAudioContext();
+    if (!ctx) return; // No user interaction yet — skip silently
     const gain = ctx.createGain();
     gain.connect(ctx.destination);
     gain.gain.setValueAtTime(0.15, ctx.currentTime);

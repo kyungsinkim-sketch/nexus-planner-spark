@@ -1325,7 +1325,7 @@ export const useAppStore = create<AppState>()(
             console.log('[Brain] Creating event from suggestion:', event.title, event.startAt);
             await get().addEvent({
               title: event.title,
-              type: event.type,
+              type: event.type || 'MEETING',
               startAt: event.startAt,
               endAt: event.endAt,
               projectId: event.projectId,
@@ -1333,7 +1333,7 @@ export const useAppStore = create<AppState>()(
               source: 'PAULUS',
               location: event.location,
               locationUrl: event.locationUrl,
-              attendeeIds: event.attendeeIds,
+              attendeeIds: Array.isArray(event.attendeeIds) ? event.attendeeIds : [],
             });
             // Push brain notification
             get().addBrainNotification({
@@ -1348,13 +1348,16 @@ export const useAppStore = create<AppState>()(
           if (suggestion.suggestedTodo) {
             const todo = suggestion.suggestedTodo;
             console.log('[Brain] Creating todo from suggestion:', todo.title, todo.dueDate);
+            const assignees = Array.isArray(todo.assigneeIds) && todo.assigneeIds.length > 0
+              ? todo.assigneeIds
+              : [state.currentUser!.id];
             await get().addTodo({
               title: todo.title,
-              assigneeIds: todo.assigneeIds.length > 0 ? todo.assigneeIds : [state.currentUser!.id],
+              assigneeIds: assignees,
               requestedById: state.currentUser!.id,
               projectId: todo.projectId,
               dueDate: todo.dueDate,
-              priority: todo.priority,
+              priority: todo.priority || 'MEDIUM',
               status: 'PENDING',
             });
             // Push brain notification
