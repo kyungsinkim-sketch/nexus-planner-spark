@@ -199,8 +199,8 @@ export const WIDGET_DEFINITIONS: Record<WidgetType, WidgetDefinition> = {
     type: 'todayWeather',
     titleKey: 'todayWeather',
     icon: Cloud,
-    defaultSize: { w: 2, h: 1 },
-    minSize: { w: 2, h: 1 },
+    defaultSize: { w: 2, h: 2 },
+    minSize: { w: 2, h: 2 },
     contexts: ['dashboard'],
   },
   todaySchedule: {

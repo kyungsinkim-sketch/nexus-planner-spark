@@ -204,7 +204,7 @@ export function WidgetGrid({ context, projectKeyColor }: WidgetGridProps) {
   const isFramelessWidget = (widgetType: string) => widgetType === 'chat' || widgetType === 'calendar' || widgetType === 'brainChat';
 
   // Barless widgets: no title bar at all, hover-reveal settings/remove buttons in top-right corner
-  const isBarlessWidget = (widgetType: string) => widgetType === 'worldClock' || widgetType === 'weather' || widgetType === 'todayWeather' || widgetType === 'activityChart' || widgetType === 'progressChart' || widgetType === 'health' || widgetType === 'budget';
+  const isBarlessWidget = (widgetType: string) => widgetType === 'worldClock' || widgetType === 'weather' || widgetType === 'todayWeather' || widgetType === 'activityChart' || widgetType === 'progressChart' || widgetType === 'health' || widgetType === 'budget' || widgetType === 'inspiration';
 
   // Inline style to kill transitions — applied to every grid item to guarantee
   // no slide-in animation regardless of CSS load order
@@ -304,7 +304,7 @@ export function WidgetGrid({ context, projectKeyColor }: WidgetGridProps) {
                     className={cn(
                       "h-full widget-drag-handle group/barless relative rounded-[var(--widget-radius)] overflow-hidden",
                       // Dark-card widgets have their own bg — no border needed
-                      ['worldClock','weather','todayWeather','activityChart','progressChart','health','budget'].includes(widgetType)
+                      ['worldClock','weather','todayWeather','activityChart','progressChart','health','budget','inspiration'].includes(widgetType)
                         ? 'border-0'
                         : 'border border-border/60',
                     )}

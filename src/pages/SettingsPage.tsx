@@ -23,10 +23,13 @@ import {
   CalendarPlus,
   Palmtree,
   Send,
+  Bell,
+  Volume2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAppStore } from '@/stores/appStore';
 import { useTranslation } from '@/hooks/useTranslation';
+import { playNotificationSound } from '@/services/notificationSoundService';
 import { isSupabaseConfigured, supabase } from '@/lib/supabase';
 import * as authService from '@/services/authService';
 import {
@@ -46,7 +49,7 @@ const initialSettings: GoogleCalendarSettings = {
 };
 
 export function SettingsPage() {
-  const { currentUser, setCurrentUser } = useAppStore();
+  const { currentUser, setCurrentUser, notificationSoundEnabled, setNotificationSoundEnabled } = useAppStore();
   const { t } = useTranslation();
   const [settings, setSettings] = useState<GoogleCalendarSettings>(initialSettings);
   const [isSyncing, setIsSyncing] = useState(false);
@@ -392,7 +395,71 @@ export function SettingsPage() {
           </div>
         </Card>
 
-        {/* ── Section 3: Leave Request ── */}
+        {/* ── Section 3: Notification Sound Settings ── */}
+        <Card className="p-6 shadow-card">
+          <div className="flex items-start gap-4">
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-pink-500 to-rose-600 flex items-center justify-center shrink-0">
+              <Bell className="w-6 h-6 text-white" />
+            </div>
+            <div className="flex-1">
+              <h3 className="text-lg font-semibold text-foreground">알림 소리</h3>
+              <p className="text-sm text-muted-foreground mt-0.5">새 메시지 및 알림 수신 시 소리 설정</p>
+              <Separator className="my-4" />
+
+              <div className="space-y-4">
+                {/* Master notification sound toggle */}
+                <div className="flex items-center justify-between p-3 rounded-lg border border-border">
+                  <div className="flex items-center gap-3">
+                    <Volume2 className="w-5 h-5 text-muted-foreground" />
+                    <div>
+                      <Label className="text-sm font-medium">알림 소리 활성화</Label>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        채팅 메시지, 전사 알림 수신 시 소리 재생
+                      </p>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={notificationSoundEnabled}
+                    onCheckedChange={(checked) => {
+                      setNotificationSoundEnabled(checked);
+                      if (checked) {
+                        // Play a test sound when enabling
+                        playNotificationSound('message');
+                      }
+                      toast.success(checked ? '알림 소리가 활성화되었습니다' : '알림 소리가 비활성화되었습니다');
+                    }}
+                  />
+                </div>
+
+                {/* Test sound buttons */}
+                {notificationSoundEnabled && (
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-1.5"
+                      onClick={() => playNotificationSound('message')}
+                    >
+                      <Volume2 className="w-3.5 h-3.5" />
+                      메시지 소리 테스트
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-1.5"
+                      onClick={() => playNotificationSound('alert')}
+                    >
+                      <Bell className="w-3.5 h-3.5" />
+                      알림 소리 테스트
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </Card>
+
+        {/* ── Section 4: Leave Request ── */}
         <Card className="p-6 shadow-card">
           <div className="flex items-start gap-4">
             <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center shrink-0">
@@ -464,7 +531,7 @@ export function SettingsPage() {
           </div>
         </Card>
 
-        {/* ── Section 4: Google Calendar ── */}
+        {/* ── Section 5: Google Calendar ── */}
         <Card className="p-6 shadow-card">
           <div className="flex items-start gap-4">
             <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shrink-0">

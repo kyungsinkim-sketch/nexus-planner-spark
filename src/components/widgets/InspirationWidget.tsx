@@ -50,17 +50,17 @@ function InspirationWidget({ context: _context }: { context: WidgetDataContext }
   }
 
   return (
-    <div className="h-full flex flex-col items-center justify-center px-6 py-3 relative group">
+    <div className="h-full flex flex-col items-center justify-center px-6 py-3 relative group widget-dark-card rounded-[var(--widget-radius)]">
       {/* Quote icon */}
-      <Quote className="w-5 h-5 text-muted-foreground/20 mb-2 shrink-0" />
+      <Quote className="w-5 h-5 text-white/20 mb-2 shrink-0" />
 
       {/* Quote text */}
-      <p className="text-sm text-center text-foreground/80 italic leading-relaxed max-w-[90%]">
+      <p className="text-sm text-center text-white/85 italic leading-relaxed max-w-[90%]">
         &ldquo;{quote.text}&rdquo;
       </p>
 
       {/* Author */}
-      <p className="text-xs text-muted-foreground mt-2 shrink-0">
+      <p className="text-xs text-white/50 mt-2 shrink-0">
         — {quote.author}
       </p>
 
@@ -72,14 +72,14 @@ function InspirationWidget({ context: _context }: { context: WidgetDataContext }
             className="absolute left-2 top-1/2 -translate-y-1/2 p-1 rounded-full
                        opacity-0 group-hover:opacity-100 hover:bg-white/10 transition-all"
           >
-            <ChevronLeft className="w-4 h-4 text-muted-foreground" />
+            <ChevronLeft className="w-4 h-4 text-white/60" />
           </button>
           <button
             onClick={next}
             className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-full
                        opacity-0 group-hover:opacity-100 hover:bg-white/10 transition-all"
           >
-            <ChevronRight className="w-4 h-4 text-muted-foreground" />
+            <ChevronRight className="w-4 h-4 text-white/60" />
           </button>
         </>
       )}
@@ -92,8 +92,8 @@ function InspirationWidget({ context: _context }: { context: WidgetDataContext }
               key={idx}
               className={`w-1 h-1 rounded-full transition-colors ${
                 idx === currentIndex % inspirationQuotes.length
-                  ? 'bg-foreground/40'
-                  : 'bg-foreground/10'
+                  ? 'bg-white/50'
+                  : 'bg-white/15'
               }`}
             />
           ))}

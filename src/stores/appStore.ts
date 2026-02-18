@@ -10,6 +10,7 @@ import * as authService from '@/services/authService';
 import * as chatService from '@/services/chatService';
 import * as todoService from '@/services/todoService';
 import * as fileService from '@/services/fileService';
+import { playNotificationSound } from '@/services/notificationSoundService';
 
 interface AppState {
   // Auth
@@ -56,6 +57,9 @@ interface AppState {
   worldClockSettingsOpen: boolean;
   weatherSettingsOpen: boolean;
 
+  // Notification Sound
+  notificationSoundEnabled: boolean;
+
   // Mock data persistence — track deleted mock event IDs across refreshes
   deletedMockEventIds: string[];
 
@@ -94,6 +98,7 @@ interface AppState {
   setImportantNoteAddOpen: (open: boolean) => void;
   setWorldClockSettingsOpen: (open: boolean) => void;
   setWeatherSettingsOpen: (open: boolean) => void;
+  setNotificationSoundEnabled: (enabled: boolean) => void;
 
   // Project Actions
   addProject: (project: Partial<Project>) => Promise<void>;
@@ -257,6 +262,7 @@ export const useAppStore = create<AppState>()(
       importantNoteAddOpen: false,
       worldClockSettingsOpen: false,
       weatherSettingsOpen: false,
+      notificationSoundEnabled: true,
       deletedMockEventIds: [],
       selectedProjectId: null,
       sidebarCollapsed: false,
@@ -660,11 +666,16 @@ export const useAppStore = create<AppState>()(
       },
 
       // Message Actions
-      addMessage: (message) => set((state) => {
+      addMessage: (message) => {
+        const state = get();
         // Prevent duplicate messages (realtime subscription + local add race condition)
-        if (state.messages.some(m => m.id === message.id)) return state;
-        return { messages: [...state.messages, message] };
-      }),
+        if (state.messages.some(m => m.id === message.id)) return;
+        // Play notification sound for messages from other users
+        if (state.notificationSoundEnabled && state.currentUser && message.userId !== state.currentUser.id) {
+          playNotificationSound('message');
+        }
+        set({ messages: [...state.messages, message] });
+      },
 
       deleteMessage: async (messageId) => {
         if (isSupabaseConfigured()) {
@@ -1108,7 +1119,7 @@ export const useAppStore = create<AppState>()(
 
       // Company Notification Actions
       broadcastNotification: (title, message) => {
-        const { currentUser } = get();
+        const { currentUser, notificationSoundEnabled } = get();
         if (!currentUser) return;
         const notification: CompanyNotification = {
           id: `cn-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
@@ -1120,6 +1131,10 @@ export const useAppStore = create<AppState>()(
         set((state) => ({
           companyNotifications: [...state.companyNotifications, notification],
         }));
+        // Play alert sound for company-wide notifications
+        if (notificationSoundEnabled) {
+          playNotificationSound('alert');
+        }
       },
       dismissCompanyNotification: (id) => set((state) => ({
         companyNotifications: state.companyNotifications.filter((n) => n.id !== id),
@@ -1138,6 +1153,7 @@ export const useAppStore = create<AppState>()(
       setImportantNoteAddOpen: (open) => set({ importantNoteAddOpen: open }),
       setWorldClockSettingsOpen: (open) => set({ worldClockSettingsOpen: open }),
       setWeatherSettingsOpen: (open) => set({ weatherSettingsOpen: open }),
+      setNotificationSoundEnabled: (enabled) => set({ notificationSoundEnabled: enabled }),
 
       // Settings Actions
       updateScoreSettings: (settings) => set((state) => ({
@@ -1172,6 +1188,9 @@ export const useAppStore = create<AppState>()(
         importantNotes: state.importantNotes,
         inspirationQuotes: state.inspirationQuotes,
         companyNotifications: state.companyNotifications,
+        personalTodos: state.personalTodos,
+        messages: state.messages,
+        notificationSoundEnabled: state.notificationSoundEnabled,
       }),
       merge: (persisted, current) => {
         const merged = { ...current, ...(persisted as Partial<AppState>) };
@@ -1179,6 +1198,23 @@ export const useAppStore = create<AppState>()(
         if (!isSupabaseConfigured() && merged.deletedMockEventIds?.length) {
           const deletedSet = new Set(merged.deletedMockEventIds);
           merged.events = mockEvents.filter((e) => !deletedSet.has(e.id));
+        }
+        // In mock mode, merge persisted todos with mock todos (avoid duplicates)
+        if (!isSupabaseConfigured()) {
+          const persistedTodos = (persisted as Partial<AppState>)?.personalTodos;
+          if (persistedTodos && persistedTodos.length > 0) {
+            // Persisted takes priority — use persisted + any mock todos not already there
+            const persistedIds = new Set(persistedTodos.map((t: { id: string }) => t.id));
+            const newMockTodos = mockPersonalTodos.filter(t => !persistedIds.has(t.id));
+            merged.personalTodos = [...persistedTodos, ...newMockTodos];
+          }
+          // Merge persisted messages with mock messages
+          const persistedMsgs = (persisted as Partial<AppState>)?.messages;
+          if (persistedMsgs && persistedMsgs.length > 0) {
+            const persistedMsgIds = new Set(persistedMsgs.map((m: { id: string }) => m.id));
+            const newMockMsgs = mockMessages.filter(m => !persistedMsgIds.has(m.id));
+            merged.messages = [...persistedMsgs, ...newMockMsgs];
+          }
         }
         return merged;
       },
