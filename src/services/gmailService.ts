@@ -10,7 +10,7 @@
  */
 
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
-import type { GmailMessage, EmailBrainSuggestion } from '@/types/core';
+import type { GmailMessage, EmailBrainSuggestion, BrainFeedback } from '@/types/core';
 import { mockGmailMessages, mockEmailSuggestions } from '@/mock/data';
 
 // ─── Mock Mode Detection ────────────────────────────
@@ -66,6 +66,7 @@ export async function analyzeWithBrain(
   userId: string,
   messages: GmailMessage[],
   context?: BrainContext,
+  feedback?: BrainFeedback[],
 ): Promise<EmailBrainSuggestion[]> {
   if (isMockMode()) {
     // Return mock suggestions for development
@@ -76,7 +77,7 @@ export async function analyzeWithBrain(
 
   try {
     const { data, error } = await supabase.functions.invoke('gmail-brain-analyze', {
-      body: { userId, messages, context },
+      body: { userId, messages, context, feedback },
     });
 
     if (error) {
@@ -211,6 +212,7 @@ export async function analyzeSingleEmail(
   userId: string,
   message: GmailMessage,
   context?: BrainContext,
+  feedback?: BrainFeedback[],
 ): Promise<EmailBrainSuggestion[]> {
-  return analyzeWithBrain(userId, [message], context);
+  return analyzeWithBrain(userId, [message], context, feedback);
 }

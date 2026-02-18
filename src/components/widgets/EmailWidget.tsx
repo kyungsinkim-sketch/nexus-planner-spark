@@ -38,6 +38,7 @@ import type { WidgetDataContext } from '@/types/widget';
 import type { EmailBrainSuggestion, BrainActionStatus, GmailMessage } from '@/types/core';
 import EmailReplyDialog from './EmailReplyDialog';
 import { ComposeEmailDialog } from './ComposeEmailDialog';
+import { SuggestionReviewDialog } from './SuggestionReviewDialog';
 
 // ─── Status Badge (reuses BrainActionBubble pattern) ────
 
@@ -315,7 +316,6 @@ function EmailWidget({ context: _context }: { context: WidgetDataContext }) {
     syncGmail,
     trashEmail,
     analyzeEmail,
-    confirmEmailSuggestion,
     rejectEmailSuggestion,
   } = useAppStore();
 
@@ -323,6 +323,7 @@ function EmailWidget({ context: _context }: { context: WidgetDataContext }) {
   const [replyDialogSuggestionId, setReplyDialogSuggestionId] = useState<string | null>(null);
   const [composeDialogOpen, setComposeDialogOpen] = useState(false);
   const [replyToMessage, setReplyToMessage] = useState<GmailMessage | null>(null);
+  const [reviewSuggestionId, setReviewSuggestionId] = useState<string | null>(null);
 
   // Check Gmail connection status
   useEffect(() => {
@@ -388,6 +389,10 @@ function EmailWidget({ context: _context }: { context: WidgetDataContext }) {
   const handleCompose = useCallback(() => {
     setReplyToMessage(null);
     setComposeDialogOpen(true);
+  }, []);
+
+  const handleConfirmSuggestion = useCallback((suggestionId: string) => {
+    setReviewSuggestionId(suggestionId);
   }, []);
 
   // Group suggestions by email
@@ -472,7 +477,7 @@ function EmailWidget({ context: _context }: { context: WidgetDataContext }) {
               key={emailId}
               emailId={emailId}
               suggestions={suggestions}
-              onConfirm={confirmEmailSuggestion}
+              onConfirm={handleConfirmSuggestion}
               onReject={rejectEmailSuggestion}
               onReply={handleReply}
               onTrash={handleTrash}
@@ -499,6 +504,15 @@ function EmailWidget({ context: _context }: { context: WidgetDataContext }) {
           if (!open) setReplyToMessage(null);
         }}
         replyToMessage={replyToMessage ?? undefined}
+      />
+
+      {/* Brain Suggestion Review Dialog */}
+      <SuggestionReviewDialog
+        open={!!reviewSuggestionId}
+        onOpenChange={(open) => {
+          if (!open) setReviewSuggestionId(null);
+        }}
+        suggestion={reviewSuggestionId ? emailSuggestions.find(s => s.id === reviewSuggestionId) ?? null : null}
       />
     </div>
   );

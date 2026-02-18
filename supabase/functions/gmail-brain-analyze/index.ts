@@ -164,12 +164,86 @@ ${sections.join('\n\n')}
 5. **Fallback**: If no project/user match is found, leave projectId empty and assigneeIds as []`;
 }
 
+// ─── Feedback learning prompt ────────────────────────
+
+interface FeedbackEntry {
+  emailSubject?: string;
+  original: Record<string, unknown>;
+  corrected: Record<string, unknown>;
+  included: { event: boolean; todo: boolean; note: boolean };
+}
+
+function buildFeedbackPrompt(feedback?: FeedbackEntry[]): string {
+  if (!feedback || feedback.length === 0) return '';
+
+  const lines = feedback.slice(0, 10).map((f, i) => {
+    const parts: string[] = [];
+    const orig = f.original as Record<string, unknown>;
+    const corr = f.corrected as Record<string, unknown>;
+
+    // Event corrections
+    const origEvent = orig.event as Record<string, unknown> | undefined;
+    const corrEvent = corr.event as Record<string, unknown> | undefined;
+    if (origEvent && corrEvent) {
+      if (origEvent.projectId !== corrEvent.projectId) {
+        parts.push(`이벤트 프로젝트: ${origEvent.projectId || '없음'} → ${corrEvent.projectId || '없음'}`);
+      }
+      if (origEvent.title !== corrEvent.title) {
+        parts.push(`이벤트 제목: "${origEvent.title}" → "${corrEvent.title}"`);
+      }
+      if (origEvent.type !== corrEvent.type) {
+        parts.push(`이벤트 유형: ${origEvent.type} → ${corrEvent.type}`);
+      }
+    }
+    if (origEvent && !f.included.event) {
+      parts.push('이벤트 제안 거부됨');
+    }
+
+    // Todo corrections
+    const origTodo = orig.todo as Record<string, unknown> | undefined;
+    const corrTodo = corr.todo as Record<string, unknown> | undefined;
+    if (origTodo && corrTodo) {
+      if (origTodo.projectId !== corrTodo.projectId) {
+        parts.push(`할일 프로젝트: ${origTodo.projectId || '없음'} → ${corrTodo.projectId || '없음'}`);
+      }
+      if (origTodo.priority !== corrTodo.priority) {
+        parts.push(`할일 우선순위: ${origTodo.priority} → ${corrTodo.priority}`);
+      }
+      if (JSON.stringify(origTodo.assigneeIds) !== JSON.stringify(corrTodo.assigneeIds)) {
+        parts.push(`할일 담당자 변경됨`);
+      }
+    }
+    if (origTodo && !f.included.todo) {
+      parts.push('할일 제안 거부됨');
+    }
+
+    // Note corrections
+    if (orig.note && !f.included.note) {
+      parts.push('노트 제안 거부됨');
+    }
+
+    if (parts.length === 0) return '';
+    const subjectNote = f.emailSubject ? ` (이메일: "${f.emailSubject}")` : '';
+    return `  ${i + 1}. ${parts.join('; ')}${subjectNote}`;
+  }).filter(Boolean);
+
+  if (lines.length === 0) return '';
+
+  return `\n\n## ─── USER FEEDBACK HISTORY ─────────────────────
+The user has previously corrected your suggestions. Learn from these patterns to improve future accuracy:
+
+${lines.join('\n')}
+
+Apply these corrections: if the user consistently changes project assignments, pay closer attention. If they remove certain suggestion types, be more conservative.`;
+}
+
 // ─── Claude API call ─────────────────────────────────
 
 async function analyzeEmails(
   messages: GmailMessage[],
   anthropicKey: string,
   context?: BrainContext,
+  feedback?: FeedbackEntry[],
 ): Promise<unknown[]> {
   const emailsContext = messages
     .map(
@@ -194,8 +268,8 @@ Analyze the following emails and return suggestions as a JSON array:
 
 ${emailsContext}`;
 
-  // Build full system prompt with context
-  const systemPrompt = SYSTEM_PROMPT_BASE + buildContextPrompt(context);
+  // Build full system prompt with context + feedback
+  const systemPrompt = SYSTEM_PROMPT_BASE + buildContextPrompt(context) + buildFeedbackPrompt(feedback);
 
   const response = await fetch(ANTHROPIC_API_URL, {
     method: 'POST',
@@ -238,7 +312,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { userId, messages, context } = await req.json();
+    const { userId, messages, context, feedback } = await req.json();
 
     if (!userId || !messages?.length) {
       return new Response(
@@ -255,7 +329,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    const rawSuggestions = await analyzeEmails(messages, anthropicKey, context as BrainContext);
+    const rawSuggestions = await analyzeEmails(messages, anthropicKey, context as BrainContext, feedback as FeedbackEntry[]);
 
     // Add IDs and normalize
     const suggestions = rawSuggestions.map((s: Record<string, unknown>, i: number) => ({

@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { User, Project, CalendarEvent, ChatMessage, ChatRoom, ChatMessageType, LocationShare, ScheduleShare, DecisionShare, FileGroup, FileItem, PerformanceSnapshot, PortfolioItem, PeerFeedback, ProjectContribution, ScoreSettings, UserWorkStatus, PersonalTodo, ImportantNote, InspirationQuote, CompanyNotification, GmailMessage, EmailBrainSuggestion, BrainNotification, BrainReport } from '@/types/core';
+import { User, Project, CalendarEvent, ChatMessage, ChatRoom, ChatMessageType, LocationShare, ScheduleShare, DecisionShare, FileGroup, FileItem, PerformanceSnapshot, PortfolioItem, PeerFeedback, ProjectContribution, ScoreSettings, UserWorkStatus, PersonalTodo, ImportantNote, InspirationQuote, CompanyNotification, GmailMessage, EmailBrainSuggestion, BrainNotification, BrainReport, BrainFeedback, BrainExtractedEvent, BrainExtractedTodo } from '@/types/core';
 import { mockUsers, mockProjects, mockEvents, mockMessages, mockFileGroups, mockFiles, mockPerformanceSnapshots, mockPortfolioItems, mockPeerFeedback, mockProjectContributions, mockPersonalTodos, currentUser } from '@/mock/data';
 import * as gmailService from '@/services/gmailService';
 import { Language, getTranslation } from '@/lib/i18n';
@@ -70,9 +70,10 @@ interface AppState {
   gmailLastSyncAt: string | null;
   gmailSyncing: boolean;
 
-  // Brain AI Notifications & Reports
+  // Brain AI Notifications, Reports & Feedback
   brainNotifications: BrainNotification[];
   brainReports: BrainReport[];
+  brainFeedback: BrainFeedback[];
 
   // Track locally-trashed Gmail message IDs so they don't reappear on sync
   // (server-side trash requires gmail.modify scope which may not be granted yet)
@@ -191,6 +192,18 @@ interface AppState {
   addBrainNotification: (notification: Omit<BrainNotification, 'id' | 'createdAt'>) => void;
   addBrainReport: (report: Omit<BrainReport, 'id' | 'createdAt' | 'status'>) => void;
   updateBrainReportStatus: (reportId: string, status: BrainReport['status'], adminNote?: string) => void;
+  addBrainFeedback: (feedback: Omit<BrainFeedback, 'id' | 'createdAt'>) => void;
+  confirmEmailSuggestionWithEdits: (
+    suggestionId: string,
+    edits: {
+      event?: BrainExtractedEvent;
+      todo?: BrainExtractedTodo;
+      note?: string;
+      includeEvent: boolean;
+      includeTodo: boolean;
+      includeNote: boolean;
+    },
+  ) => Promise<void>;
 
   // Settings Actions
   updateScoreSettings: (settings: Partial<ScoreSettings>) => void;
@@ -305,6 +318,7 @@ export const useAppStore = create<AppState>()(
       gmailSyncing: false,
       brainNotifications: [],
       brainReports: [],
+      brainFeedback: [],
       trashedGmailMessageIds: [],
       deletedMockEventIds: [],
       selectedProjectId: null,
@@ -1243,7 +1257,7 @@ export const useAppStore = create<AppState>()(
         };
 
         try {
-          const suggestions = await gmailService.analyzeSingleEmail(state.currentUser.id, email, brainContext);
+          const suggestions = await gmailService.analyzeSingleEmail(state.currentUser.id, email, brainContext, state.brainFeedback);
           if (suggestions.length > 0) {
             // Patch emailId to match the actual email (mock data may have different IDs)
             const patchedSuggestions = suggestions.map(s => ({
@@ -1303,7 +1317,7 @@ export const useAppStore = create<AppState>()(
               id: u.id, name: u.name, department: u.department, role: u.role,
             })),
           };
-          const suggestions = await gmailService.analyzeWithBrain(state.currentUser!.id, trulyNew, brainCtx);
+          const suggestions = await gmailService.analyzeWithBrain(state.currentUser!.id, trulyNew, brainCtx, state.brainFeedback);
           const existingSugIds = new Set(state.emailSuggestions.map(s => s.id));
           const newSuggestions = suggestions.filter(s => !existingSugIds.has(s.id));
 
@@ -1521,6 +1535,139 @@ export const useAppStore = create<AppState>()(
         ),
       })),
 
+      addBrainFeedback: (feedback) => set((state) => {
+        const newFeedback: BrainFeedback = {
+          ...feedback,
+          id: `bf-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
+          createdAt: new Date().toISOString(),
+        };
+        return { brainFeedback: [newFeedback, ...state.brainFeedback].slice(0, 50) };
+      }),
+
+      confirmEmailSuggestionWithEdits: async (suggestionId, edits) => {
+        const state = get();
+        const suggestion = state.emailSuggestions.find(s => s.id === suggestionId);
+        if (!suggestion || !state.currentUser) return;
+
+        // Update status to confirmed
+        set({
+          emailSuggestions: state.emailSuggestions.map(s =>
+            s.id === suggestionId ? { ...s, status: 'confirmed' as const } : s
+          ),
+        });
+
+        try {
+          const email = state.gmailMessages.find(m => m.id === suggestion.emailId);
+
+          // Store feedback if user made changes
+          const hasChanges =
+            JSON.stringify(edits.event) !== JSON.stringify(suggestion.suggestedEvent) ||
+            JSON.stringify(edits.todo) !== JSON.stringify(suggestion.suggestedTodo) ||
+            edits.note !== suggestion.suggestedNote ||
+            edits.includeEvent !== !!suggestion.suggestedEvent ||
+            edits.includeTodo !== !!suggestion.suggestedTodo ||
+            edits.includeNote !== !!suggestion.suggestedNote;
+
+          if (hasChanges) {
+            get().addBrainFeedback({
+              suggestionId,
+              emailSubject: email?.subject,
+              original: {
+                event: suggestion.suggestedEvent,
+                todo: suggestion.suggestedTodo,
+                note: suggestion.suggestedNote,
+              },
+              corrected: {
+                event: edits.includeEvent ? edits.event : undefined,
+                todo: edits.includeTodo ? edits.todo : undefined,
+                note: edits.includeNote ? edits.note : undefined,
+              },
+              included: {
+                event: edits.includeEvent,
+                todo: edits.includeTodo,
+                note: edits.includeNote,
+              },
+            });
+          }
+
+          // Create event if included
+          if (edits.includeEvent && edits.event) {
+            const ev = edits.event;
+            await get().addEvent({
+              title: ev.title,
+              type: ev.type || 'MEETING',
+              startAt: ev.startAt,
+              endAt: ev.endAt,
+              projectId: ev.projectId,
+              ownerId: state.currentUser!.id,
+              source: 'PAULUS',
+              location: ev.location,
+              locationUrl: ev.locationUrl,
+              attendeeIds: Array.isArray(ev.attendeeIds) ? ev.attendeeIds : [],
+            });
+            get().addBrainNotification({
+              type: 'brain_event',
+              title: '이벤트 생성됨',
+              message: `${ev.title} (${new Date(ev.startAt).toLocaleString('ko-KR')})`,
+              emailSubject: email?.subject,
+            });
+          }
+
+          // Create todo if included
+          if (edits.includeTodo && edits.todo) {
+            const td = edits.todo;
+            const dueDate = td.dueDate || new Date(Date.now() + 86400000).toISOString();
+            const assignees = Array.isArray(td.assigneeIds) && td.assigneeIds.length > 0
+              ? td.assigneeIds : [state.currentUser!.id];
+            await get().addTodo({
+              title: td.title,
+              assigneeIds: assignees,
+              requestedById: state.currentUser!.id,
+              projectId: td.projectId,
+              dueDate,
+              priority: td.priority || 'MEDIUM',
+              status: 'PENDING',
+            });
+            get().addBrainNotification({
+              type: 'brain_todo',
+              title: '할 일 생성됨',
+              message: `${td.title} (마감: ${new Date(dueDate).toLocaleDateString('ko-KR')})`,
+              emailSubject: email?.subject,
+            });
+          }
+
+          // Create note if included
+          if (edits.includeNote && edits.note) {
+            get().addImportantNote({
+              projectId: edits.event?.projectId || edits.todo?.projectId || '',
+              content: edits.note,
+              createdBy: state.currentUser!.id,
+              sourceMessageId: email ? `email-${email.id}` : undefined,
+            });
+            get().addBrainNotification({
+              type: 'brain_note',
+              title: '중요 노트 추가됨',
+              message: edits.note.slice(0, 80),
+              emailSubject: email?.subject,
+            });
+          }
+
+          // Mark as executed
+          set({
+            emailSuggestions: get().emailSuggestions.map(s =>
+              s.id === suggestionId ? { ...s, status: 'executed' as const } : s
+            ),
+          });
+        } catch (err) {
+          console.error('[Gmail] Confirm suggestion with edits error:', err);
+          set({
+            emailSuggestions: get().emailSuggestions.map(s =>
+              s.id === suggestionId ? { ...s, status: 'failed' as const } : s
+            ),
+          });
+        }
+      },
+
       // Widget Settings Actions
       updateWidgetSettings: (widgetType, settings) => set((state) => ({
         widgetSettings: {
@@ -1563,21 +1710,21 @@ export const useAppStore = create<AppState>()(
     }),
     {
       name: 're-be-storage',
-      version: 4, // v2: clear garbled gmail cache, v3: add brainNotifications + brainReports, v4: trashedGmailMessageIds
+      version: 5, // v2: clear garbled gmail cache, v3: brainNotifications+brainReports, v4: trashedGmailMessageIds, v5: brainFeedback
       migrate: (persisted, version) => {
         const state = persisted as Record<string, unknown>;
         if (version < 2) {
-          // Clear cached gmail messages so they're re-fetched with correct UTF-8 encoding
           state.gmailMessages = [];
         }
         if (version < 3) {
-          // Initialize new Brain AI state
           state.brainNotifications = [];
           state.brainReports = [];
         }
         if (version < 4) {
-          // Initialize trashed Gmail message IDs tracker
           state.trashedGmailMessageIds = [];
+        }
+        if (version < 5) {
+          state.brainFeedback = [];
         }
         return state;
       },
@@ -1603,6 +1750,7 @@ export const useAppStore = create<AppState>()(
         trashedGmailMessageIds: state.trashedGmailMessageIds,
         brainNotifications: state.brainNotifications,
         brainReports: state.brainReports,
+        brainFeedback: state.brainFeedback,
       }),
       merge: (persisted, current) => {
         const merged = { ...current, ...(persisted as Partial<AppState>) };

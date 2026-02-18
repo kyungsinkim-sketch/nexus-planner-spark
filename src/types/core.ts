@@ -510,6 +510,29 @@ export interface BrainNotification {
   createdAt: string;
 }
 
+// Brain Feedback — stores user corrections to Brain suggestions for learning
+export interface BrainFeedback {
+  id: string;
+  suggestionId: string;
+  emailSubject?: string;
+  original: {
+    event?: BrainExtractedEvent;
+    todo?: BrainExtractedTodo;
+    note?: string;
+  };
+  corrected: {
+    event?: BrainExtractedEvent;
+    todo?: BrainExtractedTodo;
+    note?: string;
+  };
+  included: {
+    event: boolean;
+    todo: boolean;
+    note: boolean;
+  };
+  createdAt: string;
+}
+
 // Brain Report — service suggestions collected from chat Brain interactions
 export type BrainReportCategory =
   | 'feature_request'
