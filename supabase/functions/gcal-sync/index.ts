@@ -249,8 +249,12 @@ Deno.serve(async (req) => {
     }
 
     // ─── Phase 2: Push Re-Be → Google ────────────────────
+    // TEMPORARILY DISABLED: Phase 2 Push was causing a duplication loop where
+    // PAULUS events exported to Google were re-imported as new rows on next sync.
+    // TODO: Re-enable after implementing proper bidirectional dedup logic.
+    // Key fix needed: when exporting, mark events so they're not re-imported.
+    /*
     try {
-      // Find PAULUS events that don't have a googleEventId yet
       const { data: localEvents } = await supabase
         .from('calendar_events')
         .select('*')
@@ -259,7 +263,6 @@ Deno.serve(async (req) => {
         .is('google_event_id', null);
 
       if (localEvents && localEvents.length > 0) {
-        // Limit to 10 events per sync to avoid timeout
         const batch = localEvents.slice(0, 10);
         await Promise.all(
           batch.map(async (localEvent) => {
@@ -269,13 +272,10 @@ Deno.serve(async (req) => {
                 dbEventToGoogleEvent(localEvent),
                 tokenRow.calendar_id || 'primary',
               );
-
-              // Update local event with the Google event ID
               await supabase
                 .from('calendar_events')
                 .update({ google_event_id: googleEvent.id })
                 .eq('id', localEvent.id);
-
               exported++;
             } catch (err) {
               console.error('[gcal-sync] Failed to export event:', localEvent.title, err);
@@ -285,8 +285,8 @@ Deno.serve(async (req) => {
       }
     } catch (err) {
       console.error('[gcal-sync] Phase 2 (push) error:', err);
-      // Non-fatal: we still completed the pull
     }
+    */
 
     // 4. Update sync status
     await supabase
