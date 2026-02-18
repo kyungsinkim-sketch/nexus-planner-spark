@@ -15,6 +15,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -254,11 +255,9 @@ export function SuggestionReviewDialog({
             <Brain className="w-4 h-4 text-primary" />
             {t('brainReviewTitle')}
           </DialogTitle>
-          {email && (
-            <p className="text-xs text-muted-foreground truncate mt-1">
-              {email.subject}
-            </p>
-          )}
+          <DialogDescription className="text-xs text-muted-foreground truncate">
+            {email?.subject || ''}
+          </DialogDescription>
         </DialogHeader>
 
         {suggestion && (

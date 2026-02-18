@@ -11,6 +11,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -113,6 +114,9 @@ export function ComposeEmailDialog({ open, onOpenChange, replyToMessage }: Compo
             )}
             {isReply ? t('reply') : t('composeEmail')}
           </DialogTitle>
+          <DialogDescription className="sr-only">
+            {isReply ? t('reply') : t('composeEmail')}
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
