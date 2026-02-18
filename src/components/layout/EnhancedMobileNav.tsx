@@ -31,6 +31,7 @@ import {
   Coffee,
   Dumbbell,
   LogOut,
+  Plus,
 } from 'lucide-react';
 import { useAppStore } from '@/stores/appStore';
 import { cn } from '@/lib/utils';
@@ -64,7 +65,7 @@ const isPWA = () => {
 };
 
 export function EnhancedMobileNav() {
-  const { currentUser, userWorkStatus, setUserWorkStatus, theme, toggleTheme, signOut } = useAppStore();
+  const { currentUser, userWorkStatus, setUserWorkStatus, theme, toggleTheme, signOut, setTodoCreateDialogOpen, setProjectCreateDialogOpen } = useAppStore();
   const location = useLocation();
   const { t, language, toggleLanguage } = useTranslation();
   const [open, setOpen] = useState(false);
@@ -106,11 +107,17 @@ export function EnhancedMobileNav() {
     setShowInstallPrompt(false);
   };
 
+  // Action for + button per tab
+  const handlePlusAction = (path: string) => {
+    if (path === '/projects') setProjectCreateDialogOpen(true);
+    else if (path === '/' || path === '/calendar') setTodoCreateDialogOpen(true);
+  };
+
   const navItems = [
-    { path: '/', icon: Home, labelKey: 'dashboard' as const, visible: true, pro: false },
-    { path: '/projects', icon: FolderKanban, labelKey: 'projects' as const, visible: true, pro: false },
-    { path: '/calendar', icon: Calendar, labelKey: 'calendar' as const, visible: true, pro: false },
-    { path: '/admin', icon: Crown, labelKey: 'admin' as const, visible: currentUser?.role === 'ADMIN', pro: true },
+    { path: '/', icon: Home, labelKey: 'dashboard' as const, visible: true, pro: false, hasPlus: true },
+    { path: '/projects', icon: FolderKanban, labelKey: 'projects' as const, visible: true, pro: false, hasPlus: true },
+    { path: '/calendar', icon: Calendar, labelKey: 'calendar' as const, visible: true, pro: false, hasPlus: true },
+    { path: '/admin', icon: Crown, labelKey: 'admin' as const, visible: currentUser?.role === 'ADMIN' || currentUser?.role === 'MANAGER', pro: true, hasPlus: false },
   ].filter(item => item.visible);
 
   const getInitials = (name: string) => {
@@ -350,27 +357,37 @@ export function EnhancedMobileNav() {
         className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-md border-t border-border"
         style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
       >
-        <div className="grid grid-cols-4 gap-1 px-2 py-2">
+        <div className="flex items-center justify-around px-2 py-2">
           {navItems.slice(0, 4).map((item) => {
             const isActive = location.pathname === item.path ||
               (item.path !== '/' && location.pathname.startsWith(item.path));
 
             return (
-              <NavLink
-                key={item.path}
-                to={item.path}
-                className={cn(
-                  'flex flex-col items-center gap-1 py-2 px-1 rounded-lg transition-colors',
-                  isActive
-                    ? 'text-primary'
-                    : 'text-muted-foreground hover:text-foreground'
+              <div key={item.path} className="flex items-center gap-0.5">
+                <NavLink
+                  to={item.path}
+                  className={cn(
+                    'flex flex-col items-center gap-1 py-2 px-2 rounded-lg transition-colors',
+                    isActive
+                      ? 'text-primary'
+                      : 'text-muted-foreground hover:text-foreground'
+                  )}
+                >
+                  <item.icon className={cn("w-5 h-5", isActive && "scale-110")} />
+                  <span className="text-[10px] font-medium truncate text-center">
+                    {t(item.labelKey)}
+                  </span>
+                </NavLink>
+                {/* + button next to active tab */}
+                {isActive && item.hasPlus && (
+                  <button
+                    onClick={() => handlePlusAction(item.path)}
+                    className="flex items-center justify-center w-7 h-7 rounded-full bg-primary text-primary-foreground shadow-md hover:bg-primary/90 transition-colors -ml-0.5"
+                  >
+                    <Plus className="w-4 h-4" />
+                  </button>
                 )}
-              >
-                <item.icon className={cn("w-5 h-5", isActive && "scale-110")} />
-                <span className="text-[10px] font-medium truncate w-full text-center">
-                  {t(item.labelKey)}
-                </span>
-              </NavLink>
+              </div>
             );
           })}
         </div>

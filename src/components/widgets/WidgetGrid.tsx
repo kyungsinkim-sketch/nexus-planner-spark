@@ -51,6 +51,7 @@ export function WidgetGrid({ context, projectKeyColor }: WidgetGridProps) {
   const { t } = useTranslation();
   const currentUser = useAppStore((s) => s.currentUser);
   const setTodoCreateDialogOpen = useAppStore((s) => s.setTodoCreateDialogOpen);
+  const setProjectCreateDialogOpen = useAppStore((s) => s.setProjectCreateDialogOpen);
   const setWorldClockSettingsOpen = useAppStore((s) => s.setWorldClockSettingsOpen);
   const setWeatherSettingsOpen = useAppStore((s) => s.setWeatherSettingsOpen);
   const isAdmin = currentUser?.role === 'ADMIN';
@@ -63,6 +64,9 @@ export function WidgetGrid({ context, projectKeyColor }: WidgetGridProps) {
     if (widgetType === 'todos') {
       return [{ icon: Plus, onClick: () => setTodoCreateDialogOpen(true), title: t('newTodo') }];
     }
+    if (widgetType === 'projects') {
+      return [{ icon: Plus, onClick: () => setProjectCreateDialogOpen(true), title: t('newProject') }];
+    }
     if (widgetType === 'worldClock') {
       return [{ icon: Settings, onClick: () => setWorldClockSettingsOpen(true), title: t('settings') }];
     }
@@ -70,7 +74,7 @@ export function WidgetGrid({ context, projectKeyColor }: WidgetGridProps) {
       return [{ icon: Settings, onClick: () => setWeatherSettingsOpen(true), title: t('settings') }];
     }
     return undefined;
-  }, [setTodoCreateDialogOpen, setWorldClockSettingsOpen, setWeatherSettingsOpen, t]);
+  }, [setTodoCreateDialogOpen, setProjectCreateDialogOpen, setWorldClockSettingsOpen, setWeatherSettingsOpen, t]);
 
   // Get current project for settings dialog
   const projects = useAppStore((s) => s.projects);

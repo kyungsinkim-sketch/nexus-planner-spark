@@ -64,26 +64,35 @@ export function WelfareTab() {
     const { users, currentUser, addEvent } = useAppStore();
     const [selectedTab, setSelectedTab] = useState('calendar');
 
-    // Training sessions state - added more historical data
-    const [trainingSessions, setTrainingSessions] = useState<TrainingSession[]>([
-        { id: '1', userId: 'u1', userName: '김현진', date: '2026-02-04', timeSlot: '오전 9시', trainerConfirmed: false, traineeConfirmed: false },
-        { id: '2', userId: 'u2', userName: '홍원준', date: '2026-02-04', timeSlot: '오전 10시', trainerConfirmed: false, traineeConfirmed: false },
-        { id: '3', userId: 'u3', userName: 'KS', date: '2026-02-04', timeSlot: '오후 2시', exerciseContent: 'Bench Press 3 sets, Squat 5 sets', trainerConfirmed: true, traineeConfirmed: true },
-        { id: '4', userId: 'u4', userName: '이분이', date: '2026-02-04', timeSlot: '오후 3시', trainerConfirmed: false, traineeConfirmed: false },
-        // Historical records for KS
-        { id: '5', userId: 'u3', userName: 'KS', date: '2026-02-01', timeSlot: '오전 11시', exerciseContent: 'Deadlift 4 sets, Rows 3 sets', trainerConfirmed: true, traineeConfirmed: true },
-        { id: '6', userId: 'u3', userName: 'KS', date: '2026-01-28', timeSlot: '오전 10시', exerciseContent: 'Squats 5 sets, Lunges 3 sets', trainerConfirmed: true, traineeConfirmed: true },
-        { id: '7', userId: 'u3', userName: 'KS', date: '2026-01-25', timeSlot: '오후 2시', exerciseContent: 'Pull-ups 4 sets, Dips 3 sets', trainerConfirmed: true, traineeConfirmed: false },
-    ]);
+    // Training sessions state - dates relative to current week
+    const [trainingSessions, setTrainingSessions] = useState<TrainingSession[]>(() => {
+        const today = new Date();
+        const toDateStr = (d: Date) => d.toISOString().slice(0, 10);
+        const daysAgo = (n: number) => { const d = new Date(today); d.setDate(d.getDate() - n); return toDateStr(d); };
+        return [
+            { id: '1', userId: 'u1', userName: '김현진', date: toDateStr(today), timeSlot: '오전 9시', trainerConfirmed: false, traineeConfirmed: false },
+            { id: '2', userId: 'u2', userName: '홍원준', date: toDateStr(today), timeSlot: '오전 10시', trainerConfirmed: false, traineeConfirmed: false },
+            { id: '3', userId: 'u3', userName: 'KS', date: toDateStr(today), timeSlot: '오후 2시', exerciseContent: 'Bench Press 3 sets, Squat 5 sets', trainerConfirmed: true, traineeConfirmed: true },
+            { id: '4', userId: 'u4', userName: '이분이', date: toDateStr(today), timeSlot: '오후 3시', trainerConfirmed: false, traineeConfirmed: false },
+            // Historical records for KS
+            { id: '5', userId: 'u3', userName: 'KS', date: daysAgo(3), timeSlot: '오전 11시', exerciseContent: 'Deadlift 4 sets, Rows 3 sets', trainerConfirmed: true, traineeConfirmed: true },
+            { id: '6', userId: 'u3', userName: 'KS', date: daysAgo(7), timeSlot: '오전 10시', exerciseContent: 'Squats 5 sets, Lunges 3 sets', trainerConfirmed: true, traineeConfirmed: true },
+            { id: '7', userId: 'u3', userName: 'KS', date: daysAgo(10), timeSlot: '오후 2시', exerciseContent: 'Pull-ups 4 sets, Dips 3 sets', trainerConfirmed: true, traineeConfirmed: false },
+        ];
+    });
 
     // Locker assignments state
-    const [lockerAssignments, setLockerAssignments] = useState<LockerAssignment[]>([
-        { lockerNumber: 1, userId: 'u1', userName: '이지우', assignedDate: '2026-01-01' },
-        { lockerNumber: 2, userId: 'u2', userName: '정승제', assignedDate: '2026-01-01' },
-        { lockerNumber: 7, userId: 'u3', userName: '이분이', assignedDate: '2026-01-05' },
-        { lockerNumber: 8, userId: 'u4', userName: 'Saffaan', assignedDate: '2026-01-05' },
-        { lockerNumber: 10, userId: 'u5', userName: 'Paul Kim', assignedDate: '2026-02-04' },
-    ]);
+    const [lockerAssignments, setLockerAssignments] = useState<LockerAssignment[]>(() => {
+        const today = new Date().toISOString().slice(0, 10);
+        const monthAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+        return [
+            { lockerNumber: 1, userId: 'u1', userName: '이지우', assignedDate: monthAgo },
+            { lockerNumber: 2, userId: 'u2', userName: '정승제', assignedDate: monthAgo },
+            { lockerNumber: 7, userId: 'u3', userName: '이분이', assignedDate: monthAgo },
+            { lockerNumber: 8, userId: 'u4', userName: 'Saffaan', assignedDate: monthAgo },
+            { lockerNumber: 10, userId: 'u5', userName: 'Paul Kim', assignedDate: today },
+        ];
+    });
 
     // Dialog states
     const [isBookingDialogOpen, setIsBookingDialogOpen] = useState(false);
@@ -98,10 +107,20 @@ export function WelfareTab() {
 
     // Training records state - now session-based instead of user-based
     const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
-    const [currentRecordsDate, setCurrentRecordsDate] = useState('2026-02-04'); // Using fixed date for demo
+    const [currentRecordsDate, setCurrentRecordsDate] = useState(() => {
+        return new Date().toISOString().slice(0, 10);
+    });
 
-    // Current week dates (for calendar view)
-    const [currentWeekStart, setCurrentWeekStart] = useState(new Date('2026-02-02'));
+    // Current week dates (for calendar view) — default to current week's Monday
+    const [currentWeekStart, setCurrentWeekStart] = useState(() => {
+        const now = new Date();
+        const day = now.getDay(); // 0=Sun, 1=Mon, ...
+        const diff = day === 0 ? -6 : 1 - day; // Adjust to Monday
+        const monday = new Date(now);
+        monday.setDate(now.getDate() + diff);
+        monday.setHours(0, 0, 0, 0);
+        return monday;
+    });
 
     const getWeekDates = () => {
         const dates = [];

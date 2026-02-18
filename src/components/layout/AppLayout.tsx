@@ -13,6 +13,7 @@ import { Sidebar, EnhancedMobileNav } from './';
 import { useAppStore } from '@/stores/appStore';
 import { cn } from '@/lib/utils';
 import { ChatPanel } from '@/components/chat/ChatPanel';
+import { NewProjectModal } from '@/components/project/NewProjectModal';
 import {
   ResizablePanelGroup,
   ResizablePanel,
@@ -22,7 +23,7 @@ import { MessageSquare, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 export function AppLayout() {
-  const { sidebarCollapsed, chatPanelCollapsed, setChatPanelCollapsed } = useAppStore();
+  const { sidebarCollapsed, chatPanelCollapsed, setChatPanelCollapsed, projectCreateDialogOpen, setProjectCreateDialogOpen } = useAppStore();
   const [isLargeScreen, setIsLargeScreen] = useState(false);
 
   // Detect screen size for responsive layout
@@ -143,6 +144,9 @@ export function AppLayout() {
 
       {/* Mobile Navigation (Header + Bottom Nav) */}
       <EnhancedMobileNav />
+
+      {/* Global New Project Modal — triggered from widget + button or bottom nav */}
+      <NewProjectModal open={projectCreateDialogOpen} onOpenChange={setProjectCreateDialogOpen} />
     </div>
   );
 }

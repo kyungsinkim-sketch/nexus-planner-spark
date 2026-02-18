@@ -32,7 +32,7 @@ export function MobileNav() {
     { path: '/chat', icon: MessageSquare, labelKey: 'chat' as const, visible: true },
     { path: '/inbox', icon: Inbox, labelKey: 'inbox' as const, visible: true },
     { path: '/profile', icon: User, labelKey: 'myProfile' as const, visible: true },
-    { path: '/admin', icon: Settings, labelKey: 'admin' as const, visible: currentUser.role === 'ADMIN' },
+    { path: '/admin', icon: Settings, labelKey: 'admin' as const, visible: currentUser.role === 'ADMIN' || currentUser.role === 'MANAGER' },
   ].filter(item => item.visible);
 
   const getInitials = (name: string) => {

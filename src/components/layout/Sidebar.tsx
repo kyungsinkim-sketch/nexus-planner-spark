@@ -60,7 +60,7 @@ export function Sidebar() {
   // Simplified nav — Calendar, Projects, Inbox, Profile are now widgets
   const navItems = [
     { path: '/', icon: Home, labelKey: 'dashboard' as const, visible: true, pro: false },
-    { path: '/admin', icon: Crown, labelKey: 'admin' as const, visible: currentUser?.role === 'ADMIN', pro: true },
+    { path: '/admin', icon: Crown, labelKey: 'admin' as const, visible: currentUser?.role === 'ADMIN' || currentUser?.role === 'MANAGER', pro: true },
     { path: '/settings', icon: Settings, labelKey: 'settings' as const, visible: true, pro: false },
   ].filter(item => item.visible);
 

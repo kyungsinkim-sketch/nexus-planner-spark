@@ -14,7 +14,7 @@ export function MobileBottomNav() {
     { path: '/projects', icon: FolderKanban, labelKey: 'projects' as const, visible: true },
     { path: '/chat', icon: MessageSquare, labelKey: 'chat' as const, visible: true },
     { path: '/inbox', icon: Inbox, labelKey: 'inbox' as const, visible: true },
-    { path: '/admin', icon: Settings, labelKey: 'admin' as const, visible: currentUser.role === 'ADMIN' },
+    { path: '/admin', icon: Settings, labelKey: 'admin' as const, visible: currentUser.role === 'ADMIN' || currentUser.role === 'MANAGER' },
   ].filter(item => item.visible);
 
   return (

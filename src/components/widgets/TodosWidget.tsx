@@ -40,7 +40,7 @@ const PRIORITIES = ['HIGH', 'NORMAL', 'LOW'] as const;
 function TodosWidget({ context }: { context: WidgetDataContext }) {
   const {
     personalTodos, currentUser, users, projects,
-    addTodo, completeTodo, updateTodo,
+    addTodo, completeTodo, updateTodo, addEvent,
     todoCreateDialogOpen, setTodoCreateDialogOpen,
   } = useAppStore();
   const { t, language } = useTranslation();
@@ -104,17 +104,40 @@ function TodosWidget({ context }: { context: WidgetDataContext }) {
     const assigneeIds = selectedAssignees.length > 0
       ? selectedAssignees.map(u => u.id)
       : [currentUser.id];
+    const todoDueDate = newDueDate || new Date().toISOString();
+    const todoProjectId = context.type === 'project' ? context.projectId : undefined;
+
     await addTodo({
       title: newTitle.trim(),
       assigneeIds,
       requestedById: currentUser.id,
-      dueDate: newDueDate || new Date().toISOString(),
+      dueDate: todoDueDate,
       priority: newPriority,
-      projectId: context.type === 'project' ? context.projectId : undefined,
+      projectId: todoProjectId,
     });
+
+    // Sync to calendar as TODO event
+    try {
+      const dueDate = new Date(todoDueDate);
+      dueDate.setHours(9, 0, 0, 0); // Default to 9:00 AM
+      const endDate = new Date(dueDate);
+      endDate.setHours(10, 0, 0, 0); // 1 hour duration
+      await addEvent({
+        title: `📋 ${newTitle.trim()}`,
+        type: 'TODO',
+        startAt: dueDate.toISOString(),
+        endAt: endDate.toISOString(),
+        ownerId: currentUser.id,
+        projectId: todoProjectId,
+        source: 'PAULUS',
+      });
+    } catch {
+      // Calendar sync is best-effort, don't block todo creation
+    }
+
     toast.success(t('todoCreated'));
     setTodoCreateDialogOpen(false);
-  }, [newTitle, newDueDate, newPriority, selectedAssignees, currentUser, context, addTodo, setTodoCreateDialogOpen, t]);
+  }, [newTitle, newDueDate, newPriority, selectedAssignees, currentUser, context, addTodo, addEvent, setTodoCreateDialogOpen, t]);
 
   // Checkbox click → complete
   const handleToggle = async (e: React.MouseEvent, todoId: string, currentStatus: string) => {

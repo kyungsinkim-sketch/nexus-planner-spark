@@ -48,6 +48,7 @@ interface AppState {
   // Widget Settings (persisted per-widget configuration)
   widgetSettings: Record<string, Record<string, unknown>>;
   todoCreateDialogOpen: boolean;
+  projectCreateDialogOpen: boolean;
   worldClockSettingsOpen: boolean;
   weatherSettingsOpen: boolean;
 
@@ -85,6 +86,7 @@ interface AppState {
   setBrainIntelligenceEnabled: (enabled: boolean) => void;
   updateWidgetSettings: (widgetType: string, settings: Record<string, unknown>) => void;
   setTodoCreateDialogOpen: (open: boolean) => void;
+  setProjectCreateDialogOpen: (open: boolean) => void;
   setWorldClockSettingsOpen: (open: boolean) => void;
   setWeatherSettingsOpen: (open: boolean) => void;
 
@@ -176,6 +178,7 @@ export const useAppStore = create<AppState>()(
       brainIntelligenceEnabled: false,
       widgetSettings: {},
       todoCreateDialogOpen: false,
+      projectCreateDialogOpen: false,
       worldClockSettingsOpen: false,
       weatherSettingsOpen: false,
       deletedMockEventIds: [],
@@ -982,6 +985,7 @@ export const useAppStore = create<AppState>()(
       })),
 
       setTodoCreateDialogOpen: (open) => set({ todoCreateDialogOpen: open }),
+      setProjectCreateDialogOpen: (open) => set({ projectCreateDialogOpen: open }),
       setWorldClockSettingsOpen: (open) => set({ worldClockSettingsOpen: open }),
       setWeatherSettingsOpen: (open) => set({ weatherSettingsOpen: open }),
 

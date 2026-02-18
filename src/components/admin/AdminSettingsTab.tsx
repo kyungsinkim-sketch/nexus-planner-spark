@@ -181,24 +181,29 @@ export function AdminSettingsTab() {
     }, [newUserName, newUserEmail, newUserRole, loadUsers]);
 
     const handleUpdateUserRole = useCallback(async (userId: string, newRole: UserRole) => {
-        if (!isSupabaseConfigured()) {
-            toast.error(t('supabaseNotConfigured'));
-            return;
-        }
+        if (isSupabaseConfigured()) {
+            try {
+                const { error } = await supabase
+                    .from('profiles')
+                    .update({ role: newRole })
+                    .eq('id', userId);
 
-        try {
-            const { error } = await supabase
-                .from('profiles')
-                .update({ role: newRole })
-                .eq('id', userId);
+                if (error) throw error;
 
-            if (error) throw error;
-
+                toast.success(t('roleUpdated'));
+                await loadUsers();
+            } catch (error: unknown) {
+                const message = error instanceof Error ? error.message : t('roleUpdateFailed');
+                toast.error(message);
+            }
+        } else {
+            // Mock mode — update local store directly
+            const { users: storeUsers } = useAppStore.getState();
+            const updatedUsers = storeUsers.map(u =>
+                u.id === userId ? { ...u, role: newRole } : u
+            );
+            useAppStore.setState({ users: updatedUsers });
             toast.success(t('roleUpdated'));
-            await loadUsers();
-        } catch (error: unknown) {
-            const message = error instanceof Error ? error.message : t('roleUpdateFailed');
-            toast.error(message);
         }
     }, [loadUsers]);
 
