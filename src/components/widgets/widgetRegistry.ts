@@ -29,6 +29,7 @@ import {
   StickyNote,
   Sparkles,
   Mail,
+  Mic,
 } from 'lucide-react';
 import type { WidgetDefinition, WidgetType, WidgetDataContext } from '@/types/widget';
 
@@ -56,6 +57,7 @@ export const WIDGET_COMPONENTS: Record<WidgetType, ComponentType<{ context: Widg
   importantNotes: lazy(() => import('./ImportantNotesWidget')),
   inspiration:    lazy(() => import('./InspirationWidget')),
   email:          lazy(() => import('./EmailWidget')),
+  voiceRecorder:  lazy(() => import('./VoiceRecorderWidget')),
 };
 
 // Widget definitions (metadata)
@@ -236,5 +238,13 @@ export const WIDGET_DEFINITIONS: Record<WidgetType, WidgetDefinition> = {
     defaultSize: { w: 4, h: 4 },
     minSize: { w: 3, h: 3 },
     contexts: ['dashboard'],
+  },
+  voiceRecorder: {
+    type: 'voiceRecorder',
+    titleKey: 'voiceRecorder',
+    icon: Mic,
+    defaultSize: { w: 4, h: 4 },
+    minSize: { w: 3, h: 3 },
+    contexts: ['dashboard', 'project'],
   },
 };

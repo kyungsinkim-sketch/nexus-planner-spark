@@ -558,6 +558,46 @@ export interface BrainReport {
   adminNote?: string;          // Admin's note when reviewing
 }
 
+// ─── Voice Recording (Voice-to-Brain) ─────────────────────
+
+export type VoiceRecordingStatus = 'uploading' | 'transcribing' | 'analyzing' | 'completed' | 'error';
+
+export interface VoiceRecording {
+  id: string;
+  title: string;
+  projectId?: string;
+  audioUrl: string;              // Supabase Storage URL
+  audioStoragePath: string;      // Storage path for Edge Function access
+  duration: number;              // seconds
+  status: VoiceRecordingStatus;
+  errorMessage?: string;
+  transcript?: TranscriptSegment[];
+  brainAnalysis?: VoiceBrainAnalysis;
+  createdAt: string;
+  createdBy: string;
+}
+
+export interface TranscriptSegment {
+  speaker: string;               // "Speaker 1" or resolved name
+  text: string;
+  startTime: number;             // seconds
+  endTime: number;               // seconds
+}
+
+export interface VoiceBrainAnalysis {
+  summary: string;
+  decisions: Array<{ content: string; decidedBy?: string; confidence?: number }>;
+  suggestedEvents: BrainExtractedEvent[];
+  actionItems: BrainExtractedTodo[];
+  followups: Array<{ content: string; remindDate?: string }>;
+  keyQuotes: Array<{ speaker: string; text: string; timestamp: number; importance?: string }>;
+}
+
+export interface RecordingMetadata {
+  title: string;
+  projectId?: string;
+}
+
 // Google Calendar Integration
 export type GoogleCalendarSyncStatus = 'DISCONNECTED' | 'CONNECTED' | 'SYNCING' | 'ERROR';
 

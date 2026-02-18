@@ -92,8 +92,13 @@ function SuggestionCard({
   onReject: () => void;
   onReply: () => void;
 }) {
+  const { projects } = useAppStore();
   const isPending = suggestion.status === 'pending';
   const isTerminal = ['executed', 'rejected', 'failed'].includes(suggestion.status);
+
+  // Resolve matched project name
+  const matchedProjectId = suggestion.suggestedEvent?.projectId || suggestion.suggestedTodo?.projectId;
+  const matchedProject = matchedProjectId ? projects.find(p => p.id === matchedProjectId) : undefined;
 
   return (
     <div className={`mt-1.5 rounded-lg border p-2 transition-all ${
@@ -105,6 +110,11 @@ function SuggestionCard({
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5 flex-wrap">
             <span className="text-[10px] font-medium text-primary">Brain 제안</span>
+            {matchedProject && (
+              <span className="inline-flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded-full bg-violet-500/10 text-violet-600 dark:text-violet-400 font-medium truncate max-w-[120px]">
+                {matchedProject.title}
+              </span>
+            )}
             <StatusBadge status={suggestion.status} />
           </div>
           <p className="text-[11px] text-foreground/80 mt-0.5">{suggestion.summary}</p>

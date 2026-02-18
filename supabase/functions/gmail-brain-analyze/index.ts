@@ -237,6 +237,60 @@ ${lines.join('\n')}
 Apply these corrections: if the user consistently changes project assignments, pay closer attention. If they remove certain suggestion types, be more conservative.`;
 }
 
+// ─── Retry helper ────────────────────────────────────
+
+async function sleep(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+/** Custom error class that carries the upstream HTTP status */
+class ApiError extends Error {
+  status: number;
+  constructor(message: string, status: number) {
+    super(message);
+    this.status = status;
+  }
+}
+
+// ─── JSON repair helper ──────────────────────────────
+
+function tryParseJson(raw: string): unknown[] | null {
+  // 1. Direct parse
+  try {
+    return JSON.parse(raw);
+  } catch { /* continue to repair */ }
+
+  // 2. Remove trailing commas before } or ]
+  let repaired = raw.replace(/,\s*([}\]])/g, '$1');
+
+  // 3. If the JSON is truncated mid-string, try to close it gracefully
+  //    Find the last complete object boundary
+  const lastBracket = repaired.lastIndexOf('}');
+  if (lastBracket > 0 && !repaired.trim().endsWith(']')) {
+    repaired = repaired.slice(0, lastBracket + 1) + ']';
+  }
+
+  try {
+    return JSON.parse(repaired);
+  } catch { /* continue */ }
+
+  // 4. Try extracting individual JSON objects from the broken array
+  const objects: unknown[] = [];
+  const objectRegex = /\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}/g;
+  let match;
+  while ((match = objectRegex.exec(repaired)) !== null) {
+    try {
+      objects.push(JSON.parse(match[0]));
+    } catch { /* skip malformed object */ }
+  }
+  if (objects.length > 0) {
+    console.warn(`[gmail-brain-analyze] JSON repair: recovered ${objects.length} objects from broken response`);
+    return objects;
+  }
+
+  return null;
+}
+
 // ─── Claude API call ─────────────────────────────────
 
 async function analyzeEmails(
@@ -271,37 +325,70 @@ ${emailsContext}`;
   // Build full system prompt with context + feedback
   const systemPrompt = SYSTEM_PROMPT_BASE + buildContextPrompt(context) + buildFeedbackPrompt(feedback);
 
-  const response = await fetch(ANTHROPIC_API_URL, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': anthropicKey,
-      'anthropic-version': '2023-06-01',
-    },
-    body: JSON.stringify({
-      model: MODEL,
-      max_tokens: MAX_TOKENS,
-      system: systemPrompt,
-      messages: [{ role: 'user', content: userMessage }],
-    }),
+  const requestBody = JSON.stringify({
+    model: MODEL,
+    max_tokens: MAX_TOKENS,
+    system: systemPrompt,
+    messages: [{ role: 'user', content: userMessage }],
   });
 
-  if (!response.ok) {
+  // ── Retry wrapper (max 2 retries for 429/529) ──
+  let lastError: Error | null = null;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const response = await fetch(ANTHROPIC_API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': anthropicKey,
+        'anthropic-version': '2023-06-01',
+      },
+      body: requestBody,
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      const content = data.content?.[0]?.text || '[]';
+
+      // Extract JSON from response (may be wrapped in ```json blocks)
+      const jsonMatch = content.match(/\[[\s\S]*\]/);
+      if (!jsonMatch) {
+        console.warn('[gmail-brain-analyze] No JSON array found in response, returning empty');
+        return [];
+      }
+
+      // Robust JSON parse with repair
+      const parsed = tryParseJson(jsonMatch[0]);
+      if (parsed === null) {
+        console.warn('[gmail-brain-analyze] JSON parse failed even after repair, returning empty');
+        return [];
+      }
+      return parsed;
+    }
+
+    // Handle retryable errors
+    const status = response.status;
     const errText = await response.text();
-    throw new Error(`Claude API error: ${response.status} - ${errText}`);
+
+    if (status === 429 && attempt < 2) {
+      console.warn(`[gmail-brain-analyze] Rate limited (429), retry ${attempt + 1}/2 after 10s`);
+      await sleep(10_000);
+      lastError = new ApiError(`Claude API rate limited: ${errText}`, 429);
+      continue;
+    }
+
+    if (status === 529 && attempt < 2) {
+      console.warn(`[gmail-brain-analyze] API overloaded (529), retry ${attempt + 1}/2 after 5s`);
+      await sleep(5_000);
+      lastError = new ApiError(`Claude API overloaded: ${errText}`, 529);
+      continue;
+    }
+
+    // Non-retryable error — throw immediately
+    throw new ApiError(`Claude API error: ${status} - ${errText}`, status);
   }
 
-  const data = await response.json();
-  const content = data.content?.[0]?.text || '[]';
-
-  // Extract JSON from response (may be wrapped in ```json blocks)
-  const jsonMatch = content.match(/\[[\s\S]*\]/);
-  if (!jsonMatch) {
-    console.warn('[gmail-brain-analyze] No JSON array found in response');
-    return [];
-  }
-
-  return JSON.parse(jsonMatch[0]);
+  // All retries exhausted
+  throw lastError || new Error('analyzeEmails: unexpected retry exhaustion');
 }
 
 // ─── Main Handler ────────────────────────────────────
@@ -352,10 +439,19 @@ Deno.serve(async (req) => {
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
     );
   } catch (err) {
-    console.error('[gmail-brain-analyze] Error:', err);
+    const error = err as Error & { status?: number };
+    console.error('[gmail-brain-analyze] Error:', error.message);
+
+    // Differentiate error response status based on upstream cause
+    let status = 500;
+    if (error instanceof ApiError) {
+      if (error.status === 429) status = 429;        // Rate limited — pass through
+      else if (error.status === 529) status = 503;    // Overloaded → 503 Service Unavailable
+    }
+
     return new Response(
-      JSON.stringify({ error: (err as Error).message, suggestions: [] }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      JSON.stringify({ error: error.message, suggestions: [] }),
+      { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
     );
   }
 });

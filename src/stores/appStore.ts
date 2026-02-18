@@ -1,8 +1,9 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { User, Project, CalendarEvent, ChatMessage, ChatRoom, ChatMessageType, LocationShare, ScheduleShare, DecisionShare, FileGroup, FileItem, PerformanceSnapshot, PortfolioItem, PeerFeedback, ProjectContribution, ScoreSettings, UserWorkStatus, PersonalTodo, ImportantNote, InspirationQuote, CompanyNotification, GmailMessage, EmailBrainSuggestion, BrainNotification, BrainReport, BrainFeedback, BrainExtractedEvent, BrainExtractedTodo } from '@/types/core';
+import { User, Project, CalendarEvent, ChatMessage, ChatRoom, ChatMessageType, LocationShare, ScheduleShare, DecisionShare, FileGroup, FileItem, PerformanceSnapshot, PortfolioItem, PeerFeedback, ProjectContribution, ScoreSettings, UserWorkStatus, PersonalTodo, ImportantNote, InspirationQuote, CompanyNotification, GmailMessage, EmailBrainSuggestion, BrainNotification, BrainReport, BrainFeedback, BrainExtractedEvent, BrainExtractedTodo, VoiceRecording, RecordingMetadata } from '@/types/core';
 import { mockUsers, mockProjects, mockEvents, mockMessages, mockFileGroups, mockFiles, mockPerformanceSnapshots, mockPortfolioItems, mockPeerFeedback, mockProjectContributions, mockPersonalTodos, currentUser } from '@/mock/data';
 import * as gmailService from '@/services/gmailService';
+import * as audioService from '@/services/audioService';
 import { Language, getTranslation } from '@/lib/i18n';
 import { isSupabaseConfigured } from '@/lib/supabase';
 import * as projectService from '@/services/projectService';
@@ -74,6 +75,9 @@ interface AppState {
   brainNotifications: BrainNotification[];
   brainReports: BrainReport[];
   brainFeedback: BrainFeedback[];
+
+  // Voice Recordings (Voice-to-Brain)
+  voiceRecordings: VoiceRecording[];
 
   // Track locally-trashed Gmail message IDs so they don't reappear on sync
   // (server-side trash requires gmail.modify scope which may not be granted yet)
@@ -187,6 +191,11 @@ interface AppState {
   sendEmailReply: (suggestionId: string, editedBody?: string) => Promise<void>;
   composeEmail: (to: string, subject: string, body: string) => Promise<{ success: boolean; error?: string }>;
   replyToEmail: (messageId: string, body: string) => Promise<{ success: boolean; error?: string }>;
+
+  // Voice Recording Actions
+  startVoiceRecording: (blob: Blob, metadata: RecordingMetadata) => Promise<void>;
+  uploadVoiceFile: (file: File, metadata: RecordingMetadata) => Promise<void>;
+  updateVoiceRecording: (id: string, updates: Partial<VoiceRecording>) => void;
 
   // Brain AI Notification & Report Actions
   addBrainNotification: (notification: Omit<BrainNotification, 'id' | 'createdAt'>) => void;
@@ -319,6 +328,7 @@ export const useAppStore = create<AppState>()(
       brainNotifications: [],
       brainReports: [],
       brainFeedback: [],
+      voiceRecordings: [],
       trashedGmailMessageIds: [],
       deletedMockEventIds: [],
       selectedProjectId: null,
@@ -1240,6 +1250,106 @@ export const useAppStore = create<AppState>()(
         }
       },
 
+      // ─── Voice Recording Actions ─────────────────────
+
+      startVoiceRecording: async (blob: Blob, metadata: RecordingMetadata) => {
+        const state = get();
+        if (!state.currentUser) return;
+
+        const recordingId = crypto.randomUUID();
+        const recording: VoiceRecording = {
+          id: recordingId,
+          title: metadata.title,
+          projectId: metadata.projectId,
+          audioUrl: '',
+          audioStoragePath: '',
+          duration: 0,
+          status: 'uploading',
+          createdAt: new Date().toISOString(),
+          createdBy: state.currentUser.id,
+        };
+
+        // Add to state immediately
+        set({ voiceRecordings: [recording, ...state.voiceRecordings] });
+
+        try {
+          // Get duration
+          const duration = await audioService.getAudioDuration(blob);
+
+          // Upload to Supabase Storage
+          const { storagePath, publicUrl } = await audioService.uploadAudio(
+            blob, state.currentUser.id, metadata,
+          );
+
+          // Update with URL + duration
+          set((s) => ({
+            voiceRecordings: s.voiceRecordings.map(r =>
+              r.id === recordingId
+                ? { ...r, audioUrl: publicUrl, audioStoragePath: storagePath, duration, status: 'transcribing' as const }
+                : r
+            ),
+          }));
+
+          // Start transcription
+          const transcript = await audioService.transcribeAudio(
+            state.currentUser!.id, recordingId, storagePath,
+          );
+
+          set((s) => ({
+            voiceRecordings: s.voiceRecordings.map(r =>
+              r.id === recordingId
+                ? { ...r, transcript, status: 'analyzing' as const }
+                : r
+            ),
+          }));
+
+          // Start Brain analysis
+          const brainContext = {
+            projects: state.projects.map(p => ({
+              id: p.id, title: p.title, client: p.client,
+              status: p.status, teamMemberIds: p.teamMemberIds,
+            })),
+            users: state.users.map(u => ({
+              id: u.id, name: u.name, department: u.department, role: u.role,
+            })),
+          };
+
+          const analysis = await audioService.analyzeTranscript(
+            state.currentUser!.id, recordingId, transcript, brainContext,
+          );
+
+          set((s) => ({
+            voiceRecordings: s.voiceRecordings.map(r =>
+              r.id === recordingId
+                ? { ...r, brainAnalysis: analysis, status: 'completed' as const }
+                : r
+            ),
+          }));
+        } catch (err) {
+          console.error('[VoiceRecording] Pipeline error:', err);
+          set((s) => ({
+            voiceRecordings: s.voiceRecordings.map(r =>
+              r.id === recordingId
+                ? { ...r, status: 'error' as const, errorMessage: (err as Error).message }
+                : r
+            ),
+          }));
+        }
+      },
+
+      uploadVoiceFile: async (file: File, metadata: RecordingMetadata) => {
+        const blob = new Blob([file], { type: file.type });
+        await get().startVoiceRecording(blob, metadata);
+      },
+
+      updateVoiceRecording: (id: string, updates: Partial<VoiceRecording>) => {
+        set((s) => ({
+          voiceRecordings: s.voiceRecordings.map(r =>
+            r.id === id ? { ...r, ...updates } : r
+          ),
+        }));
+      },
+
       analyzeEmail: async (messageId: string) => {
         const state = get();
         if (!state.currentUser) return;
@@ -1712,7 +1822,7 @@ export const useAppStore = create<AppState>()(
     }),
     {
       name: 're-be-storage',
-      version: 5, // v2: clear garbled gmail cache, v3: brainNotifications+brainReports, v4: trashedGmailMessageIds, v5: brainFeedback
+      version: 6, // v2: clear garbled gmail cache, v3: brainNotifications+brainReports, v4: trashedGmailMessageIds, v5: brainFeedback, v6: voiceRecordings
       migrate: (persisted, version) => {
         const state = persisted as Record<string, unknown>;
         if (version < 2) {
@@ -1727,6 +1837,9 @@ export const useAppStore = create<AppState>()(
         }
         if (version < 5) {
           state.brainFeedback = [];
+        }
+        if (version < 6) {
+          state.voiceRecordings = [];
         }
         return state;
       },
@@ -1753,6 +1866,7 @@ export const useAppStore = create<AppState>()(
         brainNotifications: state.brainNotifications,
         brainReports: state.brainReports,
         brainFeedback: state.brainFeedback,
+        voiceRecordings: state.voiceRecordings,
       }),
       merge: (persisted, current) => {
         const merged = { ...current, ...(persisted as Partial<AppState>) };

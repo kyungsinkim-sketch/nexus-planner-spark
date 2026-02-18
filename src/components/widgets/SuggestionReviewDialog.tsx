@@ -35,6 +35,7 @@ import {
   Calendar,
   CheckSquare,
   FileText,
+  FolderOpen,
   Loader2,
   Sparkles,
 } from 'lucide-react';
@@ -247,6 +248,10 @@ export function SuggestionReviewDialog({
 
   const canSubmit = !isSubmitting && (includeEvent || includeTodo || includeNote);
 
+  // Resolve matched project from suggestion data
+  const matchedProjectId = suggestion?.suggestedEvent?.projectId || suggestion?.suggestedTodo?.projectId;
+  const matchedProject = matchedProjectId ? projects.find(p => p.id === matchedProjectId) : undefined;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto">
@@ -262,6 +267,20 @@ export function SuggestionReviewDialog({
 
         {suggestion && (
           <div className="space-y-4">
+            {/* Target project banner */}
+            <div className={`flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs ${
+              matchedProject
+                ? 'bg-violet-500/10 text-violet-700 dark:text-violet-300'
+                : 'bg-muted/20 text-muted-foreground'
+            }`}>
+              <FolderOpen className="w-3.5 h-3.5 shrink-0" />
+              {matchedProject ? (
+                <span className="font-medium truncate">{t('brainTargetProject')}: {matchedProject.title}</span>
+              ) : (
+                <span>{t('brainProjectUnassigned')}</span>
+              )}
+            </div>
+
             {/* Summary */}
             <div className="rounded-md bg-muted/30 p-2.5 text-xs text-foreground/80">
               <span className="font-medium text-primary">{t('brainSummary')}: </span>

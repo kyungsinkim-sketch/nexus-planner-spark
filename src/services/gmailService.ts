@@ -81,12 +81,20 @@ export async function analyzeWithBrain(
     });
 
     if (error) {
-      console.error('[Gmail] Brain analysis error:', error);
+      // Differentiate logging level based on error type
+      const errMsg = error.message || String(error);
+      if (errMsg.includes('429') || errMsg.includes('rate limit')) {
+        console.warn('[Gmail] Brain analysis rate limited (429) — will retry automatically');
+      } else if (errMsg.includes('503') || errMsg.includes('overload')) {
+        console.warn('[Gmail] Brain analysis temporarily unavailable (503)');
+      } else {
+        console.error('[Gmail] Brain analysis error:', error);
+      }
       return [];
     }
 
     if (data?.error) {
-      console.error('[Gmail] Brain analysis error:', data.error);
+      console.warn('[Gmail] Brain analysis returned error:', data.error);
       return [];
     }
 

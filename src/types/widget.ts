@@ -30,7 +30,8 @@ export type WidgetType =
   | 'todaySchedule'
   | 'importantNotes'
   | 'inspiration'
-  | 'email';
+  | 'email'
+  | 'voiceRecorder';
 
 // Widget context — determines which data scope a widget uses
 export type WidgetContext = 'dashboard' | 'project';
