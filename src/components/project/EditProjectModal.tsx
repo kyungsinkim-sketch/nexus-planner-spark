@@ -44,6 +44,10 @@ const KEY_COLORS = [
   { value: '#84cc16', label: 'Lime' },
   { value: '#f97316', label: 'Orange' },
   { value: '#6366f1', label: 'Indigo' },
+  { value: '#ffffff', label: 'White' },
+  { value: '#d1d5db', label: 'Light Grey' },
+  { value: '#6b7280', label: 'Dark Grey' },
+  { value: '#1f2937', label: 'Black' },
 ];
 
 export function EditProjectModal({ open, onOpenChange, project }: EditProjectModalProps) {
@@ -270,10 +274,10 @@ export function EditProjectModal({ open, onOpenChange, project }: EditProjectMod
                   type="button"
                   onClick={() => setFormData(prev => ({ ...prev, keyColor: color.value }))}
                   className={`w-8 h-8 rounded-full border-2 transition-all ${
-                    formData.keyColor === color.value 
-                      ? 'border-foreground scale-110' 
+                    formData.keyColor === color.value
+                      ? 'border-foreground scale-110'
                       : 'border-transparent hover:scale-105'
-                  }`}
+                  } ${color.value === '#ffffff' ? 'border border-gray-300' : ''}`}
                   style={{ backgroundColor: color.value }}
                   title={color.label}
                 />

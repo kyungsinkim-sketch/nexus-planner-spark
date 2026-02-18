@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -47,7 +47,7 @@ interface LockerAssignment {
 // Time slots for the weekly calendar
 const timeSlots = [
     '오전 9시', '오전 10시', '오전 11시', '오후 12시',
-    '오후 1시', '오후 2시', '오후 3시', '오후 4시', '오후 5시'
+    '오후 1시', '오후 2시', '오후 3시', '오후 4시', '오후 5시', '오후 6시'
 ];
 
 // Format date to YYYY-MM-DD in LOCAL timezone (avoids UTC date-shift bug)
@@ -68,9 +68,18 @@ const parseLocalDate = (dateStr: string, hour = 0): Date => {
 const timeSlotToHour = (slot: string): number => {
     const hourMap: { [key: string]: number } = {
         '오전 9시': 9, '오전 10시': 10, '오전 11시': 11, '오후 12시': 12,
-        '오후 1시': 13, '오후 2시': 14, '오후 3시': 15, '오후 4시': 16, '오후 5시': 17
+        '오후 1시': 13, '오후 2시': 14, '오후 3시': 15, '오후 4시': 16, '오후 5시': 17, '오후 6시': 18
     };
     return hourMap[slot] || 9;
+};
+
+// Reverse mapping: hour → time slot label
+const hourToTimeSlot = (hour: number): string => {
+    const reverseMap: { [key: number]: string } = {
+        9: '오전 9시', 10: '오전 10시', 11: '오전 11시', 12: '오후 12시',
+        13: '오후 1시', 14: '오후 2시', 15: '오후 3시', 16: '오후 4시', 17: '오후 5시', 18: '오후 6시'
+    };
+    return reverseMap[hour] || '오전 9시';
 };
 
 export function WelfareTab() {
@@ -78,8 +87,25 @@ export function WelfareTab() {
     const { users, currentUser, addEvent, events, updateEvent, deleteEvent } = useAppStore();
     const [selectedTab, setSelectedTab] = useState('calendar');
 
-    // Training sessions state — starts empty (no mock data)
-    const [trainingSessions, setTrainingSessions] = useState<TrainingSession[]>([]);
+    // Derive training sessions from persisted calendar events (R_TRAINING type)
+    // This ensures sessions survive component re-mount and tab switches
+    const trainingSessions = useMemo<TrainingSession[]>(() => {
+        return events
+            .filter(e => e.type === 'R_TRAINING')
+            .map(e => {
+                const start = new Date(e.startAt);
+                const user = users.find(u => u.id === e.ownerId);
+                return {
+                    id: e.id,
+                    userId: e.ownerId,
+                    userName: user?.name || e.ownerId,
+                    date: toLocalDateStr(start),
+                    timeSlot: hourToTimeSlot(start.getHours()),
+                    trainerConfirmed: false,
+                    traineeConfirmed: false,
+                };
+            });
+    }, [events, users]);
 
     // Locker assignments state
     const [lockerAssignments, setLockerAssignments] = useState<LockerAssignment[]>(() => {
@@ -183,7 +209,7 @@ export function WelfareTab() {
         setIsBookingDialogOpen(true);
     };
 
-    // Handle edit booking save (change time/date)
+    // Handle edit booking save (change time/date) — updates the calendar event directly
     const handleSaveEditBooking = async () => {
         if (!editingSession) return;
 
@@ -195,42 +221,17 @@ export function WelfareTab() {
                 toast.error(t('slotAlreadyBooked'));
                 return;
             }
-        }
 
-        const oldTimeSlot = editingSession.timeSlot;
-        const oldDate = editingSession.date;
-
-        setTrainingSessions(prev =>
-            prev.map(s =>
-                s.id === editingSession.id
-                    ? { ...s, timeSlot: editTimeSlot, date: editDate }
-                    : s
-            )
-        );
-
-        // Sync calendar event if time/date changed
-        if (editTimeSlot !== oldTimeSlot || editDate !== oldDate) {
-            const eventTitle = t('renatusTrainingEvent');
-            const oldHour = timeSlotToHour(oldTimeSlot);
-            const oldStart = parseLocalDate(oldDate, oldHour);
-
-            const matchingEvent = events.find(
-                e => e.title === eventTitle &&
-                     e.ownerId === editingSession.userId &&
-                     e.startAt === oldStart.toISOString()
-            );
-
-            if (matchingEvent) {
-                const newHour = timeSlotToHour(editTimeSlot);
-                const newStart = parseLocalDate(editDate, newHour);
-                const newEnd = parseLocalDate(editDate, newHour + 1);
-                try {
-                    await updateEvent(matchingEvent.id, {
-                        startAt: newStart.toISOString(),
-                        endAt: newEnd.toISOString(),
-                    });
-                } catch { /* best-effort */ }
-            }
+            // Update the calendar event (sessions derive automatically)
+            const newHour = timeSlotToHour(editTimeSlot);
+            const newStart = parseLocalDate(editDate, newHour);
+            const newEnd = parseLocalDate(editDate, newHour + 1);
+            try {
+                await updateEvent(editingSession.id, {
+                    startAt: newStart.toISOString(),
+                    endAt: newEnd.toISOString(),
+                });
+            } catch { /* best-effort */ }
         }
 
         toast.success(`${editingSession.userName} ${t('bookingUpdated')}`);
@@ -238,28 +239,14 @@ export function WelfareTab() {
         setEditingSession(null);
     };
 
-    // Handle delete booking
+    // Handle delete booking — deletes the calendar event directly
     const handleDeleteBooking = async () => {
         if (!editingSession) return;
 
-        // Delete matching calendar event
-        const eventTitle = t('renatusTrainingEvent');
-        const hour = timeSlotToHour(editingSession.timeSlot);
-        const startDate = parseLocalDate(editingSession.date, hour);
+        try {
+            await deleteEvent(editingSession.id);
+        } catch { /* best-effort */ }
 
-        const matchingEvent = events.find(
-            e => e.title === eventTitle &&
-                 e.ownerId === editingSession.userId &&
-                 e.startAt === startDate.toISOString()
-        );
-
-        if (matchingEvent) {
-            try {
-                await deleteEvent(matchingEvent.id);
-            } catch { /* best-effort */ }
-        }
-
-        setTrainingSessions(prev => prev.filter(s => s.id !== editingSession.id));
         toast.success(`${editingSession.userName} ${t('bookingDeleted')}`);
         setIsEditBookingOpen(false);
         setEditingSession(null);
@@ -294,46 +281,22 @@ export function WelfareTab() {
             return;
         }
 
-        const oldTimeSlot = dragSession.timeSlot;
-        const oldDate = dragSession.date;
-
-        // Move session to new slot
-        setTrainingSessions(prev =>
-            prev.map(s =>
-                s.id === dragSession.id
-                    ? { ...s, timeSlot, date: dateStr }
-                    : s
-            )
-        );
-
-        // Sync calendar: find matching event and update it
-        const eventTitle = t('renatusTrainingEvent');
-        const oldHour = timeSlotToHour(oldTimeSlot);
-        const oldStart = parseLocalDate(oldDate, oldHour);
-
-        const matchingEvent = events.find(
-            e => e.title === eventTitle &&
-                 e.ownerId === dragSession.userId &&
-                 e.startAt === oldStart.toISOString()
-        );
-
-        if (matchingEvent) {
-            const newHour = timeSlotToHour(timeSlot);
-            const newStart = parseLocalDate(dateStr, newHour);
-            const newEnd = parseLocalDate(dateStr, newHour + 1);
-            try {
-                await updateEvent(matchingEvent.id, {
-                    startAt: newStart.toISOString(),
-                    endAt: newEnd.toISOString(),
-                });
-            } catch { /* best-effort */ }
-        }
+        // Update the calendar event directly (sessions derive automatically)
+        const newHour = timeSlotToHour(timeSlot);
+        const newStart = parseLocalDate(dateStr, newHour);
+        const newEnd = parseLocalDate(dateStr, newHour + 1);
+        try {
+            await updateEvent(dragSession.id, {
+                startAt: newStart.toISOString(),
+                endAt: newEnd.toISOString(),
+            });
+        } catch { /* best-effort */ }
 
         toast.success(`${dragSession.userName} ${t('bookingMoved')}`);
         setDragSession(null);
     };
 
-    // Handle booking creation (with guard to prevent duplicate events)
+    // Handle booking creation — creates calendar event; session list derives automatically
     const handleCreateBooking = async () => {
         if (isCreatingBooking) return; // prevent double-click
         if (!selectedUserId) {
@@ -346,29 +309,13 @@ export function WelfareTab() {
 
         setIsCreatingBooking(true);
 
-        const newSession: TrainingSession = {
-            id: `session-${Date.now()}`,
-            userId: selectedUserId,
-            userName: user.name,
-            date: selectedDate,
-            timeSlot: selectedTimeSlot,
-            trainerConfirmed: false,
-            traineeConfirmed: false,
-        };
-
-        setTrainingSessions([...trainingSessions, newSession]);
-
-        // Add to user's personal calendar (single event only)
         const hour = timeSlotToHour(selectedTimeSlot);
-        // Parse date parts locally to avoid UTC date-shift bug
-        const [y, m, d] = selectedDate.split('-').map(Number);
-        const startDate = new Date(y, m - 1, d, hour, 0, 0, 0);
-        const endDate = new Date(y, m - 1, d, hour + 1, 0, 0, 0);
+        const startDate = parseLocalDate(selectedDate, hour);
+        const endDate = parseLocalDate(selectedDate, hour + 1);
 
-        // Check for existing duplicate event before creating
-        const { events: existingEvents } = useAppStore.getState();
+        // Check for existing duplicate event
         const eventTitle = t('renatusTrainingEvent');
-        const hasDuplicate = existingEvents.some(
+        const hasDuplicate = events.some(
             e => e.title === eventTitle &&
                  e.ownerId === selectedUserId &&
                  e.startAt === startDate.toISOString()
@@ -385,11 +332,11 @@ export function WelfareTab() {
                     source: 'PAULUS',
                 });
                 toast.success(`${user.name}${t('bookingCreatedWithCalendar')}`);
-            } catch (error) {
-                toast.success(t('bookingCreated'));
+            } catch {
+                toast.error(t('bookingCreated'));
             }
         } else {
-            toast.success(t('bookingCreated'));
+            toast.error(t('slotAlreadyBooked'));
         }
 
         setIsBookingDialogOpen(false);

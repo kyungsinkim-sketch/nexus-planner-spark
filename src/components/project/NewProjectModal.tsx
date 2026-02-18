@@ -28,6 +28,23 @@ import { toast } from 'sonner';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import { useTranslation } from '@/hooks/useTranslation';
 
+const KEY_COLORS = [
+  { value: '#3b82f6', label: 'Blue' },
+  { value: '#10b981', label: 'Emerald' },
+  { value: '#8b5cf6', label: 'Violet' },
+  { value: '#f59e0b', label: 'Amber' },
+  { value: '#ef4444', label: 'Red' },
+  { value: '#ec4899', label: 'Pink' },
+  { value: '#06b6d4', label: 'Cyan' },
+  { value: '#84cc16', label: 'Lime' },
+  { value: '#f97316', label: 'Orange' },
+  { value: '#6366f1', label: 'Indigo' },
+  { value: '#ffffff', label: 'White' },
+  { value: '#d1d5db', label: 'Light Grey' },
+  { value: '#6b7280', label: 'Dark Grey' },
+  { value: '#1f2937', label: 'Black' },
+];
+
 interface NewProjectModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -51,6 +68,7 @@ export function NewProjectModal({ open, onOpenChange }: NewProjectModalProps) {
     pmId: '',
     teamMemberIds: [] as string[],
     thumbnail: '' as string,
+    keyColor: '#3b82f6',
   });
 
   const selectedPM = users.find(u => u.id === formData.pmId);
@@ -90,6 +108,7 @@ export function NewProjectModal({ open, onOpenChange }: NewProjectModalProps) {
         tasksCompleted: 0,
         tasksTotal: 0,
         thumbnail: formData.thumbnail,
+        keyColor: formData.keyColor,
       };
 
       await addProject(newProject);
@@ -108,6 +127,7 @@ export function NewProjectModal({ open, onOpenChange }: NewProjectModalProps) {
         pmId: '',
         teamMemberIds: [],
         thumbnail: '',
+        keyColor: '#3b82f6',
       });
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : t('projectCreateFailed');
@@ -346,6 +366,27 @@ export function NewProjectModal({ open, onOpenChange }: NewProjectModalProps) {
               onValueChange={(value) => setFormData(prev => ({ ...prev, budget: value }))}
               onCurrencyChange={(currency) => setFormData(prev => ({ ...prev, currency }))}
             />
+          </div>
+
+          {/* Key Color Selection */}
+          <div className="space-y-2">
+            <Label>Project Key Color</Label>
+            <div className="flex flex-wrap gap-2">
+              {KEY_COLORS.map(color => (
+                <button
+                  key={color.value}
+                  type="button"
+                  onClick={() => setFormData(prev => ({ ...prev, keyColor: color.value }))}
+                  className={`w-8 h-8 rounded-full border-2 transition-all ${
+                    formData.keyColor === color.value
+                      ? 'border-foreground scale-110'
+                      : 'border-transparent hover:scale-105'
+                  } ${color.value === '#ffffff' ? 'border border-gray-300' : ''}`}
+                  style={{ backgroundColor: color.value }}
+                  title={color.label}
+                />
+              ))}
+            </div>
           </div>
 
           {/* PM Selection */}

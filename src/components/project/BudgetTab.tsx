@@ -157,9 +157,12 @@ const emptyBudgetData: ProjectBudget = {
 
 export function BudgetTab({ projectId }: BudgetTabProps) {
   const { t, language } = useTranslation();
-  // Only use mock data for the original project p1 (2025 data); new projects start empty
+  // Pre-existing 2025 projects (p1–p33) keep their mock budget data; new projects start empty
+  const isLegacyProject = /^p\d+$/.test(projectId);
   const [budget, setBudget] = useState<ProjectBudget>(
-    projectId === 'p1' ? mockBudgetData : { ...emptyBudgetData, summary: { ...emptyBudgetData.summary, projectId } }
+    isLegacyProject
+      ? { ...mockBudgetData, summary: { ...mockBudgetData.summary, projectId } }
+      : { ...emptyBudgetData, summary: { ...emptyBudgetData.summary, projectId } }
   );
   const [activeSection, setActiveSection] = useState<BudgetSection>('contract');
   const [expenseTab, setExpenseTab] = useState<'tax_invoice' | 'withholding' | 'corporate_card' | 'corporate_cash' | 'personal'>('tax_invoice');
