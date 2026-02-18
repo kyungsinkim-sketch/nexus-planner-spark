@@ -184,6 +184,8 @@ interface AppState {
   confirmEmailSuggestion: (suggestionId: string) => Promise<void>;
   rejectEmailSuggestion: (suggestionId: string) => void;
   sendEmailReply: (suggestionId: string, editedBody?: string) => Promise<void>;
+  composeEmail: (to: string, subject: string, body: string) => Promise<{ success: boolean; error?: string }>;
+  replyToEmail: (messageId: string, body: string) => Promise<{ success: boolean; error?: string }>;
 
   // Brain AI Notification & Report Actions
   addBrainNotification: (notification: Omit<BrainNotification, 'id' | 'createdAt'>) => void;
@@ -1426,6 +1428,42 @@ export const useAppStore = create<AppState>()(
         if (!result.success) {
           console.error('[Gmail] Reply send error:', result.error);
         }
+      },
+
+      composeEmail: async (to, subject, body) => {
+        const state = get();
+        if (!state.currentUser) return { success: false, error: 'Not logged in' };
+
+        const result = await gmailService.sendNewEmail(state.currentUser.id, { to, subject, body });
+        if (result.success) {
+          console.log('[Gmail] New email sent to:', to);
+        }
+        return result;
+      },
+
+      replyToEmail: async (messageId, body) => {
+        const state = get();
+        if (!state.currentUser) return { success: false, error: 'Not logged in' };
+
+        const email = state.gmailMessages.find(m => m.id === messageId);
+        if (!email) return { success: false, error: 'Email not found' };
+
+        // Extract email address from "Name <email>" format
+        const fromMatch = email.from.match(/<(.+?)>/);
+        const replyTo = fromMatch ? fromMatch[1] : email.from;
+
+        const result = await gmailService.sendReply(state.currentUser.id, {
+          threadId: email.threadId,
+          messageId: email.id,
+          body,
+          to: replyTo,
+          subject: `Re: ${email.subject}`,
+        });
+
+        if (!result.success) {
+          console.error('[Gmail] Direct reply error:', result.error);
+        }
+        return result;
       },
 
       // ── Brain AI Notification & Report Actions ──────

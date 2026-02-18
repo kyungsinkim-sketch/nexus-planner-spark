@@ -129,6 +129,42 @@ export async function sendReply(
   }
 }
 
+// ─── Send New Email ──────────────────────────────────
+
+export async function sendNewEmail(
+  userId: string,
+  params: {
+    to: string;
+    subject: string;
+    body: string;
+  },
+): Promise<{ success: boolean; error?: string }> {
+  if (isMockMode()) {
+    console.log('[Gmail Mock] New email sent:', params);
+    return { success: true };
+  }
+
+  try {
+    const { data, error } = await supabase.functions.invoke('gmail-send', {
+      body: { userId, ...params },
+    });
+
+    if (error) {
+      console.error('[Gmail] Send email error:', error);
+      return { success: false, error: error.message };
+    }
+
+    if (data && !data.success) {
+      return { success: false, error: data.error || 'Unknown error' };
+    }
+
+    return { success: true };
+  } catch (err) {
+    console.error('[Gmail] Send email exception:', err);
+    return { success: false, error: (err as Error).message };
+  }
+}
+
 // ─── Trash Email ─────────────────────────────────────
 
 export async function trashGmailMessage(

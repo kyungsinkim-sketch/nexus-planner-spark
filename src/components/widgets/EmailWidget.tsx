@@ -31,10 +31,13 @@ import {
   CheckCircle2,
   XCircle,
   Trash2,
+  Pencil,
+  Reply,
 } from 'lucide-react';
 import type { WidgetDataContext } from '@/types/widget';
-import type { EmailBrainSuggestion, BrainActionStatus } from '@/types/core';
+import type { EmailBrainSuggestion, BrainActionStatus, GmailMessage } from '@/types/core';
 import EmailReplyDialog from './EmailReplyDialog';
+import { ComposeEmailDialog } from './ComposeEmailDialog';
 
 // ─── Status Badge (reuses BrainActionBubble pattern) ────
 
@@ -186,6 +189,7 @@ function EmailItem({
   onReply,
   onTrash,
   onAnalyze,
+  onDirectReply,
 }: {
   emailId: string;
   suggestions: EmailBrainSuggestion[];
@@ -194,6 +198,7 @@ function EmailItem({
   onReply: (id: string) => void;
   onTrash: (id: string) => void;
   onAnalyze: (id: string) => void;
+  onDirectReply: (emailId: string) => void;
 }) {
   const { gmailMessages } = useAppStore();
   const [isExpanded, setIsExpanded] = useState(false);
@@ -252,8 +257,15 @@ function EmailItem({
           <div className="pl-5 text-[11px] text-foreground/80 whitespace-pre-wrap break-words max-h-48 overflow-auto rounded-md bg-muted/20 p-2">
             {email.body || email.snippet}
           </div>
-          {/* Action buttons: Brain Analyze + Trash */}
+          {/* Action buttons: Reply + Brain Analyze + Trash */}
           <div className="flex items-center gap-1.5 pl-5 mt-1.5">
+            <button
+              onClick={(e) => { e.stopPropagation(); onDirectReply(emailId); }}
+              className="flex items-center gap-1 text-[10px] px-2 py-1 rounded-md bg-blue-500/10 hover:bg-blue-500/20 text-blue-600 dark:text-blue-400 transition-colors"
+              title="답장"
+            >
+              <Reply className="w-3 h-3" /> 답장
+            </button>
             <button
               onClick={(e) => { e.stopPropagation(); onAnalyze(emailId); }}
               className="flex items-center gap-1 text-[10px] px-2 py-1 rounded-md bg-violet-500/10 hover:bg-violet-500/20 text-violet-600 dark:text-violet-400 transition-colors"
@@ -309,6 +321,8 @@ function EmailWidget({ context: _context }: { context: WidgetDataContext }) {
 
   const [isConnected, setIsConnected] = useState<boolean | null>(null);
   const [replyDialogSuggestionId, setReplyDialogSuggestionId] = useState<string | null>(null);
+  const [composeDialogOpen, setComposeDialogOpen] = useState(false);
+  const [replyToMessage, setReplyToMessage] = useState<GmailMessage | null>(null);
 
   // Check Gmail connection status
   useEffect(() => {
@@ -350,6 +364,19 @@ function EmailWidget({ context: _context }: { context: WidgetDataContext }) {
   const handleAnalyze = useCallback((messageId: string) => {
     analyzeEmail(messageId);
   }, [analyzeEmail]);
+
+  const handleDirectReply = useCallback((emailId: string) => {
+    const email = gmailMessages.find(m => m.id === emailId);
+    if (email) {
+      setReplyToMessage(email);
+      setComposeDialogOpen(true);
+    }
+  }, [gmailMessages]);
+
+  const handleCompose = useCallback(() => {
+    setReplyToMessage(null);
+    setComposeDialogOpen(true);
+  }, []);
 
   // Group suggestions by email
   const emailsWithSuggestions = gmailMessages.map(email => ({
@@ -403,6 +430,13 @@ function EmailWidget({ context: _context }: { context: WidgetDataContext }) {
             </span>
           )}
           <button
+            onClick={handleCompose}
+            className="p-1 rounded hover:bg-muted/50 text-muted-foreground hover:text-foreground transition-colors"
+            title={t('composeEmail')}
+          >
+            <Pencil className="w-3.5 h-3.5" />
+          </button>
+          <button
             onClick={handleRefresh}
             disabled={gmailSyncing}
             className="p-1 rounded hover:bg-muted/50 text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
@@ -431,18 +465,29 @@ function EmailWidget({ context: _context }: { context: WidgetDataContext }) {
               onReply={handleReply}
               onTrash={handleTrash}
               onAnalyze={handleAnalyze}
+              onDirectReply={handleDirectReply}
             />
           ))
         )}
       </div>
 
-      {/* Reply Dialog */}
+      {/* Reply Dialog (Brain suggestion reply) */}
       {replyDialogSuggestionId && (
         <EmailReplyDialog
           suggestionId={replyDialogSuggestionId}
           onClose={() => setReplyDialogSuggestionId(null)}
         />
       )}
+
+      {/* Compose / Direct Reply Dialog */}
+      <ComposeEmailDialog
+        open={composeDialogOpen}
+        onOpenChange={(open) => {
+          setComposeDialogOpen(open);
+          if (!open) setReplyToMessage(null);
+        }}
+        replyToMessage={replyToMessage ?? undefined}
+      />
     </div>
   );
 }
