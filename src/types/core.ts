@@ -182,7 +182,7 @@ export type ChatMessageType = 'text' | 'file' | 'location' | 'schedule' | 'decis
 
 export const BRAIN_BOT_USER_ID = '00000000-0000-0000-0000-000000000099';
 
-export type BrainActionType = 'create_todo' | 'create_event' | 'share_location';
+export type BrainActionType = 'create_todo' | 'create_event' | 'share_location' | 'submit_service_suggestion';
 export type BrainActionStatus = 'pending' | 'confirmed' | 'rejected' | 'executed' | 'failed';
 
 export interface BrainAction {
@@ -495,6 +495,44 @@ export interface EmailBrainSuggestion {
   suggestedReplyDraft?: string;           // Reply draft
   confidence: number;                     // 0-1
   status: BrainActionStatus;              // pending → confirmed → executed
+}
+
+// Brain AI Notification — logged when a confirmed suggestion creates data
+export type BrainNotificationType = 'brain_event' | 'brain_todo' | 'brain_note';
+
+export interface BrainNotification {
+  id: string;
+  type: BrainNotificationType;
+  title: string;           // e.g., "이벤트 생성됨"
+  message: string;         // e.g., "미팅 - 파울러스 사무실 (2026-02-19 14:00)"
+  emailSubject?: string;   // source email subject (if from email suggestion)
+  chatRoomId?: string;     // source chat room (if from chat Brain action)
+  createdAt: string;
+}
+
+// Brain Report — service suggestions collected from chat Brain interactions
+export type BrainReportCategory =
+  | 'feature_request'
+  | 'bug_report'
+  | 'ui_improvement'
+  | 'workflow_suggestion'
+  | 'other';
+
+export type BrainReportStatus = 'new' | 'reviewed' | 'implemented' | 'dismissed';
+
+export interface BrainReport {
+  id: string;
+  userId: string;
+  userName: string;
+  suggestion: string;          // The actual suggestion text
+  brainSummary: string;        // Brain's classification summary
+  category: BrainReportCategory;
+  priority: 'low' | 'medium' | 'high';
+  chatRoomId?: string;
+  messageId?: string;          // Source chat message ID
+  createdAt: string;
+  status: BrainReportStatus;
+  adminNote?: string;          // Admin's note when reviewing
 }
 
 // Google Calendar Integration

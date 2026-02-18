@@ -30,6 +30,7 @@ import {
   Clock,
   CheckCircle2,
   XCircle,
+  Trash2,
 } from 'lucide-react';
 import type { WidgetDataContext } from '@/types/widget';
 import type { EmailBrainSuggestion, BrainActionStatus } from '@/types/core';
@@ -183,12 +184,16 @@ function EmailItem({
   onConfirm,
   onReject,
   onReply,
+  onTrash,
+  onAnalyze,
 }: {
   emailId: string;
   suggestions: EmailBrainSuggestion[];
   onConfirm: (id: string) => void;
   onReject: (id: string) => void;
   onReply: (id: string) => void;
+  onTrash: (id: string) => void;
+  onAnalyze: (id: string) => void;
 }) {
   const { gmailMessages } = useAppStore();
   const [isExpanded, setIsExpanded] = useState(false);
@@ -247,6 +252,23 @@ function EmailItem({
           <div className="pl-5 text-[11px] text-foreground/80 whitespace-pre-wrap break-words max-h-48 overflow-auto rounded-md bg-muted/20 p-2">
             {email.body || email.snippet}
           </div>
+          {/* Action buttons: Brain Analyze + Trash */}
+          <div className="flex items-center gap-1.5 pl-5 mt-1.5">
+            <button
+              onClick={(e) => { e.stopPropagation(); onAnalyze(emailId); }}
+              className="flex items-center gap-1 text-[10px] px-2 py-1 rounded-md bg-violet-500/10 hover:bg-violet-500/20 text-violet-600 dark:text-violet-400 transition-colors"
+              title="Brain AI 분석"
+            >
+              <Brain className="w-3 h-3" /> Brain 분석
+            </button>
+            <button
+              onClick={(e) => { e.stopPropagation(); onTrash(emailId); }}
+              className="flex items-center gap-1 text-[10px] px-2 py-1 rounded-md bg-red-500/10 hover:bg-red-500/20 text-red-600 dark:text-red-400 transition-colors ml-auto"
+              title="이메일 삭제"
+            >
+              <Trash2 className="w-3 h-3" /> 삭제
+            </button>
+          </div>
         </div>
       )}
 
@@ -279,6 +301,8 @@ function EmailWidget({ context: _context }: { context: WidgetDataContext }) {
     gmailSyncing,
     gmailLastSyncAt,
     syncGmail,
+    trashEmail,
+    analyzeEmail,
     confirmEmailSuggestion,
     rejectEmailSuggestion,
   } = useAppStore();
@@ -318,6 +342,14 @@ function EmailWidget({ context: _context }: { context: WidgetDataContext }) {
   const handleReply = useCallback((suggestionId: string) => {
     setReplyDialogSuggestionId(suggestionId);
   }, []);
+
+  const handleTrash = useCallback((messageId: string) => {
+    trashEmail(messageId);
+  }, [trashEmail]);
+
+  const handleAnalyze = useCallback((messageId: string) => {
+    analyzeEmail(messageId);
+  }, [analyzeEmail]);
 
   // Group suggestions by email
   const emailsWithSuggestions = gmailMessages.map(email => ({
@@ -397,6 +429,8 @@ function EmailWidget({ context: _context }: { context: WidgetDataContext }) {
               onConfirm={confirmEmailSuggestion}
               onReject={rejectEmailSuggestion}
               onReply={handleReply}
+              onTrash={handleTrash}
+              onAnalyze={handleAnalyze}
             />
           ))
         )}

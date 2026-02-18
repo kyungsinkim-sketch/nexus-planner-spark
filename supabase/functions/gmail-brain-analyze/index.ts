@@ -60,6 +60,37 @@ Return a JSON array of suggestions. Each suggestion:
   "confidence": 0.0-1.0
 }
 
+## Korean Meeting/Schedule Detection Patterns
+Detect these Korean expressions as meeting_request or schedule_change intent:
+- "~에서 미팅 요청드립니다", "~에서 회의 있습니다", "~에서 만나요", "미팅 일정"
+- "~시에 ~에서", "~에서 ~시에"
+- Time patterns: "오전 X시", "오후 X시", "X시 반", "X:XX"
+  - "오후 2시" = 14:00, "오전 10시" = 10:00
+- Relative dates: "내일" = tomorrow, "모레" = day after tomorrow, "다음 주 X요일" = next {day}
+- Duration: Default meeting duration is 1 hour unless specified
+- Location keywords: "~사무실", "~에서", "~호", "~층", "~역", "~카페"
+
+IMPORTANT: If ANY meeting/schedule pattern is detected, ALWAYS generate a suggestedEvent even if confidence is low. It's better to suggest and let the user reject than to miss a meeting.
+
+## Example
+Email body: "내일 오후 2시에 파울러스 사무실에서 미팅 요청드립니다"
+Expected output (if today is 2026-02-18):
+{
+  "emailId": "...",
+  "threadId": "...",
+  "intent": "meeting_request",
+  "summary": "내일 오후 2시 파울러스 사무실 미팅 요청",
+  "suggestedEvent": {
+    "title": "미팅 - 파울러스 사무실",
+    "startAt": "2026-02-19T14:00:00+09:00",
+    "endAt": "2026-02-19T15:00:00+09:00",
+    "location": "파울러스 사무실",
+    "type": "MEETING"
+  },
+  "suggestedReplyDraft": "안녕하세요, 미팅 일정 확인했습니다. 내일 오후 2시에 파울러스 사무실에서 뵙겠습니다.",
+  "confidence": 0.95
+}
+
 ## Rules
 - Always respond in valid JSON array format
 - Summary MUST be in Korean
@@ -67,7 +98,10 @@ Return a JSON array of suggestions. Each suggestion:
 - For date validation: use the current year and calculate actual day-of-week
 - If email is purely informational with no actions, set intent to "info_share" and only provide summary + reply draft
 - For location comparisons (e.g., "장소 A vs B"), always create a suggestedNote
-- Event type mapping: 회의/미팅→MEETING, 촬영/작업→TASK, 마감/납품→DEADLINE, 배송→DELIVERY`;
+- Event type mapping: 회의/미팅→MEETING, 촬영/작업→TASK, 마감/납품→DEADLINE, 배송→DELIVERY
+- For suggestedEvent startAt/endAt: use KST timezone (+09:00) when generating ISO timestamps
+- For suggestedTodo: assigneeIds should be empty array [] (frontend will assign current user)
+- NEVER skip suggestedEvent for meeting_request or schedule_change intents`;
 
 async function analyzeEmails(
   messages: GmailMessage[],

@@ -28,6 +28,7 @@ Your job is to analyze user messages and extract structured actions when appropr
 2. **create_event** — When someone proposes a NEW meeting, deadline, or schedule. If a location is mentioned alongside the event, include it in the event's "location" field. Do NOT create a separate share_location action.
 3. **update_event** — When someone wants to MODIFY/CHANGE an existing event (time change, title change, location change, etc.). Keywords: "변경", "수정", "바꿔", "옮겨", "~로 변경할게요", "~시로 바꿔줘". You MUST look at the conversation history to find the original event title being referenced. Include "originalTitle" to identify which event to update, and only the fields that changed.
 4. **share_location** — ONLY when someone shares a standalone place/location WITHOUT any schedule or event context. Examples: "촬영 답사 장소는 삼각지역 6번출구입니다", "드론샷은 제주도 성산포 앞바다에서 진행 예정입니다". If the message also mentions a time/date/meeting, use create_event with the location embedded instead.
+5. **submit_service_suggestion** — When someone makes a suggestion or feature request about the Re-Be service/app itself. Keywords: "기능 추가", "기능 개선", "개선", "불편", "버그", "이런 기능", "있으면 좋겠", "Re-Be에", "앱에서", "서비스에서", "제안", "건의". The user is giving feedback about how to improve Re-Be.io. Acknowledge the suggestion warmly.
 
 ## Chat Members
 ${memberList}
@@ -58,7 +59,7 @@ ${projectId ? `## Current Project\nProject ID: ${projectId}${projectTitle ? `\nP
   "replyMessage": "string — natural reply to the user",
   "actions": [
     {
-      "type": "create_todo" | "create_event" | "update_event" | "share_location",
+      "type": "create_todo" | "create_event" | "update_event" | "share_location" | "submit_service_suggestion",
       "confidence": 0.0-1.0,
       "data": { ... }  // shape depends on type
     }
@@ -104,6 +105,15 @@ ${projectId ? `## Current Project\nProject ID: ${projectId}${projectTitle ? `\nP
   "address": "string — full address if mentioned",
   "searchQuery": "string — query for map search"
 }
+
+### submit_service_suggestion data shape:
+{
+  "suggestion": "string — the user's suggestion or feedback in their original words",
+  "brainSummary": "string — your brief classification of the suggestion in Korean",
+  "category": "feature_request" | "bug_report" | "ui_improvement" | "workflow_suggestion" | "other",
+  "priority": "low" | "medium" | "high"
+}
+NOTE: For submit_service_suggestion, always set replyMessage to a warm acknowledgment like "소중한 의견 감사합니다! Brain Report에 기록했습니다. 팀에서 검토 후 반영하겠습니다. 🧠"
 
 Today's date is: ${new Date().toISOString().split('T')[0]}
 Current time (KST): ${new Date().toLocaleTimeString('ko-KR', { timeZone: 'Asia/Seoul', hour: '2-digit', minute: '2-digit' })}${weatherContext || ''}`;

@@ -78,6 +78,7 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
     addFileGroup, addFile, getFileGroupsByProject,
     brainIntelligenceEnabled,
     loadEvents, loadTodos, addTodo, addEvent, updateEvent,
+    addBrainReport, addBrainNotification,
   } = useAppStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTab, setSelectedTab] = useState<'projects' | 'direct'>('projects');
@@ -354,6 +355,28 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
         for (const action of brainActions) {
           const actionId = (action as { id?: string }).id;
           if (!actionId) continue;
+
+          // Handle service suggestions locally (no server-side execution needed)
+          const act = action as Record<string, unknown>;
+          const actionType = act.action_type || act.actionType;
+          if (actionType === 'submit_service_suggestion') {
+            const extracted = (act.extracted_data || act.extractedData) as Record<string, unknown> | undefined;
+            if (extracted) {
+              addBrainReport({
+                userId: currentUser.id,
+                userName: currentUser.name,
+                suggestion: (extracted.suggestion as string) || cleanContent,
+                brainSummary: (extracted.brainSummary as string) || '',
+                category: (extracted.category as 'feature_request' | 'bug_report' | 'ui_improvement' | 'workflow_suggestion' | 'other') || 'other',
+                priority: (extracted.priority as 'low' | 'medium' | 'high') || 'medium',
+                chatRoomId: selectedChat?.roomId,
+                messageId: undefined,
+              });
+              console.log('[Brain] Service suggestion saved to Brain Report (Supabase path)');
+            }
+            continue; // Skip server-side execution for suggestions
+          }
+
           try {
             await brainService.updateActionStatus(actionId, 'confirmed', currentUser.id);
             const execResult = await brainService.executeAction(actionId, currentUser.id);
@@ -465,6 +488,20 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
                   }
                 }
               }
+              // Handle service suggestion action — save to Brain Report
+              if (actionType === 'submit_service_suggestion' && extracted) {
+                addBrainReport({
+                  userId: currentUser.id,
+                  userName: currentUser.name,
+                  suggestion: (extracted.suggestion as string) || cleanContent,
+                  brainSummary: (extracted.brainSummary as string) || '',
+                  category: (extracted.category as 'feature_request' | 'bug_report' | 'ui_improvement' | 'workflow_suggestion' | 'other') || 'other',
+                  priority: (extracted.priority as 'low' | 'medium' | 'high') || 'medium',
+                  chatRoomId: selectedChat?.roomId,
+                  messageId: undefined,
+                });
+                console.log('[Brain] Service suggestion saved to Brain Report');
+              }
             }
           }
         }
@@ -496,15 +533,34 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
 
       const dataType = result.executedData?.type;
       const isEventAction = dataType === 'event' || dataType === 'update_event';
-      toast.success(
+      const actionLabel =
         dataType === 'todo'
           ? 'Todo created successfully!'
           : dataType === 'event'
             ? 'Event created successfully!'
             : dataType === 'update_event'
               ? 'Event updated successfully!'
-              : 'Action completed!',
-      );
+              : 'Action completed!';
+      toast.success(actionLabel);
+
+      // Push brain notification for confirmed chat Brain actions
+      if (dataType === 'event' || dataType === 'update_event') {
+        const execData = result.executedData as Record<string, unknown>;
+        addBrainNotification({
+          type: 'brain_event',
+          title: dataType === 'update_event' ? '이벤트 수정됨' : '이벤트 생성됨',
+          message: (execData.title as string) || 'Event',
+          chatRoomId: selectedChat?.roomId,
+        });
+      } else if (dataType === 'todo') {
+        const execData = result.executedData as Record<string, unknown>;
+        addBrainNotification({
+          type: 'brain_todo',
+          title: '할 일 생성됨',
+          message: (execData.title as string) || 'Todo',
+          chatRoomId: selectedChat?.roomId,
+        });
+      }
 
       // Force immediate refresh + retries for the created/updated entity
       // The edge function uses service_role key so the insert is instant
@@ -1217,6 +1273,23 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
                     : undefined
                 }
               />
+              {selectedChat?.type === 'project' && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className={`shrink-0 w-8 h-8 ${brainProcessing ? 'text-violet-500' : 'text-muted-foreground hover:text-violet-500'}`}
+                  onClick={() => handleSendMessage(true)}
+                  disabled={!newMessage.trim() || brainProcessing}
+                  aria-label="Brain AI"
+                  title="Brain AI 분석 (⌘+Enter)"
+                >
+                  {brainProcessing ? (
+                    <div className="w-3.5 h-3.5 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <Brain className="w-3.5 h-3.5" />
+                  )}
+                </Button>
+              )}
               <Button
                 size="icon"
                 className="shrink-0 w-8 h-8"

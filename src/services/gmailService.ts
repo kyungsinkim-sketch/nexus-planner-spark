@@ -128,3 +128,44 @@ export async function sendReply(
     return { success: false, error: (err as Error).message };
   }
 }
+
+// ─── Trash Email ─────────────────────────────────────
+
+export async function trashGmailMessage(
+  userId: string,
+  messageId: string,
+): Promise<{ success: boolean; error?: string }> {
+  if (isMockMode()) {
+    console.log('[Gmail Mock] Message trashed:', messageId);
+    return { success: true };
+  }
+
+  try {
+    const { data, error } = await supabase.functions.invoke('gmail-trash', {
+      body: { userId, messageId },
+    });
+
+    if (error) {
+      console.error('[Gmail] Trash error:', error);
+      return { success: false, error: error.message };
+    }
+
+    if (data?.error) {
+      return { success: false, error: data.error };
+    }
+
+    return { success: true };
+  } catch (err) {
+    console.error('[Gmail] Trash exception:', err);
+    return { success: false, error: (err as Error).message };
+  }
+}
+
+// ─── Analyze Single Email with Brain AI ──────────────
+
+export async function analyzeSingleEmail(
+  userId: string,
+  message: GmailMessage,
+): Promise<EmailBrainSuggestion[]> {
+  return analyzeWithBrain(userId, [message]);
+}

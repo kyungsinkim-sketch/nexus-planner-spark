@@ -33,8 +33,8 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
-import { User, UserRole } from '@/types/core';
-import { Shield, UserPlus, Trash2, Edit, Sparkles, Bell, Save, Database, Brain, KeyRound, Mail } from 'lucide-react';
+import { User, UserRole, type BrainReportStatus } from '@/types/core';
+import { Shield, UserPlus, Trash2, Edit, Sparkles, Bell, Save, Database, Brain, KeyRound, Mail, MessageSquare } from 'lucide-react';
 import { toast } from 'sonner';
 import { useTranslation } from '@/hooks/useTranslation';
 
@@ -76,6 +76,7 @@ export function AdminSettingsTab() {
         users, currentUser, brainIntelligenceEnabled, setBrainIntelligenceEnabled,
         inspirationQuotes: quotes, addQuote, updateQuote, removeQuote: storeRemoveQuote,
         broadcastNotification,
+        brainReports, updateBrainReportStatus,
     } = useAppStore();
     const [selectedTab, setSelectedTab] = useState('users');
 
@@ -1037,6 +1038,104 @@ export function AdminSettingsTab() {
                                 </div>
                             )}
                         </div>
+                    </CardContent>
+                </Card>
+
+                {/* Brain Report Section */}
+                <Card>
+                    <CardHeader>
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <CardTitle className="flex items-center gap-2">
+                                    <MessageSquare className="w-5 h-5 text-violet-500" />
+                                    Brain Report
+                                    {brainReports.filter(r => r.status === 'new').length > 0 && (
+                                        <Badge variant="destructive" className="text-[10px] px-1.5 py-0">
+                                            {brainReports.filter(r => r.status === 'new').length} 신규
+                                        </Badge>
+                                    )}
+                                </CardTitle>
+                                <CardDescription>
+                                    사용자가 채팅에서 제출한 서비스 개선 제안 목록
+                                </CardDescription>
+                            </div>
+                        </div>
+                    </CardHeader>
+                    <CardContent>
+                        {brainReports.length === 0 ? (
+                            <div className="text-center py-8 text-muted-foreground text-sm">
+                                <Brain className="w-8 h-8 mx-auto mb-2 opacity-30" />
+                                <p>아직 제출된 Brain Report가 없습니다</p>
+                                <p className="text-xs mt-1">사용자가 채팅에서 서비스 개선 제안을 하면 여기에 표시됩니다</p>
+                            </div>
+                        ) : (
+                            <div className="space-y-3">
+                                {brainReports.map((report) => (
+                                    <div
+                                        key={report.id}
+                                        className={`p-3 rounded-lg border transition-colors ${
+                                            report.status === 'new'
+                                                ? 'border-violet-200 bg-violet-50/50 dark:border-violet-800/40 dark:bg-violet-950/20'
+                                                : 'border-border'
+                                        }`}
+                                    >
+                                        <div className="flex items-start justify-between gap-2">
+                                            <div className="flex-1 min-w-0">
+                                                <div className="flex items-center gap-2 flex-wrap">
+                                                    <Badge variant="outline" className="text-[10px]">
+                                                        {report.category === 'feature_request' ? '기능 요청' :
+                                                         report.category === 'bug_report' ? '버그 리포트' :
+                                                         report.category === 'ui_improvement' ? 'UI 개선' :
+                                                         report.category === 'workflow_suggestion' ? '워크플로우' : '기타'}
+                                                    </Badge>
+                                                    <Badge
+                                                        variant="outline"
+                                                        className={`text-[10px] ${
+                                                            report.priority === 'high'
+                                                                ? 'border-red-300 text-red-600 dark:text-red-400'
+                                                                : report.priority === 'medium'
+                                                                ? 'border-amber-300 text-amber-600 dark:text-amber-400'
+                                                                : 'border-gray-300 text-gray-500'
+                                                        }`}
+                                                    >
+                                                        {report.priority === 'high' ? '높음' : report.priority === 'medium' ? '보통' : '낮음'}
+                                                    </Badge>
+                                                    <span className="text-[10px] text-muted-foreground">
+                                                        {report.userName} · {new Date(report.createdAt).toLocaleDateString('ko-KR')}
+                                                    </span>
+                                                </div>
+                                                <p className="text-sm mt-1.5 text-foreground">{report.suggestion}</p>
+                                                {report.brainSummary && (
+                                                    <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+                                                        <Brain className="w-3 h-3 text-violet-400" />
+                                                        {report.brainSummary}
+                                                    </p>
+                                                )}
+                                                {report.adminNote && (
+                                                    <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+                                                        관리자 메모: {report.adminNote}
+                                                    </p>
+                                                )}
+                                            </div>
+                                            <Select
+                                                value={report.status}
+                                                onValueChange={(val: string) => updateBrainReportStatus(report.id, val as BrainReportStatus)}
+                                            >
+                                                <SelectTrigger className="w-24 h-7 text-[10px]">
+                                                    <SelectValue />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="new">신규</SelectItem>
+                                                    <SelectItem value="reviewed">검토됨</SelectItem>
+                                                    <SelectItem value="implemented">완료됨</SelectItem>
+                                                    <SelectItem value="dismissed">무시됨</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                     </CardContent>
                 </Card>
             </TabsContent>

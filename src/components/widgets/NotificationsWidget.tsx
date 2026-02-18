@@ -12,7 +12,7 @@ import { useMemo, useCallback } from 'react';
 import { useAppStore } from '@/stores/appStore';
 import { useWidgetStore } from '@/stores/widgetStore';
 import { useTranslation } from '@/hooks/useTranslation';
-import { Bell, MessageSquare, Calendar, Check, AtSign, Megaphone } from 'lucide-react';
+import { Bell, MessageSquare, Calendar, Check, AtSign, Megaphone, Brain } from 'lucide-react';
 import { BRAIN_BOT_USER_ID } from '@/types/core';
 import type { WidgetDataContext } from '@/types/widget';
 
@@ -20,7 +20,7 @@ function NotificationsWidget({ context }: { context: WidgetDataContext }) {
   const { t } = useTranslation();
   const {
     messages, events, currentUser, getUserById, projects,
-    companyNotifications,
+    companyNotifications, brainNotifications,
     dismissedNotificationIds, dismissNotification, dismissAllNotifications,
   } = useAppStore();
   const { openProjectTab } = useWidgetStore();
@@ -34,7 +34,7 @@ function NotificationsWidget({ context }: { context: WidgetDataContext }) {
       icon: typeof Bell;
       text: string;
       time: string;
-      type: 'message' | 'event' | 'company';
+      type: 'message' | 'event' | 'company' | 'brain';
       senderName?: string;
       projectId?: string;
       isMention?: boolean;
@@ -131,13 +131,30 @@ function NotificationsWidget({ context }: { context: WidgetDataContext }) {
         });
       });
 
-    // Sort: @mentions first, then company, then regular messages, then events
+    // Brain AI notifications (newest first)
+    const brainItems: typeof items = [];
+    brainNotifications
+      .slice(0, 10)
+      .forEach((bn) => {
+        const id = `brain-${bn.id}`;
+        if (dismissedSet.has(id)) return;
+        brainItems.push({
+          id,
+          icon: Brain,
+          text: `${bn.title}: ${bn.message}`,
+          time: new Date(bn.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          type: 'brain',
+          senderName: bn.emailSubject ? `📧 ${bn.emailSubject}` : 'Brain AI',
+        });
+      });
+
+    // Sort: brain → company → @mentions → regular messages → events
     const mentionItems = items.filter((i) => i.isMention);
     const msgItems = items.filter((i) => i.type === 'message' && !i.isMention);
     const eventItems = items.filter((i) => i.type === 'event');
 
-    return [...companyItems, ...mentionItems, ...msgItems, ...eventItems].slice(0, 20);
-  }, [messages, events, context, dismissedSet, currentUser, getUserById, companyNotifications, t]);
+    return [...brainItems, ...companyItems, ...mentionItems, ...msgItems, ...eventItems].slice(0, 20);
+  }, [messages, events, context, dismissedSet, currentUser, getUserById, companyNotifications, brainNotifications, t]);
 
   const handleDismissAll = useCallback(() => {
     dismissAllNotifications(notifications.map((n) => n.id));
@@ -181,7 +198,9 @@ function NotificationsWidget({ context }: { context: WidgetDataContext }) {
             <div
               key={n.id}
               className={`flex items-start gap-2 p-1.5 rounded transition-colors group cursor-pointer ${
-                n.isMention
+                n.type === 'brain'
+                  ? 'bg-violet-500/5 hover:bg-violet-500/10 border-l-2 border-violet-500/40'
+                  : n.isMention
                   ? 'bg-primary/5 hover:bg-primary/10 border-l-2 border-primary/40'
                   : 'hover:bg-white/5'
               }`}
@@ -189,7 +208,7 @@ function NotificationsWidget({ context }: { context: WidgetDataContext }) {
               title={n.projectId ? t('clickToOpenChat') : t('clickToDismiss')}
             >
               <Icon className={`w-3.5 h-3.5 shrink-0 mt-0.5 ${
-                n.isMention ? 'text-primary' : 'text-muted-foreground'
+                n.type === 'brain' ? 'text-violet-500' : n.isMention ? 'text-primary' : 'text-muted-foreground'
               }`} />
               <div className="flex-1 min-w-0">
                 {n.senderName && (
