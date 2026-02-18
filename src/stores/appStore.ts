@@ -1367,7 +1367,9 @@ export const useAppStore = create<AppState>()(
           // Create todo if suggested
           if (suggestion.suggestedTodo) {
             const todo = suggestion.suggestedTodo;
-            console.log('[Brain] Creating todo from suggestion:', todo.title, todo.dueDate);
+            // Fallback dueDate: tomorrow if Brain didn't provide one
+            const dueDate = todo.dueDate || new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+            console.log('[Brain] Creating todo from suggestion:', todo.title, dueDate);
             const assignees = Array.isArray(todo.assigneeIds) && todo.assigneeIds.length > 0
               ? todo.assigneeIds
               : [state.currentUser!.id];
@@ -1376,7 +1378,7 @@ export const useAppStore = create<AppState>()(
               assigneeIds: assignees,
               requestedById: state.currentUser!.id,
               projectId: todo.projectId,
-              dueDate: todo.dueDate,
+              dueDate,
               priority: todo.priority || 'MEDIUM',
               status: 'PENDING',
             });
@@ -1384,7 +1386,7 @@ export const useAppStore = create<AppState>()(
             get().addBrainNotification({
               type: 'brain_todo',
               title: '할 일 생성됨',
-              message: `${todo.title} (마감: ${new Date(todo.dueDate).toLocaleDateString('ko-KR')})`,
+              message: `${todo.title} (마감: ${new Date(dueDate).toLocaleDateString('ko-KR')})`,
               emailSubject: email?.subject,
             });
           }
