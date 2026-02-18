@@ -1,41 +1,27 @@
 /**
  * NotificationsWidget — Shows unread notifications from OTHER users.
  * - Excludes current user's own messages
- * - Click notification → dismiss + activate chat widget with that conversation
- * - Already-seen items tracked in sessionStorage
+ * - Click notification → dismiss globally (synced across all widget instances)
+ * - Dismissed IDs stored in appStore (persisted across refreshes)
+ * - Events filtered by currentUser.ownerId to prevent cross-user leaking
  */
 
-import { useMemo, useState, useCallback } from 'react';
+import { useMemo, useCallback } from 'react';
 import { useAppStore } from '@/stores/appStore';
 import { useTranslation } from '@/hooks/useTranslation';
 import { Bell, MessageSquare, Calendar, Check, AtSign, Megaphone } from 'lucide-react';
 import { BRAIN_BOT_USER_ID } from '@/types/core';
 import type { WidgetDataContext } from '@/types/widget';
 
-const DISMISSED_KEY = 'rebe-notif-dismissed';
-function getDismissedIds(): Set<string> {
-  try {
-    const raw = sessionStorage.getItem(DISMISSED_KEY);
-    return raw ? new Set(JSON.parse(raw)) : new Set();
-  } catch { return new Set(); }
-}
-function saveDismissedIds(ids: Set<string>) {
-  sessionStorage.setItem(DISMISSED_KEY, JSON.stringify([...ids]));
-}
-
 function NotificationsWidget({ context }: { context: WidgetDataContext }) {
   const { t } = useTranslation();
-  const { messages, events, currentUser, getUserById, companyNotifications, dismissCompanyNotification } = useAppStore();
-  const [dismissedIds, setDismissedIds] = useState<Set<string>>(getDismissedIds);
+  const {
+    messages, events, currentUser, getUserById,
+    companyNotifications,
+    dismissedNotificationIds, dismissNotification, dismissAllNotifications,
+  } = useAppStore();
 
-  const dismiss = useCallback((id: string) => {
-    setDismissedIds((prev) => {
-      const next = new Set(prev);
-      next.add(id);
-      saveDismissedIds(next);
-      return next;
-    });
-  }, []);
+  const dismissedSet = useMemo(() => new Set(dismissedNotificationIds), [dismissedNotificationIds]);
 
   // Build notification list — exclude own messages
   const notifications = useMemo(() => {
@@ -66,12 +52,11 @@ function NotificationsWidget({ context }: { context: WidgetDataContext }) {
       .reverse();
 
     // Filter to only @mention messages that mention the current user
-    // Use simple string includes for Korean name compatibility (\b doesn't work with Korean)
     const mentionTag = currentUser ? `@${currentUser.name}` : null;
 
     recentMsgs.forEach((m) => {
       const id = `msg-${m.id}`;
-      if (dismissedIds.has(id)) return;
+      if (dismissedSet.has(id)) return;
       const sender = getUserById(m.userId);
       const isMention = mentionTag ? m.content.includes(mentionTag) : false;
 
@@ -89,13 +74,15 @@ function NotificationsWidget({ context }: { context: WidgetDataContext }) {
       });
     });
 
-    // Upcoming events (next 24h)
+    // Upcoming events (next 24h) — only show current user's events
     const now = new Date();
     const next24h = new Date(now.getTime() + 24 * 60 * 60 * 1000);
     const todayStr = now.toDateString();
     const tomorrowStr = new Date(now.getTime() + 24 * 60 * 60 * 1000).toDateString();
     events
       .filter((e) => {
+        // Only show events owned by the current user
+        if (currentUser && e.ownerId && e.ownerId !== currentUser.id) return false;
         const start = new Date(e.startAt);
         const match = start >= now && start <= next24h;
         if (context.type === 'project' && context.projectId) {
@@ -106,7 +93,7 @@ function NotificationsWidget({ context }: { context: WidgetDataContext }) {
       .slice(0, 5)
       .forEach((e) => {
         const id = `evt-${e.id}`;
-        if (dismissedIds.has(id)) return;
+        if (dismissedSet.has(id)) return;
         const eventStart = new Date(e.startAt);
         const timeStr = eventStart.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         const eventDateStr = eventStart.toDateString();
@@ -134,7 +121,7 @@ function NotificationsWidget({ context }: { context: WidgetDataContext }) {
       .reverse()
       .forEach((cn) => {
         const id = `company-${cn.id}`;
-        if (dismissedIds.has(id)) return;
+        if (dismissedSet.has(id)) return;
         const sender = getUserById(cn.sentBy);
         companyItems.push({
           id,
@@ -147,21 +134,15 @@ function NotificationsWidget({ context }: { context: WidgetDataContext }) {
       });
 
     return [...companyItems, ...items].slice(0, 15);
-  }, [messages, events, context, dismissedIds, currentUser, getUserById, companyNotifications]);
+  }, [messages, events, context, dismissedSet, currentUser, getUserById, companyNotifications, t]);
 
   const handleDismissAll = useCallback(() => {
-    setDismissedIds((prev) => {
-      const next = new Set(prev);
-      notifications.forEach((n) => next.add(n.id));
-      saveDismissedIds(next);
-      return next;
-    });
-  }, [notifications]);
+    dismissAllNotifications(notifications.map((n) => n.id));
+  }, [notifications, dismissAllNotifications]);
 
   const handleClick = useCallback((n: typeof notifications[0]) => {
-    dismiss(n.id);
-    // Future: could scroll chat to the specific message
-  }, [dismiss]);
+    dismissNotification(n.id);
+  }, [dismissNotification]);
 
   if (notifications.length === 0) {
     return (

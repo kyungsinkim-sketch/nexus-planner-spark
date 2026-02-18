@@ -79,6 +79,37 @@ const App = () => {
     }
   }, [theme]);
 
+  // Cross-tab sync: listen for localStorage changes from other tabs/windows
+  // so company notifications, important notes, etc. propagate in real-time
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 're-be-storage' && e.newValue) {
+        try {
+          const parsed = JSON.parse(e.newValue);
+          const persisted = parsed?.state;
+          if (!persisted) return;
+          const store = useAppStore.getState();
+          // Sync company notifications from other tabs
+          if (persisted.companyNotifications && JSON.stringify(persisted.companyNotifications) !== JSON.stringify(store.companyNotifications)) {
+            useAppStore.setState({ companyNotifications: persisted.companyNotifications });
+          }
+          // Sync dismissed notification IDs
+          if (persisted.dismissedNotificationIds && JSON.stringify(persisted.dismissedNotificationIds) !== JSON.stringify(store.dismissedNotificationIds)) {
+            useAppStore.setState({ dismissedNotificationIds: persisted.dismissedNotificationIds });
+          }
+          // Sync important notes
+          if (persisted.importantNotes && JSON.stringify(persisted.importantNotes) !== JSON.stringify(store.importantNotes)) {
+            useAppStore.setState({ importantNotes: persisted.importantNotes });
+          }
+        } catch {
+          // Ignore parse errors
+        }
+      }
+    };
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
+
   if (isInitializing && isSupabaseConfigured()) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">

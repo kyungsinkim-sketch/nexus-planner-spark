@@ -21,8 +21,9 @@ const DEFAULT_DASHBOARD_LAYOUT: WidgetLayoutItem[] = [
   { i: 'todaySchedule',   x: 5,  y: 0,  w: 4, h: 4, minW: 2, minH: 2 },
   { i: 'notifications',   x: 9,  y: 0,  w: 3, h: 3, minW: 2, minH: 2 },
   { i: 'todos',           x: 9,  y: 3,  w: 3, h: 3, minW: 2, minH: 2 },
-  { i: 'attendance',      x: 0,  y: 4,  w: 3, h: 2, minW: 2, minH: 2 },
-  { i: 'files',           x: 3,  y: 4,  w: 3, h: 2, minW: 2, minH: 2 },
+  { i: 'todayWeather',    x: 0,  y: 4,  w: 2, h: 2, minW: 2, minH: 2 },
+  { i: 'attendance',      x: 2,  y: 4,  w: 2, h: 2, minW: 2, minH: 2 },
+  { i: 'files',           x: 4,  y: 4,  w: 2, h: 2, minW: 2, minH: 2 },
   { i: 'brainChat',       x: 6,  y: 4,  w: 3, h: 1, minW: 3, minH: 1 },
   { i: 'inspiration',     x: 0,  y: 6,  w: 6, h: 2, minW: 3, minH: 1 },
 ];
@@ -189,7 +190,7 @@ export const useWidgetStore = create<WidgetState>()(
     }),
     {
       name: 're-be-widget-layout',
-      version: 12, // bump — add inspiration widget to dashboard + importantNotes to project
+      version: 13, // bump — todayWeather minH:2, notification dismiss sync, budget redesign
       migrate: () => ({
         // On version mismatch, reset everything to defaults
         openTabs: [DASHBOARD_TAB],

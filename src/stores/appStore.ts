@@ -60,6 +60,9 @@ interface AppState {
   // Notification Sound
   notificationSoundEnabled: boolean;
 
+  // Notification dismiss state — shared across all notification widget instances
+  dismissedNotificationIds: string[];
+
   // Mock data persistence — track deleted mock event IDs across refreshes
   deletedMockEventIds: string[];
 
@@ -99,6 +102,8 @@ interface AppState {
   setWorldClockSettingsOpen: (open: boolean) => void;
   setWeatherSettingsOpen: (open: boolean) => void;
   setNotificationSoundEnabled: (enabled: boolean) => void;
+  dismissNotification: (id: string) => void;
+  dismissAllNotifications: (ids: string[]) => void;
 
   // Project Actions
   addProject: (project: Partial<Project>) => Promise<void>;
@@ -263,6 +268,7 @@ export const useAppStore = create<AppState>()(
       worldClockSettingsOpen: false,
       weatherSettingsOpen: false,
       notificationSoundEnabled: true,
+      dismissedNotificationIds: [],
       deletedMockEventIds: [],
       selectedProjectId: null,
       sidebarCollapsed: false,
@@ -1154,6 +1160,12 @@ export const useAppStore = create<AppState>()(
       setWorldClockSettingsOpen: (open) => set({ worldClockSettingsOpen: open }),
       setWeatherSettingsOpen: (open) => set({ weatherSettingsOpen: open }),
       setNotificationSoundEnabled: (enabled) => set({ notificationSoundEnabled: enabled }),
+      dismissNotification: (id) => set((state) => ({
+        dismissedNotificationIds: [...state.dismissedNotificationIds, id],
+      })),
+      dismissAllNotifications: (ids) => set((state) => ({
+        dismissedNotificationIds: [...new Set([...state.dismissedNotificationIds, ...ids])],
+      })),
 
       // Settings Actions
       updateScoreSettings: (settings) => set((state) => ({
@@ -1191,6 +1203,7 @@ export const useAppStore = create<AppState>()(
         personalTodos: state.personalTodos,
         messages: state.messages,
         notificationSoundEnabled: state.notificationSoundEnabled,
+        dismissedNotificationIds: state.dismissedNotificationIds,
       }),
       merge: (persisted, current) => {
         const merged = { ...current, ...(persisted as Partial<AppState>) };
