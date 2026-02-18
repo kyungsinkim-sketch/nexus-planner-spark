@@ -73,7 +73,7 @@ Return a JSON array of suggestions. Each suggestion:
   "summary": "한국어 요약",
   "dateInconsistency": { "mentioned": "3/6(금)", "actualDay": "목요일", "correction": "수정 안내" } | null,
   "suggestedEvent": { "title": "", "startAt": "ISO", "endAt": "ISO", "location": "", "locationUrl": "", "type": "MEETING|TASK|DEADLINE|DELIVERY", "attendeeIds": ["user-id-1"], "projectId": "proj-id" } | null,
-  "suggestedTodo": { "title": "", "assigneeIds": ["user-id-1"], "assigneeNames": ["홍길동"], "dueDate": "ISO", "priority": "LOW|MEDIUM|HIGH", "projectId": "proj-id" } | null,
+  "suggestedTodo": { "title": "", "assigneeIds": ["user-id-1"], "assigneeNames": ["홍길동"], "dueDate": "ISO", "priority": "LOW|NORMAL|HIGH", "projectId": "proj-id" } | null,
   "suggestedNote": "중요 기록 내용" | null,
   "suggestedReplyDraft": "답장 초안",
   "confidence": 0.0-1.0

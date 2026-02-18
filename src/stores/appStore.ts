@@ -1393,7 +1393,7 @@ export const useAppStore = create<AppState>()(
               requestedById: state.currentUser!.id,
               projectId: todo.projectId,
               dueDate,
-              priority: todo.priority || 'MEDIUM',
+              priority: todo.priority || 'NORMAL',
               status: 'PENDING',
             });
             // Push brain notification

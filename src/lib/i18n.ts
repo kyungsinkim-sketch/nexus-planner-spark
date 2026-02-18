@@ -1163,6 +1163,9 @@ export const translations = {
 
     // TodosTab
     todoUpdated: '할 일이 업데이트되었습니다',
+    todoUpdateFailed: '할 일 업데이트에 실패했습니다',
+    todoDeleted: '할 일이 삭제되었습니다',
+    todoCreateFailed: '할 일 생성에 실패했습니다',
     pleaseEnterTitle: '제목을 입력해주세요',
     todoCreated: '할 일이 생성되었습니다',
     assignedTo: '담당:',
@@ -2402,6 +2405,9 @@ export const translations = {
 
     // TodosTab
     todoUpdated: 'To-do updated',
+    todoUpdateFailed: 'Failed to update to-do',
+    todoDeleted: 'To-do deleted',
+    todoCreateFailed: 'Failed to create to-do',
     pleaseEnterTitle: 'Please enter a title',
     todoCreated: 'To-do created',
     assignedTo: 'Assigned to:',

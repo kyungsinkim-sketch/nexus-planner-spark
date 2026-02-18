@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { PersonalTodo, TodoPriority, User } from '@/types/core';
 import { useAppStore } from '@/stores/appStore';
 import { Card } from '@/components/ui/card';
@@ -24,7 +24,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Plus, Calendar, Users, Flag } from 'lucide-react';
+import { Plus, Calendar, Users, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useTranslation } from '@/hooks/useTranslation';
 
@@ -33,53 +33,26 @@ interface TodosTabProps {
 }
 
 const priorityColors: Record<TodoPriority, string> = {
-  HIGH: 'bg-red-100 text-red-700 border-red-200',
-  NORMAL: 'bg-blue-100 text-blue-700 border-blue-200',
-  LOW: 'bg-gray-100 text-gray-700 border-gray-200',
+  HIGH: 'bg-red-100 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800',
+  NORMAL: 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800',
+  MEDIUM: 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800',
+  LOW: 'bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-800/30 dark:text-gray-400 dark:border-gray-700',
 };
-
-// Mock todos for demonstration
-const mockTodos: PersonalTodo[] = [
-  {
-    id: 'todo-1',
-    title: 'Review design mockups',
-    assigneeIds: ['user-1', 'user-2'],
-    requestedById: 'user-2',
-    projectId: 'project-1',
-    dueDate: '2025-02-01T10:00:00',
-    priority: 'HIGH',
-    status: 'PENDING',
-    createdAt: '2025-01-15T09:00:00',
-  },
-  {
-    id: 'todo-2',
-    title: 'Prepare presentation slides',
-    assigneeIds: ['user-1'],
-    requestedById: 'user-1',
-    projectId: 'project-1',
-    dueDate: '2025-01-25T14:00:00',
-    priority: 'NORMAL',
-    status: 'PENDING',
-    createdAt: '2025-01-14T11:00:00',
-  },
-  {
-    id: 'todo-3',
-    title: 'Send client update email',
-    assigneeIds: ['user-1', 'user-3', 'user-4'],
-    requestedById: 'user-3',
-    projectId: 'project-1',
-    dueDate: '2025-01-20T09:00:00',
-    priority: 'LOW',
-    status: 'COMPLETED',
-    createdAt: '2025-01-10T15:00:00',
-    completedAt: '2025-01-18T16:30:00',
-  },
-];
 
 export function TodosTab({ projectId }: TodosTabProps) {
   const { t } = useTranslation();
-  const { users, currentUser, getUserById, addEvent } = useAppStore();
-  const [todos, setTodos] = useState<PersonalTodo[]>(mockTodos);
+  const {
+    users,
+    currentUser,
+    personalTodos,
+    getUserById,
+    addTodo,
+    completeTodo,
+    updateTodo,
+    deleteTodo,
+    addEvent,
+  } = useAppStore();
+
   const [showNewModal, setShowNewModal] = useState(false);
   const [newTitle, setNewTitle] = useState('');
   const [newAssignees, setNewAssignees] = useState<User[]>([]);
@@ -88,28 +61,51 @@ export function TodosTab({ projectId }: TodosTabProps) {
   const [newPriority, setNewPriority] = useState<TodoPriority>('NORMAL');
   const [filter, setFilter] = useState<'all' | 'pending' | 'completed'>('all');
 
-  const filteredTodos = todos.filter((todo) => {
-    if (filter === 'pending') return todo.status === 'PENDING';
-    if (filter === 'completed') return todo.status === 'COMPLETED';
-    return true;
-  });
+  // Filter todos for this project from real store data
+  const projectTodos = useMemo(() => {
+    return personalTodos
+      .filter((td) => td.projectId === projectId)
+      .sort((a, b) => {
+        if (a.status !== b.status) return a.status === 'PENDING' ? -1 : 1;
+        return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
+      });
+  }, [personalTodos, projectId]);
 
-  const handleToggleTodo = (todoId: string) => {
-    setTodos((prev) =>
-      prev.map((todo) => {
-        if (todo.id === todoId) {
-          const newStatus = todo.status === 'COMPLETED' ? 'PENDING' : 'COMPLETED';
-          return {
-            ...todo,
-            status: newStatus,
-            completedAt: newStatus === 'COMPLETED' ? new Date().toISOString() : undefined,
-          };
-        }
-        return todo;
-      })
-    );
-    toast.success(t('todoUpdated'));
-  };
+  const filteredTodos = useMemo(() => {
+    return projectTodos.filter((todo) => {
+      if (filter === 'pending') return todo.status === 'PENDING';
+      if (filter === 'completed') return todo.status === 'COMPLETED';
+      return true;
+    });
+  }, [projectTodos, filter]);
+
+  const pendingCount = projectTodos.filter((t) => t.status === 'PENDING').length;
+  const completedCount = projectTodos.filter((t) => t.status === 'COMPLETED').length;
+
+  const handleToggleTodo = useCallback(async (todoId: string) => {
+    const todo = personalTodos.find(t => t.id === todoId);
+    if (!todo) return;
+    try {
+      if (todo.status === 'PENDING') {
+        await completeTodo(todoId);
+      } else {
+        await updateTodo(todoId, { status: 'PENDING', completedAt: undefined });
+      }
+      toast.success(t('todoUpdated'));
+    } catch (err) {
+      console.error('[TodosTab] Toggle error:', err);
+      toast.error(t('todoUpdateFailed'));
+    }
+  }, [personalTodos, completeTodo, updateTodo, t]);
+
+  const handleDeleteTodo = useCallback(async (todoId: string) => {
+    try {
+      await deleteTodo(todoId);
+      toast.success(t('todoDeleted'));
+    } catch (err) {
+      console.error('[TodosTab] Delete error:', err);
+    }
+  }, [deleteTodo, t]);
 
   const handleAddAssignee = (user: User) => {
     if (!newAssignees.find(u => u.id === user.id)) {
@@ -121,71 +117,71 @@ export function TodosTab({ projectId }: TodosTabProps) {
     setNewAssignees(newAssignees.filter(u => u.id !== userId));
   };
 
-  const handleCreateTodo = (e: React.FormEvent) => {
+  const handleCreateTodo = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!newTitle.trim()) {
+
+    if (!newTitle.trim() || !currentUser) {
       toast.error(t('pleaseEnterTitle'));
       return;
     }
 
-    const assigneeIds = newAssignees.length > 0 
-      ? newAssignees.map(u => u.id) 
+    const assigneeIds = newAssignees.length > 0
+      ? newAssignees.map(u => u.id)
       : [currentUser.id];
-    
-    const dueDateTime = newDueDate 
-      ? `${newDueDate}T${newDueTime}:00` 
-      : new Date().toISOString();
 
-    const newTodo: PersonalTodo = {
-      id: `todo-${Date.now()}`,
-      title: newTitle.trim(),
-      assigneeIds,
-      requestedById: currentUser.id,
-      projectId,
-      dueDate: dueDateTime,
-      priority: newPriority,
-      status: 'PENDING',
-      createdAt: new Date().toISOString(),
-    };
+    const dueDateTime = newDueDate
+      ? `${newDueDate}T${newDueTime}:00`
+      : new Date(Date.now() + 86400000).toISOString();
 
-    setTodos((prev) => [newTodo, ...prev]);
-
-    // If due date is set, create calendar events for each assignee
-    if (newDueDate) {
-      assigneeIds.forEach(assigneeId => {
-        addEvent({
-          id: `event-todo-${Date.now()}-${assigneeId}`,
-          title: newTitle.trim(),
-          type: 'TODO',
-          startAt: dueDateTime,
-          endAt: dueDateTime,
-          projectId,
-          ownerId: assigneeId,
-          source: 'PAULUS',
-          todoId: newTodo.id,
-        });
+    try {
+      await addTodo({
+        title: newTitle.trim(),
+        assigneeIds,
+        requestedById: currentUser.id,
+        projectId,
+        dueDate: dueDateTime,
+        priority: newPriority,
+        status: 'PENDING',
       });
+
+      // If due date is set, create calendar events for each assignee
+      if (newDueDate) {
+        for (const assigneeId of assigneeIds) {
+          await addEvent({
+            id: `event-todo-${Date.now()}-${assigneeId}`,
+            title: newTitle.trim(),
+            type: 'TODO',
+            startAt: dueDateTime,
+            endAt: dueDateTime,
+            projectId,
+            ownerId: assigneeId,
+            source: 'PAULUS',
+          });
+        }
+      }
+
+      const assigneeNames = newAssignees.map(u => u.name).join(', ');
+      toast.success(t('todoCreated'), {
+        description: newAssignees.length > 0
+          ? `${t('assignedTo')} ${assigneeNames}`
+          : undefined,
+      });
+
+      // Reset form
+      setNewTitle('');
+      setNewAssignees([]);
+      setNewDueDate('');
+      setNewDueTime('09:00');
+      setNewPriority('NORMAL');
+      setShowNewModal(false);
+    } catch (err) {
+      console.error('[TodosTab] Create error:', err);
+      toast.error(t('todoCreateFailed'));
     }
-
-    const assigneeNames = newAssignees.map(u => u.name).join(', ');
-    toast.success(t('todoCreated'), {
-      description: newAssignees.length > 0
-        ? `${t('assignedTo')} ${assigneeNames}`
-        : undefined,
-    });
-
-    // Reset form
-    setNewTitle('');
-    setNewAssignees([]);
-    setNewDueDate('');
-    setNewDueTime('09:00');
-    setNewPriority('NORMAL');
-    setShowNewModal(false);
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
+    return new Date(dateString).toLocaleDateString('ko-KR', {
       month: 'short',
       day: 'numeric',
       hour: '2-digit',
@@ -207,21 +203,21 @@ export function TodosTab({ projectId }: TodosTabProps) {
             size="sm"
             onClick={() => setFilter('all')}
           >
-            {t('all')} ({todos.length})
+            {t('all')} ({projectTodos.length})
           </Button>
           <Button
             variant={filter === 'pending' ? 'default' : 'ghost'}
             size="sm"
             onClick={() => setFilter('pending')}
           >
-            {t('pending')} ({todos.filter((t) => t.status === 'PENDING').length})
+            {t('pending')} ({pendingCount})
           </Button>
           <Button
             variant={filter === 'completed' ? 'default' : 'ghost'}
             size="sm"
             onClick={() => setFilter('completed')}
           >
-            {t('completed')} ({todos.filter((t) => t.status === 'COMPLETED').length})
+            {t('completed')} ({completedCount})
           </Button>
         </div>
         <Button onClick={() => setShowNewModal(true)} variant="glass-accent" className="gap-2">
@@ -238,7 +234,7 @@ export function TodosTab({ projectId }: TodosTabProps) {
           </div>
         ) : (
           filteredTodos.map((todo) => {
-            const assignees = todo.assigneeIds.map(id => getUserById(id)).filter(Boolean) as User[];
+            const assignees = (todo.assigneeIds || []).map(id => getUserById(id)).filter(Boolean) as User[];
             const requester = getUserById(todo.requestedById);
             const isOverdue = new Date(todo.dueDate) < new Date() && todo.status === 'PENDING';
 
@@ -263,7 +259,7 @@ export function TodosTab({ projectId }: TodosTabProps) {
                     >
                       {todo.title}
                     </span>
-                    <Badge variant="outline" className={priorityColors[todo.priority]}>
+                    <Badge variant="outline" className={priorityColors[todo.priority] || priorityColors.NORMAL}>
                       {todo.priority}
                     </Badge>
                     {isOverdue && (
@@ -297,13 +293,23 @@ export function TodosTab({ projectId }: TodosTabProps) {
                         </span>
                       </span>
                     )}
-                    {requester && !todo.assigneeIds.includes(requester.id) && (
+                    {requester && !todo.assigneeIds?.includes(requester.id) && (
                       <span className="text-xs">
                         {t('requestedBy')} {requester.name}
                       </span>
                     )}
                   </div>
                 </div>
+                {/* Delete button — only for requester */}
+                {currentUser && todo.requestedById === currentUser.id && (
+                  <button
+                    onClick={() => handleDeleteTodo(todo.id)}
+                    className="p-1.5 rounded-md hover:bg-red-500/10 text-muted-foreground hover:text-red-500 transition-colors shrink-0"
+                    title={t('delete')}
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                )}
               </div>
             );
           })
