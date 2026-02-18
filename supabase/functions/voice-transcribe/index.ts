@@ -244,14 +244,6 @@ Deno.serve(async (req) => {
       );
     }
 
-    const googleApiKey = Deno.env.get('GOOGLE_CLOUD_STT_API_KEY');
-    if (!googleApiKey) {
-      return new Response(
-        JSON.stringify({ error: 'GOOGLE_CLOUD_STT_API_KEY not configured' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
-      );
-    }
-
     // Create Supabase service client
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -263,20 +255,39 @@ Deno.serve(async (req) => {
       .update({ status: 'transcribing', updated_at: new Date().toISOString() })
       .eq('id', recordingId);
 
-    // Download audio from Storage
-    const { data: audioData, error: downloadError } = await supabase.storage
-      .from('voice-recordings')
-      .download(audioStoragePath);
+    const googleApiKey = Deno.env.get('GOOGLE_CLOUD_STT_API_KEY');
 
-    if (downloadError || !audioData) {
-      throw new Error(`Failed to download audio: ${downloadError?.message}`);
+    let transcript: TranscriptSegment[];
+
+    if (!googleApiKey) {
+      // STT API key not configured — return placeholder transcript
+      // This allows the Brain analysis step to still run with minimal context
+      console.warn('[voice-transcribe] GOOGLE_CLOUD_STT_API_KEY not configured, returning placeholder');
+      transcript = [
+        {
+          speaker: '화자 1',
+          text: '(음성 인식 API 키가 설정되지 않아 트랜스크립트를 생성할 수 없습니다. Supabase Dashboard → Edge Functions → Secrets에서 GOOGLE_CLOUD_STT_API_KEY를 설정해주세요.)',
+          startTime: 0,
+          endTime: 0,
+        },
+      ];
+    } else {
+      // Download audio from Storage
+      const { data: audioData, error: downloadError } = await supabase.storage
+        .from('voice-recordings')
+        .download(audioStoragePath);
+
+      if (downloadError || !audioData) {
+        throw new Error(`Failed to download audio: ${downloadError?.message}`);
+      }
+
+      const audioBytes = new Uint8Array(await audioData.arrayBuffer());
+      console.log(`[voice-transcribe] Downloaded ${audioBytes.length} bytes for recording ${recordingId}`);
+
+      // Transcribe with Google Cloud STT
+      transcript = await transcribeLongAudio(audioBytes, googleApiKey);
     }
 
-    const audioBytes = new Uint8Array(await audioData.arrayBuffer());
-    console.log(`[voice-transcribe] Downloaded ${audioBytes.length} bytes for recording ${recordingId}`);
-
-    // Transcribe
-    const transcript = await transcribeLongAudio(audioBytes, googleApiKey);
     console.log(`[voice-transcribe] Got ${transcript.length} segments`);
 
     // Save transcript to DB
