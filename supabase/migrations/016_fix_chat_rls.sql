@@ -18,6 +18,7 @@ ON projects USING GIN (team_member_ids);
 -- NEW: project team members can see all room members in their projects
 -- =====================================================
 DROP POLICY IF EXISTS "Members can view room members" ON chat_room_members;
+DROP POLICY IF EXISTS "Team members can view room members" ON chat_room_members;
 CREATE POLICY "Team members can view room members"
     ON chat_room_members FOR SELECT
     USING (
@@ -33,6 +34,7 @@ CREATE POLICY "Team members can view room members"
 -- =====================================================
 -- 3. EXPAND chat_rooms SELECT policy to include PM and ADMIN
 -- =====================================================
+DROP POLICY IF EXISTS "Users can view project chat rooms" ON chat_rooms;
 DROP POLICY IF EXISTS "Team members can view project chat rooms" ON chat_rooms;
 CREATE POLICY "Team members can view project chat rooms"
     ON chat_rooms FOR SELECT

@@ -341,6 +341,7 @@ export const useAppStore = create<AppState>()(
           await get().loadEvents();
           await get().loadUsers();
           await get().loadMessages();
+          await get().loadTodos();
         } finally {
           set({ isLoading: false });
         }
@@ -401,6 +402,7 @@ export const useAppStore = create<AppState>()(
             await get().loadEvents();
             await get().loadUsers();
             await get().loadMessages();
+            await get().loadTodos();
           }
         } finally {
           set({ isInitializing: false });
