@@ -191,12 +191,14 @@ function EmailItem({
   onReply: (id: string) => void;
 }) {
   const { gmailMessages } = useAppStore();
+  const [isExpanded, setIsExpanded] = useState(false);
   const email = gmailMessages.find(m => m.id === emailId);
   if (!email) return null;
 
-  // Parse sender name from "Name <email>" format
-  const senderMatch = email.from.match(/^(.+?)\s*</);
+  // Parse sender name and email from "Name <email>" format
+  const senderMatch = email.from.match(/^(.+?)\s*<(.+?)>/);
   const senderName = senderMatch ? senderMatch[1].trim() : email.from;
+  const senderEmail = senderMatch ? senderMatch[2] : email.from;
 
   const dateStr = new Date(email.date).toLocaleDateString([], {
     month: 'numeric',
@@ -206,9 +208,12 @@ function EmailItem({
   });
 
   return (
-    <div className="border-b border-border/30 last:border-b-0 px-2 py-2">
-      {/* Email header */}
-      <div className="flex items-start gap-2">
+    <div className="border-b border-border/30 last:border-b-0">
+      {/* Email header — clickable */}
+      <div
+        className="flex items-start gap-2 px-2 py-2 cursor-pointer hover:bg-muted/30 transition-colors"
+        onClick={() => setIsExpanded(!isExpanded)}
+      >
         <Mail className={`w-3.5 h-3.5 shrink-0 mt-0.5 ${email.isUnread ? 'text-primary' : 'text-muted-foreground/50'}`} />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5">
@@ -216,24 +221,49 @@ function EmailItem({
               {senderName}
             </span>
             <span className="text-[10px] text-muted-foreground shrink-0">{dateStr}</span>
+            {suggestions.length > 0 && (
+              <Brain className="w-3 h-3 text-primary shrink-0" />
+            )}
           </div>
-          <p className={`text-[11px] truncate ${email.isUnread ? 'text-foreground/90 font-medium' : 'text-muted-foreground'}`}>
+          <p className={`text-[11px] ${isExpanded ? '' : 'truncate'} ${email.isUnread ? 'text-foreground/90 font-medium' : 'text-muted-foreground'}`}>
             {email.subject}
           </p>
-          <p className="text-[10px] text-muted-foreground/60 truncate mt-0.5">{email.snippet}</p>
+          {!isExpanded && (
+            <p className="text-[10px] text-muted-foreground/60 truncate mt-0.5">{email.snippet}</p>
+          )}
         </div>
       </div>
 
+      {/* Expanded email body */}
+      {isExpanded && (
+        <div className="px-3 pb-2 space-y-2">
+          {/* Sender/recipient details */}
+          <div className="text-[10px] text-muted-foreground/70 space-y-0.5 pl-5">
+            <p>From: {senderName} &lt;{senderEmail}&gt;</p>
+            <p>To: {email.to.join(', ')}</p>
+            {email.cc && email.cc.length > 0 && <p>Cc: {email.cc.join(', ')}</p>}
+          </div>
+          {/* Email body */}
+          <div className="pl-5 text-[11px] text-foreground/80 whitespace-pre-wrap break-words max-h-48 overflow-auto rounded-md bg-muted/20 p-2">
+            {email.body || email.snippet}
+          </div>
+        </div>
+      )}
+
       {/* Brain suggestions for this email */}
-      {suggestions.map(s => (
-        <SuggestionCard
-          key={s.id}
-          suggestion={s}
-          onConfirm={() => onConfirm(s.id)}
-          onReject={() => onReject(s.id)}
-          onReply={() => onReply(s.id)}
-        />
-      ))}
+      {(isExpanded || suggestions.some(s => s.status === 'pending')) && suggestions.length > 0 && (
+        <div className="px-2 pb-2">
+          {suggestions.map(s => (
+            <SuggestionCard
+              key={s.id}
+              suggestion={s}
+              onConfirm={() => onConfirm(s.id)}
+              onReject={() => onReject(s.id)}
+              onReply={() => onReply(s.id)}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

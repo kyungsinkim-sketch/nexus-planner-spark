@@ -47,16 +47,25 @@ const transformToInsert = (event: Partial<CalendarEvent>): EventInsert => {
     };
 };
 
-// Get all events
+// Get all events (scoped to reasonable date range to handle large Google Calendar syncs)
 export const getEvents = async (): Promise<CalendarEvent[]> => {
     if (!isSupabaseConfigured()) {
         throw new Error('Supabase not configured');
     }
 
+    // Scope to past 3 months → future 12 months to avoid hitting Supabase row limits
+    const rangeStart = new Date();
+    rangeStart.setMonth(rangeStart.getMonth() - 3);
+    const rangeEnd = new Date();
+    rangeEnd.setMonth(rangeEnd.getMonth() + 12);
+
     const { data, error } = await supabase
         .from('calendar_events')
         .select('*')
-        .order('start_at', { ascending: true });
+        .gte('start_at', rangeStart.toISOString())
+        .lte('start_at', rangeEnd.toISOString())
+        .order('start_at', { ascending: true })
+        .limit(2000);
 
     if (error) {
         throw new Error(handleSupabaseError(error));
