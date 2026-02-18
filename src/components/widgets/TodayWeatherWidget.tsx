@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogFooter,
@@ -88,6 +89,7 @@ function TodayWeatherWidget({ context: _context }: { context: WidgetDataContext 
         <DialogContent className="sm:max-w-sm" onMouseDown={(e) => e.stopPropagation()}>
           <DialogHeader>
             <DialogTitle>{t('todayWeather')} — {t('settings')}</DialogTitle>
+            <DialogDescription className="sr-only">{t('todayWeather')}</DialogDescription>
           </DialogHeader>
           <Input
             value={searchQuery}

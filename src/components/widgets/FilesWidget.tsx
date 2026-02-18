@@ -21,7 +21,7 @@ import {
   MessageSquare, X, Eye, Send,
 } from 'lucide-react';
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+  Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -325,6 +325,7 @@ function FilesWidget({ context }: { context: WidgetDataContext }) {
                     <Icon className={`w-5 h-5 ${info.color}`} />
                     {selectedFile.name}
                   </DialogTitle>
+                  <DialogDescription className="sr-only">{selectedFile.name}</DialogDescription>
                 </DialogHeader>
 
                 {/* Preview area */}

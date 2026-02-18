@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogFooter,
@@ -187,6 +188,7 @@ function WorldClockWidget({ context: _context }: { context: WidgetDataContext })
         <DialogContent className="sm:max-w-md" onMouseDown={(e) => e.stopPropagation()}>
           <DialogHeader>
             <DialogTitle>{t('worldClock')} — {t('settings')}</DialogTitle>
+            <DialogDescription className="sr-only">{t('worldClock')}</DialogDescription>
           </DialogHeader>
           {tempSelected.length > 0 && (
             <div className="flex flex-wrap gap-1.5 pb-1">

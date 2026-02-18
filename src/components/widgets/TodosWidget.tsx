@@ -17,6 +17,7 @@ import { CheckCircle2, Circle } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogFooter,
@@ -283,6 +284,7 @@ function TodosWidget({ context }: { context: WidgetDataContext }) {
         <DialogContent className="sm:max-w-md" onMouseDown={(e) => e.stopPropagation()}>
           <DialogHeader>
             <DialogTitle>{t('editTodo') || '할 일 수정'}</DialogTitle>
+            <DialogDescription className="sr-only">{t('editTodo') || '할 일 수정'}</DialogDescription>
           </DialogHeader>
           <div className="space-y-3 py-2">
             {/* Title */}
@@ -360,6 +362,7 @@ function TodosWidget({ context }: { context: WidgetDataContext }) {
         <DialogContent className="sm:max-w-md" onMouseDown={(e) => e.stopPropagation()}>
           <DialogHeader>
             <DialogTitle>{t('newTodo')}</DialogTitle>
+            <DialogDescription className="sr-only">{t('newTodo')}</DialogDescription>
           </DialogHeader>
           <div className="space-y-3 py-2">
             {/* Title */}

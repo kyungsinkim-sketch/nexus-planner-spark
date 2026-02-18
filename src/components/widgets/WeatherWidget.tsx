@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogFooter,
@@ -101,6 +102,7 @@ function WeatherWidget({ context: _context }: { context: WidgetDataContext }) {
         <DialogContent className="sm:max-w-sm" onMouseDown={(e) => e.stopPropagation()}>
           <DialogHeader>
             <DialogTitle>{t('weeklyWeather')} — {t('settings')}</DialogTitle>
+            <DialogDescription className="sr-only">{t('weeklyWeather')}</DialogDescription>
           </DialogHeader>
           <Input
             value={searchQuery}
