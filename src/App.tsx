@@ -9,6 +9,7 @@ import { TabLayout } from "@/components/layout";
 import { useAppStore } from "@/stores/appStore";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import { Loader2 } from "lucide-react";
+import { playNotificationSound } from "@/services/notificationSoundService";
 
 // Lazy-loaded page components for code splitting
 const AdminPage = lazy(() => import("./pages/AdminPage"));
@@ -80,7 +81,7 @@ const App = () => {
   }, [theme]);
 
   // Cross-tab sync: listen for localStorage changes from other tabs/windows
-  // so company notifications, important notes, etc. propagate in real-time
+  // Messages, company notifications, important notes propagate in real-time
   useEffect(() => {
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === 're-be-storage' && e.newValue) {
@@ -89,6 +90,22 @@ const App = () => {
           const persisted = parsed?.state;
           if (!persisted) return;
           const store = useAppStore.getState();
+
+          // Sync messages from other tabs — detect NEW messages for notification sound
+          if (persisted.messages && persisted.messages.length > store.messages.length) {
+            const currentIds = new Set(store.messages.map((m: { id: string }) => m.id));
+            const newMsgs = persisted.messages.filter((m: { id: string }) => !currentIds.has(m.id));
+            useAppStore.setState({ messages: persisted.messages });
+            // Play notification sound for new messages from other users
+            if (store.notificationSoundEnabled && store.currentUser && newMsgs.length > 0) {
+              const hasNewFromOthers = newMsgs.some(
+                (m: { userId: string }) => m.userId !== store.currentUser?.id
+              );
+              if (hasNewFromOthers) {
+                playNotificationSound('message');
+              }
+            }
+          }
           // Sync company notifications from other tabs
           if (persisted.companyNotifications && JSON.stringify(persisted.companyNotifications) !== JSON.stringify(store.companyNotifications)) {
             useAppStore.setState({ companyNotifications: persisted.companyNotifications });
