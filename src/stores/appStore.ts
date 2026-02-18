@@ -1182,18 +1182,20 @@ export const useAppStore = create<AppState>()(
         const state = get();
         if (!state.currentUser) return;
 
+        // Always remove from local list immediately for better UX
+        set({
+          gmailMessages: state.gmailMessages.filter(m => m.id !== messageId),
+          emailSuggestions: state.emailSuggestions.filter(s => s.emailId !== messageId),
+        });
+
+        // Try server-side trash (may fail if gmail.modify scope not granted)
         try {
           const result = await gmailService.trashGmailMessage(state.currentUser.id, messageId);
-          if (result.success) {
-            set({
-              gmailMessages: state.gmailMessages.filter(m => m.id !== messageId),
-              emailSuggestions: state.emailSuggestions.filter(s => s.emailId !== messageId),
-            });
-          } else {
-            console.error('[Gmail] Trash failed:', result.error);
+          if (!result.success) {
+            console.warn('[Gmail] Server trash failed (local removed):', result.error);
           }
         } catch (err) {
-          console.error('[Gmail] Trash exception:', err);
+          console.warn('[Gmail] Server trash exception (local removed):', err);
         }
       },
 
@@ -1207,9 +1209,17 @@ export const useAppStore = create<AppState>()(
         try {
           const suggestions = await gmailService.analyzeSingleEmail(state.currentUser.id, email);
           if (suggestions.length > 0) {
+            // Patch emailId to match the actual email (mock data may have different IDs)
+            const patchedSuggestions = suggestions.map(s => ({
+              ...s,
+              emailId: messageId,
+            }));
             // Replace existing suggestions for this email, add new ones
             const otherSuggestions = get().emailSuggestions.filter(s => s.emailId !== messageId);
-            set({ emailSuggestions: [...suggestions, ...otherSuggestions] });
+            set({ emailSuggestions: [...patchedSuggestions, ...otherSuggestions] });
+            console.log(`[Gmail] Brain analyzed email ${messageId}: ${patchedSuggestions.length} suggestions`);
+          } else {
+            console.log(`[Gmail] Brain analyzed email ${messageId}: no suggestions found`);
           }
         } catch (err) {
           console.error('[Gmail] Analyze email exception:', err);
