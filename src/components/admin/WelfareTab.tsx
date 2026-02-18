@@ -94,6 +94,7 @@ export function WelfareTab() {
     const [selectedLockerNumber, setSelectedLockerNumber] = useState(0);
     const [userSearchQuery, setUserSearchQuery] = useState('');
     const [showUserDropdown, setShowUserDropdown] = useState(false);
+    const [isCreatingBooking, setIsCreatingBooking] = useState(false);
 
     // Training records state - now session-based instead of user-based
     const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
@@ -149,8 +150,9 @@ export function WelfareTab() {
         setIsBookingDialogOpen(true);
     };
 
-    // Handle booking creation
+    // Handle booking creation (with guard to prevent duplicate events)
     const handleCreateBooking = async () => {
+        if (isCreatingBooking) return; // prevent double-click
         if (!selectedUserId) {
             toast.error(t('selectUser'));
             return;
@@ -158,6 +160,8 @@ export function WelfareTab() {
 
         const user = users.find(u => u.id === selectedUserId);
         if (!user) return;
+
+        setIsCreatingBooking(true);
 
         const newSession: TrainingSession = {
             id: `session-${Date.now()}`,
@@ -171,29 +175,43 @@ export function WelfareTab() {
 
         setTrainingSessions([...trainingSessions, newSession]);
 
-        // Add to user's personal calendar
+        // Add to user's personal calendar (single event only)
         const hour = timeSlotToHour(selectedTimeSlot);
         const startDate = new Date(selectedDate);
         startDate.setHours(hour, 0, 0, 0);
         const endDate = new Date(startDate);
         endDate.setHours(hour + 1, 0, 0, 0);
 
-        try {
-            await addEvent({
-                title: t('renatusTrainingEvent'),
-                type: 'MEETING',
-                startAt: startDate.toISOString(),
-                endAt: endDate.toISOString(),
-                ownerId: selectedUserId,
-                source: 'PAULUS',
-            });
-            toast.success(`${user.name}${t('bookingCreatedWithCalendar')}`);
-        } catch (error) {
+        // Check for existing duplicate event before creating
+        const { events: existingEvents } = useAppStore.getState();
+        const eventTitle = t('renatusTrainingEvent');
+        const hasDuplicate = existingEvents.some(
+            e => e.title === eventTitle &&
+                 e.ownerId === selectedUserId &&
+                 e.startAt === startDate.toISOString()
+        );
+
+        if (!hasDuplicate) {
+            try {
+                await addEvent({
+                    title: eventTitle,
+                    type: 'R_TRAINING',
+                    startAt: startDate.toISOString(),
+                    endAt: endDate.toISOString(),
+                    ownerId: selectedUserId,
+                    source: 'PAULUS',
+                });
+                toast.success(`${user.name}${t('bookingCreatedWithCalendar')}`);
+            } catch (error) {
+                toast.success(t('bookingCreated'));
+            }
+        } else {
             toast.success(t('bookingCreated'));
         }
 
         setIsBookingDialogOpen(false);
         setSelectedUserId('');
+        setIsCreatingBooking(false);
     };
 
     // Handle locker click
@@ -674,7 +692,7 @@ export function WelfareTab() {
                         <Button variant="outline" onClick={() => setIsBookingDialogOpen(false)}>
                             {t('cancel')}
                         </Button>
-                        <Button onClick={handleCreateBooking}>{t('createBooking')}</Button>
+                        <Button onClick={handleCreateBooking} disabled={isCreatingBooking}>{t('createBooking')}</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

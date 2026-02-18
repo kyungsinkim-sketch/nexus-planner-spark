@@ -3,12 +3,12 @@
  *
  * 수식: 가중 합산 방식
  * - 채팅 메시지: 25% (소통 빈도)
- * - 파일 업로드: 25% (실제 산출물)
- * - To-do 완료: 30% (작업 수행량)
- * - 캘린더 이벤트: 20% (일정/미팅 참여도)
+ * - 파일 업로드: 20% (실제 산출물)
+ * - To-do 완료: 40% (작업 수행량)
+ * - 캘린더 이벤트: 15% (일정/미팅 참여도)
  *
- * 각 항목은 전체 프로젝트 내 해당 유저의 비율로 계산
- * loadScore = (chatRatio * 0.25) + (fileRatio * 0.25) + (todoRatio * 0.30) + (calendarRatio * 0.20)
+ * 모든 active 프로젝트를 통합적으로 계산
+ * loadScore = (chatRatio * 0.25) + (fileRatio * 0.20) + (todoRatio * 0.40) + (calendarRatio * 0.15)
  */
 
 import type { TeamLoadSnapshot } from '@/types/core';
@@ -23,9 +23,9 @@ interface TeamLoadInput {
 
 const WEIGHTS = {
   chat: 0.25,
-  file: 0.25,
-  todo: 0.30,
-  calendar: 0.20,
+  file: 0.20,
+  todo: 0.40,
+  calendar: 0.15,
 };
 
 export function calculateTeamLoad(inputs: TeamLoadInput[]): TeamLoadSnapshot[] {

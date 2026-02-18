@@ -92,6 +92,8 @@ function NotificationsWidget({ context }: { context: WidgetDataContext }) {
     // Upcoming events (next 24h)
     const now = new Date();
     const next24h = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+    const todayStr = now.toDateString();
+    const tomorrowStr = new Date(now.getTime() + 24 * 60 * 60 * 1000).toDateString();
     events
       .filter((e) => {
         const start = new Date(e.startAt);
@@ -105,11 +107,22 @@ function NotificationsWidget({ context }: { context: WidgetDataContext }) {
       .forEach((e) => {
         const id = `evt-${e.id}`;
         if (dismissedIds.has(id)) return;
+        const eventStart = new Date(e.startAt);
+        const timeStr = eventStart.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        const eventDateStr = eventStart.toDateString();
+        let datePrefix = '';
+        if (eventDateStr === todayStr) {
+          datePrefix = t('today') || '오늘';
+        } else if (eventDateStr === tomorrowStr) {
+          datePrefix = t('tomorrow') || '내일';
+        } else {
+          datePrefix = eventStart.toLocaleDateString([], { month: 'numeric', day: 'numeric' });
+        }
         items.push({
           id,
           icon: Calendar,
           text: e.title,
-          time: new Date(e.startAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          time: `${datePrefix} ${timeStr}`,
           type: 'event',
         });
       });

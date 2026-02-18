@@ -4,6 +4,10 @@
  * The + button lives in the WidgetContainer titlebar (via headerActions).
  * Global state `todoCreateDialogOpen` triggers the create dialog.
  * Supports multi-user assignment via UserSearchInput and priority selection.
+ *
+ * Interactions:
+ * - Checkbox (circle icon) click → toggle complete
+ * - Text/title click → open edit dialog for details
  */
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
@@ -18,11 +22,12 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { UserSearchInput } from '@/components/ui/user-search-input';
 import { toast } from 'sonner';
 import type { WidgetDataContext } from '@/types/widget';
-import type { User } from '@/types/core';
+import type { User, PersonalTodo } from '@/types/core';
 
 const priorityDot: Record<string, string> = {
   HIGH: 'bg-red-500',
@@ -35,7 +40,7 @@ const PRIORITIES = ['HIGH', 'NORMAL', 'LOW'] as const;
 function TodosWidget({ context }: { context: WidgetDataContext }) {
   const {
     personalTodos, currentUser, users, projects,
-    addTodo, completeTodo,
+    addTodo, completeTodo, updateTodo,
     todoCreateDialogOpen, setTodoCreateDialogOpen,
   } = useAppStore();
   const { t, language } = useTranslation();
@@ -45,6 +50,14 @@ function TodosWidget({ context }: { context: WidgetDataContext }) {
   const [newDueDate, setNewDueDate] = useState('');
   const [newPriority, setNewPriority] = useState<'HIGH' | 'NORMAL' | 'LOW'>('NORMAL');
   const [selectedAssignees, setSelectedAssignees] = useState<User[]>([]);
+
+  // Edit dialog state
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editingTodo, setEditingTodo] = useState<PersonalTodo | null>(null);
+  const [editTitle, setEditTitle] = useState('');
+  const [editDueDate, setEditDueDate] = useState('');
+  const [editPriority, setEditPriority] = useState<'HIGH' | 'NORMAL' | 'LOW'>('NORMAL');
+  const [editNote, setEditNote] = useState('');
 
   const locale = language === 'ko' ? 'ko-KR' : 'en-US';
 
@@ -103,10 +116,35 @@ function TodosWidget({ context }: { context: WidgetDataContext }) {
     setTodoCreateDialogOpen(false);
   }, [newTitle, newDueDate, newPriority, selectedAssignees, currentUser, context, addTodo, setTodoCreateDialogOpen, t]);
 
-  const handleToggle = async (todoId: string, currentStatus: string) => {
+  // Checkbox click → complete
+  const handleToggle = async (e: React.MouseEvent, todoId: string, currentStatus: string) => {
+    e.stopPropagation();
     if (currentStatus === 'PENDING') {
       await completeTodo(todoId);
     }
+  };
+
+  // Text click → open edit dialog
+  const handleOpenEdit = (todo: PersonalTodo) => {
+    setEditingTodo(todo);
+    setEditTitle(todo.title);
+    setEditDueDate(todo.dueDate ? new Date(todo.dueDate).toISOString().slice(0, 10) : '');
+    setEditPriority(todo.priority as 'HIGH' | 'NORMAL' | 'LOW' || 'NORMAL');
+    setEditNote((todo as any).note || '');
+    setEditDialogOpen(true);
+  };
+
+  // Save edited todo
+  const handleSaveEdit = async () => {
+    if (!editingTodo || !editTitle.trim()) return;
+    await updateTodo(editingTodo.id, {
+      title: editTitle.trim(),
+      dueDate: editDueDate || editingTodo.dueDate,
+      priority: editPriority,
+    });
+    toast.success(t('saved') || 'Saved');
+    setEditDialogOpen(false);
+    setEditingTodo(null);
   };
 
   const handleAddAssignee = useCallback((user: User) => {
@@ -142,13 +180,22 @@ function TodosWidget({ context }: { context: WidgetDataContext }) {
               <div
                 key={todo.id}
                 className="flex items-start gap-2 px-2 py-1.5 rounded-lg hover:bg-white/5 transition-colors cursor-pointer group"
-                onClick={() => handleToggle(todo.id, todo.status)}
+                onClick={() => handleOpenEdit(todo)}
               >
-                {todo.status === 'COMPLETED' ? (
-                  <CheckCircle2 className="w-4 h-4 text-green-500 shrink-0 mt-0.5" />
-                ) : (
-                  <Circle className="w-4 h-4 text-muted-foreground/40 group-hover:text-muted-foreground/70 shrink-0 mt-0.5 transition-colors" />
-                )}
+                {/* Checkbox area — click to toggle complete */}
+                <button
+                  type="button"
+                  className="shrink-0 mt-0.5 focus:outline-none"
+                  onClick={(e) => handleToggle(e, todo.id, todo.status)}
+                  title={todo.status === 'COMPLETED' ? (t('completed') || 'Completed') : (t('markComplete') || 'Mark complete')}
+                >
+                  {todo.status === 'COMPLETED' ? (
+                    <CheckCircle2 className="w-4 h-4 text-green-500" />
+                  ) : (
+                    <Circle className="w-4 h-4 text-muted-foreground/40 group-hover:text-muted-foreground/70 transition-colors" />
+                  )}
+                </button>
+                {/* Text area — click to edit */}
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-1.5">
                     <span
@@ -186,6 +233,83 @@ function TodosWidget({ context }: { context: WidgetDataContext }) {
           })}
         </div>
       )}
+
+      {/* Edit Todo Dialog */}
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent className="sm:max-w-md" onMouseDown={(e) => e.stopPropagation()}>
+          <DialogHeader>
+            <DialogTitle>{t('editTodo') || '할 일 수정'}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            {/* Title */}
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">
+                {t('title') || '제목'}
+              </label>
+              <Input
+                value={editTitle}
+                onChange={(e) => setEditTitle(e.target.value)}
+                placeholder={t('whatNeedsToBeDone')}
+                autoFocus
+              />
+            </div>
+
+            {/* Due Date */}
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">
+                {t('dueDate')}
+              </label>
+              <Input
+                type="date"
+                value={editDueDate}
+                onChange={(e) => setEditDueDate(e.target.value)}
+              />
+            </div>
+
+            {/* Priority */}
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">
+                {t('priority')}
+              </label>
+              <div className="flex gap-2">
+                {PRIORITIES.map((p) => (
+                  <button
+                    key={p}
+                    type="button"
+                    onClick={() => setEditPriority(p)}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border ${
+                      editPriority === p
+                        ? 'bg-primary/10 border-primary text-primary'
+                        : 'bg-transparent border-border text-muted-foreground hover:bg-muted'
+                    }`}
+                  >
+                    <span className={`w-2 h-2 rounded-full ${priorityDot[p]}`} />
+                    {p === 'HIGH' ? t('high') : p === 'NORMAL' ? t('normal') : t('low')}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Status display */}
+            {editingTodo && (
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <span>{t('status') || '상태'}:</span>
+                <span className={`font-medium ${editingTodo.status === 'COMPLETED' ? 'text-green-500' : 'text-primary'}`}>
+                  {editingTodo.status === 'COMPLETED' ? (t('completed') || '완료') : (t('pending') || '진행중')}
+                </span>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" size="sm" onClick={() => setEditDialogOpen(false)}>
+              {t('cancel')}
+            </Button>
+            <Button size="sm" onClick={handleSaveEdit} disabled={!editTitle.trim()}>
+              {t('save') || '저장'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Enhanced Create Dialog with assignee + priority */}
       <Dialog open={todoCreateDialogOpen} onOpenChange={setTodoCreateDialogOpen}>

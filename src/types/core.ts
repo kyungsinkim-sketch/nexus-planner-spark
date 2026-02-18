@@ -1,4 +1,4 @@
-export type UserRole = 'ADMIN' | 'MANAGER' | 'MEMBER';
+export type UserRole = 'ADMIN' | 'MANAGER' | 'PRODUCER' | 'MEMBER';
 
 // User work status
 export type UserWorkStatus = 'AT_WORK' | 'NOT_AT_WORK' | 'LUNCH' | 'TRAINING' | 'REMOTE' | 'OVERSEAS' | 'FILMING' | 'FIELD';

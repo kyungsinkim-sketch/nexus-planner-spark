@@ -39,19 +39,24 @@ import { toast } from 'sonner';
 import { useTranslation } from '@/hooks/useTranslation';
 
 // Available permissions
-const availablePermissions = ['Dashboard', 'Calendar', 'Projects', 'Chat', 'Inbox', 'Profile', 'Admin'];
+const availablePermissions = ['Dashboard', 'Calendar', 'Projects', 'Chat', 'Inbox', 'Profile', 'Budget', 'Admin'];
 
 // Initial role permissions configuration
 const initialRolePermissions = {
     ADMIN: {
         label: 'Administrator',
         color: 'bg-red-500',
-        access: ['Dashboard', 'Calendar', 'Projects', 'Chat', 'Inbox', 'Profile', 'Admin'],
+        access: ['Dashboard', 'Calendar', 'Projects', 'Chat', 'Inbox', 'Profile', 'Budget', 'Admin'],
     },
     MANAGER: {
         label: 'Manager',
         color: 'bg-blue-500',
-        access: ['Dashboard', 'Calendar', 'Projects', 'Chat', 'Inbox', 'Profile'],
+        access: ['Dashboard', 'Calendar', 'Projects', 'Chat', 'Inbox', 'Profile', 'Budget', 'Admin'],
+    },
+    PRODUCER: {
+        label: 'Producer',
+        color: 'bg-orange-500',
+        access: ['Dashboard', 'Calendar', 'Projects', 'Chat', 'Inbox', 'Profile', 'Budget'],
     },
     TRAINER: {
         label: 'Trainer',
@@ -413,6 +418,7 @@ export function AdminSettingsTab() {
                                                 <SelectContent>
                                                     <SelectItem value="ADMIN">Administrator</SelectItem>
                                                     <SelectItem value="MANAGER">Manager</SelectItem>
+                                                    <SelectItem value="PRODUCER">Producer</SelectItem>
                                                     <SelectItem value="TRAINER">Trainer</SelectItem>
                                                     <SelectItem value="MEMBER">General User</SelectItem>
                                                 </SelectContent>
@@ -465,6 +471,7 @@ export function AdminSettingsTab() {
                                                 <SelectContent>
                                                     <SelectItem value="ADMIN">Administrator</SelectItem>
                                                     <SelectItem value="MANAGER">Manager</SelectItem>
+                                                    <SelectItem value="PRODUCER">Producer</SelectItem>
                                                     <SelectItem value="TRAINER">Trainer</SelectItem>
                                                     <SelectItem value="MEMBER">General User</SelectItem>
                                                 </SelectContent>

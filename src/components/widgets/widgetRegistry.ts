@@ -115,9 +115,9 @@ export const WIDGET_DEFINITIONS: Record<WidgetType, WidgetDefinition> = {
     type: 'teamLoad',
     titleKey: 'teamLoad',
     icon: Users,
-    defaultSize: { w: 4, h: 2 },
+    defaultSize: { w: 4, h: 3 },
     minSize: { w: 3, h: 2 },
-    contexts: ['project'],
+    contexts: ['dashboard'],
   },
   progressChart: {
     type: 'progressChart',

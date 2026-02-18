@@ -54,6 +54,7 @@ export function WidgetGrid({ context, projectKeyColor }: WidgetGridProps) {
   const setWorldClockSettingsOpen = useAppStore((s) => s.setWorldClockSettingsOpen);
   const setWeatherSettingsOpen = useAppStore((s) => s.setWeatherSettingsOpen);
   const isAdmin = currentUser?.role === 'ADMIN';
+  const hasBudgetAccess = currentUser?.role === 'ADMIN' || currentUser?.role === 'MANAGER' || currentUser?.role === 'PRODUCER';
   const [showAddMenu, setShowAddMenu] = useState(false);
   const [showProjectSettings, setShowProjectSettings] = useState(false);
 
@@ -162,7 +163,7 @@ export function WidgetGrid({ context, projectKeyColor }: WidgetGridProps) {
       .filter((item) => {
         const def = WIDGET_DEFINITIONS[item.i as WidgetType];
         if (!def) return false;
-        if (def.adminOnly && !isAdmin) return false;
+        if (def.adminOnly && !hasBudgetAccess) return false;
         return true;
       })
       .map((item) => ({
@@ -175,7 +176,7 @@ export function WidgetGrid({ context, projectKeyColor }: WidgetGridProps) {
         minH: item.collapsed ? 1 : item.minH ?? 2,
       }));
     return { lg: lgLayout, md: lgLayout, sm: lgLayout, xs: lgLayout, xxs: lgLayout };
-  }, [layout, isAdmin]);
+  }, [layout, hasBudgetAccess]);
 
   // Visible widget items
   const visibleWidgets = useMemo(
@@ -183,7 +184,7 @@ export function WidgetGrid({ context, projectKeyColor }: WidgetGridProps) {
       layout.filter((item) => {
         const def = WIDGET_DEFINITIONS[item.i as WidgetType];
         if (!def) return false;
-        if (def.adminOnly && !isAdmin) return false;
+        if (def.adminOnly && !hasBudgetAccess) return false;
         return true;
       }),
     [layout, isAdmin],
@@ -420,7 +421,7 @@ export function WidgetGrid({ context, projectKeyColor }: WidgetGridProps) {
                 const availableWidgets = Object.values(WIDGET_DEFINITIONS).filter((def) => {
                   if (currentWidgetIds.includes(def.type)) return false;
                   if (!def.contexts.includes(context.type)) return false;
-                  if (def.adminOnly && !isAdmin) return false;
+                  if (def.adminOnly && !hasBudgetAccess) return false;
                   return true;
                 });
 

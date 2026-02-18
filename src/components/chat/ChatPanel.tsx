@@ -1098,9 +1098,9 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
                 </p>
               </div>
             ) : (
-              <div className="space-y-4 max-w-full overflow-hidden">
+              <div className="space-y-4 max-w-full">
                 {Object.entries(groupedMessages).map(([date, dateMessages]) => (
-                  <div key={date} className="max-w-full overflow-hidden">
+                  <div key={date} className="max-w-full">
                     <div className="flex items-center gap-2 mb-3">
                       <Separator className="flex-1" />
                       <span className="text-[10px] font-medium text-muted-foreground">{date}</span>
@@ -1130,7 +1130,7 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
                             ) : (
                               <div className="w-7" />
                             )}
-                            <div className={`flex-1 min-w-0 overflow-hidden ${isCurrentUser ? 'text-right' : ''}`}>
+                            <div className={`flex-1 min-w-0 overflow-visible ${isCurrentUser ? 'text-right' : ''}`}>
                               {showAvatar && (
                                 <div className={`flex items-center gap-1.5 mb-0.5 ${isCurrentUser ? 'flex-row-reverse' : ''}`}>
                                   <span className="text-xs font-medium text-foreground">
@@ -1141,7 +1141,7 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
                                   </span>
                                 </div>
                               )}
-                              <div className={`group/msg-actions relative max-w-full ${isCurrentUser ? 'ml-auto' : ''}`} style={{ width: 'fit-content' }}>
+                              <div className={`group/msg-actions relative max-w-full pt-2 ${isCurrentUser ? 'ml-auto' : ''}`} style={{ width: 'fit-content' }}>
                                 <ChatMessageBubble
                                   message={message}
                                   isCurrentUser={isCurrentUser}
