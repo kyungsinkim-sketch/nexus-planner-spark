@@ -45,33 +45,63 @@ function getHeader(headers: Array<{ name: string; value: string }>, name: string
 function decodeBase64Url(str: string): string {
   try {
     const base64 = str.replace(/-/g, '+').replace(/_/g, '/');
-    return atob(base64);
+    const binaryStr = atob(base64);
+    // Convert Latin-1 string to Uint8Array, then decode as UTF-8
+    const bytes = new Uint8Array(binaryStr.length);
+    for (let i = 0; i < binaryStr.length; i++) {
+      bytes[i] = binaryStr.charCodeAt(i);
+    }
+    return new TextDecoder('utf-8').decode(bytes);
   } catch {
     return '';
   }
 }
 
+function stripHtml(html: string): string {
+  // Remove style/script blocks entirely
+  let text = html.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '');
+  text = text.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '');
+  // Replace <br>, <p>, <div>, <li> with newlines
+  text = text.replace(/<br\s*\/?>/gi, '\n');
+  text = text.replace(/<\/(p|div|li|tr|h[1-6])>/gi, '\n');
+  // Remove all other tags
+  text = text.replace(/<[^>]+>/g, '');
+  // Decode common HTML entities
+  text = text.replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'");
+  // Collapse multiple newlines/spaces
+  text = text.replace(/\n{3,}/g, '\n\n').replace(/ {2,}/g, ' ').trim();
+  return text;
+}
+
 function extractTextBody(payload: Record<string, unknown>): string {
-  // Try direct body
+  // Try direct body (single-part message)
   const body = payload.body as { data?: string; size?: number } | undefined;
+  const mimeType = payload.mimeType as string | undefined;
   if (body?.data) {
-    return decodeBase64Url(body.data);
+    const decoded = decodeBase64Url(body.data);
+    return mimeType === 'text/html' ? stripHtml(decoded) : decoded;
   }
-  // Try parts (multipart)
+  // Try parts (multipart) — prefer text/plain, fallback to text/html
   const parts = payload.parts as Array<Record<string, unknown>> | undefined;
   if (parts) {
+    let htmlFallback = '';
     for (const part of parts) {
-      const mimeType = part.mimeType as string;
-      if (mimeType === 'text/plain') {
+      const partMime = part.mimeType as string;
+      if (partMime === 'text/plain') {
         const partBody = part.body as { data?: string } | undefined;
         if (partBody?.data) return decodeBase64Url(partBody.data);
       }
+      if (partMime === 'text/html' && !htmlFallback) {
+        const partBody = part.body as { data?: string } | undefined;
+        if (partBody?.data) htmlFallback = stripHtml(decodeBase64Url(partBody.data));
+      }
       // Recursive for nested multipart
-      if (mimeType?.startsWith('multipart/')) {
+      if (partMime?.startsWith('multipart/')) {
         const nested = extractTextBody(part);
         if (nested) return nested;
       }
     }
+    if (htmlFallback) return htmlFallback;
   }
   return '';
 }

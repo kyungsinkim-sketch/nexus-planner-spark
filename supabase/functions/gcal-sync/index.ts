@@ -103,17 +103,30 @@ Deno.serve(async (req) => {
       let nextSyncToken: string | null = null;
       let needsFullSync = false;
 
-      // Pre-load all existing Google event IDs for this user (single query)
+      // Pre-load ALL existing events for this user (single query)
+      // We need both google_event_id matches AND title+start_at matches
+      // to avoid duplicating events that were created locally (PAULUS source).
       const { data: existingEvents } = await supabase
         .from('calendar_events')
-        .select('id, google_event_id, title, start_at, end_at, location')
-        .eq('owner_id', userId)
-        .not('google_event_id', 'is', null);
+        .select('id, google_event_id, title, start_at, end_at, location, source')
+        .eq('owner_id', userId);
+
+      // Normalize timestamps to UTC epoch ms for reliable comparison
+      // (DB stores +00:00, Google API returns +09:00 — same instant, different strings)
+      const normalizeTime = (t: string): string => {
+        try { return new Date(t).getTime().toString(); } catch { return t; }
+      };
 
       const existingByGoogleId = new Map<string, { id: string; title: string; start_at: string; end_at: string; location: string | null }>();
+      const existingByTitleStart = new Map<string, { id: string; title: string; start_at: string; end_at: string; location: string | null }>();
       for (const evt of existingEvents || []) {
         if (evt.google_event_id) {
           existingByGoogleId.set(evt.google_event_id, evt);
+        }
+        // Index by title + normalized start_at (UTC epoch) for matching across timezone formats
+        const key = `${evt.title}||${normalizeTime(evt.start_at)}`;
+        if (!existingByTitleStart.has(key)) {
+          existingByTitleStart.set(key, evt);
         }
       }
 
@@ -163,20 +176,44 @@ Deno.serve(async (req) => {
           const dbInsert = googleEventToDbInsert(gEvent, userId);
           if (!dbInsert) continue;
 
-          const existing = existingByGoogleId.get(gEvent.id);
+          // Check by google_event_id first, then fallback to title+normalized_start_at
+          const existingById = existingByGoogleId.get(gEvent.id);
+          const titleKey = `${dbInsert.title}||${normalizeTime(dbInsert.start_at as string)}`;
+          const existingByTitle = existingByTitleStart.get(titleKey);
+          const existing = existingById || existingByTitle;
+
           if (existing) {
-            toUpdate.push({
-              id: existing.id,
-              data: {
-                title: dbInsert.title,
-                start_at: dbInsert.start_at,
-                end_at: dbInsert.end_at,
-                location: dbInsert.location,
-              },
-            });
+            // Only update if this DB row hasn't already been claimed by another google_event_id
+            // (prevents overwriting when Google has multiple events with same title+time)
+            if (existing.id) {
+              toUpdate.push({
+                id: existing.id,
+                data: {
+                  title: dbInsert.title,
+                  start_at: dbInsert.start_at,
+                  end_at: dbInsert.end_at,
+                  location: dbInsert.location,
+                  google_event_id: gEvent.id,
+                  source: 'GOOGLE',
+                },
+              });
+            }
+            // Add to google_event_id map so subsequent pages don't re-insert
+            existingByGoogleId.set(gEvent.id, existing);
           } else {
+            // Before inserting, check if we've already inserted an event with same title+start_at
+            // in this sync batch (Google may have duplicate events with different IDs)
+            if (existingByTitleStart.has(titleKey)) {
+              // Skip — already handled (duplicate in Google Calendar itself)
+              existingByGoogleId.set(gEvent.id, existingByTitleStart.get(titleKey)!);
+              continue;
+            }
             toInsert.push(dbInsert);
             imported++;
+            // Track the new insert to prevent duplicates in subsequent pages
+            const newEntry = { id: '', title: dbInsert.title as string, start_at: dbInsert.start_at as string, end_at: dbInsert.end_at as string, location: dbInsert.location as string | null };
+            existingByGoogleId.set(gEvent.id, newEntry);
+            existingByTitleStart.set(titleKey, newEntry);
           }
         }
 
