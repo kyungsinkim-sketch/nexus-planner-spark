@@ -608,6 +608,22 @@
   border-color: var(--project-accent) !important;
   color: white !important;
 }
+/* Project accent — today indicator circle */
+[style*="--project-accent"] .calendar-widget-content .fc .fc-day-today .fc-daygrid-day-number {
+  background: var(--project-accent) !important;
+}
+/* Project accent — dark mode today background */
+.dark [style*="--project-accent"] .fc-daygrid-day.fc-day-today {
+  background-color: color-mix(in srgb, var(--project-accent) 10%, transparent) !important;
+}
+/* Project accent — now-indicator line in week/day view */
+[style*="--project-accent"] .fc .fc-timegrid-now-indicator-line {
+  border-color: var(--project-accent) !important;
+}
+[style*="--project-accent"] .fc .fc-timegrid-now-indicator-arrow {
+  border-color: var(--project-accent) !important;
+  color: var(--project-accent) !important;
+}
 
 /* ─── Chat widget overflow containment ───
    The chat widget is rendered as a "frameless" widget: glass-widget → flex-col → overflow-hidden → ChatPanel.

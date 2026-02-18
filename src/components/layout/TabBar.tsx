@@ -79,6 +79,7 @@ export function TabBar() {
     theme,
     toggleTheme,
     setProjectCreateDialogOpen,
+    projects,
   } = useAppStore();
   const isAdmin = currentUser?.role === 'ADMIN' || currentUser?.role === 'MANAGER';
   const isOnAdminRoute = location.pathname === '/admin';
@@ -86,6 +87,13 @@ export function TabBar() {
   const isDark = theme === 'dark';
   // Whether we're on a sub-route (admin, settings, budget, deposits)
   const isOnSubRoute = location.pathname !== '/';
+
+  // Resolve keyColor from project data (reactive to keyColor changes)
+  const getTabKeyColor = (tab: typeof openTabs[0]) => {
+    if (tab.type !== 'project' || !tab.projectId) return tab.keyColor;
+    const project = projects.find(p => p.id === tab.projectId);
+    return project?.keyColor || tab.keyColor;
+  };
 
   return (
     <div className="glass-tabbar flex items-stretch h-12 px-2 gap-1 shrink-0 z-30">
@@ -116,8 +124,9 @@ export function TabBar() {
         {openTabs.map((tab) => {
           const isActive = tab.id === activeTabId && !isOnSubRoute;
           const isDashboard = tab.type === 'dashboard';
+          const tabColor = getTabKeyColor(tab);
           // For active project tabs, decide text color based on background luminance
-          const useDarkText = isActive && !isDashboard && tab.keyColor ? shouldUseDarkText(tab.keyColor) : false;
+          const useDarkText = isActive && !isDashboard && tabColor ? shouldUseDarkText(tabColor) : false;
 
           return (
               <button
@@ -136,8 +145,8 @@ export function TabBar() {
                       : 'text-muted-foreground hover:bg-white/8 hover:text-foreground rounded-lg',
                 )}
                 style={
-                  isActive && !isDashboard && tab.keyColor
-                    ? { backgroundColor: `${tab.keyColor}e6` }
+                  isActive && !isDashboard && tabColor
+                    ? { backgroundColor: `${tabColor}e6` }
                     : isActive && isDashboard
                       ? { backgroundColor: isDark ? 'hsl(222 47% 12%)' : 'hsl(220 20% 91%)' }
                       : undefined
@@ -148,7 +157,7 @@ export function TabBar() {
                 ) : (
                   <div
                     className={cn('w-2.5 h-2.5 rounded-full shrink-0', isActive && (useDarkText ? 'bg-black/20' : 'bg-white/40'))}
-                    style={!isActive ? { backgroundColor: tab.keyColor || 'hsl(234 89% 60%)' } : undefined}
+                    style={!isActive ? { backgroundColor: tabColor || 'hsl(234 89% 60%)' } : undefined}
                   />
                 )}
                 <span className="truncate">{isDashboard ? t('dashboard') : tab.label}</span>

@@ -162,14 +162,46 @@ interface AppState {
  * Keywords: '중요한', '기억해', '기억해주세요', '잊지마', '잊지 마', '꼭 기억', 'important', 'remember'
  * EXCEPT: if the message matches '~해주세요' action-request pattern → goes to todos instead
  */
+const IMPORTANT_KEYWORDS = ['중요한', '기억해', '기억해주세요', '잊지마', '잊지 마', '꼭 기억', 'important', 'remember this', '꼭 참고'];
+
 function shouldExtractAsImportantNote(content: string): boolean {
   const text = content.toLowerCase();
   // Action requests go to todos, not important notes
   // Pattern: ends with verb + 해주세요 (e.g., 확인해주세요, 수정해주세요, 보내주세요)
   if (/[가-힣]+해\s*주세요/.test(content) && !text.includes('기억해')) return false;
   // Check for important note keywords
-  const keywords = ['중요한', '기억해', '기억해주세요', '잊지마', '잊지 마', '꼭 기억', 'important', 'remember this', '꼭 참고'];
-  return keywords.some(kw => text.includes(kw));
+  return IMPORTANT_KEYWORDS.some(kw => text.includes(kw));
+}
+
+/**
+ * Extract individual note items from a multi-line message.
+ * Splits by lines starting with -, •, *, or numbered prefixes (1., 2., etc.)
+ * If no bullet items found, returns the whole content as a single note.
+ */
+function extractNoteItems(content: string): string[] {
+  const lines = content.split('\n').map(l => l.trim()).filter(Boolean);
+
+  // Separate trigger lines (containing keywords) from content lines
+  const bulletItems: string[] = [];
+  for (const line of lines) {
+    // Strip leading bullet markers: -, •, *, numbered (1., 2.)
+    const cleaned = line.replace(/^[-•*]\s*/, '').replace(/^\d+[.)]\s*/, '').trim();
+    if (!cleaned) continue;
+    // Skip lines that are just the keyword trigger phrase
+    const lowerLine = cleaned.toLowerCase();
+    const isOnlyTrigger = IMPORTANT_KEYWORDS.some(kw => {
+      // If the line is just the keyword or a short phrase around it, skip it
+      const stripped = lowerLine.replace(kw, '').replace(/[*\s,.:;!?아래사항들내용이니중요한기억해주세요]/g, '');
+      return stripped.length < 5;
+    });
+    if (isOnlyTrigger) continue;
+    bulletItems.push(cleaned);
+  }
+
+  // If we found bullet items, return them individually
+  if (bulletItems.length > 0) return bulletItems;
+  // Fallback: return the whole content as a single note (strip keyword trigger line)
+  return [content.trim()];
 }
 
 export const useAppStore = create<AppState>()(
@@ -657,7 +689,10 @@ export const useAppStore = create<AppState>()(
 
         // Auto-extract important notes from message content
         if (projectId && shouldExtractAsImportantNote(content)) {
-          addImportantNote({ projectId, content, sourceMessageId: messageId, createdBy: currentUser.id });
+          const noteItems = extractNoteItems(content);
+          for (const item of noteItems) {
+            addImportantNote({ projectId, content: item, sourceMessageId: messageId, createdBy: currentUser.id });
+          }
         }
       },
 
@@ -815,7 +850,10 @@ export const useAppStore = create<AppState>()(
 
         // Auto-extract important notes from text messages
         if (projectId && (!options?.messageType || options.messageType === 'text') && shouldExtractAsImportantNote(content)) {
-          addImportantNote({ projectId, content, sourceMessageId: messageId, createdBy: currentUser.id });
+          const noteItems = extractNoteItems(content);
+          for (const item of noteItems) {
+            addImportantNote({ projectId, content: item, sourceMessageId: messageId, createdBy: currentUser.id });
+          }
         }
       },
 
