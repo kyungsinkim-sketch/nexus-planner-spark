@@ -509,6 +509,36 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
           }
         }
 
+        // After all actions auto-executed, update the bot message's brain_action_data
+        // with final statuses so other users see "Done" instead of "Pending"
+        const botMessageId = (brainResult.message as { id?: string })?.id;
+        if (botMessageId && brainActions.length > 0 && isSupabaseConfigured()) {
+          try {
+            const dbActions = await brainService.getActionsByMessage(botMessageId);
+            if (dbActions.length > 0) {
+              const updatedBrainData = {
+                hasAction: brainResult.llmResponse.hasAction,
+                replyMessage: brainResult.llmResponse.replyMessage,
+                actions: dbActions.map(a => ({
+                  id: a.id,
+                  type: a.actionType,
+                  confidence: 1,
+                  data: a.extractedData || {},
+                  status: a.status,
+                })),
+              };
+              const { supabase: sb } = await import('@/lib/supabase');
+              await sb
+                .from('chat_messages')
+                .update({ brain_action_data: updatedBrainData })
+                .eq('id', botMessageId);
+              console.log('[Brain] Updated bot message brain_action_data with final statuses');
+            }
+          } catch (updateErr) {
+            console.warn('[Brain] Failed to update bot message statuses (non-fatal):', updateErr);
+          }
+        }
+
         // Bot message will arrive via realtime subscription
       } catch (error) {
         console.error('Brain AI processing failed:', error);
@@ -587,6 +617,8 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
           }
         }
       }
+      // Update the bot message's brain_action_data so other users see final status
+      await syncBrainMessageStatus(actionId);
     } catch (error) {
       console.error('Failed to execute brain action:', error);
       toast.error('Failed to execute action. Please try again.');
@@ -597,10 +629,60 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
     if (!currentUser) return;
     try {
       await brainService.updateActionStatus(actionId, 'rejected', currentUser.id);
+      // Sync status to bot message for other users
+      await syncBrainMessageStatus(actionId);
       toast.info('Action rejected.');
     } catch (error) {
       console.error('Failed to reject brain action:', error);
       toast.error('Failed to reject action.');
+    }
+  };
+
+  /**
+   * After executing/rejecting a brain action, update the parent chat_message's
+   * brain_action_data with the latest statuses from brain_actions table.
+   * This ensures other users loading the chat later see correct final status
+   * (e.g., "Done" instead of stale "Pending").
+   */
+  const syncBrainMessageStatus = async (actionId: string) => {
+    if (!isSupabaseConfigured()) return;
+    try {
+      const { supabase: sb } = await import('@/lib/supabase');
+      // Get the message_id from the action
+      const { data: actionRow } = await sb
+        .from('brain_actions')
+        .select('message_id')
+        .eq('id', actionId)
+        .single();
+      if (!actionRow?.message_id) return;
+
+      // Fetch all actions for this message + the existing brain_action_data
+      const [allActions, { data: msgRow }] = await Promise.all([
+        brainService.getActionsByMessage(actionRow.message_id),
+        sb.from('chat_messages').select('brain_action_data').eq('id', actionRow.message_id).single(),
+      ]);
+      if (allActions.length === 0) return;
+
+      const existingData = msgRow?.brain_action_data as Record<string, unknown> | undefined;
+      const updatedBrainData = {
+        hasAction: true,
+        replyMessage: (existingData?.replyMessage as string) || '',
+        actions: allActions.map(a => ({
+          id: a.id,
+          type: a.actionType,
+          confidence: 1,
+          data: a.extractedData || {},
+          status: a.status,
+        })),
+      };
+
+      await sb
+        .from('chat_messages')
+        .update({ brain_action_data: updatedBrainData })
+        .eq('id', actionRow.message_id);
+      console.log('[Brain] Synced bot message brain_action_data with final statuses');
+    } catch (err) {
+      console.warn('[Brain] Failed to sync bot message statuses (non-fatal):', err);
     }
   };
 

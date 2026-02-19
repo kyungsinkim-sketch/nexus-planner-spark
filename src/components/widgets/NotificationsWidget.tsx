@@ -1,9 +1,9 @@
 /**
  * NotificationsWidget — Shows unread notifications.
- * - Chat messages from other users (all messages, not just @mentions)
- * - @mentions highlighted with AtSign icon
+ * - @mentions only (regular chat text notifications excluded)
  * - Upcoming events (owned by current user only)
  * - Company-wide notifications from admin
+ * - Brain AI notifications
  * - Click message notification → dismiss + open project tab (chat visible)
  * - Dismissed IDs stored in appStore (synced across all widget instances)
  */
@@ -12,7 +12,7 @@ import { useMemo, useCallback } from 'react';
 import { useAppStore } from '@/stores/appStore';
 import { useWidgetStore } from '@/stores/widgetStore';
 import { useTranslation } from '@/hooks/useTranslation';
-import { Bell, MessageSquare, Calendar, Check, AtSign, Megaphone, Brain } from 'lucide-react';
+import { Bell, Calendar, Check, AtSign, Megaphone, Brain } from 'lucide-react';
 import { BRAIN_BOT_USER_ID } from '@/types/core';
 import type { WidgetDataContext } from '@/types/widget';
 
@@ -40,38 +40,41 @@ function NotificationsWidget({ context }: { context: WidgetDataContext }) {
       isMention?: boolean;
     }[] = [];
 
-    // Recent messages from OTHER users (last 20, newest first)
-    const recentMsgs = messages
-      .filter((m) => {
-        if (currentUser && m.userId === currentUser.id) return false;
-        if (m.userId === BRAIN_BOT_USER_ID) return false;
-        if (context.type === 'project' && context.projectId) {
-          return m.projectId === context.projectId;
-        }
-        return true;
-      })
-      .slice(-20)
-      .reverse();
-
+    // @mentions only — regular chat text notifications are excluded per user request.
+    // Only show messages where the current user is explicitly @mentioned.
     const mentionTag = currentUser ? `@${currentUser.name}` : null;
 
-    recentMsgs.forEach((m) => {
-      const id = `msg-${m.id}`;
-      if (dismissedSet.has(id)) return;
-      const sender = getUserById(m.userId);
-      const isMention = mentionTag ? m.content.includes(mentionTag) : false;
+    if (mentionTag) {
+      const recentMsgs = messages
+        .filter((m) => {
+          if (currentUser && m.userId === currentUser.id) return false;
+          if (m.userId === BRAIN_BOT_USER_ID) return false;
+          if (!m.content.includes(mentionTag)) return false; // Only @mentions
+          if (context.type === 'project' && context.projectId) {
+            return m.projectId === context.projectId;
+          }
+          return true;
+        })
+        .slice(-20)
+        .reverse();
 
-      items.push({
-        id,
-        icon: isMention ? AtSign : MessageSquare,
-        text: m.content.slice(0, 80),
-        time: m.createdAt ? new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '',
-        type: 'message',
-        senderName: sender?.name,
-        projectId: m.projectId,
-        isMention,
+      recentMsgs.forEach((m) => {
+        const id = `msg-${m.id}`;
+        if (dismissedSet.has(id)) return;
+        const sender = getUserById(m.userId);
+
+        items.push({
+          id,
+          icon: AtSign,
+          text: m.content.slice(0, 80),
+          time: m.createdAt ? new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '',
+          type: 'message',
+          senderName: sender?.name,
+          projectId: m.projectId,
+          isMention: true,
+        });
       });
-    });
+    }
 
     // Upcoming events (next 24h) — only current user's events
     const now = new Date();
@@ -148,12 +151,11 @@ function NotificationsWidget({ context }: { context: WidgetDataContext }) {
         });
       });
 
-    // Sort: brain → company → @mentions → regular messages → events
+    // Sort: brain → company → @mentions → events
     const mentionItems = items.filter((i) => i.isMention);
-    const msgItems = items.filter((i) => i.type === 'message' && !i.isMention);
     const eventItems = items.filter((i) => i.type === 'event');
 
-    return [...brainItems, ...companyItems, ...mentionItems, ...msgItems, ...eventItems].slice(0, 20);
+    return [...brainItems, ...companyItems, ...mentionItems, ...eventItems].slice(0, 20);
   }, [messages, events, context, dismissedSet, currentUser, getUserById, companyNotifications, brainNotifications, t]);
 
   const handleDismissAll = useCallback(() => {
