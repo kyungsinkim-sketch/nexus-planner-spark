@@ -1263,6 +1263,9 @@ export const translations = {
     voiceRecorderTranscript: '트랜스크립트',
     voiceRecorderBrainAnalysis: 'Brain 분석',
     voiceRecorderAudioPlayer: '오디오 재생',
+
+    // Today Date
+    todayDate: '오늘의 날짜',
   },
   en: {
     // Navigation
@@ -2534,6 +2537,9 @@ export const translations = {
     voiceRecorderTranscript: 'Transcript',
     voiceRecorderBrainAnalysis: 'Brain Analysis',
     voiceRecorderAudioPlayer: 'Audio Player',
+
+    // Today Date
+    todayDate: "Today's Date",
   },
 } as const;
 

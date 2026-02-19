@@ -21,7 +21,8 @@ const DEFAULT_DASHBOARD_LAYOUT: WidgetLayoutItem[] = [
   { i: 'todaySchedule',   x: 5,  y: 0,  w: 4, h: 4, minW: 2, minH: 2 },
   { i: 'notifications',   x: 9,  y: 0,  w: 3, h: 3, minW: 2, minH: 2 },
   { i: 'todos',           x: 9,  y: 3,  w: 3, h: 3, minW: 2, minH: 2 },
-  { i: 'todayWeather',    x: 0,  y: 4,  w: 2, h: 2, minW: 1, minH: 2 },
+  { i: 'todayDate',       x: 0,  y: 4,  w: 2, h: 2, minW: 1, minH: 2 },
+  { i: 'todayWeather',    x: 0,  y: 6,  w: 2, h: 2, minW: 1, minH: 2 },
   { i: 'attendance',      x: 2,  y: 4,  w: 2, h: 2, minW: 2, minH: 2 },
   { i: 'files',           x: 4,  y: 4,  w: 2, h: 2, minW: 2, minH: 2 },
   { i: 'brainChat',       x: 6,  y: 4,  w: 3, h: 1, minW: 3, minH: 1 },
@@ -192,7 +193,7 @@ export const useWidgetStore = create<WidgetState>()(
     }),
     {
       name: 're-be-widget-layout',
-      version: 16, // bump — add voiceRecorder widget to dashboard
+      version: 17, // bump — add todayDate widget to dashboard
       migrate: () => ({
         // On version mismatch, reset everything to defaults
         openTabs: [DASHBOARD_TAB],

@@ -30,6 +30,7 @@ import {
   Sparkles,
   Mail,
   Mic,
+  CalendarDays,
 } from 'lucide-react';
 import type { WidgetDefinition, WidgetType, WidgetDataContext } from '@/types/widget';
 
@@ -58,6 +59,7 @@ export const WIDGET_COMPONENTS: Record<WidgetType, ComponentType<{ context: Widg
   inspiration:    lazy(() => import('./InspirationWidget')),
   email:          lazy(() => import('./EmailWidget')),
   voiceRecorder:  lazy(() => import('./VoiceRecorderWidget')),
+  todayDate:      lazy(() => import('./TodayDateWidget')),
 };
 
 // Widget definitions (metadata)
@@ -246,5 +248,13 @@ export const WIDGET_DEFINITIONS: Record<WidgetType, WidgetDefinition> = {
     defaultSize: { w: 4, h: 4 },
     minSize: { w: 3, h: 3 },
     contexts: ['dashboard', 'project'],
+  },
+  todayDate: {
+    type: 'todayDate',
+    titleKey: 'todayDate',
+    icon: CalendarDays,
+    defaultSize: { w: 2, h: 2 },
+    minSize: { w: 1, h: 2 },
+    contexts: ['dashboard'],
   },
 };

@@ -28,6 +28,46 @@ import * as fileService from '@/services/fileService';
 import type { ChatMessage, FileItem } from '@/types/core';
 import { BrainActionBubble } from './BrainActionBubble';
 
+/**
+ * Renders message content with @mention highlights.
+ * Detects @Name patterns and wraps them in a styled <span>.
+ */
+function renderContentWithMentions(content: string, isCurrentUser: boolean) {
+  // Match @followed-by-name (Korean/English/numbers, 1-20 chars)
+  const mentionRegex = /@([\w가-힣\u3131-\u318E\u3200-\u321E\uFFA0-\uFFDC]+(?:\s[\w가-힣\u3131-\u318E\u3200-\u321E\uFFA0-\uFFDC]+)?)/g;
+  const parts: (string | JSX.Element)[] = [];
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = mentionRegex.exec(content)) !== null) {
+    // Add text before the match
+    if (match.index > lastIndex) {
+      parts.push(content.slice(lastIndex, match.index));
+    }
+    // Add highlighted mention
+    parts.push(
+      <span
+        key={match.index}
+        className={`font-semibold ${
+          isCurrentUser
+            ? 'text-blue-200 bg-blue-500/20'
+            : 'text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-500/20'
+        } rounded px-0.5`}
+      >
+        {match[0]}
+      </span>
+    );
+    lastIndex = match.index + match[0].length;
+  }
+
+  // Add remaining text
+  if (lastIndex < content.length) {
+    parts.push(content.slice(lastIndex));
+  }
+
+  return parts.length > 0 ? parts : content;
+}
+
 interface ChatMessageBubbleProps {
   message: ChatMessage;
   isCurrentUser: boolean;
@@ -105,7 +145,7 @@ export function ChatMessageBubble({ message, isCurrentUser, onVoteDecision, onAc
         }`}
         style={{ overflowWrap: 'anywhere', wordBreak: 'break-word' }}
       >
-        {message.content}
+        {renderContentWithMentions(message.content, isCurrentUser)}
       </div>
     </MessageWrapper>
   );

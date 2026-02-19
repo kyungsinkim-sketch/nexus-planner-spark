@@ -342,6 +342,10 @@
   .health-gradient-bg {
     background: linear-gradient(135deg, hsl(200 40% 12%) 0%, hsl(240 35% 18%) 50%, hsl(260 30% 14%) 100%);
   }
+  /* Date widget gradient — warm dark tone */
+  .date-gradient-bg {
+    background: linear-gradient(135deg, hsl(0 0% 10%) 0%, hsl(220 20% 14%) 50%, hsl(0 0% 8%) 100%);
+  }
 
   .glass-sidebar {
     background: hsl(var(--sidebar-background) / 0.88);
