@@ -132,7 +132,11 @@ export async function processMessageLocally(
  * Send a message to the Brain AI for LLM analysis.
  * Reserved for passive intelligence / complex queries.
  * Uses the brain-process Edge Function → Claude Haiku.
+ * Retries on 429 rate limit errors with exponential backoff.
  */
+const CLIENT_MAX_RETRIES = 2;
+const CLIENT_RETRY_DELAY_MS = 5_000;
+
 export async function processMessageWithLLM(
   request: BrainProcessRequest,
 ): Promise<BrainProcessResponse> {
@@ -140,21 +144,38 @@ export async function processMessageWithLLM(
     throw new Error('Supabase not configured');
   }
 
-  const { data, error } = await supabase.functions.invoke('brain-process', {
-    body: request,
-  });
+  let lastError: Error | null = null;
+  for (let attempt = 0; attempt <= CLIENT_MAX_RETRIES; attempt++) {
+    if (attempt > 0) {
+      const delay = CLIENT_RETRY_DELAY_MS * Math.pow(2, attempt - 1);
+      console.log(`[Brain] Rate limited — client retry ${attempt}/${CLIENT_MAX_RETRIES} after ${delay}ms`);
+      await new Promise(r => setTimeout(r, delay));
+    }
 
-  if (error) {
-    const detail = await extractFunctionError(error);
-    console.error('brain-process error detail:', detail);
-    throw new Error(`Brain AI failed: ${detail}`);
+    const { data, error } = await supabase.functions.invoke('brain-process', {
+      body: request,
+    });
+
+    if (error) {
+      const detail = await extractFunctionError(error);
+      // Check if it's a rate limit error (429)
+      if (detail.includes('429') || detail.includes('rate_limit') || detail.includes('rate limit')) {
+        lastError = new Error(`Brain AI rate limited: ${detail}`);
+        continue; // retry
+      }
+      console.error('brain-process error detail:', detail);
+      throw new Error(`Brain AI failed: ${detail}`);
+    }
+
+    if (!data?.success) {
+      throw new Error(data?.error || 'Brain process returned unsuccessful response');
+    }
+
+    return data as BrainProcessResponse;
   }
 
-  if (!data?.success) {
-    throw new Error(data?.error || 'Brain process returned unsuccessful response');
-  }
-
-  return data as BrainProcessResponse;
+  // All retries exhausted
+  throw lastError || new Error('Brain AI rate limited — please try again in a moment');
 }
 
 /**

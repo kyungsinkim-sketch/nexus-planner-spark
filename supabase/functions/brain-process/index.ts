@@ -13,13 +13,13 @@
 //   7. Returns the bot message + actions to client
 
 import { createClient } from 'jsr:@supabase/supabase-js@2';
-import { analyzeMessage } from '../_shared/llm-client.ts';
+import { analyzeMessage, RateLimitError } from '../_shared/llm-client.ts';
 import type { ConversationMessage } from '../_shared/llm-client.ts';
 import type { ProcessRequest } from '../_shared/brain-types.ts';
 import { detectWeatherIntent, resolveLocation, fetchWeatherForecast, formatWeatherContext } from '../_shared/weather-client.ts';
 
 const BRAIN_BOT_USER_ID = '00000000-0000-0000-0000-000000000099';
-const HISTORY_LIMIT = 10; // Fetch last N messages for context
+const HISTORY_LIMIT = 6; // Fetch last N messages for context (reduced to save input tokens)
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -179,9 +179,11 @@ Deno.serve(async (req) => {
       console.log('LLM response:', JSON.stringify({ hasAction: llmResponse.hasAction, actionCount: llmResponse.actions?.length }));
     } catch (llmErr) {
       console.error('LLM call failed:', llmErr);
+      // Forward 429 rate limit status to client so it can show appropriate UI
+      const statusCode = llmErr instanceof RateLimitError ? 429 : 502;
       return new Response(
         JSON.stringify({ error: `LLM call failed: ${(llmErr as Error).message}` }),
-        { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        { status: statusCode, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       );
     }
 
