@@ -24,7 +24,7 @@ import type { CalendarEvent } from '@/types/core';
 import type { WidgetDataContext } from '@/types/widget';
 
 function CalendarWidget({ context }: { context: WidgetDataContext }) {
-  const { events, getProjectById, updateEvent, deleteEvent, loadEvents } = useAppStore();
+  const { events, projects, currentUser, getProjectById, updateEvent, deleteEvent, loadEvents } = useAppStore();
 
   // Debounced loadEvents to prevent rapid-fire calls that cause AbortError cascades
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -67,12 +67,32 @@ function CalendarWidget({ context }: { context: WidgetDataContext }) {
   const [newEventStartTime, setNewEventStartTime] = useState<string | undefined>();
   const [newEventEndTime, setNewEventEndTime] = useState<string | undefined>();
 
+  // Build set of project IDs the current user is a member of (for dashboard filtering)
+  const myProjectIds = useMemo(() => {
+    if (!currentUser) return new Set<string>();
+    return new Set(
+      projects
+        .filter(p => p.teamMemberIds?.includes(currentUser.id))
+        .map(p => p.id),
+    );
+  }, [projects, currentUser]);
+
   const filteredEvents = useMemo(() => {
     if (context.type === 'project' && context.projectId) {
       return events.filter((e) => e.projectId === context.projectId);
     }
+    // Dashboard: show only events relevant to current user
+    const userId = currentUser?.id;
+    if (userId) {
+      return events.filter((e) => {
+        const isOwner = e.ownerId === userId;
+        const isAttendee = e.attendeeIds?.includes(userId);
+        const isTeamProject = e.projectId ? myProjectIds.has(e.projectId) : false;
+        return isOwner || isAttendee || isTeamProject;
+      });
+    }
     return events;
-  }, [events, context]);
+  }, [events, context, currentUser, myProjectIds]);
 
   const calendarEvents = useMemo(
     () =>

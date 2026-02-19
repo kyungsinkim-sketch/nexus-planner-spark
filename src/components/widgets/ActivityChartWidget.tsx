@@ -9,9 +9,36 @@ import { useTranslation } from '@/hooks/useTranslation';
 import { XAxis, YAxis, ResponsiveContainer, Tooltip, Area, AreaChart } from 'recharts';
 import type { WidgetDataContext } from '@/types/widget';
 
-function ActivityChartWidget({ context: _context }: { context: WidgetDataContext }) {
-  const { events, messages } = useAppStore();
+function ActivityChartWidget({ context }: { context: WidgetDataContext }) {
+  const { events, projects, currentUser, messages } = useAppStore();
   const { t } = useTranslation();
+
+  // Build set of project IDs the current user is a member of
+  const myProjectIds = useMemo(() => {
+    if (!currentUser) return new Set<string>();
+    return new Set(
+      projects
+        .filter(p => p.teamMemberIds?.includes(currentUser.id))
+        .map(p => p.id),
+    );
+  }, [projects, currentUser]);
+
+  // Filter events to only those relevant to current user (same as CalendarWidget)
+  const userEvents = useMemo(() => {
+    if (context.type === 'project' && context.projectId) {
+      return events.filter(e => e.projectId === context.projectId);
+    }
+    const userId = currentUser?.id;
+    if (userId) {
+      return events.filter(e => {
+        const isOwner = e.ownerId === userId;
+        const isAttendee = e.attendeeIds?.includes(userId);
+        const isTeamProject = e.projectId ? myProjectIds.has(e.projectId) : false;
+        return isOwner || isAttendee || isTeamProject;
+      });
+    }
+    return events;
+  }, [events, context, currentUser, myProjectIds]);
 
   const data = useMemo(() => {
     const days: { label: string; events: number; messages: number }[] = [];
@@ -22,12 +49,12 @@ function ActivityChartWidget({ context: _context }: { context: WidgetDataContext
       const label = d.toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' });
       days.push({
         label,
-        events: events.filter((e) => e.startAt.startsWith(dateStr)).length,
+        events: userEvents.filter((e) => e.startAt.startsWith(dateStr)).length,
         messages: messages.filter((m) => m.createdAt?.startsWith(dateStr)).length,
       });
     }
     return days;
-  }, [events, messages]);
+  }, [userEvents, messages]);
 
   return (
     <div className="h-full widget-dark-card p-3 flex flex-col">

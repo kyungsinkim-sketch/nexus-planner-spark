@@ -10,17 +10,38 @@ import { CalendarCheck, MapPin, Clock } from 'lucide-react';
 import type { WidgetDataContext } from '@/types/widget';
 
 function TodayScheduleWidget({ context }: { context: WidgetDataContext }) {
-  const { events, getProjectById } = useAppStore();
+  const { events, projects, currentUser, getProjectById } = useAppStore();
   const { t } = useTranslation();
+
+  // Build set of project IDs the current user is a member of (for dashboard filtering)
+  const myProjectIds = useMemo(() => {
+    if (!currentUser) return new Set<string>();
+    return new Set(
+      projects
+        .filter(p => p.teamMemberIds?.includes(currentUser.id))
+        .map(p => p.id),
+    );
+  }, [projects, currentUser]);
 
   const todayEvents = useMemo(() => {
     const now = new Date();
     const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    const userId = currentUser?.id;
 
     return events
       .filter((e) => {
         if (context.type === 'project' && context.projectId) {
+          // Project tab: show only this project's events
           if (e.projectId !== context.projectId) return false;
+        } else if (userId) {
+          // Dashboard: show only events relevant to current user
+          // - Events owned by user
+          // - Events where user is an attendee
+          // - Events in projects the user is a team member of
+          const isOwner = e.ownerId === userId;
+          const isAttendee = e.attendeeIds?.includes(userId);
+          const isTeamProject = e.projectId ? myProjectIds.has(e.projectId) : false;
+          if (!isOwner && !isAttendee && !isTeamProject) return false;
         }
         // Check if event overlaps with today
         const startDate = e.startAt.split('T')[0];
@@ -35,7 +56,7 @@ function TodayScheduleWidget({ context }: { context: WidgetDataContext }) {
         if (!aAllDay && bAllDay) return 1;
         return a.startAt.localeCompare(b.startAt);
       });
-  }, [events, context]);
+  }, [events, context, currentUser, myProjectIds]);
 
   const formatTime = (dateStr: string) => {
     const date = new Date(dateStr);
