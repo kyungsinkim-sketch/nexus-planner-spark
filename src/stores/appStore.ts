@@ -427,7 +427,12 @@ export const useAppStore = create<AppState>()(
         }
 
         try {
-          const projects = await projectService.getProjects();
+          const allProjects = await projectService.getProjects();
+          const { currentUser } = get();
+          // ADMIN sees all projects; others only see projects they're a team member of
+          const projects = (currentUser && currentUser.role !== 'ADMIN')
+            ? allProjects.filter(p => p.teamMemberIds?.includes(currentUser.id))
+            : allProjects;
           set({ projects });
         } catch (error) {
           console.error('Failed to load projects:', error);

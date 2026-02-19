@@ -10,6 +10,7 @@ import { useAppStore } from "@/stores/appStore";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import { Loader2 } from "lucide-react";
 import { playNotificationSound } from "@/services/notificationSoundService";
+import { useChatNotifications } from "@/hooks/useChatNotifications";
 
 // Lazy-loaded page components for code splitting
 const AdminPage = lazy(() => import("./pages/AdminPage"));
@@ -24,6 +25,9 @@ const queryClient = new QueryClient();
 // Protected Route Component
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAppStore();
+
+  // Global chat notification popups (bottom-left toast)
+  useChatNotifications();
 
   if (isLoading) {
     return (
