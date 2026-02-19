@@ -135,7 +135,7 @@ export async function processMessageLocally(
  * Retries on 429 rate limit errors with exponential backoff.
  */
 const CLIENT_MAX_RETRIES = 2;
-const CLIENT_RETRY_DELAY_MS = 5_000;
+const CLIENT_RETRY_DELAY_MS = 20_000; // 20s — rate limit is per minute, need longer waits
 
 export async function processMessageWithLLM(
   request: BrainProcessRequest,
@@ -174,8 +174,8 @@ export async function processMessageWithLLM(
     return data as BrainProcessResponse;
   }
 
-  // All retries exhausted
-  throw lastError || new Error('Brain AI rate limited — please try again in a moment');
+  // All retries exhausted — throw user-friendly message
+  throw new Error('Brain AI가 잠시 사용량 제한에 도달했습니다. 1분 후 다시 시도해주세요.');
 }
 
 /**

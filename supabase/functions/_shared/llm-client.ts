@@ -5,9 +5,11 @@ import type { LLMResponse, ProcessRequest } from './brain-types.ts';
 
 const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
 const MODEL = 'claude-haiku-4-5-20251001';
-const MAX_TOKENS = 1024; // Reduced from 2048 — most responses are well under 500 tokens
+const MAX_TOKENS = 512; // Reduced — most responses are well under 300 tokens
 const MAX_RETRIES = 3;
-const BASE_RETRY_DELAY_MS = 3_000; // 3s, 6s, 12s backoff for rate limits
+const BASE_RETRY_DELAY_MS = 15_000; // 15s base — rate limit is per minute, so wait longer
+const MAX_HISTORY_MESSAGES = 3; // Limit to 3 recent messages for context
+const MAX_HISTORY_CHARS = 200; // Truncate each history message to save tokens
 
 /**
  * Build the system prompt for Brain AI action extraction.
@@ -82,8 +84,15 @@ export async function analyzeMessage(
     weatherContext,
   );
 
-  // Trim conversation history to max 5 messages to reduce input tokens
-  const trimmedHistory = (conversationHistory || []).slice(-5);
+  // Trim conversation history to save input tokens (rate limit is 10k/min)
+  const trimmedHistory = (conversationHistory || [])
+    .slice(-MAX_HISTORY_MESSAGES)
+    .map(m => ({
+      ...m,
+      content: m.content.length > MAX_HISTORY_CHARS
+        ? m.content.slice(0, MAX_HISTORY_CHARS) + '...'
+        : m.content,
+    }));
 
   // Build messages array: conversation history + current user message
   const messages: ConversationMessage[] = [
@@ -99,12 +108,17 @@ export async function analyzeMessage(
   });
 
   // Retry with exponential backoff for rate limit (429) errors
+  // Rate limit is per-minute, so delays must be long enough to clear the window
   let lastError: Error | null = null;
+  let retryAfterMs = 0; // Set by retry-after header from Anthropic
+
   for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
     if (attempt > 0) {
-      const delay = BASE_RETRY_DELAY_MS * Math.pow(2, attempt - 1);
+      // Use retry-after header if available, otherwise exponential backoff
+      const delay = retryAfterMs || BASE_RETRY_DELAY_MS * Math.pow(2, attempt - 1);
       console.log(`[LLM] Rate limited — retry ${attempt}/${MAX_RETRIES} after ${delay}ms`);
       await new Promise(r => setTimeout(r, delay));
+      retryAfterMs = 0; // Reset for next attempt
     }
 
     const response = await fetch(ANTHROPIC_API_URL, {
@@ -119,6 +133,11 @@ export async function analyzeMessage(
 
     if (response.status === 429) {
       const errorBody = await response.text();
+      // Read retry-after header (seconds) from Anthropic
+      const retryAfterSec = response.headers.get('retry-after');
+      if (retryAfterSec) {
+        retryAfterMs = Math.min(parseFloat(retryAfterSec) * 1000, 120_000); // cap at 2 min
+      }
       lastError = new RateLimitError(`Anthropic API rate limited (429): ${errorBody}`);
       continue; // retry
     }

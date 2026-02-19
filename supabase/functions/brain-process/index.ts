@@ -19,7 +19,7 @@ import type { ProcessRequest } from '../_shared/brain-types.ts';
 import { detectWeatherIntent, resolveLocation, fetchWeatherForecast, formatWeatherContext } from '../_shared/weather-client.ts';
 
 const BRAIN_BOT_USER_ID = '00000000-0000-0000-0000-000000000099';
-const HISTORY_LIMIT = 6; // Fetch last N messages for context (reduced to save input tokens)
+const HISTORY_LIMIT = 4; // Fetch last N messages for context (minimized to stay under 10k tokens/min)
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',

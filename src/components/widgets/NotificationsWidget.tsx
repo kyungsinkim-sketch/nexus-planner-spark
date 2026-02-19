@@ -10,20 +10,19 @@
 
 import { useMemo, useCallback } from 'react';
 import { useAppStore } from '@/stores/appStore';
-import { useWidgetStore } from '@/stores/widgetStore';
+// useWidgetStore no longer needed — chat message click navigation removed
 import { useTranslation } from '@/hooks/useTranslation';
-import { Bell, Calendar, Check, AtSign, Megaphone, Brain } from 'lucide-react';
-import { BRAIN_BOT_USER_ID } from '@/types/core';
+import { Bell, Calendar, Check, Megaphone, Brain } from 'lucide-react';
 import type { WidgetDataContext } from '@/types/widget';
 
 function NotificationsWidget({ context }: { context: WidgetDataContext }) {
   const { t } = useTranslation();
   const {
-    messages, events, currentUser, getUserById, projects,
+    events, currentUser, getUserById,
     companyNotifications, brainNotifications,
     dismissedNotificationIds, dismissNotification, dismissAllNotifications,
   } = useAppStore();
-  const { openProjectTab } = useWidgetStore();
+
 
   const dismissedSet = useMemo(() => new Set(dismissedNotificationIds), [dismissedNotificationIds]);
 
@@ -34,47 +33,13 @@ function NotificationsWidget({ context }: { context: WidgetDataContext }) {
       icon: typeof Bell;
       text: string;
       time: string;
-      type: 'message' | 'event' | 'company' | 'brain';
+      type: 'event' | 'company' | 'brain';
       senderName?: string;
       projectId?: string;
-      isMention?: boolean;
     }[] = [];
 
-    // @mentions only — regular chat text notifications are excluded per user request.
-    // Only show messages where the current user is explicitly @mentioned.
-    const mentionTag = currentUser ? `@${currentUser.name}` : null;
-
-    if (mentionTag) {
-      const recentMsgs = messages
-        .filter((m) => {
-          if (currentUser && m.userId === currentUser.id) return false;
-          if (m.userId === BRAIN_BOT_USER_ID) return false;
-          if (!m.content.includes(mentionTag)) return false; // Only @mentions
-          if (context.type === 'project' && context.projectId) {
-            return m.projectId === context.projectId;
-          }
-          return true;
-        })
-        .slice(-20)
-        .reverse();
-
-      recentMsgs.forEach((m) => {
-        const id = `msg-${m.id}`;
-        if (dismissedSet.has(id)) return;
-        const sender = getUserById(m.userId);
-
-        items.push({
-          id,
-          icon: AtSign,
-          text: m.content.slice(0, 80),
-          time: m.createdAt ? new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '',
-          type: 'message',
-          senderName: sender?.name,
-          projectId: m.projectId,
-          isMention: true,
-        });
-      });
-    }
+    // Chat message notifications completely removed per user request.
+    // Only Brain AI, company, and event notifications are shown.
 
     // Upcoming events (next 24h) — only current user's events
     const now = new Date();
@@ -151,12 +116,11 @@ function NotificationsWidget({ context }: { context: WidgetDataContext }) {
         });
       });
 
-    // Sort: brain → company → @mentions → events
-    const mentionItems = items.filter((i) => i.isMention);
+    // Sort: brain → company → events
     const eventItems = items.filter((i) => i.type === 'event');
 
-    return [...brainItems, ...companyItems, ...mentionItems, ...eventItems].slice(0, 20);
-  }, [messages, events, context, dismissedSet, currentUser, getUserById, companyNotifications, brainNotifications, t]);
+    return [...brainItems, ...companyItems, ...eventItems].slice(0, 20);
+  }, [events, context, dismissedSet, currentUser, companyNotifications, brainNotifications, t]);
 
   const handleDismissAll = useCallback(() => {
     dismissAllNotifications(notifications.map((n) => n.id));
@@ -164,14 +128,7 @@ function NotificationsWidget({ context }: { context: WidgetDataContext }) {
 
   const handleClick = useCallback((n: typeof notifications[0]) => {
     dismissNotification(n.id);
-    // Navigate to project chat: open the project tab (chat widget is in project layout)
-    if (n.projectId && n.type === 'message') {
-      const project = projects.find((p) => p.id === n.projectId);
-      if (project) {
-        openProjectTab(project.id, project.title, project.keyColor);
-      }
-    }
-  }, [dismissNotification, projects, openProjectTab]);
+  }, [dismissNotification]);
 
   if (notifications.length === 0) {
     return (
@@ -202,21 +159,17 @@ function NotificationsWidget({ context }: { context: WidgetDataContext }) {
               className={`flex items-start gap-2 p-1.5 rounded transition-colors group cursor-pointer ${
                 n.type === 'brain'
                   ? 'bg-violet-500/5 hover:bg-violet-500/10 border-l-2 border-violet-500/40'
-                  : n.isMention
-                  ? 'bg-primary/5 hover:bg-primary/10 border-l-2 border-primary/40'
                   : 'hover:bg-white/5'
               }`}
               onClick={() => handleClick(n)}
-              title={n.projectId ? t('clickToOpenChat') : t('clickToDismiss')}
+              title={t('clickToDismiss')}
             >
               <Icon className={`w-3.5 h-3.5 shrink-0 mt-0.5 ${
-                n.type === 'brain' ? 'text-violet-500' : n.isMention ? 'text-primary' : 'text-muted-foreground'
+                n.type === 'brain' ? 'text-violet-500' : 'text-muted-foreground'
               }`} />
               <div className="flex-1 min-w-0">
                 {n.senderName && (
-                  <span className={`text-[10px] font-medium ${
-                    n.isMention ? 'text-primary' : 'text-primary/80'
-                  }`}>{n.senderName}</span>
+                  <span className="text-[10px] font-medium text-primary/80">{n.senderName}</span>
                 )}
                 <p className="text-xs text-foreground truncate">{n.text}</p>
               </div>
