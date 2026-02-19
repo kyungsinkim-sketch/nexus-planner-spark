@@ -268,27 +268,30 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
     scrollToBottom(isRoomEntry);
   }, [chatMessages, selectedChat]);
 
-  // Subscribe to realtime messages when selecting a room
+  // Subscribe to realtime messages when selecting a room (INSERT + DELETE)
   useEffect(() => {
     if (!isSupabaseConfigured() || !selectedChat) return;
 
     let unsubscribe: (() => void) | null = null;
 
+    const onInsert = (message: ChatMessage) => {
+      const exists = useAppStore.getState().messages.some(m => m.id === message.id);
+      if (!exists) addMessage(message);
+    };
+
+    const onRemoteDelete = (messageId: string) => {
+      // Remove from local state when another user deletes a message
+      useAppStore.setState((state) => ({
+        messages: state.messages.filter(m => m.id !== messageId),
+      }));
+    };
+
     if (selectedChat.type === 'project' && selectedChat.roomId) {
-      unsubscribe = chatService.subscribeToRoomMessages(selectedChat.roomId, (message) => {
-        const exists = useAppStore.getState().messages.some(m => m.id === message.id);
-        if (!exists) addMessage(message);
-      });
+      unsubscribe = chatService.subscribeToRoomMessages(selectedChat.roomId, onInsert, onRemoteDelete);
     } else if (selectedChat.type === 'project') {
-      unsubscribe = chatService.subscribeToProjectMessages(selectedChat.id, (message) => {
-        const exists = useAppStore.getState().messages.some(m => m.id === message.id);
-        if (!exists) addMessage(message);
-      });
+      unsubscribe = chatService.subscribeToProjectMessages(selectedChat.id, onInsert, onRemoteDelete);
     } else if (selectedChat.type === 'direct' && currentUser) {
-      unsubscribe = chatService.subscribeToDirectMessages(currentUser.id, selectedChat.id, (message) => {
-        const exists = useAppStore.getState().messages.some(m => m.id === message.id);
-        if (!exists) addMessage(message);
-      });
+      unsubscribe = chatService.subscribeToDirectMessages(currentUser.id, selectedChat.id, onInsert, onRemoteDelete);
     }
 
     return () => {

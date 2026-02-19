@@ -241,10 +241,11 @@ export const sendRoomMessage = async (
     return transformMessage(data as MessageRow);
 };
 
-// Subscribe to room messages (realtime)
+// Subscribe to room messages (realtime — INSERT + DELETE)
 export const subscribeToRoomMessages = (
     roomId: string,
-    callback: (message: ChatMessage) => void
+    callback: (message: ChatMessage) => void,
+    onDelete?: (messageId: string) => void,
 ) => {
     if (!isSupabaseConfigured()) {
         console.warn('Supabase not configured, realtime disabled');
@@ -263,6 +264,20 @@ export const subscribeToRoomMessages = (
             },
             (payload) => {
                 callback(transformMessage(payload.new as MessageRow));
+            }
+        )
+        .on(
+            'postgres_changes',
+            {
+                event: 'DELETE',
+                schema: 'public',
+                table: 'chat_messages',
+                filter: `room_id=eq.${roomId}`,
+            },
+            (payload) => {
+                if (onDelete && payload.old && (payload.old as MessageRow).id) {
+                    onDelete((payload.old as MessageRow).id);
+                }
             }
         )
         .subscribe();
@@ -327,10 +342,11 @@ export const sendProjectMessage = async (
     return transformMessage(data as MessageRow);
 };
 
-// Subscribe to project messages (legacy — all rooms)
+// Subscribe to project messages (legacy — all rooms, INSERT + DELETE)
 export const subscribeToProjectMessages = (
     projectId: string,
-    callback: (message: ChatMessage) => void
+    callback: (message: ChatMessage) => void,
+    onDelete?: (messageId: string) => void,
 ) => {
     if (!isSupabaseConfigured()) {
         console.warn('Supabase not configured, realtime disabled');
@@ -349,6 +365,20 @@ export const subscribeToProjectMessages = (
             },
             (payload) => {
                 callback(transformMessage(payload.new as MessageRow));
+            }
+        )
+        .on(
+            'postgres_changes',
+            {
+                event: 'DELETE',
+                schema: 'public',
+                table: 'chat_messages',
+                filter: `project_id=eq.${projectId}`,
+            },
+            (payload) => {
+                if (onDelete && payload.old && (payload.old as MessageRow).id) {
+                    onDelete((payload.old as MessageRow).id);
+                }
             }
         )
         .subscribe();
@@ -416,14 +446,15 @@ export const sendDirectMessage = async (
     return transformMessage(data as MessageRow);
 };
 
-// Subscribe to direct messages (realtime)
+// Subscribe to direct messages (realtime — INSERT + DELETE)
 // Note: Supabase postgres_changes only supports single-column filters,
 // so we filter by direct_chat_user_id for one direction and user_id for the other,
 // then do client-side filtering to match the exact conversation pair.
 export const subscribeToDirectMessages = (
     userId1: string,
     userId2: string,
-    callback: (message: ChatMessage) => void
+    callback: (message: ChatMessage) => void,
+    onDelete?: (messageId: string) => void,
 ) => {
     if (!isSupabaseConfigured()) {
         console.warn('Supabase not configured, realtime disabled');
@@ -466,6 +497,34 @@ export const subscribeToDirectMessages = (
                 const row = payload.new as MessageRow;
                 if (isRelevantDM(row)) {
                     callback(transformMessage(row));
+                }
+            }
+        )
+        .on(
+            'postgres_changes',
+            {
+                event: 'DELETE',
+                schema: 'public',
+                table: 'chat_messages',
+                filter: `direct_chat_user_id=eq.${userId1}`,
+            },
+            (payload) => {
+                if (onDelete && payload.old && (payload.old as MessageRow).id) {
+                    onDelete((payload.old as MessageRow).id);
+                }
+            }
+        )
+        .on(
+            'postgres_changes',
+            {
+                event: 'DELETE',
+                schema: 'public',
+                table: 'chat_messages',
+                filter: `direct_chat_user_id=eq.${userId2}`,
+            },
+            (payload) => {
+                if (onDelete && payload.old && (payload.old as MessageRow).id) {
+                    onDelete((payload.old as MessageRow).id);
                 }
             }
         )
