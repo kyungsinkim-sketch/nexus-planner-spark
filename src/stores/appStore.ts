@@ -13,6 +13,7 @@ import * as chatService from '@/services/chatService';
 import * as todoService from '@/services/todoService';
 import * as fileService from '@/services/fileService';
 import { playNotificationSound } from '@/services/notificationSoundService';
+import { useWidgetStore } from '@/stores/widgetStore';
 
 interface AppState {
   // Auth
@@ -347,12 +348,13 @@ export const useAppStore = create<AppState>()(
           const user = await authService.signIn(email, password);
           set({ currentUser: user, isAuthenticated: true });
 
-          // Load user data
+          // Load user data + widget layouts
           await get().loadProjects();
           await get().loadEvents();
           await get().loadUsers();
           await get().loadMessages();
           await get().loadTodos();
+          useWidgetStore.getState().loadLayoutFromDB();
         } finally {
           set({ isLoading: false });
         }
@@ -414,6 +416,7 @@ export const useAppStore = create<AppState>()(
             await get().loadUsers();
             await get().loadMessages();
             await get().loadTodos();
+            useWidgetStore.getState().loadLayoutFromDB();
           }
         } finally {
           set({ isInitializing: false });

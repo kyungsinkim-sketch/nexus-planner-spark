@@ -5,6 +5,12 @@
  * - activeTabId: currently visible tab
  * - dashboardWidgetLayout: widget positions for Dashboard tab
  * - projectWidgetLayout: widget positions shared across ALL project tabs
+ *
+ * Layouts are persisted:
+ *   1. localStorage (fast, per-browser cache)
+ *   2. Supabase profiles.widget_layouts (per-user, cross-device)
+ * On login, DB layout is loaded and overrides localStorage.
+ * On every layout change, both localStorage and DB are updated (DB debounced).
  */
 
 import { create } from 'zustand';
@@ -12,10 +18,9 @@ import { persist } from 'zustand/middleware';
 import type { TabState, WidgetLayoutItem, WidgetType, WidgetContext } from '@/types/widget';
 import { MAX_OPEN_TABS } from '@/types/widget';
 import { WIDGET_DEFINITIONS as WIDGET_DEFINITIONS_IMPORT } from '@/components/widgets/widgetRegistry';
+import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 
 // Default layout for Dashboard (12-col grid)
-// Matches mockup: Projects top-left, Progress chart, Activity chart,
-// Score cards, Notifications right, Todos right, Files bottom
 const DEFAULT_DASHBOARD_LAYOUT: WidgetLayoutItem[] = [
   { i: 'projects',        x: 0,  y: 0,  w: 5, h: 4, minW: 3, minH: 3 },
   { i: 'todaySchedule',   x: 5,  y: 0,  w: 4, h: 4, minW: 2, minH: 2 },
@@ -32,10 +37,6 @@ const DEFAULT_DASHBOARD_LAYOUT: WidgetLayoutItem[] = [
 ];
 
 // Default layout for Project tabs (12-col grid)
-// Based on ark.works production layout:
-// Row 0: Health | Budget | Brain Chat | Chat (right full-height)
-// Row 1-7: Calendar (big-left) | Notifications, Todos, Actions (stacked right-center)
-// Row 8-9: Files | Brain Insights | Team Load
 const DEFAULT_PROJECT_LAYOUT: WidgetLayoutItem[] = [
   { i: 'health',         x: 0,  y: 0,  w: 3, h: 1, minW: 2, minH: 1 },
   { i: 'budget',         x: 3,  y: 0,  w: 3, h: 1, minW: 2, minH: 1 },
@@ -58,6 +59,38 @@ const DASHBOARD_TAB: TabState = {
   label: 'Dashboard',
 };
 
+// ─── Supabase sync helpers ───────────────────────────────────────
+
+let _saveTimer: ReturnType<typeof setTimeout> | null = null;
+const SAVE_DEBOUNCE_MS = 2000;
+
+/** Save current layouts to Supabase profiles.widget_layouts (debounced) */
+function debouncedSaveToDB() {
+  if (!isSupabaseConfigured()) return;
+  if (_saveTimer) clearTimeout(_saveTimer);
+  _saveTimer = setTimeout(async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const state = useWidgetStore.getState();
+      const payload = {
+        dashboardWidgetLayout: state.dashboardWidgetLayout,
+        projectWidgetLayout: state.projectWidgetLayout,
+      };
+
+      await supabase
+        .from('profiles')
+        .update({ widget_layouts: payload })
+        .eq('id', user.id);
+    } catch (err) {
+      console.warn('[WidgetStore] Failed to save layout to DB (non-fatal):', err);
+    }
+  }, SAVE_DEBOUNCE_MS);
+}
+
+// ─── Store ───────────────────────────────────────────────────────
+
 interface WidgetState {
   // Tab management
   openTabs: TabState[];
@@ -66,6 +99,9 @@ interface WidgetState {
   // Layout configuration
   dashboardWidgetLayout: WidgetLayoutItem[];
   projectWidgetLayout: WidgetLayoutItem[];
+
+  // DB sync flag
+  _layoutLoadedFromDB: boolean;
 
   // Tab actions
   openProjectTab: (projectId: string, label: string, keyColor?: string) => void;
@@ -83,6 +119,9 @@ interface WidgetState {
 
   // Reset
   resetLayout: (context: WidgetContext) => void;
+
+  // DB sync
+  loadLayoutFromDB: () => Promise<void>;
 }
 
 export const useWidgetStore = create<WidgetState>()(
@@ -93,54 +132,43 @@ export const useWidgetStore = create<WidgetState>()(
       activeTabId: 'dashboard',
       dashboardWidgetLayout: DEFAULT_DASHBOARD_LAYOUT,
       projectWidgetLayout: DEFAULT_PROJECT_LAYOUT,
+      _layoutLoadedFromDB: false,
 
       // --- Tab actions ---
 
       openProjectTab: (projectId, label, keyColor) => {
         const { openTabs } = get();
-        // Already open? Just activate
         if (openTabs.some((t) => t.id === projectId)) {
           set({ activeTabId: projectId });
           return;
         }
-        // Enforce max tabs
         if (openTabs.filter((t) => t.type === 'project').length >= MAX_OPEN_TABS) {
           console.warn(`Max ${MAX_OPEN_TABS} project tabs allowed.`);
           return;
         }
-        const newTab: TabState = {
-          id: projectId,
-          type: 'project',
-          label,
-          projectId,
-          keyColor,
-        };
-        set({
-          openTabs: [...openTabs, newTab],
-          activeTabId: projectId,
-        });
+        const newTab: TabState = { id: projectId, type: 'project', label, projectId, keyColor };
+        set({ openTabs: [...openTabs, newTab], activeTabId: projectId });
       },
 
       closeProjectTab: (projectId) => {
         const { openTabs, activeTabId } = get();
         const filtered = openTabs.filter((t) => t.id !== projectId);
-        // If closing active tab, switch to dashboard
         const newActive = activeTabId === projectId ? 'dashboard' : activeTabId;
         set({ openTabs: filtered, activeTabId: newActive });
       },
 
-      setActiveTab: (tabId) => {
-        set({ activeTabId: tabId });
-      },
+      setActiveTab: (tabId) => set({ activeTabId: tabId }),
 
-      // --- Layout actions ---
+      // --- Layout actions (save to both localStorage + DB) ---
 
       updateDashboardLayout: (layout) => {
         set({ dashboardWidgetLayout: layout });
+        debouncedSaveToDB();
       },
 
       updateProjectLayout: (layout) => {
         set({ projectWidgetLayout: layout });
+        debouncedSaveToDB();
       },
 
       // --- Widget management ---
@@ -148,37 +176,32 @@ export const useWidgetStore = create<WidgetState>()(
       addWidget: (context, widgetType) => {
         const key = context === 'dashboard' ? 'dashboardWidgetLayout' : 'projectWidgetLayout';
         const current = get()[key];
-        // Already exists?
         if (current.some((item) => item.i === widgetType)) return;
-        // Add at bottom with definition defaults
         const def = WIDGET_DEFINITIONS_IMPORT[widgetType];
         const maxY = current.reduce((max, item) => Math.max(max, item.y + item.h), 0);
         const newItem: WidgetLayoutItem = {
-          i: widgetType,
-          x: 0,
-          y: maxY,
-          w: def?.defaultSize?.w ?? 4,
-          h: def?.defaultSize?.h ?? 3,
-          minW: def?.minSize?.w ?? 2,
-          minH: def?.minSize?.h ?? 2,
+          i: widgetType, x: 0, y: maxY,
+          w: def?.defaultSize?.w ?? 4, h: def?.defaultSize?.h ?? 3,
+          minW: def?.minSize?.w ?? 2, minH: def?.minSize?.h ?? 2,
         };
         set({ [key]: [...current, newItem] });
+        debouncedSaveToDB();
       },
 
       removeWidget: (context, widgetType) => {
         const key = context === 'dashboard' ? 'dashboardWidgetLayout' : 'projectWidgetLayout';
-        const current = get()[key];
-        set({ [key]: current.filter((item) => item.i !== widgetType) });
+        set({ [key]: get()[key].filter((item) => item.i !== widgetType) });
+        debouncedSaveToDB();
       },
 
       toggleWidgetCollapsed: (context, widgetType) => {
         const key = context === 'dashboard' ? 'dashboardWidgetLayout' : 'projectWidgetLayout';
-        const current = get()[key];
         set({
-          [key]: current.map((item) =>
+          [key]: get()[key].map((item) =>
             item.i === widgetType ? { ...item, collapsed: !item.collapsed } : item,
           ),
         });
+        debouncedSaveToDB();
       },
 
       // --- Reset ---
@@ -189,13 +212,59 @@ export const useWidgetStore = create<WidgetState>()(
         } else {
           set({ projectWidgetLayout: DEFAULT_PROJECT_LAYOUT });
         }
+        debouncedSaveToDB();
+      },
+
+      // --- DB sync: called after login to load user-specific layout ---
+
+      loadLayoutFromDB: async () => {
+        if (!isSupabaseConfigured()) return;
+        try {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (!user) return;
+
+          const { data, error } = await supabase
+            .from('profiles')
+            .select('widget_layouts')
+            .eq('id', user.id)
+            .single();
+
+          if (error) {
+            console.warn('[WidgetStore] Failed to load layout from DB:', error.message);
+            return;
+          }
+
+          const layouts = data?.widget_layouts as {
+            dashboardWidgetLayout?: WidgetLayoutItem[];
+            projectWidgetLayout?: WidgetLayoutItem[];
+          } | null;
+
+          if (layouts) {
+            const updates: Partial<WidgetState> = { _layoutLoadedFromDB: true };
+
+            if (Array.isArray(layouts.dashboardWidgetLayout) && layouts.dashboardWidgetLayout.length > 0) {
+              updates.dashboardWidgetLayout = layouts.dashboardWidgetLayout;
+            }
+            if (Array.isArray(layouts.projectWidgetLayout) && layouts.projectWidgetLayout.length > 0) {
+              updates.projectWidgetLayout = layouts.projectWidgetLayout;
+            }
+
+            set(updates);
+          } else {
+            // No saved layout in DB yet — save current layout to DB for this user
+            set({ _layoutLoadedFromDB: true });
+            debouncedSaveToDB();
+          }
+        } catch (err) {
+          console.warn('[WidgetStore] Failed to load layout from DB (non-fatal):', err);
+        }
       },
     }),
     {
       name: 're-be-widget-layout',
-      version: 17, // bump — add todayDate widget to dashboard
+      version: 17,
       migrate: () => ({
-        // On version mismatch, reset everything to defaults
+        // On version mismatch, reset to defaults (DB will override on next login)
         openTabs: [DASHBOARD_TAB],
         activeTabId: 'dashboard',
         dashboardWidgetLayout: DEFAULT_DASHBOARD_LAYOUT,
