@@ -214,6 +214,39 @@ export async function trashGmailMessage(
   }
 }
 
+// ─── Mark Email as Read ─────────────────────────────
+
+export async function markMessageAsRead(
+  userId: string,
+  messageId: string,
+): Promise<{ success: boolean; error?: string }> {
+  if (isMockMode()) {
+    console.log('[Gmail Mock] Message marked as read:', messageId);
+    return { success: true };
+  }
+
+  try {
+    const { data, error } = await supabase.functions.invoke('gmail-mark-read', {
+      body: { userId, messageId },
+    });
+
+    if (error) {
+      console.warn('[Gmail] Mark-read server error:', error.message);
+      return { success: false, error: error.message };
+    }
+
+    if (data?.error) {
+      console.warn('[Gmail] Mark-read API error:', data.error);
+      return { success: false, error: data.error };
+    }
+
+    return { success: true };
+  } catch (err) {
+    console.warn('[Gmail] Mark-read exception:', (err as Error).message);
+    return { success: false, error: (err as Error).message };
+  }
+}
+
 // ─── Analyze Single Email with Brain AI ──────────────
 
 export async function analyzeSingleEmail(

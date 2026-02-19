@@ -201,6 +201,7 @@ function EmailItem({
   onTrash,
   onAnalyze,
   onDirectReply,
+  onMarkAsRead,
 }: {
   emailId: string;
   suggestions: EmailBrainSuggestion[];
@@ -210,6 +211,7 @@ function EmailItem({
   onTrash: (id: string) => void;
   onAnalyze: (id: string) => void;
   onDirectReply: (emailId: string) => void;
+  onMarkAsRead: (emailId: string) => void;
 }) {
   const { gmailMessages } = useAppStore();
   const [isExpanded, setIsExpanded] = useState(false);
@@ -233,7 +235,14 @@ function EmailItem({
       {/* Email header — clickable */}
       <div
         className="flex items-start gap-2 px-2 py-2 cursor-pointer hover:bg-muted/30 transition-colors"
-        onClick={() => setIsExpanded(!isExpanded)}
+        onClick={() => {
+          const willExpand = !isExpanded;
+          setIsExpanded(willExpand);
+          // Auto mark as read when expanding an unread email
+          if (willExpand && email.isUnread) {
+            onMarkAsRead(emailId);
+          }
+        }}
       >
         <Mail className={`w-3.5 h-3.5 shrink-0 mt-0.5 ${email.isUnread ? 'text-primary' : 'text-muted-foreground/50'}`} />
         <div className="flex-1 min-w-0">
@@ -325,6 +334,7 @@ function EmailWidget({ context: _context }: { context: WidgetDataContext }) {
     gmailLastSyncAt,
     syncGmail,
     trashEmail,
+    markEmailAsRead,
     analyzeEmail,
     rejectEmailSuggestion,
   } = useAppStore();
@@ -383,6 +393,10 @@ function EmailWidget({ context: _context }: { context: WidgetDataContext }) {
   const handleTrash = useCallback((messageId: string) => {
     trashEmail(messageId);
   }, [trashEmail]);
+
+  const handleMarkAsRead = useCallback((messageId: string) => {
+    markEmailAsRead(messageId);
+  }, [markEmailAsRead]);
 
   const handleAnalyze = useCallback((messageId: string) => {
     analyzeEmail(messageId);
@@ -493,6 +507,7 @@ function EmailWidget({ context: _context }: { context: WidgetDataContext }) {
               onTrash={handleTrash}
               onAnalyze={handleAnalyze}
               onDirectReply={handleDirectReply}
+              onMarkAsRead={handleMarkAsRead}
             />
           ))
         )}

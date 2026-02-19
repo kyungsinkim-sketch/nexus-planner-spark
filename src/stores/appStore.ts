@@ -185,6 +185,7 @@ interface AppState {
   // Gmail + Brain Email Actions
   syncGmail: () => Promise<void>;
   trashEmail: (messageId: string) => Promise<void>;
+  markEmailAsRead: (messageId: string) => Promise<void>;
   analyzeEmail: (messageId: string) => Promise<void>;
   confirmEmailSuggestion: (suggestionId: string) => Promise<void>;
   rejectEmailSuggestion: (suggestionId: string) => void;
@@ -1247,6 +1248,32 @@ export const useAppStore = create<AppState>()(
           }
         } catch (err) {
           console.warn('[Gmail] Server trash exception (local removed):', err);
+        }
+      },
+
+      markEmailAsRead: async (messageId: string) => {
+        const state = get();
+        if (!state.currentUser) return;
+
+        // Check if already read
+        const msg = state.gmailMessages.find(m => m.id === messageId);
+        if (!msg || !msg.isUnread) return;
+
+        // Update local state immediately for snappy UX
+        set({
+          gmailMessages: state.gmailMessages.map(m =>
+            m.id === messageId ? { ...m, isUnread: false } : m
+          ),
+        });
+
+        // Sync to Gmail server (best effort)
+        try {
+          const result = await gmailService.markMessageAsRead(state.currentUser.id, messageId);
+          if (!result.success) {
+            console.warn('[Gmail] Server mark-read failed (local updated):', result.error);
+          }
+        } catch (err) {
+          console.warn('[Gmail] Server mark-read exception (local updated):', err);
         }
       },
 
