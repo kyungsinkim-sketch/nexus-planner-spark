@@ -64,6 +64,7 @@ export interface ProcessRequest {
   messageContent: string;
   roomId?: string;
   projectId?: string;
+  directChatUserId?: string; // For DM chats — the other user's ID
   userId: string;
   chatMembers: { id: string; name: string }[];
   projectTitle?: string;

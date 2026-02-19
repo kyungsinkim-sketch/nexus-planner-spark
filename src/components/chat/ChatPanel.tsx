@@ -310,32 +310,51 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
     const { cleanContent } = brainService.detectBrainMention(trimmed);
 
     // Send the user's message first
-    if (selectedChat.type === 'project') {
-      if (selectedChat.roomId) {
-        sendRoomMessage(selectedChat.roomId, selectedChat.id, trimmed);
+    try {
+      if (selectedChat.type === 'project') {
+        if (selectedChat.roomId) {
+          await sendRoomMessage(selectedChat.roomId, selectedChat.id, trimmed);
+        } else {
+          await sendProjectMessage(selectedChat.id, trimmed);
+        }
       } else {
-        sendProjectMessage(selectedChat.id, trimmed);
+        await sendDirectMessage(selectedChat.id, trimmed);
       }
-    } else {
-      sendDirectMessage(selectedChat.id, trimmed);
+    } catch (sendError) {
+      console.error('Failed to send message:', sendError);
+      toast.error('메시지 전송에 실패했습니다. 다시 시도해주세요.');
+      return; // Don't clear the input on failure
     }
 
     setNewMessage('');
 
-    // Brain AI: triggered ONLY by Cmd+Enter (forceBrain) or Brain Chat Widget
-    // Normal Enter key sends a plain message without Brain AI involvement
-    if (forceBrain && selectedChat.type === 'project' && cleanContent) {
+    // Brain AI: triggered ONLY by Cmd+Enter (forceBrain) — works for both project and DM chats
+    if (forceBrain && cleanContent) {
       setBrainProcessing(true);
       try {
         // Build chat members list for name resolution
-        const project = projects.find(p => p.id === selectedChat.id) || null;
-        const memberIds = project?.teamMemberIds || [];
-        const chatMembers = memberIds
-          .map(id => {
-            const user = getUserById(id);
-            return user ? { id: user.id, name: user.name } : null;
-          })
-          .filter(Boolean) as { id: string; name: string }[];
+        let chatMembers: { id: string; name: string }[] = [];
+        let brainProjectId: string | undefined;
+        let brainProjectTitle: string | undefined;
+
+        if (selectedChat.type === 'project') {
+          const project = projects.find(p => p.id === selectedChat.id) || null;
+          const memberIds = project?.teamMemberIds || [];
+          chatMembers = memberIds
+            .map(id => {
+              const user = getUserById(id);
+              return user ? { id: user.id, name: user.name } : null;
+            })
+            .filter(Boolean) as { id: string; name: string }[];
+          brainProjectId = selectedChat.id;
+          brainProjectTitle = project?.title;
+        } else {
+          // DM chat — members are current user + the other user
+          const otherUser = getUserById(selectedChat.id);
+          if (otherUser) {
+            chatMembers.push({ id: otherUser.id, name: otherUser.name });
+          }
+        }
 
         // Always include current user
         if (!chatMembers.find(m => m.id === currentUser.id)) {
@@ -346,10 +365,11 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
         const brainResult = await brainService.processMessageWithLLM({
           messageContent: cleanContent,
           roomId: selectedChat.roomId,
-          projectId: selectedChat.id,
+          projectId: brainProjectId,
+          directChatUserId: selectedChat.type === 'direct' ? selectedChat.id : undefined,
           userId: currentUser.id,
           chatMembers,
-          projectTitle: project?.title,
+          projectTitle: brainProjectTitle,
         });
 
         // Auto-execute all pending actions (same as BrainChatWidget)
@@ -1282,7 +1302,10 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
                                   </span>
                                 </div>
                               )}
-                              <div className={`group/msg-actions relative max-w-full pt-2 ${isCurrentUser ? 'ml-auto' : ''}`} style={{ width: 'fit-content' }}>
+                              <div
+                                className={`group/msg-actions relative max-w-full pt-2 ${isCurrentUser ? 'ml-auto' : ''}`}
+                                style={{ width: message.messageType === 'brain_action' ? '100%' : 'fit-content' }}
+                              >
                                 <ChatMessageBubble
                                   message={message}
                                   isCurrentUser={isCurrentUser}
@@ -1358,23 +1381,21 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
                     : undefined
                 }
               />
-              {selectedChat?.type === 'project' && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className={`shrink-0 w-8 h-8 ${brainProcessing ? 'text-violet-500' : 'text-muted-foreground hover:text-violet-500'}`}
-                  onClick={() => handleSendMessage(true)}
-                  disabled={!newMessage.trim() || brainProcessing}
-                  aria-label="Brain AI"
-                  title="Brain AI 분석 (⌘+Enter)"
-                >
-                  {brainProcessing ? (
-                    <div className="w-3.5 h-3.5 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" />
-                  ) : (
-                    <Brain className="w-3.5 h-3.5" />
-                  )}
-                </Button>
-              )}
+              <Button
+                variant="ghost"
+                size="icon"
+                className={`shrink-0 w-8 h-8 ${brainProcessing ? 'text-violet-500' : 'text-muted-foreground hover:text-violet-500'}`}
+                onClick={() => handleSendMessage(true)}
+                disabled={!newMessage.trim() || brainProcessing}
+                aria-label="Brain AI"
+                title="Brain AI 분석 (⌘+Enter)"
+              >
+                {brainProcessing ? (
+                  <div className="w-3.5 h-3.5 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <Brain className="w-3.5 h-3.5" />
+                )}
+              </Button>
               <Button
                 size="icon"
                 className="shrink-0 w-8 h-8"
@@ -1390,12 +1411,10 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
               <span className="text-[10px] text-muted-foreground">
                 <kbd className="px-1 py-0.5 rounded bg-muted text-[9px] font-mono">Shift</kbd>+<kbd className="px-1 py-0.5 rounded bg-muted text-[9px] font-mono">Enter</kbd> {t('newLine')}
               </span>
-              {selectedChat?.type === 'project' && (
-                <span className="text-[10px] text-muted-foreground flex items-center gap-1">
-                  <Brain className="w-3 h-3 text-violet-400" />
-                  <kbd className="px-1 py-0.5 rounded bg-muted text-[9px] font-mono">⌘</kbd>+<kbd className="px-1 py-0.5 rounded bg-muted text-[9px] font-mono">Enter</kbd> Brain AI
-                </span>
-              )}
+              <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                <Brain className="w-3 h-3 text-violet-400" />
+                <kbd className="px-1 py-0.5 rounded bg-muted text-[9px] font-mono">⌘</kbd>+<kbd className="px-1 py-0.5 rounded bg-muted text-[9px] font-mono">Enter</kbd> Brain AI
+              </span>
             </div>
           </div>
         </div>

@@ -401,10 +401,11 @@ export const getDirectMessages = async (
         throw new Error('Supabase not configured');
     }
 
+    const BRAIN_BOT_ID = '00000000-0000-0000-0000-000000000099';
     const { data, error } = await supabase
         .from('chat_messages')
         .select('*')
-        .or(`and(user_id.eq.${userId1},direct_chat_user_id.eq.${userId2}),and(user_id.eq.${userId2},direct_chat_user_id.eq.${userId1})`)
+        .or(`and(user_id.eq.${userId1},direct_chat_user_id.eq.${userId2}),and(user_id.eq.${userId2},direct_chat_user_id.eq.${userId1}),and(user_id.eq.${BRAIN_BOT_ID},direct_chat_user_id.in.(${userId1},${userId2}))`)
         .order('created_at', { ascending: true });
 
     if (error) {
@@ -461,11 +462,18 @@ export const subscribeToDirectMessages = (
         return () => { };
     }
 
+    const BRAIN_BOT_ID = '00000000-0000-0000-0000-000000000099';
     const isRelevantDM = (row: MessageRow): boolean => {
-        return (
+        // Normal DM: exact user pair match
+        if (
             (row.user_id === userId1 && row.direct_chat_user_id === userId2) ||
             (row.user_id === userId2 && row.direct_chat_user_id === userId1)
-        );
+        ) return true;
+        // Brain bot message in DM context: bot → either participant
+        if (row.user_id === BRAIN_BOT_ID && (
+            row.direct_chat_user_id === userId1 || row.direct_chat_user_id === userId2
+        )) return true;
+        return false;
     };
 
     const channel = supabase

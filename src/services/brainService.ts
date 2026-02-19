@@ -22,6 +22,7 @@ interface BrainProcessRequest {
   messageContent: string;
   roomId?: string;
   projectId?: string;
+  directChatUserId?: string; // For DM chats — the other user's ID
   userId: string;
   chatMembers: ChatMember[];
   projectTitle?: string;

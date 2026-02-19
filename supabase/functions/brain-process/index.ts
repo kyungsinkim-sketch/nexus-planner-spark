@@ -55,7 +55,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    const { messageContent, roomId, projectId, userId, chatMembers, projectTitle } = body;
+    const { messageContent, roomId, projectId, directChatUserId, userId, chatMembers, projectTitle } = body;
 
     if (!messageContent || !userId || !chatMembers) {
       return new Response(
@@ -89,8 +89,15 @@ Deno.serve(async (req) => {
         .order('created_at', { ascending: false })
         .limit(HISTORY_LIMIT);
 
-      // Filter by room or project
-      if (roomId) {
+      // Filter by room, project, or DM context
+      if (directChatUserId) {
+        // DM: load messages between the two users (+ bot messages)
+        query = query.or(
+          `and(user_id.eq.${userId},direct_chat_user_id.eq.${directChatUserId}),` +
+          `and(user_id.eq.${directChatUserId},direct_chat_user_id.eq.${userId}),` +
+          `and(user_id.eq.${BRAIN_BOT_USER_ID},direct_chat_user_id.in.(${userId},${directChatUserId}))`
+        );
+      } else if (roomId) {
         query = query.eq('room_id', roomId);
       } else if (projectId) {
         query = query.eq('project_id', projectId);
@@ -202,8 +209,11 @@ Deno.serve(async (req) => {
       brain_action_data: brainActionData,
     };
 
-    // Set room or project context
-    if (roomId) {
+    // Set room, project, or DM context
+    if (directChatUserId) {
+      // DM chat — set direct_chat_user_id to triggering user so they can see it via RLS
+      messageInsert.direct_chat_user_id = userId;
+    } else if (roomId) {
       messageInsert.room_id = roomId;
       if (projectId) {
         messageInsert.project_id = projectId;
