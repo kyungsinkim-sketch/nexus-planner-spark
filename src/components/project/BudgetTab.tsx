@@ -1,10 +1,17 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import {
   Table,
   TableBody,
@@ -26,7 +33,6 @@ import {
   TrendingDown,
   Plus,
   FileText,
-  Download,
   Receipt,
   CreditCard,
   Wallet,
@@ -38,9 +44,24 @@ import {
   Trash2,
   Check,
   X,
+  Loader2,
+  Link2,
+  Unlink,
+  RefreshCw,
+  ExternalLink,
 } from 'lucide-react';
 import { useTranslation } from '@/hooks/useTranslation';
+import { useAppStore } from '@/stores/appStore';
 import { toast } from 'sonner';
+import { loadBudget } from '@/services/budgetService';
+import {
+  getBudgetLink,
+  linkSpreadsheet,
+  syncBudget as syncBudgetService,
+  unlinkSpreadsheet,
+  parseSpreadsheetUrl,
+} from '@/services/googleSheetsService';
+import type { BudgetLink } from '@/services/googleSheetsService';
 import type {
   ProjectBudget,
   BudgetLineItem,
@@ -157,6 +178,8 @@ const emptyBudgetData: ProjectBudget = {
 
 export function BudgetTab({ projectId }: BudgetTabProps) {
   const { t, language } = useTranslation();
+  const currentUser = useAppStore((s) => s.currentUser);
+
   // Pre-existing 2025 projects (p1–p33) keep their mock budget data; new projects start empty
   const isLegacyProject = /^p\d+$/.test(projectId);
   const [budget, setBudget] = useState<ProjectBudget>(
@@ -166,6 +189,15 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
   );
   const [activeSection, setActiveSection] = useState<BudgetSection>('contract');
   const [expenseTab, setExpenseTab] = useState<'tax_invoice' | 'withholding' | 'corporate_card' | 'corporate_cash' | 'personal'>('tax_invoice');
+
+  // Google Sheets sync states
+  const [budgetLink, setBudgetLink] = useState<BudgetLink | null>(null);
+  const [isLoadingBudget, setIsLoadingBudget] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [showLinkDialog, setShowLinkDialog] = useState(false);
+  const [showUnlinkDialog, setShowUnlinkDialog] = useState(false);
+  const [sheetUrl, setSheetUrl] = useState('');
+  const [isLinking, setIsLinking] = useState(false);
 
   // Editable contract amount states
   const [isEditingContract, setIsEditingContract] = useState(false);
@@ -192,6 +224,101 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
   const [tempTaxInvoice, setTempTaxInvoice] = useState<Partial<TaxInvoice>>({});
   const [tempCardExpense, setTempCardExpense] = useState<Partial<CorporateCardExpense>>({});
   const [tempWithholding, setTempWithholding] = useState<Partial<WithholdingPayment>>({});
+
+  // ========== DB Loading & Sheet Link ==========
+  const refreshBudgetFromDb = useCallback(async () => {
+    setIsLoadingBudget(true);
+    try {
+      const dbBudget = await loadBudget(projectId);
+      if (dbBudget) {
+        setBudget(dbBudget);
+      }
+    } catch (err) {
+      console.error('[BudgetTab] Failed to load budget:', err);
+    } finally {
+      setIsLoadingBudget(false);
+    }
+  }, [projectId]);
+
+  useEffect(() => {
+    // Load budget link status
+    getBudgetLink(projectId).then((link) => {
+      setBudgetLink(link);
+      // If linked, load budget from DB
+      if (link) {
+        refreshBudgetFromDb();
+      }
+    });
+  }, [projectId, refreshBudgetFromDb]);
+
+  const handleLinkSheet = useCallback(async () => {
+    if (!currentUser || !sheetUrl) return;
+    const spreadsheetId = parseSpreadsheetUrl(sheetUrl);
+    if (!spreadsheetId) {
+      toast.error(t('budgetSyncError'));
+      return;
+    }
+
+    setIsLinking(true);
+    try {
+      const result = await linkSpreadsheet(currentUser.id, projectId, sheetUrl);
+      if (result.success) {
+        toast.success(t('sheetConnected'));
+        setShowLinkDialog(false);
+        setSheetUrl('');
+        // Refresh link & data
+        const link = await getBudgetLink(projectId);
+        setBudgetLink(link);
+        await refreshBudgetFromDb();
+      } else if (result.needsReauth) {
+        toast.error(t('sheetsReauthRequired'));
+      } else {
+        toast.error(result.error || t('budgetSyncError'));
+      }
+    } catch {
+      toast.error(t('budgetSyncError'));
+    } finally {
+      setIsLinking(false);
+    }
+  }, [currentUser, sheetUrl, projectId, t, refreshBudgetFromDb]);
+
+  const handleSyncBudget = useCallback(async () => {
+    if (!currentUser) return;
+    setIsSyncing(true);
+    try {
+      const result = await syncBudgetService(currentUser.id, projectId, 'pull');
+      if (result.success) {
+        toast.success(t('budgetSyncSuccess'));
+        await refreshBudgetFromDb();
+        // Refresh link status too
+        const link = await getBudgetLink(projectId);
+        setBudgetLink(link);
+      } else if (result.needsReauth) {
+        toast.error(t('sheetsReauthRequired'));
+      } else {
+        toast.error(result.error || t('budgetSyncError'));
+      }
+    } catch {
+      toast.error(t('budgetSyncError'));
+    } finally {
+      setIsSyncing(false);
+    }
+  }, [currentUser, projectId, t, refreshBudgetFromDb]);
+
+  const handleUnlinkSheet = useCallback(async () => {
+    try {
+      const result = await unlinkSpreadsheet(projectId);
+      if (result.success) {
+        toast.success(t('sheetDisconnected'));
+        setBudgetLink(null);
+        setShowUnlinkDialog(false);
+      } else {
+        toast.error(result.error || t('budgetSyncError'));
+      }
+    } catch {
+      toast.error(t('budgetSyncError'));
+    }
+  }, [projectId, t]);
 
   const { summary, paymentSchedules, lineItems, taxInvoices, corporateCardExpenses } = budget;
 
@@ -479,6 +606,147 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
 
   return (
     <div className="space-y-6">
+      {/* Google Sheets Connection Banner */}
+      <Card className="p-4 shadow-card">
+        <div className="flex items-center justify-between gap-4">
+          {budgetLink ? (
+            <>
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-8 h-8 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center flex-shrink-0">
+                  <Link2 className="w-4 h-4 text-emerald-600" />
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium truncate">Google Sheets</span>
+                    <Badge variant="outline" className={
+                      budgetLink.syncStatus === 'CONNECTED' ? 'text-emerald-600 border-emerald-300' :
+                      budgetLink.syncStatus === 'SYNCING' ? 'text-blue-600 border-blue-300' :
+                      budgetLink.syncStatus === 'ERROR' ? 'text-red-600 border-red-300' :
+                      'text-muted-foreground'
+                    }>
+                      {budgetLink.syncStatus === 'CONNECTED' ? t('sheetLinked') :
+                       budgetLink.syncStatus === 'SYNCING' ? t('sheetSyncing') :
+                       budgetLink.syncStatus === 'ERROR' ? t('sheetError') : ''}
+                    </Badge>
+                  </div>
+                  {budgetLink.lastSyncAt && (
+                    <p className="text-xs text-muted-foreground">
+                      {t('lastSynced')}: {new Date(budgetLink.lastSyncAt).toLocaleString(language === 'ko' ? 'ko-KR' : 'en-US')}
+                    </p>
+                  )}
+                </div>
+              </div>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5"
+                  onClick={handleSyncBudget}
+                  disabled={isSyncing}
+                >
+                  {isSyncing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+                  {isSyncing ? t('syncingBudget') : t('syncBudget')}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="gap-1.5"
+                  onClick={() => window.open(budgetLink.spreadsheetUrl, '_blank')}
+                >
+                  <ExternalLink className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">{t('openInGoogleSheets')}</span>
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                  onClick={() => setShowUnlinkDialog(true)}
+                >
+                  <Unlink className="w-3.5 h-3.5" />
+                </Button>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
+                  <Link2 className="w-4 h-4 text-muted-foreground" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium">{t('noBudgetData')}</p>
+                  <p className="text-xs text-muted-foreground">{t('noBudgetDataDescription')}</p>
+                </div>
+              </div>
+              <Button
+                variant="default"
+                size="sm"
+                className="gap-1.5 flex-shrink-0"
+                onClick={() => setShowLinkDialog(true)}
+              >
+                <Link2 className="w-3.5 h-3.5" />
+                {t('linkGoogleSheet')}
+              </Button>
+            </>
+          )}
+        </div>
+      </Card>
+
+      {/* Link Sheet Dialog */}
+      <Dialog open={showLinkDialog} onOpenChange={setShowLinkDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t('linkGoogleSheet')}</DialogTitle>
+            <DialogDescription>{t('connectSheetDescription')}</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <Input
+              value={sheetUrl}
+              onChange={(e) => setSheetUrl(e.target.value)}
+              placeholder={t('sheetUrlPlaceholder')}
+              className="font-mono text-sm"
+            />
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => { setShowLinkDialog(false); setSheetUrl(''); }}>
+                {t('cancel')}
+              </Button>
+              <Button
+                onClick={handleLinkSheet}
+                disabled={isLinking || !sheetUrl || !parseSpreadsheetUrl(sheetUrl)}
+              >
+                {isLinking && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                {t('connect')}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Unlink Confirmation Dialog */}
+      <Dialog open={showUnlinkDialog} onOpenChange={setShowUnlinkDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t('confirmUnlink')}</DialogTitle>
+            <DialogDescription>{t('confirmUnlinkDescription')}</DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" onClick={() => setShowUnlinkDialog(false)}>
+              {t('cancel')}
+            </Button>
+            <Button variant="destructive" onClick={handleUnlinkSheet}>
+              {t('unlinkGoogleSheet')}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Loading indicator */}
+      {isLoadingBudget && (
+        <div className="flex items-center justify-center py-8 gap-2 text-muted-foreground">
+          <Loader2 className="w-5 h-5 animate-spin" />
+          <span>{t('loadingBudget')}</span>
+        </div>
+      )}
+
       {/* Summary Cards — Clickable Navigation */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {/* Total Contract Amount → 입금 현황 */}
@@ -755,10 +1023,12 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
             <h3 className="font-semibold">{t('budgetPlan')}</h3>
             <p className="text-sm text-muted-foreground">{t('budgetPlanGuide')}</p>
           </div>
-          <Button variant="outline" size="sm" className="gap-2">
-            <Download className="w-4 h-4" />
-            {t('export')}
-          </Button>
+          {budgetLink && (
+            <Button variant="outline" size="sm" className="gap-2" onClick={handleSyncBudget} disabled={isSyncing}>
+              {isSyncing ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+              {isSyncing ? t('syncingBudget') : t('syncBudget')}
+            </Button>
+          )}
         </div>
         <div className="overflow-auto">
           <Table>
@@ -1032,10 +1302,12 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
                 {t('personalExpense')}
               </TabsTrigger>
             </TabsList>
-            <Button variant="outline" size="sm" className="gap-2">
-              <Download className="w-4 h-4" />
-              {t('export')}
-            </Button>
+            {budgetLink && (
+              <Button variant="outline" size="sm" className="gap-2" onClick={handleSyncBudget} disabled={isSyncing}>
+                {isSyncing ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                {isSyncing ? t('syncingBudget') : t('syncBudget')}
+              </Button>
+            )}
           </div>
 
           {/* Tax Invoice Tab */}

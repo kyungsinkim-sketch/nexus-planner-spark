@@ -44,6 +44,12 @@ export interface BudgetSummary {
   
   actualExpenseWithoutVat: number; // 실제지출 (VAT 미포함)
   actualProfitWithoutVat: number;  // 실제수익 (VAT 미포함)
+
+  // Google Sheets 연동
+  spreadsheetId?: string;          // 연결된 Google Sheet ID
+  spreadsheetUrl?: string;         // Google Sheet URL
+  lastSyncAt?: string;             // 마지막 동기화 시각
+  syncStatus?: 'CONNECTED' | 'SYNCING' | 'ERROR' | 'DISCONNECTED';
 }
 
 // 입금 정보
@@ -103,15 +109,20 @@ export interface WithholdingPayment {
   id: string;
   projectId: string;
   orderNo: number;
-  paymentDueDate?: string;     // 입금약일
+  paymentDueDate?: string;     // 입금요청일자
   personName: string;          // 이름
   role: string;                // 역할
-  amount: number;              // 사용액
+  amount: number;              // 사용액 (= grossAmount, 세전금액)
   withholdingTax: number;      // 세액 (3.3%)
-  totalAmount: number;         // 사용총액
+  totalAmount: number;         // 사용총액 (= netAmount, 세후금액)
+  grossAmount?: number;        // 세전금액 (시트: H열)
+  netAmount?: number;          // 세후금액 (시트: I열)
+  bankName?: string;           // 입금은행
+  bankAccount?: string;        // 계좌번호
   companyName?: string;        // 회사명 / 대표자
   businessNumber?: string;     // 사업자번호
-  status: PaymentStatus;       // 진행단계
+  status: PaymentStatus;       // 진행단계 / 비고(입금완료 등)
+  paymentConfirmedDate?: string; // 입금여부 / 날짜
   issueDate?: string;          // 발행일자
   paymentDate?: string;        // 입금일자
   note?: string;               // 비고
