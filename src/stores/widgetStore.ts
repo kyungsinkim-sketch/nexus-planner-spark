@@ -91,7 +91,7 @@ function debouncedSaveToDB() {
 
 // ─── Store ───────────────────────────────────────────────────────
 
-export type MobileView = 'dashboard' | 'chat' | 'calendar';
+export type MobileView = 'projects' | 'chat' | 'calendar' | 'email';
 
 interface WidgetState {
   // Tab management
@@ -138,7 +138,7 @@ export const useWidgetStore = create<WidgetState>()(
       // Initial state
       openTabs: [DASHBOARD_TAB],
       activeTabId: 'dashboard',
-      mobileView: 'dashboard' as MobileView,
+      mobileView: 'projects' as MobileView,
       dashboardWidgetLayout: DEFAULT_DASHBOARD_LAYOUT,
       projectWidgetLayout: DEFAULT_PROJECT_LAYOUT,
       _layoutLoadedFromDB: false,

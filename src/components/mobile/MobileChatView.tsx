@@ -23,7 +23,7 @@ export function MobileChatView() {
       {/* Header */}
       <div className="shrink-0 px-4 py-3 flex items-center gap-3 border-b bg-background">
         <button
-          onClick={() => setMobileView('dashboard')}
+          onClick={() => setMobileView('projects')}
           className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-accent transition-colors"
         >
           <ArrowLeft className="w-5 h-5" />

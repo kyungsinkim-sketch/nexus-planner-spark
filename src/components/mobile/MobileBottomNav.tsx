@@ -1,7 +1,7 @@
 /**
  * MobileBottomNav — 모바일 하단 네비게이션 바
  *
- * 5개 탭: 대시보드, 채팅, 캘린더, 프로젝트, 더보기(설정)
+ * 5개 탭: 프로젝트, 채팅, 캘린더, 이메일, 더보기(설정)
  * widgetStore.mobileView와 연동
  */
 
@@ -11,10 +11,10 @@ import { useWidgetStore } from '@/stores/widgetStore';
 import { useAppStore } from '@/stores/appStore';
 import { useTranslation } from '@/hooks/useTranslation';
 import {
-  Home,
+  FolderKanban,
   MessageSquare,
   Calendar,
-  FolderKanban,
+  Mail,
   MoreHorizontal,
   Settings,
   Crown,
@@ -32,7 +32,7 @@ import { toast } from 'sonner';
 export function MobileBottomNav() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { mobileView, setMobileView, setActiveTab, activeTabId } = useWidgetStore();
+  const { mobileView, setMobileView } = useWidgetStore();
   const {
     currentUser,
     theme,
@@ -46,31 +46,28 @@ export function MobileBottomNav() {
   const isSubRoute = location.pathname !== '/';
 
   // Determine which tab is active
-  const isDashboardActive = !isSubRoute && mobileView === 'dashboard' && activeTabId === 'dashboard';
+  const isProjectsActive = !isSubRoute && mobileView === 'projects';
   const isChatActive = !isSubRoute && mobileView === 'chat';
   const isCalendarActive = !isSubRoute && mobileView === 'calendar';
+  const isEmailActive = !isSubRoute && mobileView === 'email';
 
-  const handleDashboard = () => {
-    setActiveTab('dashboard');
-    setMobileView('dashboard');
+  const handleProjects = () => {
+    setMobileView('projects');
     if (isSubRoute) navigate('/');
   };
 
   const handleChat = () => {
     setMobileView('chat');
-    setActiveTab('dashboard');
     if (isSubRoute) navigate('/');
   };
 
   const handleCalendar = () => {
     setMobileView('calendar');
-    setActiveTab('dashboard');
     if (isSubRoute) navigate('/');
   };
 
-  const handleProjects = () => {
-    setActiveTab('dashboard');
-    setMobileView('dashboard');
+  const handleEmail = () => {
+    setMobileView('email');
     if (isSubRoute) navigate('/');
   };
 
@@ -81,16 +78,16 @@ export function MobileBottomNav() {
         style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
       >
         <div className="flex items-center justify-around px-1 py-1">
-          {/* Dashboard */}
+          {/* Projects (leftmost) */}
           <button
-            onClick={handleDashboard}
+            onClick={handleProjects}
             className={cn(
               'flex flex-col items-center gap-0.5 py-1.5 px-2 rounded-lg transition-colors min-w-0 flex-1',
-              isDashboardActive ? 'text-primary' : 'text-muted-foreground'
+              isProjectsActive ? 'text-primary' : 'text-muted-foreground'
             )}
           >
-            <Home className="w-5 h-5" />
-            <span className="text-[9px] font-medium truncate">{t('dashboard')}</span>
+            <FolderKanban className="w-5 h-5" />
+            <span className="text-[9px] font-medium truncate">{t('projects')}</span>
           </button>
 
           {/* Chat */}
@@ -119,13 +116,18 @@ export function MobileBottomNav() {
             <span className="text-[9px] font-medium truncate">{t('calendar')}</span>
           </button>
 
-          {/* Projects */}
+          {/* Email */}
           <button
-            onClick={handleProjects}
-            className="flex flex-col items-center gap-0.5 py-1.5 px-2 rounded-lg transition-colors min-w-0 flex-1 text-muted-foreground"
+            onClick={handleEmail}
+            className={cn(
+              'flex flex-col items-center gap-0.5 py-1.5 px-2 rounded-lg transition-colors min-w-0 flex-1',
+              isEmailActive ? 'text-primary' : 'text-muted-foreground'
+            )}
           >
-            <FolderKanban className="w-5 h-5" />
-            <span className="text-[9px] font-medium truncate">{t('projects')}</span>
+            <Mail className="w-5 h-5" />
+            <span className="text-[9px] font-medium truncate">
+              {language === 'ko' ? '이메일' : 'Email'}
+            </span>
           </button>
 
           {/* More (Sheet) */}

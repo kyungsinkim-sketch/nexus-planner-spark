@@ -13,10 +13,10 @@
  *
  * MOBILE (<768px):
  * ┌─────────────────────────────────────────┐
- * │  MobileDashboard (카드 기반)              │
- * │  or MobileProjectView (탭 기반)          │
+ * │  MobileProjectView (프로젝트 리스트/상세) │
  * │  or MobileChatView (전체화면 채팅)        │
  * │  or MobileCalendarView (전체화면 캘린더)   │
+ * │  or MobileEmailView (전체화면 이메일)      │
  * └─────────────────────────────────────────┘
  * (No drag-and-drop, no WidgetGrid)
  * mobileView state in widgetStore routes between views.
@@ -39,10 +39,10 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import type { WidgetDataContext } from '@/types/widget';
 
 // Lazy load mobile components — only loaded on mobile
-const MobileDashboard = lazy(() => import('@/components/mobile/MobileDashboard'));
 const MobileProjectView = lazy(() => import('@/components/mobile/MobileProjectView'));
 const MobileChatView = lazy(() => import('@/components/mobile/MobileChatView'));
 const MobileCalendarView = lazy(() => import('@/components/mobile/MobileCalendarView'));
+const MobileEmailView = lazy(() => import('@/components/mobile/MobileEmailView'));
 const MobileBottomNav = lazy(() => import('@/components/mobile/MobileBottomNav'));
 
 export function TabLayout() {
@@ -92,10 +92,10 @@ export function TabLayout() {
               <MobileChatView />
             ) : mobileView === 'calendar' ? (
               <MobileCalendarView />
-            ) : isProjectTab ? (
-              <MobileProjectView projectId={activeTab!.projectId!} />
+            ) : mobileView === 'email' ? (
+              <MobileEmailView />
             ) : (
-              <MobileDashboard />
+              <MobileProjectView />
             )}
           </Suspense>
         </div>

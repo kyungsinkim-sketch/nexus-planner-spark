@@ -17,6 +17,7 @@ import interactionPlugin from '@fullcalendar/interaction';
 import listPlugin from '@fullcalendar/list';
 import { useAppStore } from '@/stores/appStore';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useTranslation } from '@/hooks/useTranslation';
 import { subscribeToEvents } from '@/services/eventService';
 import { EventSidePanel } from '@/components/calendar/EventSidePanel';
 import { NewEventModal } from '@/components/project/NewEventModal';
@@ -29,6 +30,7 @@ import { isSupabaseConfigured } from '@/lib/supabase';
 function CalendarWidget({ context }: { context: WidgetDataContext }) {
   const { events, projects, currentUser, getProjectById, updateEvent, deleteEvent, loadEvents } = useAppStore();
   const isMobile = useIsMobile();
+  const { language } = useTranslation();
 
   // Debounced loadEvents to prevent rapid-fire calls that cause AbortError cascades
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -139,8 +141,20 @@ function CalendarWidget({ context }: { context: WidgetDataContext }) {
     [filteredEvents, getProjectById],
   );
 
-  // Custom event rendering — show project color dot + optional Google icon
+  // Custom event rendering — desktop: color dot + time + title; mobile: clean title only
   const renderEventContent = (eventInfo: { event: { title: string; extendedProps: { location?: string; type?: string; source?: string; dotColor?: string } }; timeText: string }) => {
+    if (isMobile) {
+      // Mobile: no colored dot — just time + title for readability
+      return (
+        <div className="fc-event-inner flex items-center gap-1 px-0.5 overflow-hidden min-w-0">
+          {eventInfo.timeText && (
+            <span className="text-[10px] text-muted-foreground shrink-0">{eventInfo.timeText}</span>
+          )}
+          <span className="truncate text-[11px] font-medium text-foreground">{eventInfo.event.title}</span>
+        </div>
+      );
+    }
+    // Desktop: color dot + time + title
     return (
       <div className="fc-event-inner flex items-center gap-1 px-0.5 overflow-hidden min-w-0">
         <span
@@ -248,18 +262,20 @@ function CalendarWidget({ context }: { context: WidgetDataContext }) {
           headerToolbar={isMobile ? {
             left: 'prev,next',
             center: 'title',
-            right: 'listWeek,dayGridMonth',
+            right: 'listWeek,dayGridMonth,timeGridWeek',
           } : {
             left: 'prev,next today',
             center: 'title',
             right: 'dayGridMonth,timeGridWeek,listDay',
           }}
+          views={{
+            listWeek: { buttonText: language === 'ko' ? '목록' : 'List' },
+            timeGridWeek: { buttonText: language === 'ko' ? '주간' : 'Week' },
+            dayGridMonth: { buttonText: language === 'ko' ? '월간' : 'Month' },
+            listDay: { buttonText: language === 'ko' ? '일간' : 'Day' },
+          }}
           buttonText={{
-            today: 'Today',
-            month: 'Month',
-            week: 'Week',
-            day: 'Day',
-            list: 'List',
+            today: language === 'ko' ? '오늘' : 'Today',
           }}
           events={calendarEvents}
           eventContent={renderEventContent}

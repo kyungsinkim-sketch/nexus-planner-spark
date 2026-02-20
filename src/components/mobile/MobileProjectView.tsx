@@ -1,79 +1,148 @@
 /**
- * MobileProjectView — 프로젝트 탭 기반 모바일 뷰
+ * MobileProjectView — 모바일 프로젝트 메인 뷰
  *
- * 상단: 프로젝트명 + 뒤로가기
- * 중간: 스와이프 가능 탭 (채팅 / 캘린더 / 할 일 / 기록 / 알림)
- * 하단: 선택된 탭 콘텐츠 (전체 화면)
+ * 이중 상태 관리:
+ * - State A (프로젝트 미선택): 프로젝트 카드 리스트 표시
+ * - State B (프로젝트 선택): 프로젝트 전환 칩 + 할 일/기록/파일 서브탭
  */
 
 import { useState, useMemo, lazy, Suspense } from 'react';
 import { useAppStore } from '@/stores/appStore';
-import { useWidgetStore } from '@/stores/widgetStore';
 import { useTranslation } from '@/hooks/useTranslation';
 import {
   ArrowLeft,
-  MessageSquare,
-  Calendar,
   CheckSquare,
   BookMarked,
-  Bell,
+  FileIcon,
+  FolderKanban,
+  ChevronRight,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { WidgetDataContext } from '@/types/widget';
 
-// Lazy load the actual widget components
-const ChatPanel = lazy(() => import('@/components/chat/ChatPanel').then(m => ({ default: m.ChatPanel })));
-const CalendarWidget = lazy(() => import('@/components/widgets/CalendarWidget'));
+// Lazy load widget components
 const TodosWidget = lazy(() => import('@/components/widgets/TodosWidget'));
 const ImportantNotesWidget = lazy(() => import('@/components/widgets/ImportantNotesWidget'));
-const NotificationsWidget = lazy(() => import('@/components/widgets/NotificationsWidget'));
+const FilesWidget = lazy(() => import('@/components/widgets/FilesWidget'));
 
-type MobileProjectTab = 'chat' | 'calendar' | 'todos' | 'notes' | 'notifications';
+type MobileProjectTab = 'todos' | 'notes' | 'files';
 
-const TAB_CONFIG: Array<{ id: MobileProjectTab; icon: typeof MessageSquare; labelKo: string; labelEn: string }> = [
-  { id: 'chat',          icon: MessageSquare, labelKo: '채팅',   labelEn: 'Chat' },
-  { id: 'calendar',      icon: Calendar,      labelKo: '캘린더', labelEn: 'Calendar' },
-  { id: 'todos',         icon: CheckSquare,   labelKo: '할 일',  labelEn: 'Todos' },
-  { id: 'notes',         icon: BookMarked,    labelKo: '기록',   labelEn: 'Notes' },
-  { id: 'notifications', icon: Bell,          labelKo: '알림',   labelEn: 'Alerts' },
+const TAB_CONFIG: Array<{ id: MobileProjectTab; icon: typeof CheckSquare; labelKo: string; labelEn: string }> = [
+  { id: 'todos', icon: CheckSquare, labelKo: '할 일', labelEn: 'Todos' },
+  { id: 'notes', icon: BookMarked, labelKo: '중요 기록', labelEn: 'Notes' },
+  { id: 'files', icon: FileIcon, labelKo: '파일', labelEn: 'Files' },
 ];
 
-interface MobileProjectViewProps {
-  projectId: string;
-}
-
-export function MobileProjectView({ projectId }: MobileProjectViewProps) {
-  const [activeTab, setActiveTab] = useState<MobileProjectTab>('chat');
-  const { getProjectById } = useAppStore();
-  const { setActiveTab: setWidgetActiveTab, closeProjectTab } = useWidgetStore();
+export function MobileProjectView() {
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<MobileProjectTab>('todos');
+  const { projects, currentUser } = useAppStore();
   const { language } = useTranslation();
 
-  const project = getProjectById(projectId);
+  // Filter active projects the user is a member of
+  const activeProjects = useMemo(() => {
+    if (!currentUser) return [];
+    return projects.filter(
+      p => (p.status === 'IN_PROGRESS' || p.status === 'PLANNING') &&
+           p.teamMemberIds?.includes(currentUser.id)
+    );
+  }, [projects, currentUser]);
+
+  const selectedProject = selectedProjectId
+    ? projects.find(p => p.id === selectedProjectId)
+    : null;
 
   const context: WidgetDataContext = useMemo(() => ({
     type: 'project' as const,
-    projectId,
-  }), [projectId]);
+    projectId: selectedProjectId || undefined,
+  }), [selectedProjectId]);
 
-  const handleBack = () => {
-    setWidgetActiveTab('dashboard');
+  const handleSelectProject = (projectId: string) => {
+    setSelectedProjectId(projectId);
+    setActiveTab('todos');
   };
 
-  if (!project) {
+  const handleBack = () => {
+    setSelectedProjectId(null);
+  };
+
+  // ─── State A: Project List ───
+  if (!selectedProjectId || !selectedProject) {
     return (
-      <div className="flex items-center justify-center h-full text-muted-foreground">
-        {language === 'ko' ? '프로젝트를 찾을 수 없습니다' : 'Project not found'}
+      <div className="flex-1 overflow-y-auto bg-background">
+        <div className="p-4 space-y-3 pb-6">
+          {/* Header */}
+          <div className="flex items-center gap-2 px-1 pt-1 pb-2">
+            <FolderKanban className="w-4 h-4 text-primary" />
+            <h1 className="text-base font-bold flex-1">
+              {language === 'ko' ? '프로젝트' : 'Projects'}
+            </h1>
+            <span className="text-xs text-muted-foreground">
+              {activeProjects.length}{language === 'ko' ? '개 진행 중' : ' active'}
+            </span>
+          </div>
+
+          {/* Project Cards */}
+          {activeProjects.length === 0 ? (
+            <div className="text-center py-12 text-sm text-muted-foreground/60">
+              {language === 'ko' ? '참여 중인 프로젝트가 없습니다' : 'No active projects'}
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {activeProjects.map(project => (
+                <button
+                  key={project.id}
+                  onClick={() => handleSelectProject(project.id)}
+                  className="w-full bg-card rounded-2xl border shadow-sm p-4 flex items-center gap-3 active:scale-[0.98] transition-transform text-left"
+                >
+                  {/* Thumbnail or color */}
+                  {project.thumbnail ? (
+                    <div
+                      className="w-10 h-10 rounded-xl shrink-0 bg-cover bg-center"
+                      style={{ backgroundImage: `url(${project.thumbnail})` }}
+                    />
+                  ) : (
+                    <div
+                      className="w-10 h-10 rounded-xl shrink-0 flex items-center justify-center text-white text-sm font-bold"
+                      style={{ backgroundColor: project.keyColor || 'hsl(var(--primary))' }}
+                    >
+                      {project.title.charAt(0)}
+                    </div>
+                  )}
+
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{project.title}</p>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${
+                        project.status === 'IN_PROGRESS'
+                          ? 'bg-blue-500/10 text-blue-600'
+                          : 'bg-amber-500/10 text-amber-600'
+                      }`}>
+                        {project.status === 'IN_PROGRESS'
+                          ? (language === 'ko' ? '진행 중' : 'In Progress')
+                          : (language === 'ko' ? '기획' : 'Planning')}
+                      </span>
+                    </div>
+                  </div>
+
+                  <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     );
   }
 
+  // ─── State B: Project Detail (Todos / Notes / Files) ───
   return (
     <div className="flex flex-col h-full bg-background">
       {/* Project Header */}
       <div
         className="shrink-0 px-4 py-3 flex items-center gap-3 border-b"
         style={{
-          backgroundColor: project.keyColor ? `${project.keyColor}15` : undefined,
+          backgroundColor: selectedProject.keyColor ? `${selectedProject.keyColor}15` : undefined,
         }}
       >
         <button
@@ -84,13 +153,49 @@ export function MobileProjectView({ projectId }: MobileProjectViewProps) {
         </button>
         <div
           className="w-2 h-8 rounded-full shrink-0"
-          style={{ backgroundColor: project.keyColor || 'hsl(var(--primary))' }}
+          style={{ backgroundColor: selectedProject.keyColor || 'hsl(var(--primary))' }}
         />
-        <h1 className="text-sm font-semibold truncate flex-1">{project.title}</h1>
+        <h1 className="text-sm font-semibold truncate flex-1">{selectedProject.title}</h1>
       </div>
 
-      {/* Tab Bar */}
-      <div className="shrink-0 flex border-b overflow-x-auto scrollbar-hide">
+      {/* Project Switcher Chips */}
+      {activeProjects.length > 1 && (
+        <div className="shrink-0 flex gap-1.5 px-4 py-2 overflow-x-auto scrollbar-hide border-b bg-background">
+          {activeProjects.map(p => {
+            const isSelected = p.id === selectedProjectId;
+            return (
+              <button
+                key={p.id}
+                onClick={() => handleSelectProject(p.id)}
+                className={cn(
+                  'flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-[11px] font-medium shrink-0 transition-colors border',
+                  isSelected
+                    ? 'border-primary/30 bg-primary/10 text-primary'
+                    : 'border-border bg-card text-muted-foreground'
+                )}
+              >
+                {p.thumbnail ? (
+                  <div
+                    className="w-4 h-4 rounded-full bg-cover bg-center shrink-0"
+                    style={{ backgroundImage: `url(${p.thumbnail})` }}
+                  />
+                ) : (
+                  <div
+                    className="w-4 h-4 rounded-full shrink-0 flex items-center justify-center text-white text-[8px] font-bold"
+                    style={{ backgroundColor: p.keyColor || 'hsl(var(--primary))' }}
+                  >
+                    {p.title.charAt(0)}
+                  </div>
+                )}
+                <span className="truncate max-w-[80px]">{p.title}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Sub-Tab Bar */}
+      <div className="shrink-0 flex border-b">
         {TAB_CONFIG.map(tab => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
@@ -99,7 +204,7 @@ export function MobileProjectView({ projectId }: MobileProjectViewProps) {
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
               className={cn(
-                'flex items-center gap-1.5 px-4 py-2.5 text-xs font-medium whitespace-nowrap transition-colors border-b-2 shrink-0',
+                'flex items-center justify-center gap-1.5 flex-1 px-4 py-2.5 text-xs font-medium whitespace-nowrap transition-colors border-b-2',
                 isActive
                   ? 'border-primary text-primary'
                   : 'border-transparent text-muted-foreground'
@@ -112,23 +217,13 @@ export function MobileProjectView({ projectId }: MobileProjectViewProps) {
         })}
       </div>
 
-      {/* Tab Content — full screen */}
+      {/* Tab Content */}
       <div className="flex-1 min-h-0 overflow-hidden">
         <Suspense fallback={
           <div className="flex items-center justify-center h-full">
             <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
           </div>
         }>
-          {activeTab === 'chat' && (
-            <div className="h-full">
-              <ChatPanel defaultProjectId={projectId} />
-            </div>
-          )}
-          {activeTab === 'calendar' && (
-            <div className="h-full overflow-y-auto p-2">
-              <CalendarWidget context={context} />
-            </div>
-          )}
           {activeTab === 'todos' && (
             <div className="h-full overflow-y-auto p-3">
               <TodosWidget context={context} />
@@ -139,9 +234,9 @@ export function MobileProjectView({ projectId }: MobileProjectViewProps) {
               <ImportantNotesWidget context={context} />
             </div>
           )}
-          {activeTab === 'notifications' && (
+          {activeTab === 'files' && (
             <div className="h-full overflow-y-auto p-3">
-              <NotificationsWidget context={context} />
+              <FilesWidget context={context} />
             </div>
           )}
         </Suspense>

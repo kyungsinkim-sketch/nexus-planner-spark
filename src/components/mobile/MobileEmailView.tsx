@@ -1,19 +1,19 @@
 /**
- * MobileCalendarView — 전체화면 모바일 캘린더
+ * MobileEmailView -- full screen mobile email
  *
- * CalendarWidget을 dashboard context로 래핑.
- * 모바일에서는 CalendarWidget 내부에서 useIsMobile() → listWeek 뷰로 전환됨.
+ * EmailWidget wrapped in dashboard context.
+ * Gmail integration with Brain AI suggestions.
  */
 
 import { lazy, Suspense, useMemo } from 'react';
 import { useWidgetStore } from '@/stores/widgetStore';
 import { useTranslation } from '@/hooks/useTranslation';
-import { ArrowLeft, Calendar } from 'lucide-react';
+import { ArrowLeft, Mail } from 'lucide-react';
 import type { WidgetDataContext } from '@/types/widget';
 
-const CalendarWidget = lazy(() => import('@/components/widgets/CalendarWidget'));
+const EmailWidget = lazy(() => import('@/components/widgets/EmailWidget'));
 
-export function MobileCalendarView() {
+export function MobileEmailView() {
   const { setMobileView } = useWidgetStore();
   const { language } = useTranslation();
 
@@ -31,24 +31,24 @@ export function MobileCalendarView() {
         >
           <ArrowLeft className="w-5 h-5" />
         </button>
-        <Calendar className="w-4 h-4 text-primary" />
+        <Mail className="w-4 h-4 text-primary" />
         <h1 className="text-sm font-semibold">
-          {language === 'ko' ? '캘린더' : 'Calendar'}
+          {language === 'ko' ? '이메일' : 'Email'}
         </h1>
       </div>
 
-      {/* CalendarWidget — full screen */}
+      {/* EmailWidget — full screen */}
       <div className="flex-1 min-h-0 overflow-hidden">
         <Suspense fallback={
           <div className="flex items-center justify-center h-full">
             <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
           </div>
         }>
-          <CalendarWidget context={context} />
+          <EmailWidget context={context} />
         </Suspense>
       </div>
     </div>
   );
 }
 
-export default MobileCalendarView;
+export default MobileEmailView;
