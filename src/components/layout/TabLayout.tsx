@@ -1,7 +1,7 @@
 /**
  * TabLayout — Full-screen widget layout with bottom TabBar.
  *
- * Structure (no sidebar):
+ * DESKTOP (≥768px):
  * ┌─────────────────────────────────────────┐
  * │                                         │
  * │     WidgetGrid (full-width main area)   │
@@ -11,6 +11,13 @@
  * │ TabBar (bottom — tabs + controls)        │
  * └─────────────────────────────────────────┘
  *
+ * MOBILE (<768px):
+ * ┌─────────────────────────────────────────┐
+ * │  MobileDashboard (카드 기반)              │
+ * │  or MobileProjectView (탭 기반)          │
+ * └─────────────────────────────────────────┘
+ * (No drag-and-drop, no WidgetGrid)
+ *
  * All open tabs are rendered but only the active one is visible (display: block/none).
  * This prevents expensive re-mounts (e.g., FullCalendar) when switching tabs.
  *
@@ -18,27 +25,31 @@
  * the project's thumbnail as a full background image.
  */
 
-import { useMemo } from 'react';
+import { useMemo, lazy, Suspense } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { TabBar } from './TabBar';
 import { WidgetGrid } from '@/components/widgets/WidgetGrid';
 import { useWidgetStore } from '@/stores/widgetStore';
 import { useAppStore } from '@/stores/appStore';
 import { NewProjectModal } from '@/components/project/NewProjectModal';
+import { useIsMobile } from '@/hooks/use-mobile';
 import type { WidgetDataContext } from '@/types/widget';
+
+// Lazy load mobile components — only loaded on mobile
+const MobileDashboard = lazy(() => import('@/components/mobile/MobileDashboard'));
+const MobileProjectView = lazy(() => import('@/components/mobile/MobileProjectView'));
+const MobileBottomNav = lazy(() => import('@/components/mobile/MobileBottomNav'));
 
 export function TabLayout() {
   const { openTabs, activeTabId } = useWidgetStore();
   const { projects, projectCreateDialogOpen, setProjectCreateDialogOpen } = useAppStore();
   const location = useLocation();
+  const isMobile = useIsMobile();
 
   // If we're on a sub-route (admin, settings), show Outlet instead of widget grid
   const isSubRoute = location.pathname !== '/';
 
   // Resolve project data for each open project tab
-  // Use projects.find() directly instead of getProjectById to ensure
-  // proper reactivity — getProjectById is a stable function reference
-  // that doesn't change when project data changes.
   const tabProjectData = useMemo(() => {
     const map: Record<string, { keyColor?: string; thumbnail?: string }> = {};
     openTabs.forEach((tab) => {
@@ -52,6 +63,10 @@ export function TabLayout() {
     return map;
   }, [openTabs, projects]);
 
+  // Determine active tab info for mobile
+  const activeTab = openTabs.find(t => t.id === activeTabId);
+  const isProjectTab = activeTab?.type === 'project' && activeTab?.projectId;
+
   return (
     <div className="h-screen flex flex-col bg-background overflow-hidden">
       {isSubRoute ? (
@@ -59,8 +74,24 @@ export function TabLayout() {
         <div className="flex-1 overflow-auto">
           <Outlet />
         </div>
+      ) : isMobile ? (
+        /* ====== MOBILE LAYOUT ====== */
+        /* pb-14 accounts for fixed bottom nav bar height */
+        <div className="flex-1 min-h-0 overflow-hidden pb-14">
+          <Suspense fallback={
+            <div className="flex items-center justify-center h-full">
+              <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+            </div>
+          }>
+            {isProjectTab ? (
+              <MobileProjectView projectId={activeTab!.projectId!} />
+            ) : (
+              <MobileDashboard />
+            )}
+          </Suspense>
+        </div>
       ) : (
-        /* Widget grid area — constrained to viewport */
+        /* ====== DESKTOP LAYOUT ====== */
         <div className="flex-1 min-h-0 overflow-hidden relative">
           {openTabs.map((tab) => {
             const context: WidgetDataContext = {
@@ -78,19 +109,16 @@ export function TabLayout() {
 
             if (tab.type === 'project') {
               if (bgImage) {
-                // Project has a thumbnail → use as background image
                 areaStyle.backgroundImage = `url(${bgImage})`;
                 areaStyle.backgroundSize = 'cover';
                 areaStyle.backgroundPosition = 'center';
                 bgClass = 'project-bg-area';
               } else if (keyColor) {
-                // No thumbnail but has keyColor → gradient from keyColor
                 areaStyle.background = `linear-gradient(145deg, ${keyColor} 0%, ${keyColor}cc 40%, ${keyColor}88 100%)`;
                 bgClass = '';
               }
             }
 
-            // Set project keyColor as CSS variable for widget accents
             if (keyColor) {
               areaStyle['--project-color' as string] = keyColor;
             }
@@ -100,7 +128,6 @@ export function TabLayout() {
                 key={tab.id}
                 style={{
                   ...areaStyle,
-                  // Opacity-based show/hide for smooth dissolve transition
                   position: 'absolute' as const,
                   inset: 0,
                   opacity: isActive ? 1 : 0,
@@ -111,7 +138,6 @@ export function TabLayout() {
                 }}
                 className={bgClass}
               >
-                {/* Overlay for project background images */}
                 {tab.type === 'project' && bgImage && (
                   <div
                     className="absolute inset-0 pointer-events-none"
@@ -122,7 +148,6 @@ export function TabLayout() {
                     }}
                   />
                 )}
-                {/* Widget grid with project accent color — scrollable when content exceeds viewport */}
                 <div className="relative h-full z-10 overflow-y-auto overflow-x-hidden">
                   <WidgetGrid context={context} projectKeyColor={keyColor} />
                 </div>
@@ -132,10 +157,16 @@ export function TabLayout() {
         </div>
       )}
 
-      {/* Bottom tab bar — always visible */}
-      <TabBar />
+      {/* Bottom navigation */}
+      {isMobile ? (
+        <Suspense fallback={null}>
+          <MobileBottomNav />
+        </Suspense>
+      ) : (
+        <TabBar />
+      )}
 
-      {/* Global New Project Modal — triggered from TabBar + button */}
+      {/* Global New Project Modal */}
       <NewProjectModal open={projectCreateDialogOpen} onOpenChange={setProjectCreateDialogOpen} />
     </div>
   );
