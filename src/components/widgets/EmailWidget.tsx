@@ -356,8 +356,8 @@ function EmailWidget({ context: _context }: { context: WidgetDataContext }) {
   // Auto-sync on mount + 1-minute interval + visibility-based sync
   useEffect(() => {
     if (!currentUser || isConnected === false) return;
-    // Initial sync
-    syncGmail();
+    // Initial sync — force full fetch to ensure new emails appear
+    syncGmail(true);
     // Polling every 60 seconds for near-realtime feel
     const interval = setInterval(() => syncGmail(), 60 * 1000);
     // Sync when tab regains visibility (user returns from another app/tab)

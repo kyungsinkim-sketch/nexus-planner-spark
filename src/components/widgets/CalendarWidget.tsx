@@ -22,6 +22,8 @@ import { NewEventModal } from '@/components/project/NewEventModal';
 import { toast } from 'sonner';
 import type { CalendarEvent } from '@/types/core';
 import type { WidgetDataContext } from '@/types/widget';
+import { syncGoogleCalendar, getGoogleCalendarStatus } from '@/services/googleCalendarService';
+import { isSupabaseConfigured } from '@/lib/supabase';
 
 function CalendarWidget({ context }: { context: WidgetDataContext }) {
   const { events, projects, currentUser, getProjectById, updateEvent, deleteEvent, loadEvents } = useAppStore();
@@ -55,6 +57,17 @@ function CalendarWidget({ context }: { context: WidgetDataContext }) {
     window.addEventListener('focus', onFocus);
     return () => window.removeEventListener('focus', onFocus);
   }, [loadEvents, debouncedLoadEvents]);
+
+  // Trigger Google Calendar sync on mount to catch deletions & new events
+  useEffect(() => {
+    if (!isSupabaseConfigured() || !currentUser) return;
+    getGoogleCalendarStatus(currentUser.id).then(status => {
+      if (status.isConnected) {
+        syncGoogleCalendar(currentUser.id).then(() => loadEvents());
+      }
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUser?.id]);
 
   // Event detail panel
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);

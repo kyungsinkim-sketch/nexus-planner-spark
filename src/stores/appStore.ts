@@ -184,7 +184,7 @@ interface AppState {
   dismissCompanyNotification: (id: string) => void;
 
   // Gmail + Brain Email Actions
-  syncGmail: () => Promise<void>;
+  syncGmail: (forceFullSync?: boolean) => Promise<void>;
   trashEmail: (messageId: string) => Promise<void>;
   markEmailAsRead: (messageId: string) => Promise<void>;
   analyzeEmail: (messageId: string) => Promise<void>;
@@ -1403,13 +1403,13 @@ export const useAppStore = create<AppState>()(
         }
       },
 
-      syncGmail: async () => {
+      syncGmail: async (forceFullSync?: boolean) => {
         const state = get();
         if (!state.currentUser || state.gmailSyncing) return;
         set({ gmailSyncing: true });
         try {
-          // If cache is empty (first load or after migrate), force full fetch
-          const needsFullFetch = state.gmailMessages.length === 0;
+          // Force full fetch if explicitly requested or cache is empty
+          const needsFullFetch = forceFullSync || state.gmailMessages.length === 0;
           const { messages: newMessages } = await gmailService.fetchNewEmails(
             state.currentUser.id,
             needsFullFetch,

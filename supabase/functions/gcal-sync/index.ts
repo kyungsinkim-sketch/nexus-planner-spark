@@ -102,6 +102,8 @@ Deno.serve(async (req) => {
       let pageToken: string | null = null;
       let nextSyncToken: string | null = null;
       let needsFullSync = false;
+      // Track all Google event IDs seen during full sync for orphan cleanup
+      const seenGoogleEventIds = new Set<string>();
 
       // Pre-load ALL existing events for this user (single query)
       // We need both google_event_id matches AND title+start_at matches
@@ -172,6 +174,9 @@ Deno.serve(async (req) => {
             }
             continue;
           }
+
+          // Track this event as seen (for orphan cleanup on full sync)
+          seenGoogleEventIds.add(gEvent.id);
 
           const dbInsert = googleEventToDbInsert(gEvent, userId);
           if (!dbInsert) continue;
@@ -257,6 +262,21 @@ Deno.serve(async (req) => {
           nextSyncToken = response.nextSyncToken;
         }
       } while (pageToken);
+
+      // ── Orphan cleanup: remove DB events that no longer exist in Google ──
+      // Only runs on full re-sync (no sync token) — incremental sync handles
+      // deletions via the 'cancelled' status.
+      if (needsFullSync && seenGoogleEventIds.size > 0) {
+        const orphanedEvents = (existingEvents || []).filter(
+          evt => evt.google_event_id && !seenGoogleEventIds.has(evt.google_event_id)
+        );
+        if (orphanedEvents.length > 0) {
+          const orphanIds = orphanedEvents.map(e => e.id);
+          await supabase.from('calendar_events').delete().in('id', orphanIds);
+          deleted += orphanIds.length;
+          console.log(`[gcal-sync] Cleaned up ${orphanIds.length} orphaned events`);
+        }
+      }
 
       // Save the new sync token
       if (nextSyncToken) {

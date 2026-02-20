@@ -12,6 +12,7 @@ const transformUser = (row: ProfileRow): User => {
         avatar: row.avatar || undefined,
         role: row.role as UserRole,
         department: row.department || undefined,
+        workStatus: ((row as Record<string, unknown>).work_status as UserWorkStatus) || 'NOT_AT_WORK',
     };
 };
 
