@@ -15,8 +15,11 @@
  * ┌─────────────────────────────────────────┐
  * │  MobileDashboard (카드 기반)              │
  * │  or MobileProjectView (탭 기반)          │
+ * │  or MobileChatView (전체화면 채팅)        │
+ * │  or MobileCalendarView (전체화면 캘린더)   │
  * └─────────────────────────────────────────┘
  * (No drag-and-drop, no WidgetGrid)
+ * mobileView state in widgetStore routes between views.
  *
  * All open tabs are rendered but only the active one is visible (display: block/none).
  * This prevents expensive re-mounts (e.g., FullCalendar) when switching tabs.
@@ -38,10 +41,12 @@ import type { WidgetDataContext } from '@/types/widget';
 // Lazy load mobile components — only loaded on mobile
 const MobileDashboard = lazy(() => import('@/components/mobile/MobileDashboard'));
 const MobileProjectView = lazy(() => import('@/components/mobile/MobileProjectView'));
+const MobileChatView = lazy(() => import('@/components/mobile/MobileChatView'));
+const MobileCalendarView = lazy(() => import('@/components/mobile/MobileCalendarView'));
 const MobileBottomNav = lazy(() => import('@/components/mobile/MobileBottomNav'));
 
 export function TabLayout() {
-  const { openTabs, activeTabId } = useWidgetStore();
+  const { openTabs, activeTabId, mobileView } = useWidgetStore();
   const { projects, projectCreateDialogOpen, setProjectCreateDialogOpen } = useAppStore();
   const location = useLocation();
   const isMobile = useIsMobile();
@@ -83,7 +88,11 @@ export function TabLayout() {
               <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
             </div>
           }>
-            {isProjectTab ? (
+            {mobileView === 'chat' ? (
+              <MobileChatView />
+            ) : mobileView === 'calendar' ? (
+              <MobileCalendarView />
+            ) : isProjectTab ? (
               <MobileProjectView projectId={activeTab!.projectId!} />
             ) : (
               <MobileDashboard />

@@ -16,6 +16,7 @@ import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import listPlugin from '@fullcalendar/list';
 import { useAppStore } from '@/stores/appStore';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { subscribeToEvents } from '@/services/eventService';
 import { EventSidePanel } from '@/components/calendar/EventSidePanel';
 import { NewEventModal } from '@/components/project/NewEventModal';
@@ -27,6 +28,7 @@ import { isSupabaseConfigured } from '@/lib/supabase';
 
 function CalendarWidget({ context }: { context: WidgetDataContext }) {
   const { events, projects, currentUser, getProjectById, updateEvent, deleteEvent, loadEvents } = useAppStore();
+  const isMobile = useIsMobile();
 
   // Debounced loadEvents to prevent rapid-fire calls that cause AbortError cascades
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -242,8 +244,12 @@ function CalendarWidget({ context }: { context: WidgetDataContext }) {
       <div className="h-full overflow-hidden text-xs calendar-widget-content">
         <FullCalendar
           plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin, listPlugin]}
-          initialView="dayGridMonth"
-          headerToolbar={{
+          initialView={isMobile ? 'listWeek' : 'dayGridMonth'}
+          headerToolbar={isMobile ? {
+            left: 'prev,next',
+            center: 'title',
+            right: 'listWeek,dayGridMonth',
+          } : {
             left: 'prev,next today',
             center: 'title',
             right: 'dayGridMonth,timeGridWeek,listDay',

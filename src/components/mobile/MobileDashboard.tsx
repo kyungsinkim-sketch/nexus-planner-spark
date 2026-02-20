@@ -63,7 +63,9 @@ export function MobileDashboard() {
   }, [projects]);
 
   const handleProjectClick = (projectId: string) => {
-    openProjectTab(projectId);
+    const project = projects.find(p => p.id === projectId);
+    if (!project) return;
+    openProjectTab(projectId, project.title, project.keyColor);
     setActiveTab(projectId);
   };
 

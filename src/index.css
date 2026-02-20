@@ -955,6 +955,15 @@
   @apply bg-purple-500/10 text-purple-600 border-purple-500/30;
 }
 
+/* Scrollbar Hide Utility — used in mobile tab bars etc. */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
 /* Scrollbar Styling */
 ::-webkit-scrollbar {
   width: 6px;

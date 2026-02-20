@@ -91,10 +91,15 @@ function debouncedSaveToDB() {
 
 // ─── Store ───────────────────────────────────────────────────────
 
+export type MobileView = 'dashboard' | 'chat' | 'calendar';
+
 interface WidgetState {
   // Tab management
   openTabs: TabState[];
   activeTabId: string;
+
+  // Mobile navigation
+  mobileView: MobileView;
 
   // Layout configuration
   dashboardWidgetLayout: WidgetLayoutItem[];
@@ -107,6 +112,9 @@ interface WidgetState {
   openProjectTab: (projectId: string, label: string, keyColor?: string) => void;
   closeProjectTab: (projectId: string) => void;
   setActiveTab: (tabId: string) => void;
+
+  // Mobile navigation
+  setMobileView: (view: MobileView) => void;
 
   // Layout actions
   updateDashboardLayout: (layout: WidgetLayoutItem[]) => void;
@@ -130,9 +138,13 @@ export const useWidgetStore = create<WidgetState>()(
       // Initial state
       openTabs: [DASHBOARD_TAB],
       activeTabId: 'dashboard',
+      mobileView: 'dashboard' as MobileView,
       dashboardWidgetLayout: DEFAULT_DASHBOARD_LAYOUT,
       projectWidgetLayout: DEFAULT_PROJECT_LAYOUT,
       _layoutLoadedFromDB: false,
+
+      // --- Mobile navigation ---
+      setMobileView: (view) => set({ mobileView: view }),
 
       // --- Tab actions ---
 

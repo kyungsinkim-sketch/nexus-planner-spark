@@ -1,8 +1,8 @@
 /**
  * MobileBottomNav — 모바일 하단 네비게이션 바
  *
- * 4개 탭: 대시보드, 프로젝트, 캘린더, 더보기(설정)
- * widgetStore와 연동하여 프로젝트 탭 전환
+ * 5개 탭: 대시보드, 채팅, 캘린더, 프로젝트, 더보기(설정)
+ * widgetStore.mobileView와 연동
  */
 
 import { useState } from 'react';
@@ -12,8 +12,9 @@ import { useAppStore } from '@/stores/appStore';
 import { useTranslation } from '@/hooks/useTranslation';
 import {
   Home,
-  FolderKanban,
+  MessageSquare,
   Calendar,
+  FolderKanban,
   MoreHorizontal,
   Settings,
   Crown,
@@ -21,8 +22,6 @@ import {
   Sun,
   Languages,
   LogOut,
-  Download,
-  Sparkles,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
@@ -33,7 +32,7 @@ import { toast } from 'sonner';
 export function MobileBottomNav() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { setActiveTab } = useWidgetStore();
+  const { mobileView, setMobileView, setActiveTab, activeTabId } = useWidgetStore();
   const {
     currentUser,
     theme,
@@ -46,66 +45,95 @@ export function MobileBottomNav() {
   const isAdmin = currentUser?.role === 'ADMIN' || currentUser?.role === 'MANAGER';
   const isSubRoute = location.pathname !== '/';
 
+  // Determine which tab is active
+  const isDashboardActive = !isSubRoute && mobileView === 'dashboard' && activeTabId === 'dashboard';
+  const isChatActive = !isSubRoute && mobileView === 'chat';
+  const isCalendarActive = !isSubRoute && mobileView === 'calendar';
+
   const handleDashboard = () => {
+    setActiveTab('dashboard');
+    setMobileView('dashboard');
+    if (isSubRoute) navigate('/');
+  };
+
+  const handleChat = () => {
+    setMobileView('chat');
     setActiveTab('dashboard');
     if (isSubRoute) navigate('/');
   };
 
   const handleCalendar = () => {
-    // Navigate to calendar — just switch to dashboard with calendar focus
+    setMobileView('calendar');
     setActiveTab('dashboard');
+    if (isSubRoute) navigate('/');
+  };
+
+  const handleProjects = () => {
+    setActiveTab('dashboard');
+    setMobileView('dashboard');
     if (isSubRoute) navigate('/');
   };
 
   return (
     <>
-      {/* Bottom Nav Bar */}
       <div
         className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-md border-t border-border"
         style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
       >
-        <div className="flex items-center justify-around px-2 py-1.5">
+        <div className="flex items-center justify-around px-1 py-1">
           {/* Dashboard */}
           <button
             onClick={handleDashboard}
             className={cn(
-              'flex flex-col items-center gap-0.5 py-1.5 px-3 rounded-lg transition-colors min-w-[56px]',
-              !isSubRoute && location.pathname === '/'
-                ? 'text-primary'
-                : 'text-muted-foreground'
+              'flex flex-col items-center gap-0.5 py-1.5 px-2 rounded-lg transition-colors min-w-0 flex-1',
+              isDashboardActive ? 'text-primary' : 'text-muted-foreground'
             )}
           >
             <Home className="w-5 h-5" />
-            <span className="text-[10px] font-medium">{t('dashboard')}</span>
+            <span className="text-[9px] font-medium truncate">{t('dashboard')}</span>
           </button>
 
-          {/* Projects - placeholder, dashboard already shows projects */}
+          {/* Chat */}
           <button
-            onClick={() => {
-              setActiveTab('dashboard');
-              if (isSubRoute) navigate('/');
-            }}
-            className="flex flex-col items-center gap-0.5 py-1.5 px-3 rounded-lg transition-colors min-w-[56px] text-muted-foreground"
+            onClick={handleChat}
+            className={cn(
+              'flex flex-col items-center gap-0.5 py-1.5 px-2 rounded-lg transition-colors min-w-0 flex-1',
+              isChatActive ? 'text-primary' : 'text-muted-foreground'
+            )}
           >
-            <FolderKanban className="w-5 h-5" />
-            <span className="text-[10px] font-medium">{t('projects')}</span>
+            <MessageSquare className="w-5 h-5" />
+            <span className="text-[9px] font-medium truncate">
+              {language === 'ko' ? '채팅' : 'Chat'}
+            </span>
           </button>
 
           {/* Calendar */}
           <button
             onClick={handleCalendar}
-            className="flex flex-col items-center gap-0.5 py-1.5 px-3 rounded-lg transition-colors min-w-[56px] text-muted-foreground"
+            className={cn(
+              'flex flex-col items-center gap-0.5 py-1.5 px-2 rounded-lg transition-colors min-w-0 flex-1',
+              isCalendarActive ? 'text-primary' : 'text-muted-foreground'
+            )}
           >
             <Calendar className="w-5 h-5" />
-            <span className="text-[10px] font-medium">{t('calendar')}</span>
+            <span className="text-[9px] font-medium truncate">{t('calendar')}</span>
+          </button>
+
+          {/* Projects */}
+          <button
+            onClick={handleProjects}
+            className="flex flex-col items-center gap-0.5 py-1.5 px-2 rounded-lg transition-colors min-w-0 flex-1 text-muted-foreground"
+          >
+            <FolderKanban className="w-5 h-5" />
+            <span className="text-[9px] font-medium truncate">{t('projects')}</span>
           </button>
 
           {/* More (Sheet) */}
           <Sheet open={moreOpen} onOpenChange={setMoreOpen}>
             <SheetTrigger asChild>
-              <button className="flex flex-col items-center gap-0.5 py-1.5 px-3 rounded-lg transition-colors min-w-[56px] text-muted-foreground">
+              <button className="flex flex-col items-center gap-0.5 py-1.5 px-2 rounded-lg transition-colors min-w-0 flex-1 text-muted-foreground">
                 <MoreHorizontal className="w-5 h-5" />
-                <span className="text-[10px] font-medium">
+                <span className="text-[9px] font-medium truncate">
                   {language === 'ko' ? '더보기' : 'More'}
                 </span>
               </button>
@@ -126,7 +154,6 @@ export function MobileBottomNav() {
               </SheetHeader>
 
               <div className="space-y-1 pb-6">
-                {/* Admin */}
                 {isAdmin && (
                   <button
                     onClick={() => { navigate('/admin'); setMoreOpen(false); }}
@@ -137,7 +164,6 @@ export function MobileBottomNav() {
                   </button>
                 )}
 
-                {/* Settings */}
                 <button
                   onClick={() => { navigate('/settings'); setMoreOpen(false); }}
                   className="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-accent transition-colors"
@@ -148,7 +174,6 @@ export function MobileBottomNav() {
 
                 <Separator />
 
-                {/* Theme */}
                 <button
                   onClick={toggleTheme}
                   className="w-full flex items-center justify-between px-4 py-3 rounded-lg hover:bg-accent transition-colors"
@@ -159,7 +184,6 @@ export function MobileBottomNav() {
                   </div>
                 </button>
 
-                {/* Language */}
                 <button
                   onClick={toggleLanguage}
                   className="w-full flex items-center justify-between px-4 py-3 rounded-lg hover:bg-accent transition-colors"
@@ -175,7 +199,6 @@ export function MobileBottomNav() {
 
                 <Separator />
 
-                {/* Sign Out */}
                 <button
                   onClick={async () => {
                     try {
