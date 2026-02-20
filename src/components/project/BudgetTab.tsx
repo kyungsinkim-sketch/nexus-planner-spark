@@ -897,7 +897,7 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
         </div>
         <Progress value={Number(achievementRate)} className="h-3" />
         <div className="flex justify-between mt-2 text-sm text-muted-foreground">
-          <span>{t('actualExpenseShort')}: {formatCurrency(totalActualExpense)}</span>
+          <span>{t('actualExpenseShort')}: {formatCurrency(displayActualExpense)}</span>
           <span>{t('targetLabel')}: {formatCurrency(totalTargetExpense)}</span>
         </div>
       </Card>
