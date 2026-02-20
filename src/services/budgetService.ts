@@ -49,10 +49,18 @@ export async function loadBudget(projectId: string): Promise<ProjectBudget | nul
       supabase.from('budget_personal_expenses').select('*').eq('project_id', projectId).order('row_index'),
     ]);
 
-    // If no summary exists, no budget data at all
-    if (!summaryData) return null;
+    // Check if any data exists at all
+    const hasAnyData = summaryData ||
+      (lineItemData && lineItemData.length > 0) ||
+      (taxData && taxData.length > 0) ||
+      (withholdingData && withholdingData.length > 0) ||
+      (cardData && cardData.length > 0) ||
+      (cashData && cashData.length > 0) ||
+      (personalData && personalData.length > 0);
 
-    const summary: BudgetSummary = {
+    if (!hasAnyData) return null;
+
+    const summary: BudgetSummary = summaryData ? {
       id: summaryData.id,
       projectId,
       companyName: summaryData.company_name || '',
@@ -70,6 +78,23 @@ export async function loadBudget(projectId: string): Promise<ProjectBudget | nul
       actualProfitWithVat: Number(summaryData.actual_profit_with_vat) || 0,
       actualExpenseWithoutVat: Number(summaryData.actual_expense_without_vat) || 0,
       actualProfitWithoutVat: Number(summaryData.actual_profit_without_vat) || 0,
+    } : {
+      id: '',
+      projectId,
+      companyName: '',
+      contractName: '',
+      department: '',
+      author: '',
+      phase: '',
+      totalContractAmount: 0,
+      vatAmount: 0,
+      totalWithVat: 0,
+      targetExpenseWithVat: 0,
+      targetProfitWithVat: 0,
+      actualExpenseWithVat: 0,
+      actualProfitWithVat: 0,
+      actualExpenseWithoutVat: 0,
+      actualProfitWithoutVat: 0,
     };
 
     const paymentSchedules: PaymentSchedule[] = (scheduleData || []).map((ps: Record<string, unknown>) => ({

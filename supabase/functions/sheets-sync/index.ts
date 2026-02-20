@@ -478,15 +478,16 @@ Deno.serve(async (req) => {
     if (tokenError || !tokenRow) {
       return new Response(
         JSON.stringify({ error: 'Google account not connected.' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       );
     }
 
     const scope = (tokenRow as GoogleTokenRow).scope || '';
     if (!scope.includes('spreadsheets')) {
+      // Return 200 with error field so supabase.functions.invoke() passes data to caller
       return new Response(
         JSON.stringify({ error: 'SHEETS_SCOPE_MISSING' }),
-        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       );
     }
 
