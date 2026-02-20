@@ -59,13 +59,22 @@ function toBool(v: unknown): boolean {
 
 /**
  * Parse 개요요약 sheet → BudgetSummary + PaymentSchedule[]
- * Structure: key-value pairs at B=label, D=value
+ * Searches all columns for labels (not just B→D) and uses space-normalized matching.
  */
 function parseOverviewSheet(values: (string | number | boolean | null)[][]) {
+  // Flexible cell search: find label in any column, return first non-empty cell to the right
   const getVal = (label: string): string | number | null => {
+    const norm = label.replace(/\s/g, '');
     for (const row of values) {
-      if (row && toStr(row[1]).includes(label)) {
-        return row[3] ?? null; // D column (index 3)
+      if (!row) continue;
+      for (let c = 0; c < row.length; c++) {
+        if (toStr(row[c]).replace(/\s/g, '').includes(norm)) {
+          // Return the first non-empty value to the right of the label
+          for (let v = c + 1; v < row.length; v++) {
+            if (row[v] !== null && row[v] !== undefined && row[v] !== '') return row[v];
+          }
+          return null;
+        }
       }
     }
     return null;
@@ -78,40 +87,61 @@ function parseOverviewSheet(values: (string | number | boolean | null)[][]) {
     author: toStr(getVal('작성자')),
     shooting_date: toStr(getVal('촬영예정일')),
     phase: toStr(getVal('진행단계')),
-    total_contract_amount: toNum(getVal('총 계약금액')),
+    total_contract_amount: toNum(getVal('총계약금액') || getVal('총 계약금액')),
     vat_amount: toNum(getVal('부가세')),
-    total_with_vat: toNum(getVal('총 공급가액')),
-    target_expense_with_vat: toNum(getVal('목표지출비용') || getVal('목표지출비용 (VAT 포함)')),
-    target_profit_with_vat: toNum(getVal('목표수익') || getVal('목표수익 (내부+마크업) (VAT 포함)')),
-    actual_expense_with_vat: toNum(getVal('실제지출') || getVal('실제지출 (내부+마크업) (VAT 포함)')),
-    actual_profit_with_vat: toNum(getVal('실제수익') || getVal('실제수익 (내부+마크업) (VAT 포함)')),
-    actual_expense_without_vat: toNum(getVal('실제지출') || 0),
-    actual_profit_without_vat: toNum(getVal('실제수익 (내부+마크업) (VAT 미포함)') || 0),
+    total_with_vat: toNum(getVal('총공급가액') || getVal('총 공급가액')),
+    target_expense_with_vat: toNum(getVal('목표지출비용') || getVal('목표지출비용(VAT포함)')),
+    target_profit_with_vat: toNum(getVal('목표수익') || getVal('목표수익(내부+마크업)(VAT포함)')),
+    actual_expense_with_vat: toNum(getVal('실제지출') || getVal('실제지출(내부+마크업)(VAT포함)')),
+    actual_profit_with_vat: toNum(getVal('실제수익') || getVal('실제수익(내부+마크업)(VAT포함)')),
+    actual_expense_without_vat: toNum(getVal('실제지출(VAT미포함)') || 0),
+    actual_profit_without_vat: toNum(getVal('실제수익(내부+마크업)(VAT미포함)') || 0),
   };
 
-  // Parse payment schedule (입금 section, rows with C=1차(선금), etc.)
+  // Log warning if total_contract_amount is still 0
+  if (summary.total_contract_amount === 0) {
+    console.warn('[sheets-sync] parseOverview: total_contract_amount is 0. First 15 rows:',
+      JSON.stringify(values.slice(0, 15).map(r => r?.slice(0, 8))));
+  }
+
+  // Parse payment schedule — look for 입금/계약금/결제 section
   const paymentSchedules: Record<string, unknown>[] = [];
   let inPaymentSection = false;
   let paymentIdx = 0;
 
   for (const row of values) {
-    const bVal = toStr(row?.[1]);
-    const cVal = toStr(row?.[2]);
+    if (!row) continue;
+    // Check all cells in row for payment section start
+    const rowText = row.map(c => toStr(c)).join(' ');
 
-    if (bVal.includes('입금')) {
-      inPaymentSection = true;
-      continue;
+    if (!inPaymentSection) {
+      if (/입금|계약금|결제/.test(rowText) && /일정|스케줄|현황/.test(rowText)) {
+        inPaymentSection = true;
+        continue;
+      }
+      // Also match simpler patterns like just "입금" in B column
+      const bVal = toStr(row[1]);
+      if (bVal.includes('입금')) {
+        inPaymentSection = true;
+        continue;
+      }
     }
-    if (inPaymentSection && cVal && (cVal.includes('차') || cVal.includes('합계'))) {
-      if (cVal.includes('합계')) break; // stop at 합계 row
-      paymentSchedules.push({
-        row_index: paymentIdx++,
-        installment: cVal,
-        expected_amount: toNum(row?.[3]),  // D
-        expected_date: toStr(row?.[4]),    // E
-        actual_amount: toNum(row?.[5]),    // F
-        balance: toNum(row?.[6]),          // G
-      });
+
+    if (inPaymentSection) {
+      const cVal = toStr(row[2]);
+      if (!cVal) continue;
+      if (/합계|총계/.test(cVal)) break; // stop at totals
+      // Match installment rows: 1차, 2차, 선금, 중도금, 잔금, etc.
+      if (/차|선금|중도금|잔금/.test(cVal)) {
+        paymentSchedules.push({
+          row_index: paymentIdx++,
+          installment: cVal,
+          expected_amount: toNum(row[3]),  // D
+          expected_date: toStr(row[4]),    // E
+          actual_amount: toNum(row[5]),    // F
+          balance: toNum(row[6]),          // G
+        });
+      }
     }
   }
 
@@ -227,10 +257,16 @@ function parseWithholdingPayments(values: (string | number | boolean | null)[][]
     if (!row || row.every(c => c === null || c === undefined || c === '')) continue;
     if (!toStr(row[2]) && !toNum(row[7])) continue; // need name or amount
 
+    // Skip total/subtotal rows (합계, 소계, 총계)
+    const personName = toStr(row[2]);
+    if (/합계|소계|총계|합\s*계/.test(personName)) continue;
+    // Skip total row with empty name but has amount (합계 row without label)
+    if (!personName && toNum(row[7]) > 0 && !toStr(row[3])) continue;
+
     items.push({
       row_index: rowIdx++,
       payment_due_date: toStr(row[1]),       // B: 입금요청일자
-      person_name: toStr(row[2]),            // C: 이름
+      person_name: personName,               // C: 이름
       role: toStr(row[3]),                   // D: 역할
       // E: 주민등록번호 — SKIP (PII)
       bank_account: toStr(row[5]),           // F: 계좌번호
@@ -282,13 +318,22 @@ function parseCorporateCardExpenses(values: (string | number | boolean | null)[]
     if (!row || row.every(c => c === null || c === undefined || c === '')) continue;
     if (!toStr(row[5]) && !toNum(row[7])) continue;
 
+    const desc = toStr(row[5]);
+    const usedBy = toStr(row[6]);
+    const hasAmount = toNum(row[7]) > 0;
+    // Skip total/subtotal rows (합계, 소계, 총계) in any field
+    if (/합계|소계|총계/.test(desc) || /합계|소계|총계/.test(usedBy)) continue;
+    // Skip category subtotal rows: have amount but no order_no AND no usage_date
+    // These are rows like "식대", "교통", "비품", "장비" totals
+    if (hasAmount && !toNum(row[1]) && !toStr(row[4])) continue;
+
     items.push({
       row_index: rowIdx++,
       order_no: toNum(row[1]) || null,
       card_holder: toStr(row[2]),             // C: 사용법인카드
       receipt_submitted: toStr(row[3]).includes('제출'),
       usage_date: toStr(row[4]),              // E: 사용날짜
-      description: toStr(row[5]),             // F: 사용내용
+      description: desc,                     // F: 사용내용
       used_by: toStr(row[6]),                 // G: 사용자
       amount_with_vat: toNum(row[7]),         // H: 사용액(VAT포함)
       vendor: toStr(row[8]),                  // I: 거래처명
@@ -339,8 +384,8 @@ function findDataStart(values: (string | number | boolean | null)[][], headerKey
 async function upsertBudgetData(supabase: any, projectId: string, sheets: SheetData[]) {
   const errors: string[] = [];
 
-  // 1. Parse 개요요약
-  const overviewSheet = findSheet(sheets, '개요요약');
+  // 1. Parse 개요요약 (or 개요/요약)
+  const overviewSheet = findSheet(sheets, '개요요약', '개요/요약', '개요');
   if (overviewSheet) {
     const { summary, paymentSchedules } = parseOverviewSheet(overviewSheet.values);
 

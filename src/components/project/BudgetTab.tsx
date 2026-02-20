@@ -320,14 +320,37 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
     }
   }, [projectId, t]);
 
-  const { summary, paymentSchedules, lineItems, taxInvoices, corporateCardExpenses } = budget;
+  const { summary, paymentSchedules, lineItems, taxInvoices, corporateCardExpenses,
+    withholdingPayments, corporateCashExpenses, personalExpenses } = budget;
 
   // Calculate totals
   const totalTargetExpense = lineItems.reduce((sum, item) => sum + item.targetExpenseWithVat, 0);
-  const totalActualExpense = lineItems.reduce((sum, item) => sum + item.actualExpenseWithVat, 0);
+  const totalActualLineItems = lineItems.reduce((sum, item) => sum + item.actualExpenseWithVat, 0);
   const totalVariance = lineItems.reduce((sum, item) => sum + item.variance, 0);
-  const achievementRate = totalTargetExpense > 0 ? ((totalActualExpense / totalTargetExpense) * 100).toFixed(1) : '0';
-  const profitRate = summary.totalWithVat > 0 ? ((summary.actualProfitWithVat / summary.totalWithVat) * 100).toFixed(2) : '0';
+
+  // Actual expense = sum of ALL 5 expense tables (세금계산서 + 원천징수 + 법인카드 + 법인현금 + 개인지출)
+  const computedActualExpense =
+    taxInvoices.reduce((s, i) => s + i.totalAmount, 0) +
+    withholdingPayments.reduce((s, w) => s + (w.grossAmount || w.amount || 0), 0) +
+    corporateCardExpenses.reduce((s, c) => s + c.amountWithVat, 0) +
+    corporateCashExpenses.reduce((s, c) => s + c.amountWithVat, 0) +
+    personalExpenses.reduce((s, p) => s + p.amountWithVat, 0);
+
+  // Use computed actual expense, fallback to summary if available
+  const displayActualExpense = computedActualExpense > 0 ? computedActualExpense : summary.actualExpenseWithVat;
+
+  // Total contract amount from summary, or fallback to payment schedules total
+  const displayTotalContract = summary.totalWithVat > 0
+    ? summary.totalWithVat
+    : summary.totalContractAmount > 0
+      ? summary.totalContractAmount
+      : paymentSchedules.reduce((s, ps) => s + ps.expectedAmount, 0);
+
+  // Actual profit = total contract - actual expense
+  const displayActualProfit = displayTotalContract - displayActualExpense;
+
+  const achievementRate = totalTargetExpense > 0 ? ((displayActualExpense / totalTargetExpense) * 100).toFixed(1) : '0';
+  const profitRate = displayTotalContract > 0 ? ((displayActualProfit / displayTotalContract) * 100).toFixed(2) : '0';
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('ko-KR', {
@@ -767,7 +790,7 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
             <div className="flex-1 min-w-0">
               <p className="text-sm text-muted-foreground">{t('totalContractAmountLabel')}</p>
               <p className="text-xl font-semibold text-foreground">
-                {formatCurrency(summary.totalWithVat)}
+                {formatCurrency(displayTotalContract)}
               </p>
               <p className="text-xs text-primary">{t('vatIncludedClickBudget')}</p>
             </div>
@@ -795,7 +818,7 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
                 {formatCurrency(totalTargetExpense)}
               </p>
               <p className="text-xs text-blue-600">
-                {((totalTargetExpense / summary.totalWithVat) * 100).toFixed(1)}% {t('ofTotal')}
+                {displayTotalContract > 0 ? ((totalTargetExpense / displayTotalContract) * 100).toFixed(1) : '0'}% {t('ofTotal')}
               </p>
             </div>
           </div>
@@ -819,10 +842,10 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
             <div>
               <p className="text-sm text-muted-foreground">{t('actualExpense')}</p>
               <p className="text-xl font-semibold text-foreground">
-                {formatCurrency(summary.actualExpenseWithVat)}
+                {formatCurrency(displayActualExpense)}
               </p>
               <p className="text-xs text-orange-600">
-                {((summary.actualExpenseWithVat / summary.totalWithVat) * 100).toFixed(2)}% {t('ofTotal')}
+                {displayTotalContract > 0 ? ((displayActualExpense / displayTotalContract) * 100).toFixed(1) : '0'}% {t('ofTotal')}
               </p>
             </div>
           </div>
@@ -845,10 +868,10 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
             </div>
             <div>
               <p className="text-sm text-muted-foreground">{t('actualProfit')}</p>
-              <p className="text-xl font-semibold text-foreground">
-                {formatCurrency(summary.actualProfitWithVat)}
+              <p className={`text-xl font-semibold ${displayActualProfit >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                {formatCurrency(displayActualProfit)}
               </p>
-              <p className="text-xs text-emerald-600 font-medium">
+              <p className={`text-xs font-medium ${displayActualProfit >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
                 {profitRate}% {t('profitRateLabel')}
               </p>
             </div>
@@ -1039,15 +1062,19 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
                 <TableHead>{t('subCategory')}</TableHead>
                 <TableHead className="text-right w-[130px]">{t('targetUnitPrice')}</TableHead>
                 <TableHead className="text-center w-[80px]">{t('quantity')}</TableHead>
-                <TableHead className="text-right w-[130px]">{t('targetExpenseTotal')}</TableHead>
+                <TableHead className="text-right w-[120px]">{t('targetExpenseTotal')}</TableHead>
+                <TableHead className="text-right w-[120px]">{t('actualExpenseLabel')}</TableHead>
+                <TableHead className="text-right w-[100px]">{t('varianceLabel')}</TableHead>
                 <TableHead className="w-[100px]">{t('paymentTiming')}</TableHead>
-                <TableHead className="w-[120px]">{t('note')}</TableHead>
+                <TableHead className="w-[100px]">{t('note')}</TableHead>
                 <TableHead className="w-[60px]"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {Object.entries(groupedLineItems).map(([category, items], groupIndex) => {
                 const categoryTotal = items.reduce((sum, item) => sum + item.targetExpenseWithVat, 0);
+                const categoryActual = items.reduce((sum, item) => sum + item.actualExpenseWithVat, 0);
+                const categoryVariance = categoryTotal - categoryActual;
                 return (
                   <>
                     {/* Category Header Row */}
@@ -1057,6 +1084,12 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
                       </TableCell>
                       <TableCell className="text-right font-semibold text-foreground py-2">
                         {formatCurrency(categoryTotal)}
+                      </TableCell>
+                      <TableCell className="text-right font-semibold text-foreground py-2">
+                        {formatCurrency(categoryActual)}
+                      </TableCell>
+                      <TableCell className={`text-right font-semibold py-2 ${categoryVariance >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                        {formatCurrency(categoryVariance)}
                       </TableCell>
                       <TableCell colSpan={3} className="py-2"></TableCell>
                     </TableRow>
@@ -1118,6 +1151,12 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
                           <TableCell className="text-right font-medium">
                             {formatCurrency(item.targetUnitPrice * item.quantity)}
                           </TableCell>
+                          <TableCell className="text-right text-muted-foreground">
+                            {item.actualExpenseWithVat ? formatCurrency(item.actualExpenseWithVat) : '-'}
+                          </TableCell>
+                          <TableCell className={`text-right text-muted-foreground ${item.variance >= 0 ? '' : 'text-red-600'}`}>
+                            {item.actualExpenseWithVat ? formatCurrency(item.variance) : '-'}
+                          </TableCell>
                           <TableCell>
                             <Input
                               value={item.paymentTiming || ''}
@@ -1166,8 +1205,12 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
                           <TableCell className="text-right">{formatCurrency(item.targetUnitPrice)}</TableCell>
                           <TableCell className="text-center">{item.quantity}</TableCell>
                           <TableCell className="text-right">{formatCurrency(item.targetExpenseWithVat)}</TableCell>
+                          <TableCell className="text-right">{item.actualExpenseWithVat ? formatCurrency(item.actualExpenseWithVat) : '-'}</TableCell>
+                          <TableCell className={`text-right ${item.variance >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                            {item.actualExpenseWithVat ? formatCurrency(item.variance) : '-'}
+                          </TableCell>
                           <TableCell className="text-muted-foreground text-sm">{item.paymentTiming || '-'}</TableCell>
-                          <TableCell className="text-muted-foreground text-sm truncate max-w-[120px]">{item.note}</TableCell>
+                          <TableCell className="text-muted-foreground text-sm truncate max-w-[100px]">{item.note}</TableCell>
                           <TableCell>
                             <Button
                               size="icon"
@@ -1224,6 +1267,8 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
                   <TableCell className="text-right font-medium">
                     {formatCurrency((tempLineItem.targetUnitPrice || 0) * (tempLineItem.quantity || 1))}
                   </TableCell>
+                  <TableCell className="text-muted-foreground text-center">-</TableCell>
+                  <TableCell className="text-muted-foreground text-center">-</TableCell>
                   <TableCell>
                     <Input
                       value={tempLineItem.paymentTiming || ''}
@@ -1256,7 +1301,7 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
                   className="hover:bg-emerald-50/50 cursor-pointer border-dashed"
                   onClick={() => setIsAddingLineItem(true)}
                 >
-                  <TableCell colSpan={9} className="text-center text-muted-foreground py-3">
+                  <TableCell colSpan={11} className="text-center text-muted-foreground py-3">
                     <Plus className="w-4 h-4 inline mr-2" />
                     {t('addNewItem')}
                   </TableCell>
@@ -1267,6 +1312,10 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
               <TableRow className="bg-muted/50 font-semibold border-t-2">
                 <TableCell colSpan={5} className="text-right">{t('totalSum')}</TableCell>
                 <TableCell className="text-right">{formatCurrency(totalTargetExpense)}</TableCell>
+                <TableCell className="text-right">{formatCurrency(totalActualLineItems)}</TableCell>
+                <TableCell className={`text-right ${totalVariance >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                  {formatCurrency(totalVariance)}
+                </TableCell>
                 <TableCell colSpan={3}></TableCell>
               </TableRow>
             </TableBody>
@@ -1561,8 +1610,8 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
                     <TableRow>
                       <TableHead className="w-[50px]">No.</TableHead>
                       <TableHead className="w-[100px]">{t('paymentDueDate')}</TableHead>
-                      <TableHead>{t('personName')}</TableHead>
-                      <TableHead className="w-[100px]">{t('role')}</TableHead>
+                      <TableHead className="w-[80px]">{t('personName')}</TableHead>
+                      <TableHead className="min-w-[160px]">{t('role')}</TableHead>
                       <TableHead className="text-right w-[120px]">{t('amountLabel')}</TableHead>
                       <TableHead className="text-right w-[100px]">{t('withholdingTaxRate')}</TableHead>
                       <TableHead className="text-right w-[120px]">{t('netPayment')}</TableHead>
