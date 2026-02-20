@@ -36,17 +36,13 @@ const TAB_CONFIG: Array<{ id: MobileProjectTab; icon: typeof CheckSquare; labelK
 export function MobileProjectView() {
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<MobileProjectTab>('todos');
-  const { projects, currentUser } = useAppStore();
+  const { projects } = useAppStore();
   const { language } = useTranslation();
 
-  // Filter active projects the user is a member of
+  // Filter active projects (same as desktop ProjectsWidget)
   const activeProjects = useMemo(() => {
-    if (!currentUser) return [];
-    return projects.filter(
-      p => (p.status === 'IN_PROGRESS' || p.status === 'PLANNING') &&
-           p.teamMemberIds?.includes(currentUser.id)
-    );
-  }, [projects, currentUser]);
+    return projects.filter(p => p.status === 'ACTIVE');
+  }, [projects]);
 
   const selectedProject = selectedProjectId
     ? projects.find(p => p.id === selectedProjectId)
@@ -113,14 +109,8 @@ export function MobileProjectView() {
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium truncate">{project.title}</p>
                     <div className="flex items-center gap-2 mt-0.5">
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${
-                        project.status === 'IN_PROGRESS'
-                          ? 'bg-blue-500/10 text-blue-600'
-                          : 'bg-amber-500/10 text-amber-600'
-                      }`}>
-                        {project.status === 'IN_PROGRESS'
-                          ? (language === 'ko' ? '진행 중' : 'In Progress')
-                          : (language === 'ko' ? '기획' : 'Planning')}
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-blue-500/10 text-blue-600">
+                        {language === 'ko' ? '진행 중' : 'Active'}
                       </span>
                     </div>
                   </div>
