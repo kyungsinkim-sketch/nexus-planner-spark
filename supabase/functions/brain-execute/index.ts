@@ -314,7 +314,31 @@ Deno.serve(async (req) => {
       console.error('Failed to update brain_action status:', updateError);
     }
 
-    // 4. Return result
+    // 4. RAG knowledge extraction from executed action (fire-and-forget)
+    try {
+      const { extractKnowledgeFromAction, generateEmbedding } = await import('../_shared/rag-client.ts');
+      const openaiKey = Deno.env.get('OPENAI_API_KEY') || '';
+
+      const knowledgeItem = extractKnowledgeFromAction(
+        { type: action.action_type, data: action.action_data, status: 'executed' },
+        userId,
+        action.project_id,
+      );
+
+      if (knowledgeItem) {
+        const embedding = await generateEmbedding(knowledgeItem.content, openaiKey || undefined);
+        await supabase.from('knowledge_items').insert({
+          ...knowledgeItem,
+          source_id: actionId,
+          embedding: JSON.stringify(embedding),
+        });
+        console.log('RAG: extracted knowledge from executed action');
+      }
+    } catch (ragErr) {
+      console.error('RAG extraction from action failed (non-fatal):', ragErr);
+    }
+
+    // 5. Return result
     return new Response(
       JSON.stringify({
         success: true,

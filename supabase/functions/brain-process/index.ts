@@ -179,10 +179,43 @@ Deno.serve(async (req) => {
       // Continue without weather data — non-fatal error
     }
 
-    // 6. Call Claude LLM (with conversation history + optional weather context)
+    // 5.5. Fetch RAG context — personalized knowledge from the knowledge base
+    let ragContext: string | undefined;
+    try {
+      const openaiKey = Deno.env.get('OPENAI_API_KEY') || '';
+      if (openaiKey || true) {
+        // Import RAG client dynamically
+        const { generateEmbedding, buildRAGContext } = await import('../_shared/rag-client.ts');
+        const queryEmbedding = await generateEmbedding(messageContent, openaiKey || undefined);
+
+        // Search across all scopes (personal + team + role)
+        const { data: ragResults } = await supabase.rpc('search_knowledge', {
+          query_embedding: JSON.stringify(queryEmbedding),
+          search_scope: 'all',
+          search_user_id: userId,
+          search_project_id: projectId || null,
+          search_role_tag: null,
+          match_threshold: 0.35,
+          match_count: 3,
+        });
+
+        if (ragResults && ragResults.length > 0) {
+          ragContext = buildRAGContext(ragResults, 600);
+          console.log(`RAG: found ${ragResults.length} relevant knowledge items`);
+        }
+      }
+    } catch (ragErr) {
+      console.error('RAG context fetch failed (non-fatal):', ragErr);
+      // Continue without RAG — non-fatal error
+    }
+
+    // Combine weather + RAG context
+    const combinedContext = [weatherContext, ragContext].filter(Boolean).join('') || undefined;
+
+    // 6. Call Claude LLM (with conversation history + optional weather/RAG context)
     let llmResponse;
     try {
-      llmResponse = await analyzeMessage(body, anthropicKey, weatherContext, conversationHistory);
+      llmResponse = await analyzeMessage(body, anthropicKey, combinedContext, conversationHistory);
       console.log('LLM response:', JSON.stringify({ hasAction: llmResponse.hasAction, actionCount: llmResponse.actions?.length }));
     } catch (llmErr) {
       console.error('LLM call failed:', llmErr);

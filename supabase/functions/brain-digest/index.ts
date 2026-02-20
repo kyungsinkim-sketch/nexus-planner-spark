@@ -258,6 +258,44 @@ Deno.serve(async (req) => {
           },
         });
 
+        // 9. Trigger RAG knowledge extraction (fire-and-forget)
+        try {
+          const { extractKnowledgeFromDigest, generateEmbedding } = await import('../_shared/rag-client.ts');
+          const openaiKey = Deno.env.get('OPENAI_API_KEY') || '';
+
+          const knowledgeItems = await extractKnowledgeFromDigest(
+            digestResult,
+            {
+              projectId: queueItem.project_id,
+              userId: messages[0]?.userId,
+              projectTitle: undefined,
+              teamMembers,
+            },
+            anthropicKey,
+          );
+
+          let ragCreated = 0;
+          for (const item of knowledgeItems) {
+            try {
+              const embedding = await generateEmbedding(item.content, openaiKey || undefined);
+              await supabase.from('knowledge_items').insert({
+                ...item,
+                source_id: digestInserts[0]?.id || queueItem.id,
+                embedding: JSON.stringify(embedding),
+              });
+              ragCreated++;
+            } catch (insertErr) {
+              // Non-fatal — skip this item
+            }
+          }
+
+          if (ragCreated > 0) {
+            console.log(`RAG: extracted ${ragCreated} knowledge items from digest`);
+          }
+        } catch (ragErr) {
+          console.error('RAG extraction failed (non-fatal):', ragErr);
+        }
+
         results.push({
           roomId: queueItem.room_id,
           messageCount: messages.length,
