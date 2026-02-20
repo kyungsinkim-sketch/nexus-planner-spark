@@ -32,7 +32,8 @@ export type WidgetType =
   | 'inspiration'
   | 'email'
   | 'voiceRecorder'
-  | 'todayDate';
+  | 'todayDate'
+  | 'notion';
 
 // Widget context — determines which data scope a widget uses
 export type WidgetContext = 'dashboard' | 'project';

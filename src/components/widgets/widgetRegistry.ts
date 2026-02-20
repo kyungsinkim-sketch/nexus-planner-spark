@@ -31,6 +31,7 @@ import {
   Mail,
   Mic,
   CalendarDays,
+  BookOpen,
 } from 'lucide-react';
 import type { WidgetDefinition, WidgetType, WidgetDataContext } from '@/types/widget';
 
@@ -60,6 +61,7 @@ export const WIDGET_COMPONENTS: Record<WidgetType, ComponentType<{ context: Widg
   email:          lazy(() => import('./EmailWidget')),
   voiceRecorder:  lazy(() => import('./VoiceRecorderWidget')),
   todayDate:      lazy(() => import('./TodayDateWidget')),
+  notion:         lazy(() => import('./NotionWidget')),
 };
 
 // Widget definitions (metadata)
@@ -256,5 +258,13 @@ export const WIDGET_DEFINITIONS: Record<WidgetType, WidgetDefinition> = {
     defaultSize: { w: 2, h: 2 },
     minSize: { w: 1, h: 2 },
     contexts: ['dashboard'],
+  },
+  notion: {
+    type: 'notion',
+    titleKey: 'notion',
+    icon: BookOpen,
+    defaultSize: { w: 4, h: 4 },
+    minSize: { w: 3, h: 3 },
+    contexts: ['dashboard', 'project'],
   },
 };

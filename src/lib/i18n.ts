@@ -55,7 +55,7 @@ export const translations = {
     autoSyncDescription: '15분마다 자동으로 이벤트를 동기화합니다',
     disconnectGoogleCalendar: 'Google 캘린더 연결 해제',
     moreIntegrations: '더 많은 연동',
-    comingSoonIntegrations: 'Slack, Notion 등 지원 예정',
+    comingSoonIntegrations: 'Slack 등 추가 지원 예정',
     syncCalendarDescription: 'Google 캘린더와 이벤트를 양방향으로 동기화하세요. Google 이벤트가 Re-Be.io에 표시되고, Re-Be.io 이벤트를 Google 캘린더로 내보낼 수 있습니다.',
     viewGoogleEvents: 'Re-Be.io에서 Google 이벤트 보기',
     autoTwoWaySync: '자동 양방향 동기화',
@@ -1290,6 +1290,25 @@ export const translations = {
 
     // Today Date
     todayDate: '오늘의 날짜',
+
+    // Notion Widget
+    notion: 'Notion',
+    notionConnect: 'Notion 연결',
+    notionConnectDesc: 'Notion 워크스페이스를 연결하여 페이지를 검색하고 바로 열람하세요.',
+    notionConnectButton: 'Notion 연결하기',
+    notionNotConfigured: 'Notion 연동이 설정되지 않았습니다.',
+    notionDisconnect: 'Notion 연결 해제',
+    notionSettings: 'Notion 설정',
+    notionSearchPlaceholder: '페이지 검색...',
+    notionPinned: '고정됨',
+    notionRecent: '최근 편집',
+    notionEmptyPage: '이 페이지에 콘텐츠가 없습니다.',
+    notionEmptyState: '동기화된 페이지가 없습니다.',
+    notionSyncNow: '지금 동기화하기',
+    openInNotion: 'Notion에서 열기',
+    pin: '고정',
+    unpin: '고정 해제',
+    lastSync: '마지막 동기화',
   },
   en: {
     // Navigation
@@ -1345,7 +1364,7 @@ export const translations = {
     autoSyncDescription: 'Automatically sync events every 15 minutes',
     disconnectGoogleCalendar: 'Disconnect Google Calendar',
     moreIntegrations: 'More Integrations',
-    comingSoonIntegrations: 'Coming soon: Slack, Notion, and more',
+    comingSoonIntegrations: 'Coming soon: Slack and more',
     syncCalendarDescription: 'Connect your Google Calendar to sync events bidirectionally. Google events will appear in Re-Be.io, and you can export Re-Be.io events to Google Calendar.',
     viewGoogleEvents: 'View Google events in Re-Be.io',
     autoTwoWaySync: 'Automatic two-way sync',
@@ -2588,6 +2607,25 @@ export const translations = {
 
     // Today Date
     todayDate: "Today's Date",
+
+    // Notion Widget
+    notion: 'Notion',
+    notionConnect: 'Connect Notion',
+    notionConnectDesc: 'Connect your Notion workspace to search and view pages.',
+    notionConnectButton: 'Connect Notion',
+    notionNotConfigured: 'Notion integration is not configured.',
+    notionDisconnect: 'Disconnect Notion',
+    notionSettings: 'Notion Settings',
+    notionSearchPlaceholder: 'Search pages...',
+    notionPinned: 'Pinned',
+    notionRecent: 'Recently Edited',
+    notionEmptyPage: 'This page has no content.',
+    notionEmptyState: 'No synced pages yet.',
+    notionSyncNow: 'Sync Now',
+    openInNotion: 'Open in Notion',
+    pin: 'Pin',
+    unpin: 'Unpin',
+    lastSync: 'Last sync',
   },
 } as const;
 
