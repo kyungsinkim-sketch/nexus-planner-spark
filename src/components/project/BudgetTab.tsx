@@ -324,7 +324,14 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
     withholdingPayments, corporateCashExpenses, personalExpenses } = budget;
 
   // Calculate totals
-  const totalTargetExpense = lineItems.reduce((sum, item) => sum + item.targetExpenseWithVat, 0);
+  // 목표지출비용: use summary value first (시트 개요 탭의 값), fallback to line items sum
+  const lineItemsTargetWithVat = lineItems.reduce((sum, item) => sum + item.targetExpenseWithVat, 0);
+  const lineItemsTarget = lineItems.reduce((sum, item) => sum + item.targetExpense, 0);
+  const totalTargetExpense = summary.targetExpenseWithVat > 0
+    ? summary.targetExpenseWithVat
+    : lineItemsTarget > lineItemsTargetWithVat
+      ? lineItemsTarget
+      : lineItemsTargetWithVat;
   const totalActualLineItems = lineItems.reduce((sum, item) => sum + item.actualExpenseWithVat, 0);
   const totalVariance = lineItems.reduce((sum, item) => sum + item.variance, 0);
 
@@ -336,17 +343,25 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
     corporateCashExpenses.reduce((s, c) => s + c.amountWithVat, 0) +
     personalExpenses.reduce((s, p) => s + p.amountWithVat, 0);
 
-  // Use computed actual expense, fallback to summary if available
-  const displayActualExpense = computedActualExpense > 0 ? computedActualExpense : summary.actualExpenseWithVat;
-
-  // Total contract amount from summary, or fallback to payment schedules total
-  const displayTotalContract = summary.totalWithVat > 0
-    ? summary.totalWithVat
-    : summary.totalContractAmount > 0
-      ? summary.totalContractAmount
+  // Total contract = 공급가(총견적) — use totalContractAmount (VAT 미포함)
+  // Priority: totalContractAmount > totalWithVat > payment schedules sum
+  const displayTotalContract = summary.totalContractAmount > 0
+    ? summary.totalContractAmount
+    : summary.totalWithVat > 0
+      ? summary.totalWithVat
       : paymentSchedules.reduce((s, ps) => s + ps.expectedAmount, 0);
 
-  // Actual profit = total contract - actual expense
+  // Actual expense = 실제지출비용 — use summary value from sheet (시트 개요에서 가져온 값)
+  // Summary value (189M) is the authoritative source from the sheet's overview tab.
+  // computedActualExpense (sum of 5 tables) may differ because the sheet's overview
+  // uses category-grouped amounts rather than individual line items.
+  const displayActualExpense = summary.actualExpenseWithVat > 0
+    ? summary.actualExpenseWithVat
+    : computedActualExpense > 0
+      ? computedActualExpense
+      : 0;
+
+  // Actual profit (수익/마진) = 공급가 - 실제지출
   const displayActualProfit = displayTotalContract - displayActualExpense;
 
   const achievementRate = totalTargetExpense > 0 ? ((displayActualExpense / totalTargetExpense) * 100).toFixed(1) : '0';
