@@ -16,6 +16,8 @@ interface MentionItem {
   email?: string;
   isPersona?: boolean;
   personaLabel?: string;
+  personaIcon?: string;
+  isBrain?: boolean;
 }
 
 interface MentionTextareaProps {
@@ -60,23 +62,35 @@ export function MentionTextarea({
       {
         id: 'persona-pablo',
         name: 'pablo',
-        email: 'CEO AI',
+        email: 'CEO AI 어시스턴트',
         isPersona: true,
         personaLabel: '👑 Pablo AI (CEO)',
+        personaIcon: '👑',
       },
       {
         id: 'persona-cd',
         name: 'cd',
-        email: 'Creative Director AI',
+        email: '크리에이티브 디렉터 AI',
         isPersona: true,
         personaLabel: '🎨 CD AI (크리에이티브)',
+        personaIcon: '🎨',
       },
       {
         id: 'persona-pd',
         name: 'pd',
-        email: 'Producer AI',
+        email: '프로듀서 AI',
         isPersona: true,
         personaLabel: '📋 PD AI (프로듀서)',
+        personaIcon: '📋',
+      },
+      {
+        id: 'persona-brain',
+        name: 'AiAssistant',
+        email: 'Re-Be Brain AI',
+        isPersona: true,
+        personaLabel: '🧠 Brain AI (AiAssistant)',
+        personaIcon: '🧠',
+        isBrain: true,
       },
     ];
   }, [showPersonaMentions]);
@@ -255,9 +269,13 @@ export function MentionTextarea({
               onMouseEnter={() => setMentionIndex(idx)}
             >
               {item.isPersona ? (
-                /* AI Persona entry — amber/gold style */
-                <div className="w-6 h-6 rounded-full bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center text-[10px] font-bold text-amber-600 dark:text-amber-400 shrink-0">
-                  👑
+                /* AI Persona entry — per-persona style */
+                <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 ${
+                  item.isBrain
+                    ? 'bg-violet-100 dark:bg-violet-900/40 text-violet-600 dark:text-violet-400'
+                    : 'bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400'
+                }`}>
+                  {item.personaIcon || '👑'}
                 </div>
               ) : (
                 <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-medium text-primary shrink-0">
@@ -265,11 +283,14 @@ export function MentionTextarea({
                 </div>
               )}
               <div className="min-w-0">
-                <p className={`text-sm font-medium truncate ${item.isPersona ? 'text-amber-700 dark:text-amber-400' : ''}`}>
+                <p className={`text-sm font-medium truncate ${
+                  item.isBrain ? 'text-violet-700 dark:text-violet-400' :
+                  item.isPersona ? 'text-amber-700 dark:text-amber-400' : ''
+                }`}>
                   {item.isPersona ? item.personaLabel : item.name}
                 </p>
                 <p className="text-[10px] text-muted-foreground truncate">
-                  {item.isPersona ? 'CEO AI 어시스턴트' : item.email}
+                  {item.isPersona ? item.email : item.email}
                 </p>
               </div>
             </button>

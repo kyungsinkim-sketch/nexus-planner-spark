@@ -1291,6 +1291,12 @@ export const translations = {
     // Today Date
     todayDate: '오늘의 날짜',
 
+    // Project Board Widget
+    projectBoard: '프로젝트 보드',
+    projectBoardEmpty: '등록된 작업이 없습니다',
+    overallProgress: '전체 진행률',
+    upcomingSchedule: '다가오는 일정',
+
     // Notion Widget
     notion: 'Notion',
     notionConnect: 'Notion 연결',
@@ -2643,6 +2649,12 @@ export const translations = {
 
     // Today Date
     todayDate: "Today's Date",
+
+    // Project Board Widget
+    projectBoard: 'Project Board',
+    projectBoardEmpty: 'No tasks registered yet',
+    overallProgress: 'Overall Progress',
+    upcomingSchedule: 'Upcoming Schedule',
 
     // Notion Widget
     notion: 'Notion',

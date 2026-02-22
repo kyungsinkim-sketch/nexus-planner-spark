@@ -44,7 +44,7 @@ import {
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { useTranslation } from '@/hooks/useTranslation';
-// ChatShareMenu removed — replaced by Brain AI (Cmd+Enter)
+// ChatShareMenu removed — replaced by Brain AI (@AiAssistant mention)
 import { ChatMessageBubble } from '@/components/chat/ChatMessageBubble';
 import { FileUploadModal } from '@/components/project/FileUploadModal';
 import type { LocationShare, ScheduleShare, DecisionShare, ChatMessage, ChatRoom, FileCategory } from '@/types/core';
@@ -311,7 +311,7 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
   const [brainProcessing, setBrainProcessing] = useState(false);
   const [pabloProcessing, setPabloProcessing] = useState(false);
 
-  const handleSendMessage = async (forceBrain = false) => {
+  const handleSendMessage = async () => {
     if (!newMessage.trim() || !selectedChat || !currentUser) return;
 
     const trimmed = newMessage.trim();
@@ -319,8 +319,8 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
     // 1. Check for ANY persona mention (@pablo, @cd, @pd) — takes priority over brain
     const { isPersonaMention, cleanContent: personaCleanContent, personaId } = personaService.detectPersonaMention(trimmed);
 
-    // Strip @ai prefix if present (backward compat), otherwise use as-is
-    const { cleanContent } = brainService.detectBrainMention(trimmed);
+    // 2. Check for @AiAssistant mention — triggers Brain AI
+    const { isBrainMention: forceBrain, cleanContent } = brainService.detectBrainMention(trimmed);
 
     // Send the user's message first
     try {
@@ -362,7 +362,7 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
       return; // Skip brain processing if persona was triggered
     }
 
-    // 3. Brain AI: triggered ONLY by Cmd+Enter (forceBrain) — works for both project and DM chats
+    // 3. Brain AI: triggered by @AiAssistant mention — works for both project and DM chats
     if (forceBrain && cleanContent) {
       setBrainProcessing(true);
       try {
@@ -1408,7 +1408,7 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
 
           {/* /analyze command removed */}
 
-          {/* Message Input — Enter=send, Cmd+Enter=Brain AI */}
+          {/* Message Input — Enter=send, @AiAssistant=Brain AI, @pablo/@cd/@pd=Persona */}
           <div className="p-2.5 bg-background shrink-0 min-w-0">
             <div className="flex items-center gap-1.5 min-w-0">
               <Button
@@ -1426,14 +1426,11 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
                 onChange={setNewMessage}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && !e.nativeEvent.isComposing) {
-                    if (e.metaKey || e.ctrlKey) {
-                      e.preventDefault();
-                      handleSendMessage(true);
-                    } else if (e.shiftKey) {
+                    if (e.shiftKey) {
                       // Shift+Enter → newline (default behavior)
                     } else {
                       e.preventDefault();
-                      handleSendMessage(false);
+                      handleSendMessage();
                     }
                   }
                 }}
@@ -1447,28 +1444,17 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
                 showPersonaMentions
               />
               <Button
-                variant="ghost"
                 size="icon"
-                className={`shrink-0 w-8 h-8 ${brainProcessing ? 'text-violet-500' : 'text-muted-foreground hover:text-violet-500'}`}
-                onClick={() => handleSendMessage(true)}
-                disabled={!newMessage.trim() || brainProcessing}
-                aria-label="Brain AI"
-                title="Brain AI 분석 (⌘+Enter)"
+                className="shrink-0 w-8 h-8"
+                onClick={() => handleSendMessage()}
+                disabled={!newMessage.trim()}
+                aria-label="Send message"
               >
                 {brainProcessing ? (
                   <div className="w-3.5 h-3.5 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" />
                 ) : (
-                  <Brain className="w-3.5 h-3.5" />
+                  <Send className="w-3.5 h-3.5" />
                 )}
-              </Button>
-              <Button
-                size="icon"
-                className="shrink-0 w-8 h-8"
-                onClick={() => handleSendMessage(false)}
-                disabled={!newMessage.trim()}
-                aria-label="Send message"
-              >
-                <Send className="w-3.5 h-3.5" />
               </Button>
             </div>
             {/* Keyboard shortcut hints */}
@@ -1476,9 +1462,9 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
               <span className="text-[10px] text-muted-foreground">
                 <kbd className="px-1 py-0.5 rounded bg-muted text-[9px] font-mono">Shift</kbd>+<kbd className="px-1 py-0.5 rounded bg-muted text-[9px] font-mono">Enter</kbd> {t('newLine')}
               </span>
-              <span className="text-[10px] text-muted-foreground flex items-center gap-1">
-                <Brain className="w-3 h-3 text-violet-400" />
-                <kbd className="px-1 py-0.5 rounded bg-muted text-[9px] font-mono">⌘</kbd>+<kbd className="px-1 py-0.5 rounded bg-muted text-[9px] font-mono">Enter</kbd> Brain AI
+              <span className="text-[10px] text-violet-500 font-medium flex items-center gap-1">
+                <Brain className="w-3 h-3" />
+                @AiAssistant → Brain AI
               </span>
               <span className="text-[10px] text-amber-500 font-medium">
                 @pablo @cd @pd → AI 페르소나
