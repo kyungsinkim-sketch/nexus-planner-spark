@@ -1310,6 +1310,22 @@ export const translations = {
     unpin: '고정 해제',
     lastSync: '마지막 동기화',
 
+    // Project Board Widget
+    projectBoard: '프로젝트 보드',
+    mainTable: '메인 테이블',
+    ganttChart: '간트 차트',
+    taskName: '아이템',
+    taskStatus: '상태',
+    progressStatus: '진행상황',
+    statusDone: '완료',
+    statusWorking: '작업 중',
+    statusStuck: '막힘',
+    statusWaiting: '대기',
+    statusBacklog: 'Backlog',
+    statusReview: '검토 요청',
+    addItem: '+ 아이템 추가',
+    noTasks: '등록된 작업이 없습니다',
+
     // Notification Center (Global)
     notificationCenter: '알림 센터',
     noNotifications: '새로운 알림이 없습니다',
@@ -2646,6 +2662,22 @@ export const translations = {
     pin: 'Pin',
     unpin: 'Unpin',
     lastSync: 'Last sync',
+
+    // Project Board Widget
+    projectBoard: 'Project Board',
+    mainTable: 'Main Table',
+    ganttChart: 'Gantt Chart',
+    taskName: 'Item',
+    taskStatus: 'Status',
+    progressStatus: 'Progress',
+    statusDone: 'Done',
+    statusWorking: 'Working on it',
+    statusStuck: 'Stuck',
+    statusWaiting: 'Waiting',
+    statusBacklog: 'Backlog',
+    statusReview: 'Review',
+    addItem: '+ Add item',
+    noTasks: 'No tasks registered',
 
     // Notification Center (Global)
     notificationCenter: 'Notifications',

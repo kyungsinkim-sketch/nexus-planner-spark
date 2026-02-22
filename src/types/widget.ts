@@ -33,7 +33,8 @@ export type WidgetType =
   | 'email'
   | 'voiceRecorder'
   | 'todayDate'
-  | 'notion';
+  | 'notion'
+  | 'projectBoard';
 
 // Widget context — determines which data scope a widget uses
 export type WidgetContext = 'dashboard' | 'project';
