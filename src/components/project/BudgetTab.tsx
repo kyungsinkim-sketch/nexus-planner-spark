@@ -327,11 +327,11 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
   // 목표지출비용: use summary value first (시트 개요 탭의 값), fallback to line items sum
   const lineItemsTargetWithVat = lineItems.reduce((sum, item) => sum + item.targetExpenseWithVat, 0);
   const lineItemsTarget = lineItems.reduce((sum, item) => sum + item.targetExpense, 0);
+  // H열(target_expense, 세전) 합계를 기본으로 사용.
+  // summary 값은 개요시트에서 정확한 176,150,000을 가져오므로 1순위.
   const totalTargetExpense = summary.targetExpenseWithVat > 0
     ? summary.targetExpenseWithVat
-    : lineItemsTarget > lineItemsTargetWithVat
-      ? lineItemsTarget
-      : lineItemsTargetWithVat;
+    : lineItemsTarget;
   const totalActualLineItems = lineItems.reduce((sum, item) => sum + item.actualExpenseWithVat, 0);
   const totalVariance = lineItems.reduce((sum, item) => sum + item.variance, 0);
 
@@ -405,7 +405,10 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
   // ========== Line Item CRUD ==========
   const handleSaveLineItem = (item: BudgetLineItem) => {
     const targetExpense = item.targetUnitPrice * item.quantity;
-    const updatedItem = { ...item, targetExpense, targetExpenseWithVat: targetExpense, variance: targetExpense - item.actualExpenseWithVat };
+    const targetExpenseWithVat = item.vatRate > 0
+      ? Math.round(targetExpense * (1 + item.vatRate))
+      : targetExpense;
+    const updatedItem = { ...item, targetExpense, targetExpenseWithVat, variance: targetExpense - item.actualExpenseWithVat };
 
     setBudget(prev => ({
       ...prev,
@@ -429,7 +432,9 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
       quantity: tempLineItem.quantity || 1,
       targetExpense,
       vatRate: 0.1,
-      targetExpenseWithVat: targetExpense,
+      targetExpenseWithVat: (tempLineItem.vatRate || 0) > 0
+        ? Math.round(targetExpense * (1 + (tempLineItem.vatRate || 0.1)))
+        : targetExpense,
       actualExpenseWithVat: 0,
       paymentMethod: 'tax_invoice',
       paymentTiming: tempLineItem.paymentTiming || '',
@@ -1087,7 +1092,7 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
             </TableHeader>
             <TableBody>
               {Object.entries(groupedLineItems).map(([category, items], groupIndex) => {
-                const categoryTotal = items.reduce((sum, item) => sum + item.targetExpenseWithVat, 0);
+                const categoryTotal = items.reduce((sum, item) => sum + item.targetExpense, 0);
                 const categoryActual = items.reduce((sum, item) => sum + item.actualExpenseWithVat, 0);
                 const categoryVariance = categoryTotal - categoryActual;
                 return (
@@ -1219,7 +1224,7 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
                           <TableCell>{item.subCategory}</TableCell>
                           <TableCell className="text-right">{formatCurrency(item.targetUnitPrice)}</TableCell>
                           <TableCell className="text-center">{item.quantity}</TableCell>
-                          <TableCell className="text-right">{formatCurrency(item.targetExpenseWithVat)}</TableCell>
+                          <TableCell className="text-right">{formatCurrency(item.targetExpense)}</TableCell>
                           <TableCell className="text-right">{item.actualExpenseWithVat ? formatCurrency(item.actualExpenseWithVat) : '-'}</TableCell>
                           <TableCell className={`text-right ${item.variance >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
                             {item.actualExpenseWithVat ? formatCurrency(item.variance) : '-'}
