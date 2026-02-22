@@ -141,12 +141,13 @@ Deno.serve(async (req) => {
 
         const queryEmbedding = await generateEmbedding(query, openaiKey);
 
-        const { data: results } = await supabase.rpc('search_knowledge', {
+        const { data: results } = await supabase.rpc('search_knowledge_v2', {
           query_embedding: JSON.stringify(queryEmbedding),
           search_scope: scope,
           search_user_id: userId,
           search_project_id: projectId || null,
           search_role_tag: roleTag || null,
+          search_knowledge_type: null,
           match_threshold: 0.3,
           match_count: 5,
         });
