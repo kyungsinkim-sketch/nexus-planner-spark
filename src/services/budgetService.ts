@@ -107,25 +107,37 @@ export async function loadBudget(projectId: string): Promise<ProjectBudget | nul
       balance: Number(ps.balance) || 0,
     }));
 
-    const lineItems: BudgetLineItem[] = (lineItemData || []).map((li: Record<string, unknown>) => ({
-      id: li.id as string,
-      projectId,
-      orderNo: Number(li.order_no) || 0,
-      completed: Boolean(li.completed),
-      category: (li.category as string) || '' as BudgetLineItem['category'],
-      mainCategory: (li.main_category as string) || '',
-      subCategory: (li.sub_category as string) || '',
-      targetUnitPrice: Number(li.target_unit_price) || 0,
-      quantity: Number(li.quantity) || 0,
-      targetExpense: Number(li.target_expense) || 0,
-      vatRate: Number(li.vat_rate) || 0,
-      targetExpenseWithVat: Number(li.target_expense_with_vat) || 0,
-      actualExpenseWithVat: Number(li.actual_expense_with_vat) || 0,
-      paymentMethod: (li.payment_method as string) || undefined,
-      paymentTiming: (li.payment_timing as string) || undefined,
-      note: (li.note as string) || undefined,
-      variance: Number(li.variance) || 0,
-    }));
+    const lineItems: BudgetLineItem[] = (lineItemData || []).map((li: Record<string, unknown>) => {
+      const targetExpense = Number(li.target_expense) || 0;
+      const vatRate = Number(li.vat_rate) || 0;
+      const rawTargetWithVat = Number(li.target_expense_with_vat) || 0;
+      // 방어: DB에 target_expense_with_vat가 0이면 target_expense 기반으로 자동 보정
+      const targetExpenseWithVat = rawTargetWithVat > 0
+        ? rawTargetWithVat
+        : vatRate > 0
+          ? Math.round(targetExpense * (1 + vatRate))
+          : targetExpense;
+
+      return {
+        id: li.id as string,
+        projectId,
+        orderNo: Number(li.order_no) || 0,
+        completed: Boolean(li.completed),
+        category: (li.category as string) || '' as BudgetLineItem['category'],
+        mainCategory: (li.main_category as string) || '',
+        subCategory: (li.sub_category as string) || '',
+        targetUnitPrice: Number(li.target_unit_price) || 0,
+        quantity: Number(li.quantity) || 0,
+        targetExpense,
+        vatRate,
+        targetExpenseWithVat,
+        actualExpenseWithVat: Number(li.actual_expense_with_vat) || 0,
+        paymentMethod: (li.payment_method as string) || undefined,
+        paymentTiming: (li.payment_timing as string) || undefined,
+        note: (li.note as string) || undefined,
+        variance: Number(li.variance) || 0,
+      };
+    });
 
     const taxInvoices: TaxInvoice[] = (taxData || []).map((inv: Record<string, unknown>) => ({
       id: inv.id as string,

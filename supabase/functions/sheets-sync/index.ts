@@ -200,6 +200,18 @@ function parseBudgetPlanSheet(values: (string | number | boolean | null)[][]) {
     // Skip rows that only have category headers (no sub_category and no amounts)
     if (!subCat && !toNum(row[5]) && !toNum(row[7]) && !toNum(row[10])) continue;
 
+    const targetExpense = toNum(row[7]);   // H열: 목표지출액 (세전)
+    const vatRate = toNum(row[8]);          // I열: 부가세율
+    const rawTargetWithVat = toNum(row[9]); // J열: 목표지출합계 (VAT포함) — 비어있을 수 있음
+
+    // 근본 방어: J열이 비어있으면 H열 기반으로 자동 계산
+    // VAT세율이 있으면 H열 × (1 + I열), 없으면 H열 그대로
+    const targetExpenseWithVat = rawTargetWithVat > 0
+      ? rawTargetWithVat
+      : vatRate > 0
+        ? Math.round(targetExpense * (1 + vatRate))
+        : targetExpense;
+
     items.push({
       row_index: rowIdx++,
       order_no: toNum(row[0]) || null,
@@ -209,9 +221,9 @@ function parseBudgetPlanSheet(values: (string | number | boolean | null)[][]) {
       sub_category: subCat,
       target_unit_price: toNum(row[5]),
       quantity: toNum(row[6]),
-      target_expense: toNum(row[7]),
-      vat_rate: toNum(row[8]),
-      target_expense_with_vat: toNum(row[9]),
+      target_expense: targetExpense,
+      vat_rate: vatRate,
+      target_expense_with_vat: targetExpenseWithVat,
       actual_expense_with_vat: toNum(row[10]),
       payment_timing: toStr(row[11]),
       payment_method: toStr(row[12]),
