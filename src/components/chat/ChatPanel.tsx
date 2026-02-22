@@ -358,8 +358,8 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
       return;
     }
 
-    // 1. Check for @pablo mention FIRST (takes priority over brain)
-    const { isPabloMention, cleanContent: pabloCleanContent, personaId } = personaService.detectPabloMention(trimmed);
+    // 1. Check for ANY persona mention (@pablo, @cd, @pd) — takes priority over brain
+    const { isPersonaMention, cleanContent: personaCleanContent, personaId } = personaService.detectPersonaMention(trimmed);
 
     // Strip @ai prefix if present (backward compat), otherwise use as-is
     const { cleanContent } = brainService.detectBrainMention(trimmed);
@@ -383,26 +383,25 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
 
     setNewMessage('');
 
-    // 2. @pablo persona query — triggered by @pablo mention in message
-    if (isPabloMention && pabloCleanContent) {
+    // 2. Persona query — triggered by @pablo, @cd, @pd mention in message
+    if (isPersonaMention && personaCleanContent) {
       setPabloProcessing(true);
       try {
         await personaService.queryPersona({
           personaId,
-          query: pabloCleanContent,
+          query: personaCleanContent,
           projectId: selectedChat.type === 'project' ? selectedChat.id : undefined,
           roomId: selectedChat.roomId,
           directChatUserId: selectedChat.type === 'direct' ? selectedChat.id : undefined,
         });
-        // Bot message arrives via realtime subscription — no need to add locally
-        console.log('[Pablo] Persona query completed');
+        console.log(`[Persona] ${personaId} query completed`);
       } catch (personaErr) {
-        console.error('[Pablo] Persona query failed:', personaErr);
-        toast.error(`Pablo AI 응답 실패: ${(personaErr as Error).message}`);
+        console.error(`[Persona] ${personaId} query failed:`, personaErr);
+        toast.error(`AI 페르소나 응답 실패: ${(personaErr as Error).message}`);
       } finally {
         setPabloProcessing(false);
       }
-      return; // Skip brain processing if @pablo was triggered
+      return; // Skip brain processing if persona was triggered
     }
 
     // 3. Brain AI: triggered ONLY by Cmd+Enter (forceBrain) — works for both project and DM chats
@@ -1411,12 +1410,12 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
 
           <Separator />
 
-          {/* Pablo AI Processing Indicator */}
+          {/* AI Persona Processing Indicator */}
           {pabloProcessing && (
             <div className="flex items-center gap-2 px-3 py-1.5 bg-amber-50 dark:bg-amber-950/30 border-t border-amber-200/50 dark:border-amber-800/50">
               <div className="w-3 h-3 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
               <span className="text-xs text-amber-600 dark:text-amber-400 font-medium">
-                Pablo AI가 생각하는 중...
+                AI 페르소나가 생각하는 중...
               </span>
             </div>
           )}
@@ -1514,7 +1513,7 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
                 <kbd className="px-1 py-0.5 rounded bg-muted text-[9px] font-mono">⌘</kbd>+<kbd className="px-1 py-0.5 rounded bg-muted text-[9px] font-mono">Enter</kbd> Brain AI
               </span>
               <span className="text-[10px] text-amber-500 font-medium">
-                @pablo → CEO AI
+                @pablo @cd @pd → AI 페르소나
               </span>
               <span className="text-[10px] text-emerald-500 font-medium">
                 /analyze → 대화록 분석

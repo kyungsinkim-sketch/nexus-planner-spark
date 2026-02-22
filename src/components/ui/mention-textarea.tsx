@@ -62,7 +62,21 @@ export function MentionTextarea({
         name: 'pablo',
         email: 'CEO AI',
         isPersona: true,
-        personaLabel: 'Pablo AI',
+        personaLabel: '👑 Pablo AI (CEO)',
+      },
+      {
+        id: 'persona-cd',
+        name: 'cd',
+        email: 'Creative Director AI',
+        isPersona: true,
+        personaLabel: '🎨 CD AI (크리에이티브)',
+      },
+      {
+        id: 'persona-pd',
+        name: 'pd',
+        email: 'Producer AI',
+        isPersona: true,
+        personaLabel: '📋 PD AI (프로듀서)',
       },
     ];
   }, [showPersonaMentions]);

@@ -195,6 +195,7 @@ Deno.serve(async (req) => {
           model?: string;
           temperature?: number;
           max_tokens?: number;
+          dialectic_mode?: boolean;
           rag_filter?: {
             decision_maker?: string;
             role_tag?: string;
@@ -202,12 +203,13 @@ Deno.serve(async (req) => {
           };
         };
 
-        // 2. RAG retrieval with persona-specific filters
+        // 2a. RAG retrieval with persona-specific filters
         let ragResults: RAGSearchResult[] = [];
         let ragContext = '';
+        let queryEmbedding: number[] | null = null;
 
         try {
-          const queryEmbedding = await generateEmbedding(query, openaiKey || undefined);
+          queryEmbedding = await generateEmbedding(query, openaiKey || undefined);
 
           const ragFilter = config.rag_filter || {};
 
@@ -224,11 +226,62 @@ Deno.serve(async (req) => {
 
           if (searchResults && searchResults.length > 0) {
             ragResults = searchResults;
-            ragContext = buildRAGContext(searchResults, 1200); // More context for persona
+            ragContext = buildRAGContext(searchResults, 1200);
             console.log(`[brain-persona] RAG: ${searchResults.length} knowledge items found`);
           }
         } catch (ragErr) {
           console.error('[brain-persona] RAG fetch failed (non-fatal):', ragErr);
+        }
+
+        // 2b. 정반합 RAG: 반론/리스크 관점 검색 (dialectic_mode일 때만)
+        let dialecticContext = '';
+        if (config.dialectic_mode && queryEmbedding) {
+          try {
+            const ragFilter = config.rag_filter || {};
+            const { data: dialecticResults } = await supabase.rpc('search_knowledge_dialectic', {
+              query_embedding: JSON.stringify(queryEmbedding),
+              search_user_id: userId,
+              search_project_id: projectId || null,
+              search_role_tag: ragFilter.role_tag || null,
+              opposing_tags: ['risk', 'constraint', 'client_concern'],
+              match_threshold: 0.25,
+              match_count: 3,
+            });
+
+            if (dialecticResults && dialecticResults.length > 0) {
+              dialecticContext = '\n\n## 반론 근거 (Devil\'s Advocate Knowledge)\n';
+              for (const item of dialecticResults) {
+                dialecticContext += `- [${item.dialectic_tag}] ${item.summary || item.content.slice(0, 120)} (신뢰도: ${(item.confidence * 100).toFixed(0)}%)\n`;
+              }
+              console.log(`[brain-persona] Dialectic RAG: ${dialecticResults.length} opposing items found`);
+            }
+          } catch (dialecticErr) {
+            console.error('[brain-persona] Dialectic RAG failed (non-fatal):', dialecticErr);
+          }
+        }
+
+        // 2c. 개인 컨텍스트: 이 사용자의 패턴 검색
+        let personalContext = '';
+        if (queryEmbedding) {
+          try {
+            const { data: personalResults } = await supabase.rpc('search_knowledge_v2', {
+              query_embedding: JSON.stringify(queryEmbedding),
+              search_scope: 'personal',
+              search_user_id: userId,
+              match_threshold: 0.35,
+              match_count: 3,
+            });
+
+            if (personalResults && personalResults.length > 0) {
+              personalContext = '\n\n## 이 사용자의 개인 패턴\n';
+              for (const item of personalResults) {
+                personalContext += `- ${item.summary || item.content.slice(0, 120)}\n`;
+              }
+              console.log(`[brain-persona] Personal RAG: ${personalResults.length} items found`);
+            }
+          } catch (personalErr) {
+            console.error('[brain-persona] Personal RAG failed (non-fatal):', personalErr);
+          }
         }
 
         // 3. Fetch conversation history
@@ -270,10 +323,16 @@ Deno.serve(async (req) => {
           console.error('[brain-persona] History fetch failed (non-fatal):', histErr);
         }
 
-        // 4. Build system prompt with RAG
+        // 4. Build system prompt with RAG + dialectic + personal context
         let systemPrompt = persona.system_prompt;
         if (ragContext) {
           systemPrompt += '\n\n' + ragContext;
+        }
+        if (dialecticContext) {
+          systemPrompt += dialecticContext;
+        }
+        if (personalContext) {
+          systemPrompt += personalContext;
         }
 
         // 5. Build messages: history + current query
@@ -312,7 +371,7 @@ Deno.serve(async (req) => {
           const { data: logRow } = await supabase
             .from('persona_query_log')
             .insert({
-              persona_id: personaId,
+              persona_id: persona.id, // Use UUID from fetched row, not input string
               user_id: userId,
               project_id: projectId || null,
               query,

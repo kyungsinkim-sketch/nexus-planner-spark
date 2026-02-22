@@ -1,28 +1,79 @@
 /**
  * PersonaResponseBubble — Renders the AI persona's response message.
  *
+ * Supports multiple personas with distinct themes:
+ * - Pablo AI (CEO): amber/gold + Crown icon
+ * - CD AI (Creative Director): blue/indigo + Palette icon
+ * - PD AI (Producer): green/emerald + ClipboardList icon
+ *
  * Displays:
- * - CEO persona avatar + name
+ * - Persona avatar + name (themed)
  * - Free-form text response (whitespace preserved)
  * - RAG reference count badge
- * - Feedback buttons (👍/👎)
- *
- * Styled with amber/gold gradient to distinguish from Brain's violet theme.
+ * - Feedback buttons (thumbs up/down → confidence adjustment)
  */
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   Crown,
+  Palette,
+  ClipboardList,
   BookOpen,
   ThumbsUp,
   ThumbsDown,
   Loader2,
   CheckCircle2,
+  type LucideIcon,
 } from 'lucide-react';
 import type { ChatMessage } from '@/types/core';
 import * as personaService from '@/services/personaService';
+
+interface PersonaTheme {
+  bg: string;
+  border: string;
+  feedbackBorder: string;
+  Icon: LucideIcon;
+  iconColor: string;
+  nameColor: string;
+  badgeColor: string;
+}
+
+function getPersonaTheme(personaId: string): PersonaTheme {
+  switch (personaId) {
+    case 'cd_ai':
+      return {
+        bg: 'from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30',
+        border: 'border-blue-200/50 dark:border-blue-800/50',
+        feedbackBorder: 'border-blue-200/30 dark:border-blue-700/30',
+        Icon: Palette,
+        iconColor: 'text-blue-500',
+        nameColor: 'text-blue-700 dark:text-blue-400',
+        badgeColor: 'text-blue-600 dark:text-blue-400 border-blue-300 dark:border-blue-700',
+      };
+    case 'pd_ai':
+      return {
+        bg: 'from-green-50 to-emerald-50 dark:from-green-950/30 dark:to-emerald-950/30',
+        border: 'border-green-200/50 dark:border-green-800/50',
+        feedbackBorder: 'border-green-200/30 dark:border-green-700/30',
+        Icon: ClipboardList,
+        iconColor: 'text-green-500',
+        nameColor: 'text-green-700 dark:text-green-400',
+        badgeColor: 'text-green-600 dark:text-green-400 border-green-300 dark:border-green-700',
+      };
+    default: // pablo_ai / CEO
+      return {
+        bg: 'from-amber-50 to-orange-50 dark:from-amber-950/30 dark:to-orange-950/30',
+        border: 'border-amber-200/50 dark:border-amber-800/50',
+        feedbackBorder: 'border-amber-200/30 dark:border-amber-700/30',
+        Icon: Crown,
+        iconColor: 'text-amber-500',
+        nameColor: 'text-amber-700 dark:text-amber-400',
+        badgeColor: 'text-amber-600 dark:text-amber-400 border-amber-300 dark:border-amber-700',
+      };
+  }
+}
 
 interface PersonaResponseBubbleProps {
   message: ChatMessage;
@@ -31,6 +82,11 @@ interface PersonaResponseBubbleProps {
 export function PersonaResponseBubble({ message }: PersonaResponseBubbleProps) {
   const personaData = message.personaResponseData;
   const [feedbackState, setFeedbackState] = useState<'none' | 'helpful' | 'unhelpful' | 'submitting'>('none');
+
+  const theme = useMemo(
+    () => getPersonaTheme(personaData?.personaId || ''),
+    [personaData?.personaId],
+  );
 
   // Fallback if personaResponseData is missing
   if (!personaData) {
@@ -58,24 +114,25 @@ export function PersonaResponseBubble({ message }: PersonaResponseBubbleProps) {
   };
 
   const ragCount = personaData.ragContext?.length || 0;
+  const { Icon } = theme;
 
   return (
     <div className="space-y-1 max-w-full overflow-hidden">
       {/* Persona response bubble */}
       <div
-        className="w-fit max-w-full rounded-2xl px-4 py-2.5 text-sm bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950/30 dark:to-orange-950/30 border border-amber-200/50 dark:border-amber-800/50"
+        className={`w-fit max-w-full rounded-2xl px-4 py-2.5 text-sm bg-gradient-to-br ${theme.bg} border ${theme.border}`}
         style={{ overflowWrap: 'anywhere', wordBreak: 'break-word' }}
       >
         {/* Persona header */}
         <div className="flex items-center gap-1.5 mb-1.5">
-          <Crown className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-          <span className="text-xs font-semibold text-amber-700 dark:text-amber-400">
-            {personaData.personaName || 'Pablo AI'}
+          <Icon className={`w-3.5 h-3.5 ${theme.iconColor} shrink-0`} />
+          <span className={`text-xs font-semibold ${theme.nameColor}`}>
+            {personaData.personaName || 'AI Persona'}
           </span>
           {ragCount > 0 && (
             <Badge
               variant="outline"
-              className="text-[10px] gap-0.5 text-amber-600 dark:text-amber-400 border-amber-300 dark:border-amber-700 ml-1"
+              className={`text-[10px] gap-0.5 ${theme.badgeColor} ml-1`}
             >
               <BookOpen className="w-2.5 h-2.5" />
               {ragCount}개 지식 참조
@@ -90,7 +147,7 @@ export function PersonaResponseBubble({ message }: PersonaResponseBubbleProps) {
 
         {/* Feedback buttons */}
         {personaData.queryLogId && (
-          <div className="flex items-center gap-1.5 mt-2 pt-2 border-t border-amber-200/30 dark:border-amber-700/30">
+          <div className={`flex items-center gap-1.5 mt-2 pt-2 border-t ${theme.feedbackBorder}`}>
             {feedbackState === 'none' ? (
               <>
                 <Button

@@ -178,41 +178,51 @@ export async function getActivePersonas(): Promise<AIPersona[]> {
   }));
 }
 
+// ─── Multi-persona patterns ────────────────────────────
+
+const PERSONA_PATTERNS: Array<{ pattern: RegExp; personaId: string }> = [
+  { pattern: /@pablo\b/i, personaId: 'pablo_ai' },
+  { pattern: /@cd\b/i, personaId: 'cd_ai' },
+  { pattern: /@pd\b/i, personaId: 'pd_ai' },
+];
+
 /**
- * Detect @pablo mention in message content.
+ * Detect any persona mention (@pablo, @cd, @pd) in message content.
  * Returns whether the message contains a persona mention and the cleaned content.
+ */
+export function detectPersonaMention(content: string): {
+  isPersonaMention: boolean;
+  cleanContent: string;
+  personaId: string;
+} {
+  for (const { pattern, personaId } of PERSONA_PATTERNS) {
+    if (pattern.test(content)) {
+      // Remove all instances of the trigger pattern
+      const cleanPattern = new RegExp(pattern.source + '\\s*', 'gi');
+      return {
+        isPersonaMention: true,
+        cleanContent: content.replace(cleanPattern, '').trim(),
+        personaId,
+      };
+    }
+  }
+  return { isPersonaMention: false, cleanContent: content, personaId: '' };
+}
+
+/**
+ * Backward-compatible @pablo detection.
+ * @deprecated Use detectPersonaMention() instead.
  */
 export function detectPabloMention(content: string): {
   isPabloMention: boolean;
   cleanContent: string;
   personaId: string;
 } {
-  // Match @pablo (case-insensitive) at word boundary
-  const pabloPattern = /^@pablo\s+/i;
-  const match = content.match(pabloPattern);
-
-  if (match) {
-    return {
-      isPabloMention: true,
-      cleanContent: content.replace(pabloPattern, '').trim(),
-      personaId: PABLO_PERSONA_ID,
-    };
-  }
-
-  // Also check for @pablo anywhere in the message (not just at start)
-  const pabloAnywherePattern = /@pablo\b/i;
-  if (pabloAnywherePattern.test(content)) {
-    return {
-      isPabloMention: true,
-      cleanContent: content.replace(/@pablo\s*/gi, '').trim(),
-      personaId: PABLO_PERSONA_ID,
-    };
-  }
-
+  const result = detectPersonaMention(content);
   return {
-    isPabloMention: false,
-    cleanContent: content,
-    personaId: '',
+    isPabloMention: result.isPersonaMention,
+    cleanContent: result.cleanContent,
+    personaId: result.personaId,
   };
 }
 
