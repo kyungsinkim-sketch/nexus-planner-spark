@@ -715,19 +715,24 @@ Rules:
         });
       }
 
-      // ─── Backfill embeddings for knowledge_items with NULL embedding ──
+      // ─── Backfill embeddings for knowledge_items ──
       case 'backfill_embeddings': {
         const openaiKeyForBackfill = Deno.env.get('OPENAI_API_KEY') || '';
         const serviceClient = createServiceClient();
 
-        // Fetch items with NULL embedding
         const batchSize = body.batchSize || 20;
-        const { data: items, error: fetchErr } = await serviceClient
+        const forceAll = body.force === true; // force=true → regenerate ALL embeddings (not just NULL)
+
+        let query = serviceClient
           .from('knowledge_items')
           .select('id, content')
-          .is('embedding', null)
-          .eq('is_active', true)
-          .limit(batchSize);
+          .eq('is_active', true);
+
+        if (!forceAll) {
+          query = query.is('embedding', null);
+        }
+
+        const { data: items, error: fetchErr } = await query.limit(batchSize);
 
         if (fetchErr) {
           return jsonResponse({ error: `Fetch failed: ${fetchErr.message}` }, 500);
@@ -737,7 +742,7 @@ Rules:
           return jsonResponse({ success: true, message: 'No items need embedding backfill', updated: 0 });
         }
 
-        console.log(`[brain-persona] backfill_embeddings: ${items.length} items to process`);
+        console.log(`[brain-persona] backfill_embeddings: ${items.length} items to process (force=${forceAll}, openaiKey=${openaiKeyForBackfill ? 'present' : 'MISSING'})`);
 
         let updatedCount = 0;
         const errors: string[] = [];
@@ -765,9 +770,10 @@ Rules:
 
         return jsonResponse({
           success: true,
-          message: `${updatedCount}/${items.length} embeddings generated`,
+          message: `${updatedCount}/${items.length} embeddings generated (force=${forceAll})`,
           updated: updatedCount,
           total: items.length,
+          hasOpenAIKey: !!openaiKeyForBackfill,
           errors: errors.length > 0 ? errors : undefined,
         });
       }
