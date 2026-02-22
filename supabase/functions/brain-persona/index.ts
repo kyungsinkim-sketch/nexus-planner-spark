@@ -24,7 +24,7 @@ import {
   buildRAGContext,
   type RAGSearchResult,
 } from '../_shared/rag-client.ts';
-import { authenticateRequest } from '../_shared/auth.ts';
+import { authenticateRequest, authenticateOrFallback, createServiceClient } from '../_shared/auth.ts';
 
 const BRAIN_BOT_USER_ID = '00000000-0000-0000-0000-000000000099';
 const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
@@ -137,14 +137,24 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { user, supabase } = await authenticateRequest(req);
-    const userId = user.id;
-
     const body = await req.json();
     const { action } = body;
 
     if (!action) {
       return jsonResponse({ error: 'Missing action' }, 400);
+    }
+
+    // backfill_embeddings uses service client, no user auth needed
+    let userId: string;
+    let supabase: ReturnType<typeof createServiceClient>;
+    if (action === 'backfill_embeddings') {
+      const fallback = await authenticateOrFallback(req);
+      userId = fallback.userId || '00000000-0000-0000-0000-000000000099';
+      supabase = fallback.supabase;
+    } else {
+      const auth = await authenticateRequest(req);
+      userId = auth.user.id;
+      supabase = auth.supabase;
     }
 
     const anthropicKey = Deno.env.get('ANTHROPIC_API_KEY') || '';
@@ -702,6 +712,63 @@ Rules:
           afterDedup: uniqueItems.length,
           chunkCount: chunks.length,
           timeMs,
+        });
+      }
+
+      // ─── Backfill embeddings for knowledge_items with NULL embedding ──
+      case 'backfill_embeddings': {
+        const openaiKeyForBackfill = Deno.env.get('OPENAI_API_KEY') || '';
+        const serviceClient = createServiceClient();
+
+        // Fetch items with NULL embedding
+        const batchSize = body.batchSize || 20;
+        const { data: items, error: fetchErr } = await serviceClient
+          .from('knowledge_items')
+          .select('id, content')
+          .is('embedding', null)
+          .eq('is_active', true)
+          .limit(batchSize);
+
+        if (fetchErr) {
+          return jsonResponse({ error: `Fetch failed: ${fetchErr.message}` }, 500);
+        }
+
+        if (!items || items.length === 0) {
+          return jsonResponse({ success: true, message: 'No items need embedding backfill', updated: 0 });
+        }
+
+        console.log(`[brain-persona] backfill_embeddings: ${items.length} items to process`);
+
+        let updatedCount = 0;
+        const errors: string[] = [];
+
+        for (const item of items) {
+          try {
+            const embedding = await generateEmbedding(item.content, openaiKeyForBackfill || undefined);
+
+            const { error: updateErr } = await serviceClient
+              .from('knowledge_items')
+              .update({ embedding: JSON.stringify(embedding) })
+              .eq('id', item.id);
+
+            if (updateErr) {
+              errors.push(`${item.id}: ${updateErr.message}`);
+            } else {
+              updatedCount++;
+            }
+          } catch (embErr) {
+            errors.push(`${item.id}: ${(embErr as Error).message}`);
+          }
+        }
+
+        console.log(`[brain-persona] backfill_embeddings: ${updatedCount}/${items.length} updated`);
+
+        return jsonResponse({
+          success: true,
+          message: `${updatedCount}/${items.length} embeddings generated`,
+          updated: updatedCount,
+          total: items.length,
+          errors: errors.length > 0 ? errors : undefined,
         });
       }
 
