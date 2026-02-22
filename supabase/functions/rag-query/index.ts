@@ -15,15 +15,16 @@
  *   - getStats: Get knowledge base statistics for a user
  *   - feedback: Record whether a result was helpful
  *
- * Request body: { action: string, userId: string, ...params }
+ * Request body: { action: string, ...params }
+ * Authentication: JWT token in Authorization header (userId extracted from token)
  */
 
-import { createClient } from 'jsr:@supabase/supabase-js@2';
 import {
   generateEmbedding,
   buildRAGContext,
   type RAGSearchResult,
 } from '../_shared/rag-client.ts';
+import { authenticateRequest } from '../_shared/auth.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -43,17 +44,16 @@ Deno.serve(async (req) => {
   }
 
   try {
+    // JWT Authentication — userId comes from verified token, not request body
+    const { user, supabase } = await authenticateRequest(req);
+    const userId = user.id;
+
     const body = await req.json();
-    const { action, userId } = body;
+    const { action } = body;
 
-    if (!action || !userId) {
-      return jsonResponse({ error: 'Missing action or userId' }, 400);
+    if (!action) {
+      return jsonResponse({ error: 'Missing action' }, 400);
     }
-
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
-    );
 
     const openaiKey = Deno.env.get('OPENAI_API_KEY') || '';
 
@@ -341,6 +341,7 @@ Deno.serve(async (req) => {
         return jsonResponse({ error: `Unknown action: ${action}` }, 400);
     }
   } catch (err) {
+    if (err instanceof Response) return err; // Auth error
     console.error('RAG query error:', err);
     return jsonResponse({ error: (err as Error).message }, 500);
   }

@@ -12,11 +12,11 @@
 //   6. Creates brain_actions rows for each extracted action
 //   7. Returns the bot message + actions to client
 
-import { createClient } from 'jsr:@supabase/supabase-js@2';
 import { analyzeMessage, RateLimitError } from '../_shared/llm-client.ts';
 import type { ConversationMessage } from '../_shared/llm-client.ts';
 import type { ProcessRequest } from '../_shared/brain-types.ts';
 import { detectWeatherIntent, resolveLocation, fetchWeatherForecast, formatWeatherContext } from '../_shared/weather-client.ts';
+import { authenticateRequest } from '../_shared/auth.ts';
 
 const BRAIN_BOT_USER_ID = '00000000-0000-0000-0000-000000000099';
 const HISTORY_LIMIT = 4; // Fetch last N messages for context (minimized to stay under 10k tokens/min)
@@ -33,6 +33,9 @@ Deno.serve(async (req) => {
   }
 
   try {
+    // 0. JWT Authentication — userId comes from verified token
+    const { user: authUser, supabase } = await authenticateRequest(req);
+
     // 1. Validate API key
     const anthropicKey = Deno.env.get('ANTHROPIC_API_KEY');
     if (!anthropicKey) {
@@ -55,28 +58,18 @@ Deno.serve(async (req) => {
       );
     }
 
-    const { messageContent, roomId, projectId, directChatUserId, userId, chatMembers, projectTitle } = body;
+    // userId comes from JWT, not request body (prevents spoofing)
+    const userId = authUser.id;
+    const { messageContent, roomId, projectId, directChatUserId, chatMembers, projectTitle } = body;
 
-    if (!messageContent || !userId || !chatMembers) {
+    if (!messageContent || !chatMembers) {
       return new Response(
-        JSON.stringify({ error: 'Missing required fields: messageContent, userId, chatMembers' }),
+        JSON.stringify({ error: 'Missing required fields: messageContent, chatMembers' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       );
     }
 
     console.log(`Processing @ai message from user ${userId}: "${messageContent.substring(0, 100)}"`);
-
-    // 3. Create Supabase service client (bypasses RLS) — needed for chat history + DB writes
-    const supabaseUrl = Deno.env.get('SUPABASE_URL');
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-    if (!supabaseUrl || !supabaseServiceKey) {
-      console.error('Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY');
-      return new Response(
-        JSON.stringify({ error: 'Supabase not configured' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
-      );
-    }
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // 4. Fetch recent chat history for multi-turn context
     //    This allows the LLM to understand references like "그때", "거기", "그 일정"
@@ -334,6 +327,7 @@ Deno.serve(async (req) => {
       },
     );
   } catch (error) {
+    if (error instanceof Response) return error; // Auth error
     console.error('brain-process unexpected error:', error);
     return new Response(
       JSON.stringify({

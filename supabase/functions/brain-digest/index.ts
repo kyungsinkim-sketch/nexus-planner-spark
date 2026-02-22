@@ -11,9 +11,9 @@
 //
 // Trigger: Supabase pg_cron (5min interval) or client-side manual trigger
 
-import { createClient } from 'jsr:@supabase/supabase-js@2';
 import { analyzeConversation } from '../_shared/llm-digest.ts';
 import type { DigestRequest } from '../_shared/brain-types.ts';
+import { authenticateOrFallback } from '../_shared/auth.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -31,6 +31,9 @@ Deno.serve(async (req) => {
   const startTime = Date.now();
 
   try {
+    // Auth: try JWT first, fall back for cron/server-to-server calls
+    const { supabase } = await authenticateOrFallback(req);
+
     const apiKey = Deno.env.get('ANTHROPIC_API_KEY');
     if (!apiKey) {
       return new Response(
@@ -48,11 +51,6 @@ Deno.serve(async (req) => {
     }
 
     const threshold = body.messageThreshold || DEFAULT_MESSAGE_THRESHOLD;
-
-    // Create Supabase service client
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // 1. Find rooms ready for processing
     let query = supabase
@@ -332,6 +330,7 @@ Deno.serve(async (req) => {
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
     );
   } catch (error) {
+    if (error instanceof Response) return error; // Auth error
     console.error('brain-digest error:', error);
     return new Response(
       JSON.stringify({

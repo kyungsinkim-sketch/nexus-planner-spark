@@ -9,8 +9,8 @@
 //   4. Upsert into project_context_snapshots
 //   5. Return snapshot data
 
-import { createClient } from 'jsr:@supabase/supabase-js@2';
 import type { ContextRequest, ProjectInsightsData, DigestItem } from '../_shared/brain-types.ts';
+import { authenticateOrFallback } from '../_shared/auth.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -23,6 +23,9 @@ Deno.serve(async (req) => {
   }
 
   try {
+    // Auth: try JWT first, fall back for server-to-server calls
+    const { supabase } = await authenticateOrFallback(req);
+
     const body: ContextRequest = await req.json();
     const { projectId, forceRefresh } = body;
 
@@ -32,11 +35,6 @@ Deno.serve(async (req) => {
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       );
     }
-
-    // Create Supabase service client
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // 1. Check cache (unless force refresh)
     if (!forceRefresh) {
@@ -163,6 +161,7 @@ Deno.serve(async (req) => {
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
     );
   } catch (error) {
+    if (error instanceof Response) return error; // Auth error
     console.error('brain-context error:', error);
     return new Response(
       JSON.stringify({

@@ -9,10 +9,11 @@
  *   - analyze: Analyze recent knowledge for a user and extract patterns
  *   - getPatterns: Get existing patterns for a user
  *
- * Request body: { action: string, userId: string, ...params }
+ * Request body: { action: string, ...params }
+ * Authentication: JWT token in Authorization header (userId extracted from token)
  */
 
-import { createClient } from 'jsr:@supabase/supabase-js@2';
+import { authenticateRequest } from '../_shared/auth.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -32,10 +33,9 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
-    );
+    // JWT Authentication — userId comes from verified token
+    const { user, supabase } = await authenticateRequest(req);
+    const userId = user.id;
 
     const anthropicKey = Deno.env.get('ANTHROPIC_API_KEY');
     if (!anthropicKey) {
@@ -43,11 +43,7 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json();
-    const { action, userId } = body;
-
-    if (!userId) {
-      return jsonResponse({ error: 'Missing userId' }, 400);
-    }
+    const { action } = body;
 
     switch (action) {
       // ─── Analyze & extract patterns ────────────────
@@ -217,6 +213,7 @@ Rules:
         return jsonResponse({ error: `Unknown action: ${action}` }, 400);
     }
   } catch (err) {
+    if (err instanceof Response) return err; // Auth error
     console.error('[rag-pattern-analysis] Error:', err);
     return jsonResponse({ error: (err as Error).message }, 500);
   }

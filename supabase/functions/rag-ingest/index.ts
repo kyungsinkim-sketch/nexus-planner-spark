@@ -18,7 +18,6 @@
  * Request body: { action: string, ...params }
  */
 
-import { createClient } from 'jsr:@supabase/supabase-js@2';
 import {
   generateEmbedding,
   extractKnowledgeFromDigest,
@@ -26,6 +25,7 @@ import {
   extractKnowledgeFromReview,
   type KnowledgeItem,
 } from '../_shared/rag-client.ts';
+import { authenticateOrFallback } from '../_shared/auth.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -45,13 +45,11 @@ Deno.serve(async (req) => {
   }
 
   try {
+    // Auth: try JWT first, fall back for server-to-server calls
+    const { supabase } = await authenticateOrFallback(req);
+
     const body = await req.json();
     const { action } = body;
-
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
-    );
 
     const anthropicKey = Deno.env.get('ANTHROPIC_API_KEY') || '';
     const openaiKey = Deno.env.get('OPENAI_API_KEY') || '';
@@ -311,6 +309,7 @@ Deno.serve(async (req) => {
         return jsonResponse({ error: `Unknown action: ${action}` }, 400);
     }
   } catch (err) {
+    if (err instanceof Response) return err; // Auth error
     console.error('RAG ingest error:', err);
     return jsonResponse({ error: (err as Error).message }, 500);
   }
