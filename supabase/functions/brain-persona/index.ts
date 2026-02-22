@@ -147,7 +147,7 @@ Deno.serve(async (req) => {
     // backfill_embeddings uses service client, no user auth needed
     let userId: string;
     let supabase: ReturnType<typeof createServiceClient>;
-    if (action === 'backfill_embeddings') {
+    if (action === 'backfill_embeddings' || action === 'test_rag') {
       const fallback = await authenticateOrFallback(req);
       userId = fallback.userId || '00000000-0000-0000-0000-000000000099';
       supabase = fallback.supabase;
@@ -217,13 +217,17 @@ Deno.serve(async (req) => {
         let ragResults: RAGSearchResult[] = [];
         let ragContext = '';
         let queryEmbedding: number[] | null = null;
+        let ragDebug = '';
 
         try {
+          console.log(`[brain-persona] Generating embedding for query (openaiKey=${openaiKey ? 'present' : 'MISSING'}, len=${openaiKey?.length || 0})`);
           queryEmbedding = await generateEmbedding(query, openaiKey || undefined);
+          const nonZero = queryEmbedding.filter(v => Math.abs(v) > 0.0001).length;
+          console.log(`[brain-persona] Embedding generated: dims=${queryEmbedding.length}, nonZero=${nonZero}`);
 
           const ragFilter = config.rag_filter || {};
 
-          const { data: searchResults } = await supabase.rpc('search_knowledge_v2', {
+          const { data: searchResults, error: searchErr } = await supabase.rpc('search_knowledge_v2', {
             query_embedding: JSON.stringify(queryEmbedding),
             search_scope: 'all',
             search_user_id: userId,
@@ -234,13 +238,21 @@ Deno.serve(async (req) => {
             match_count: 5,
           });
 
-          if (searchResults && searchResults.length > 0) {
+          if (searchErr) {
+            console.error(`[brain-persona] RAG search RPC error: ${searchErr.message}`);
+            ragDebug = `search_error: ${searchErr.message}`;
+          } else if (searchResults && searchResults.length > 0) {
             ragResults = searchResults;
-            ragContext = buildRAGContext(searchResults, 1200);
-            console.log(`[brain-persona] RAG: ${searchResults.length} knowledge items found`);
+            ragContext = buildRAGContext(searchResults, 3000);
+            console.log(`[brain-persona] RAG: ${searchResults.length} knowledge items found (top similarity: ${searchResults[0]?.similarity?.toFixed(3)})`);
+          } else {
+            console.log(`[brain-persona] RAG: 0 results (threshold=0.30, embedding nonZero=${nonZero})`);
+            ragDebug = `no_results: embedding_nonZero=${nonZero}`;
           }
         } catch (ragErr) {
-          console.error('[brain-persona] RAG fetch failed (non-fatal):', ragErr);
+          const errMsg = (ragErr as Error).message || 'unknown';
+          console.error('[brain-persona] RAG fetch failed:', errMsg);
+          ragDebug = `rag_error: ${errMsg}`;
         }
 
         // 2b. 정반합 RAG: 반론/리스크 관점 검색 (dialectic_mode일 때만)
@@ -467,6 +479,7 @@ Deno.serve(async (req) => {
             response: responseText,
             ragResultCount: ragResults.length,
           },
+          ...(ragDebug ? { ragDebug } : {}),
         });
       }
 
@@ -776,6 +789,102 @@ Rules:
           hasOpenAIKey: !!openaiKeyForBackfill,
           errors: errors.length > 0 ? errors : undefined,
         });
+      }
+
+      // ─── Diagnostic: test RAG search pipeline ──
+      case 'test_rag': {
+        const testQuery = body.query || '조아라 분쟁 대응';
+        const openaiKeyTest = Deno.env.get('OPENAI_API_KEY') || '';
+        const serviceClient = createServiceClient();
+
+        const diagnostics: Record<string, unknown> = {
+          openaiKeyPresent: !!openaiKeyTest,
+          openaiKeyLength: openaiKeyTest.length,
+          openaiKeyPrefix: openaiKeyTest.slice(0, 8) + '...',
+          query: testQuery,
+        };
+
+        // 1. Generate query embedding
+        let queryEmb: number[] | null = null;
+        try {
+          queryEmb = await generateEmbedding(testQuery, openaiKeyTest || undefined);
+          diagnostics.embeddingGenerated = true;
+          diagnostics.embeddingDims = queryEmb.length;
+          // Check if pseudo-embedding: pseudo has mostly 0s
+          const nonZeroCount = queryEmb.filter(v => Math.abs(v) > 0.0001).length;
+          diagnostics.nonZeroDims = nonZeroCount;
+          diagnostics.likelyPseudo = nonZeroCount < 200; // pseudo typically has <100 non-zero dims
+          diagnostics.sampleValues = queryEmb.slice(0, 5);
+        } catch (embErr) {
+          diagnostics.embeddingError = (embErr as Error).message;
+        }
+
+        // 2. Check stored embeddings quality
+        const { data: sampleItem } = await serviceClient
+          .from('knowledge_items')
+          .select('id, summary, embedding')
+          .eq('is_active', true)
+          .eq('source_type', 'ceo_pattern_seed')
+          .limit(1)
+          .single();
+
+        if (sampleItem?.embedding) {
+          const stored = typeof sampleItem.embedding === 'string'
+            ? JSON.parse(sampleItem.embedding)
+            : sampleItem.embedding;
+          const storedNonZero = (stored as number[]).filter((v: number) => Math.abs(v) > 0.0001).length;
+          diagnostics.storedEmbeddingSample = {
+            id: sampleItem.id,
+            summary: sampleItem.summary,
+            dims: (stored as number[]).length,
+            nonZeroDims: storedNonZero,
+            likelyPseudo: storedNonZero < 200,
+            sampleValues: (stored as number[]).slice(0, 5),
+          };
+        } else {
+          diagnostics.storedEmbeddingSample = 'NULL or not found';
+        }
+
+        // 3. Run search_knowledge_v2
+        if (queryEmb) {
+          try {
+            const { data: results, error: searchErr } = await serviceClient.rpc('search_knowledge_v2', {
+              query_embedding: JSON.stringify(queryEmb),
+              search_scope: 'all',
+              search_user_id: userId,
+              search_project_id: null,
+              search_role_tag: null,
+              search_knowledge_type: null,
+              match_threshold: 0.10, // Lower threshold for testing
+              match_count: 5,
+            });
+
+            diagnostics.searchResults = {
+              count: results?.length || 0,
+              error: searchErr?.message || null,
+              items: (results || []).map((r: Record<string, unknown>) => ({
+                id: r.id,
+                summary: r.summary,
+                similarity: r.similarity,
+                scope: r.scope,
+                role_tag: r.role_tag,
+              })),
+            };
+          } catch (searchErr) {
+            diagnostics.searchError = (searchErr as Error).message;
+          }
+        }
+
+        // 4. Count total knowledge_items
+        const { count } = await serviceClient
+          .from('knowledge_items')
+          .select('id', { count: 'exact', head: true })
+          .eq('is_active', true)
+          .not('embedding', 'is', null);
+
+        diagnostics.totalItemsWithEmbedding = count;
+
+        return jsonResponse({ success: true, diagnostics });
       }
 
       default:

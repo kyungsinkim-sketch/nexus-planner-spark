@@ -119,8 +119,9 @@ export async function generateEmbedding(
   if (!response.ok) {
     const err = await response.text();
     console.error(`OpenAI embedding error: ${response.status} ${err}`);
-    // Fallback to pseudo-embedding on error
-    return generatePseudoEmbedding(text);
+    // THROW instead of silent fallback — pseudo-embeddings cause RAG failures
+    // because pseudo ↔ real cosine similarity ≈ 0, yielding 0 search results
+    throw new Error(`OpenAI embedding API failed: ${response.status} — ${err.slice(0, 200)}`);
   }
 
   const data = await response.json();
@@ -441,13 +442,22 @@ export function buildRAGContext(
 ): string {
   if (!items.length) return '';
 
-  let context = '\n\n## 참고 지식 (Knowledge Base)\n';
+  let context = '\n\n## 참고 지식 (Knowledge Base)\n아래는 이 조직에서 축적된 실제 판단 기록입니다. 반드시 이 내용을 바탕으로 구체적으로 답변하세요. 일반적인 조언이 아닌, 아래 지식에 기반한 구체적 답변을 해야 합니다.\n\n';
   let currentLength = context.length;
 
   for (const item of items) {
-    const line = `- [${item.knowledge_type}] ${item.summary || item.content.slice(0, 120)} (신뢰도: ${(item.confidence * 100).toFixed(0)}%)\n`;
+    // Use full content for rich context, fall back to summary only if content is too long
+    const body = item.content || item.summary || '';
+    const line = `### [${item.knowledge_type}] (신뢰도: ${(item.confidence * 100).toFixed(0)}%)\n${body}\n\n`;
 
-    if (currentLength + line.length > maxChars) break;
+    if (currentLength + line.length > maxChars) {
+      // Try truncated version
+      const truncated = `### [${item.knowledge_type}] (신뢰도: ${(item.confidence * 100).toFixed(0)}%)\n${body.slice(0, maxChars - currentLength - 50)}\n\n`;
+      if (currentLength + truncated.length <= maxChars) {
+        context += truncated;
+      }
+      break;
+    }
     context += line;
     currentLength += line.length;
   }
