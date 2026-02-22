@@ -9,7 +9,8 @@
  *
  * Actions:
  *   - query: Process a persona query (question → RAG → LLM → response)
- *   - feedback: Submit helpful/unhelpful feedback on a response
+ *   - feedback: Submit helpful/unhelpful feedback on a response (+ confidence adjustment)
+ *   - analyze_txt: Analyze uploaded TXT chat log → extract knowledge → store in DB
  *
  * Differs from brain-process:
  *   - Uses Claude Sonnet (not Haiku) for quality
@@ -400,7 +401,7 @@ Deno.serve(async (req) => {
         });
       }
 
-      // ─── Feedback on persona response ──────────
+      // ─── Feedback on persona response (+ RAG confidence loop) ──
       case 'feedback': {
         const { queryLogId, feedback } = body;
 
@@ -412,6 +413,7 @@ Deno.serve(async (req) => {
           return jsonResponse({ error: 'feedback must be "helpful" or "unhelpful"' }, 400);
         }
 
+        // 1. Update persona_query_log
         const { error: updateErr } = await supabase
           .from('persona_query_log')
           .update({ feedback })
@@ -422,7 +424,226 @@ Deno.serve(async (req) => {
           return jsonResponse({ error: updateErr.message }, 500);
         }
 
-        return jsonResponse({ success: true });
+        // 2. Adjust confidence of referenced knowledge_items
+        let adjustedCount = 0;
+        try {
+          const { data: logRow } = await supabase
+            .from('persona_query_log')
+            .select('rag_context')
+            .eq('id', queryLogId)
+            .single();
+
+          const ragCtx = logRow?.rag_context as { items?: Array<{ id: string }> } | null;
+          const itemIds = ragCtx?.items?.map(i => i.id) || [];
+
+          if (itemIds.length > 0) {
+            // helpful → confidence +0.02 (max 1.0), usage_count +1
+            // unhelpful → confidence -0.03 (min 0.1)
+            const delta = feedback === 'helpful' ? 0.02 : -0.03;
+            const minConf = 0.1;
+            const maxConf = 1.0;
+
+            for (const itemId of itemIds) {
+              const { data: item } = await supabase
+                .from('knowledge_items')
+                .select('confidence, usage_count')
+                .eq('id', itemId)
+                .single();
+
+              if (item) {
+                const newConf = Math.min(maxConf, Math.max(minConf, (item.confidence || 0.5) + delta));
+                const updatePayload: Record<string, unknown> = { confidence: newConf };
+                if (feedback === 'helpful') {
+                  updatePayload.usage_count = (item.usage_count || 0) + 1;
+                }
+                await supabase
+                  .from('knowledge_items')
+                  .update(updatePayload)
+                  .eq('id', itemId);
+                adjustedCount++;
+              }
+            }
+          }
+        } catch (adjErr) {
+          console.error('[brain-persona] Confidence adjustment failed (non-fatal):', adjErr);
+        }
+
+        console.log(`[brain-persona] Feedback: ${feedback} on ${queryLogId}, adjusted ${adjustedCount} items`);
+        return jsonResponse({ success: true, adjustedCount });
+      }
+
+      // ─── Analyze uploaded TXT chat log ──────────
+      case 'analyze_txt': {
+        const { content: txtContent, fileName, projectId } = body;
+
+        if (!txtContent) {
+          return jsonResponse({ error: 'Missing content (TXT text)' }, 400);
+        }
+
+        if (!anthropicKey) {
+          return jsonResponse({ error: 'ANTHROPIC_API_KEY not configured' }, 500);
+        }
+
+        const startTime = Date.now();
+        console.log(`[brain-persona] analyze_txt: ${fileName || 'unknown'}, ${txtContent.length} chars`);
+
+        // 1. Chunk the text (max ~6000 tokens ≈ 12000 chars per chunk)
+        const MAX_CHUNK_CHARS = 12000;
+        const OVERLAP_CHARS = 500;
+        const chunks: string[] = [];
+        let offset = 0;
+        while (offset < txtContent.length) {
+          const end = Math.min(offset + MAX_CHUNK_CHARS, txtContent.length);
+          chunks.push(txtContent.slice(offset, end));
+          offset = end - OVERLAP_CHARS;
+          if (end >= txtContent.length) break;
+        }
+
+        console.log(`[brain-persona] Split into ${chunks.length} chunks`);
+
+        // 2. Analyze each chunk with Claude
+        const extractionPrompt = `You are a knowledge extraction engine for a Korean creative production company (파울러스/Re-Be).
+Analyze the following chat conversation and extract reusable CEO decision patterns and team collaboration insights.
+
+Output a JSON array of knowledge items. Each item:
+{
+  "content": "Clear, reusable pattern statement in Korean (50-200 chars)",
+  "knowledge_type": "deal_decision|budget_decision|payment_tracking|recurring_risk|creative_direction|budget_judgment|stakeholder_alignment|schedule_change|collaboration_pattern|communication_style|workflow|preference|judgment|domain_expertise|feedback_pattern|lesson_learned|context",
+  "role_tag": "CEO|PD|EDITOR|DIRECTOR|WRITER|DESIGNER|MANAGER|PRODUCER|null",
+  "scope_layer": "strategy|operations|execution|culture",
+  "decision_maker": "speaker name or null",
+  "outcome": "confirmed|tentative|rejected|null",
+  "confidence": 0.0-1.0,
+  "relevance_score": 0.0-1.0
+}
+
+Rules:
+- Extract PATTERNS not specific events (e.g., "예산 변경 시 팀 전체 합의 필요" not "12/15 예산 변경함")
+- Each item must be standalone and reusable
+- confidence = how generalizable, relevance_score = how important
+- Focus on CEO decision-making patterns, budget/deal logic, team dynamics
+- Max 8 items per chunk
+- Always respond with valid JSON array only (no markdown fences)
+- Return [] if no extractable patterns`;
+
+        interface ExtractedItem {
+          content: string;
+          knowledge_type: string;
+          role_tag?: string;
+          scope_layer?: string;
+          decision_maker?: string;
+          outcome?: string;
+          confidence: number;
+          relevance_score: number;
+        }
+
+        const allItems: ExtractedItem[] = [];
+
+        for (let i = 0; i < chunks.length; i++) {
+          try {
+            const chunkResult = await callClaude(
+              extractionPrompt,
+              [{ role: 'user', content: `[파일: ${fileName || '대화록'}] [청크 ${i + 1}/${chunks.length}]\n\n${chunks[i]}` }],
+              { model: 'claude-sonnet-4-20250514', temperature: 0.2, maxTokens: 2048 },
+              anthropicKey,
+            );
+
+            // Parse JSON (handle markdown fences)
+            let jsonText = chunkResult.trim();
+            if (jsonText.startsWith('```')) {
+              jsonText = jsonText.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '');
+            }
+            // Remove trailing commas
+            jsonText = jsonText.replace(/,(\s*[}\]])/g, '$1');
+
+            const parsed = JSON.parse(jsonText);
+            if (Array.isArray(parsed)) {
+              allItems.push(...parsed.filter((item: ExtractedItem) => item.content && item.confidence >= 0.5));
+            }
+            console.log(`[brain-persona] Chunk ${i + 1}: extracted ${Array.isArray(parsed) ? parsed.length : 0} items`);
+          } catch (chunkErr) {
+            console.error(`[brain-persona] Chunk ${i + 1} extraction failed:`, chunkErr);
+          }
+        }
+
+        if (allItems.length === 0) {
+          return jsonResponse({
+            success: true,
+            message: '추출할 패턴이 없습니다.',
+            itemCount: 0,
+            timeMs: Date.now() - startTime,
+          });
+        }
+
+        // 3. Deduplicate (simple content similarity)
+        const uniqueItems: ExtractedItem[] = [];
+        for (const item of allItems) {
+          const isDup = uniqueItems.some(existing => {
+            const a = existing.content.replace(/\s+/g, '');
+            const b = item.content.replace(/\s+/g, '');
+            // Simple overlap check
+            const shorter = a.length < b.length ? a : b;
+            const longer = a.length < b.length ? b : a;
+            return longer.includes(shorter) || shorter.length > 20 && longer.includes(shorter.slice(0, Math.floor(shorter.length * 0.7)));
+          });
+          if (!isDup) uniqueItems.push(item);
+        }
+
+        console.log(`[brain-persona] Deduped: ${allItems.length} → ${uniqueItems.length} items`);
+
+        // 4. Generate embeddings and insert into knowledge_items
+        let insertedCount = 0;
+        for (const item of uniqueItems) {
+          try {
+            const embedding = await generateEmbedding(item.content, openaiKey || undefined);
+
+            const { error: insertErr } = await supabase
+              .from('knowledge_items')
+              .insert({
+                user_id: userId,
+                scope: 'team',
+                content: item.content,
+                summary: item.content.slice(0, 200),
+                knowledge_type: item.knowledge_type || 'context',
+                source_type: 'flow_chat_log',
+                role_tag: item.role_tag || null,
+                confidence: item.confidence,
+                relevance_score: item.relevance_score || 0.5,
+                is_active: true,
+                scope_layer: item.scope_layer || 'operations',
+                decision_maker: item.decision_maker || null,
+                outcome: item.outcome || null,
+                source_context: {
+                  file_name: fileName,
+                  analyzed_at: new Date().toISOString(),
+                  analyzed_by: userId,
+                  chunk_count: chunks.length,
+                },
+                embedding: JSON.stringify(embedding),
+              });
+
+            if (!insertErr) {
+              insertedCount++;
+            } else {
+              console.warn(`[brain-persona] Insert failed for item:`, insertErr.message);
+            }
+          } catch (itemErr) {
+            console.error(`[brain-persona] Item processing failed:`, itemErr);
+          }
+        }
+
+        const timeMs = Date.now() - startTime;
+        console.log(`[brain-persona] analyze_txt complete: ${insertedCount}/${uniqueItems.length} items in ${timeMs}ms`);
+
+        return jsonResponse({
+          success: true,
+          message: `${fileName || '대화록'}에서 ${insertedCount}개 지식 패턴을 추출·저장했습니다.`,
+          itemCount: insertedCount,
+          totalExtracted: allItems.length,
+          afterDedup: uniqueItems.length,
+          chunkCount: chunks.length,
+          timeMs,
+        });
       }
 
       default:

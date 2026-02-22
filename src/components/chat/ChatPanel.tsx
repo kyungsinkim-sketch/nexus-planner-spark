@@ -93,6 +93,8 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
   const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [showFileUpload, setShowFileUpload] = useState(false);
+  const [analyzingTxt, setAnalyzingTxt] = useState(false);
+  const txtFileInputRef = useRef<HTMLInputElement>(null);
 
   // Auto-select project chat room when defaultProjectId is provided (widget on project tab)
   const hasAutoSelectedRef = useRef(false);
@@ -303,10 +305,58 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
   const [brainProcessing, setBrainProcessing] = useState(false);
   const [pabloProcessing, setPabloProcessing] = useState(false);
 
+  // /analyze command: trigger TXT file picker
+  const handleAnalyzeTxtFile = async (file: File) => {
+    if (!selectedChat || !currentUser) return;
+    if (!file.name.endsWith('.txt')) {
+      toast.error('TXT 파일만 분석 가능합니다.');
+      return;
+    }
+    setAnalyzingTxt(true);
+    try {
+      const txtContent = await file.text();
+      if (!txtContent.trim()) {
+        toast.error('빈 파일입니다.');
+        return;
+      }
+      toast.info(`📄 "${file.name}" 분석 시작... (${Math.ceil(txtContent.length / 1000)}KB)`);
+      const result = await personaService.analyzeTxt(
+        txtContent,
+        file.name,
+        selectedChat.type === 'project' ? selectedChat.id : undefined,
+      );
+      toast.success(`✅ ${result.message}`);
+      // Send a system-like message to the chat about the analysis
+      const summaryMsg = `📊 대화록 분석 완료: "${file.name}"\n• 추출 패턴: ${result.itemCount}개\n• 분석 시간: ${(result.timeMs / 1000).toFixed(1)}초\n• 청크: ${result.chunkCount}개`;
+      if (selectedChat.type === 'project') {
+        if (selectedChat.roomId) {
+          await sendRoomMessage(selectedChat.roomId, selectedChat.id, summaryMsg);
+        } else {
+          await sendProjectMessage(selectedChat.id, summaryMsg);
+        }
+      } else {
+        await sendDirectMessage(selectedChat.id, summaryMsg);
+      }
+    } catch (err) {
+      console.error('[Analyze] TXT analysis failed:', err);
+      toast.error(`분석 실패: ${(err as Error).message}`);
+    } finally {
+      setAnalyzingTxt(false);
+    }
+  };
+
   const handleSendMessage = async (forceBrain = false) => {
     if (!newMessage.trim() || !selectedChat || !currentUser) return;
 
     const trimmed = newMessage.trim();
+
+    // 0. Check for /analyze command — opens TXT file picker
+    const { isAnalyzeCommand } = personaService.detectAnalyzeCommand(trimmed);
+    if (isAnalyzeCommand) {
+      setNewMessage('');
+      txtFileInputRef.current?.click();
+      return;
+    }
 
     // 1. Check for @pablo mention FIRST (takes priority over brain)
     const { isPabloMention, cleanContent: pabloCleanContent, personaId } = personaService.detectPabloMention(trimmed);
@@ -1381,6 +1431,16 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
             </div>
           )}
 
+          {/* TXT Analysis Processing Indicator */}
+          {analyzingTxt && (
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-50 dark:bg-emerald-950/30 border-t border-emerald-200/50 dark:border-emerald-800/50">
+              <div className="w-3 h-3 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+              <span className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">
+                📄 대화록 분석 중... (시간이 걸릴 수 있습니다)
+              </span>
+            </div>
+          )}
+
           {/* Message Input — Enter=send, Cmd+Enter=Brain AI */}
           <div className="p-2.5 bg-background shrink-0 min-w-0">
             <div className="flex items-center gap-1.5 min-w-0">
@@ -1456,6 +1516,9 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
               <span className="text-[10px] text-amber-500 font-medium">
                 @pablo → CEO AI
               </span>
+              <span className="text-[10px] text-emerald-500 font-medium">
+                /analyze → 대화록 분석
+              </span>
             </div>
           </div>
         </div>
@@ -1470,6 +1533,19 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
           onUpload={handleFileUploadConfirm}
         />
       )}
+
+      {/* Hidden file input for /analyze command */}
+      <input
+        ref={txtFileInputRef}
+        type="file"
+        accept=".txt"
+        className="hidden"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file) handleAnalyzeTxtFile(file);
+          e.target.value = ''; // Reset for re-upload
+        }}
+      />
 
       {/* Create Room Dialog */}
       <Dialog open={showCreateRoom} onOpenChange={setShowCreateRoom}>

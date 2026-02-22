@@ -222,3 +222,70 @@ export function detectPabloMention(content: string): {
 export function getPabloPersonaId(): string {
   return PABLO_PERSONA_ID;
 }
+
+// ─── TXT Analysis ────────────────────────────────────
+
+export interface AnalyzeTxtResponse {
+  success: boolean;
+  message: string;
+  itemCount: number;
+  totalExtracted: number;
+  afterDedup: number;
+  chunkCount: number;
+  timeMs: number;
+}
+
+/**
+ * Upload and analyze a TXT chat log file.
+ * Calls brain-persona analyze_txt action to extract knowledge patterns.
+ */
+export async function analyzeTxt(
+  txtContent: string,
+  fileName: string,
+  projectId?: string,
+): Promise<AnalyzeTxtResponse> {
+  if (!isSupabaseConfigured()) {
+    throw new Error('Supabase not configured');
+  }
+
+  const { data, error } = await supabase.functions.invoke('brain-persona', {
+    body: {
+      action: 'analyze_txt',
+      content: txtContent,
+      fileName,
+      projectId: projectId || null,
+    },
+  });
+
+  if (error) {
+    const detail = await extractFunctionError(error);
+    throw new Error(`TXT 분석 실패: ${detail}`);
+  }
+
+  if (!data?.success) {
+    throw new Error(data?.error || 'TXT 분석이 실패했습니다');
+  }
+
+  return data as AnalyzeTxtResponse;
+}
+
+/**
+ * Detect /analyze command in message content.
+ * Returns whether the message is an analyze command.
+ */
+export function detectAnalyzeCommand(content: string): {
+  isAnalyzeCommand: boolean;
+  cleanContent: string;
+} {
+  const pattern = /^\/analyze\s*/i;
+  if (pattern.test(content)) {
+    return {
+      isAnalyzeCommand: true,
+      cleanContent: content.replace(pattern, '').trim(),
+    };
+  }
+  return {
+    isAnalyzeCommand: false,
+    cleanContent: content,
+  };
+}
