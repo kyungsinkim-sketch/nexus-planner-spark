@@ -65,6 +65,7 @@ Deno.serve(async (req) => {
           scope = 'all',
           projectId,
           roleTag,
+          knowledgeType,
           threshold = 0.3,
           limit: searchLimit = 5,
         } = body;
@@ -76,13 +77,14 @@ Deno.serve(async (req) => {
         // Generate query embedding
         const queryEmbedding = await generateEmbedding(query, openaiKey);
 
-        // Call the search_knowledge RPC function
-        const { data: results, error: searchError } = await supabase.rpc('search_knowledge', {
+        // Call search_knowledge_v2 with hybrid scoring
+        const { data: results, error: searchError } = await supabase.rpc('search_knowledge_v2', {
           query_embedding: JSON.stringify(queryEmbedding),
           search_scope: scope,
           search_user_id: userId,
           search_project_id: projectId || null,
           search_role_tag: roleTag || null,
+          search_knowledge_type: knowledgeType || null,
           match_threshold: threshold,
           match_count: searchLimit,
         });
@@ -106,16 +108,14 @@ Deno.serve(async (req) => {
           top_similarity: items.length > 0 ? items[0].similarity : null,
         });
 
-        // Increment usage count for retrieved items
+        // Increment usage count for retrieved items (via RPC for atomic increment)
         if (items.length > 0) {
-          for (const item of items) {
-            await supabase
-              .from('knowledge_items')
-              .update({
-                usage_count: supabase.rpc ? undefined : 0, // Can't increment directly, use raw SQL
-                last_used_at: new Date().toISOString(),
-              })
-              .eq('id', item.id);
+          try {
+            await supabase.rpc('increment_knowledge_usage', {
+              item_ids: items.map((i: { id: string }) => i.id),
+            });
+          } catch (usageErr) {
+            console.warn('Failed to increment usage count (non-fatal):', usageErr);
           }
         }
 
@@ -232,6 +232,109 @@ Deno.serve(async (req) => {
           .eq('user_id', userId);
 
         return jsonResponse({ success: true });
+      }
+
+      // ─── Diagnostics — full RAG system status ────
+      case 'diagnose': {
+        const results: Record<string, unknown> = {};
+
+        // 1. knowledge_items stats
+        const { count: kiTotal } = await supabase
+          .from('knowledge_items')
+          .select('*', { count: 'exact', head: true });
+
+        const { data: kiByType } = await supabase
+          .from('knowledge_items')
+          .select('knowledge_type');
+
+        const { data: kiByRole } = await supabase
+          .from('knowledge_items')
+          .select('role_tag')
+          .not('role_tag', 'is', null);
+
+        const { count: kiNoEmbed } = await supabase
+          .from('knowledge_items')
+          .select('*', { count: 'exact', head: true })
+          .is('embedding', null);
+
+        const typeDist: Record<string, number> = {};
+        for (const r of (kiByType || [])) {
+          typeDist[r.knowledge_type] = (typeDist[r.knowledge_type] || 0) + 1;
+        }
+        const roleDist: Record<string, number> = {};
+        for (const r of (kiByRole || [])) {
+          roleDist[r.role_tag] = (roleDist[r.role_tag] || 0) + 1;
+        }
+
+        results.knowledge_items = {
+          total: kiTotal || 0,
+          by_type: typeDist,
+          by_role: roleDist,
+          no_embedding: kiNoEmbed || 0,
+        };
+
+        // 2. rag_query_log stats
+        const { count: qlTotal } = await supabase
+          .from('rag_query_log')
+          .select('*', { count: 'exact', head: true });
+
+        const { data: qlFeedback } = await supabase
+          .from('rag_query_log')
+          .select('was_helpful, top_similarity');
+
+        let helpfulTrue = 0, helpfulFalse = 0, helpfulNull = 0;
+        let simSum = 0, simCount = 0;
+        for (const r of (qlFeedback || [])) {
+          if (r.was_helpful === true) helpfulTrue++;
+          else if (r.was_helpful === false) helpfulFalse++;
+          else helpfulNull++;
+          if (r.top_similarity != null) {
+            simSum += r.top_similarity;
+            simCount++;
+          }
+        }
+
+        results.rag_query_log = {
+          total: qlTotal || 0,
+          helpful_true: helpfulTrue,
+          helpful_false: helpfulFalse,
+          helpful_null: helpfulNull,
+          avg_top_similarity: simCount > 0 ? +(simSum / simCount).toFixed(4) : null,
+        };
+
+        // 3. project_context_snapshots
+        const { count: snapTotal } = await supabase
+          .from('project_context_snapshots')
+          .select('*', { count: 'exact', head: true });
+
+        const { count: snapExpired } = await supabase
+          .from('project_context_snapshots')
+          .select('*', { count: 'exact', head: true })
+          .lt('expires_at', new Date().toISOString());
+
+        results.project_context_snapshots = {
+          total: snapTotal || 0,
+          expired: snapExpired || 0,
+        };
+
+        // 4. brain_processing_queue
+        const { data: bpqData } = await supabase
+          .from('brain_processing_queue')
+          .select('status, pending_message_count');
+
+        const bpqByStatus: Record<string, number> = {};
+        let pendingTotal = 0;
+        for (const r of (bpqData || [])) {
+          bpqByStatus[r.status] = (bpqByStatus[r.status] || 0) + 1;
+          if (r.pending_message_count) pendingTotal += r.pending_message_count;
+        }
+
+        results.brain_processing_queue = {
+          by_status: bpqByStatus,
+          pending_message_count: pendingTotal,
+        };
+
+        return jsonResponse(results);
       }
 
       default:

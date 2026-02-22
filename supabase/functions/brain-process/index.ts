@@ -189,12 +189,13 @@ Deno.serve(async (req) => {
         const queryEmbedding = await generateEmbedding(messageContent, openaiKey || undefined);
 
         // Search across all scopes (personal + team + role)
-        const { data: ragResults } = await supabase.rpc('search_knowledge', {
+        const { data: ragResults } = await supabase.rpc('search_knowledge_v2', {
           query_embedding: JSON.stringify(queryEmbedding),
           search_scope: 'all',
           search_user_id: userId,
           search_project_id: projectId || null,
           search_role_tag: null,
+          search_knowledge_type: null,
           match_threshold: 0.35,
           match_count: 3,
         });

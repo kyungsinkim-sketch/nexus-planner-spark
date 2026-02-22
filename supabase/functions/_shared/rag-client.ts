@@ -42,7 +42,13 @@ export type KnowledgeType =
   | 'domain_expertise'
   | 'feedback_pattern'
   | 'communication_style'
-  | 'lesson_learned';
+  | 'lesson_learned'
+  // 신규 5종 (migration 053)
+  | 'creative_direction'
+  | 'budget_judgment'
+  | 'stakeholder_alignment'
+  | 'schedule_change'
+  | 'context';
 
 export type SourceType =
   | 'chat_digest'
@@ -50,7 +56,11 @@ export type SourceType =
   | 'peer_review'
   | 'decision_log'
   | 'meeting_note'
-  | 'manual';
+  | 'manual'
+  // 신규 3종 (migration 053)
+  | 'notion_page'
+  | 'gmail'
+  | 'voice_recording';
 
 export interface EmbeddingResult {
   embedding: number[];
@@ -240,11 +250,18 @@ Analyze the following conversation insights and extract reusable knowledge patte
 Output JSON array of knowledge items. Each item:
 {
   "content": "Clear, reusable knowledge statement in Korean",
-  "knowledge_type": "decision_pattern|preference|judgment|collaboration_pattern|recurring_risk|workflow|domain_expertise|feedback_pattern|communication_style|lesson_learned",
+  "knowledge_type": "decision_pattern|preference|judgment|collaboration_pattern|recurring_risk|workflow|domain_expertise|feedback_pattern|communication_style|lesson_learned|creative_direction|budget_judgment|stakeholder_alignment|schedule_change|context",
   "scope": "personal|team",
   "confidence": 0.0-1.0,
-  "role_tag": "CD|PD|EDITOR|DIRECTOR|null"
+  "role_tag": "CD|PD|EDITOR|DIRECTOR|WRITER|DESIGNER|MANAGER|PRODUCER|CREATIVE_DIRECTOR|BUDGET_MANAGER|PROJECT_MANAGER|STAKEHOLDER|VENDOR|null"
 }
+
+Type guide:
+- creative_direction: 크리에이티브 방향성 결정 (톤앤매너, 비주얼 스타일)
+- budget_judgment: 예산 관련 판단 (비용 절감, 투자 우선순위)
+- stakeholder_alignment: 이해관계자 간 합의/조율 패턴
+- schedule_change: 일정 변경 관련 의사결정
+- context: 프로젝트 맥락 정보 (다른 타입에 해당하지 않는 일반 정보)
 
 Rules:
 - Extract patterns, NOT specific events (e.g., "예산 변경 시 팀 전체 합의 필요" not "12/15 예산을 변경했다")

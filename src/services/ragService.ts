@@ -14,14 +14,19 @@
  */
 
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
+import type { KnowledgeType, KnowledgeScope } from '@/types/knowledge-ontology';
+
+// Re-export ontology types for consumers
+export type { KnowledgeType, KnowledgeScope } from '@/types/knowledge-ontology';
 
 // ─── Types ──────────────────────────────────────────
 
 export interface RAGSearchResult {
   id: string;
   summary: string;
-  type: string;
+  type: KnowledgeType | string;
   similarity: number;
+  hybridScore?: number;
 }
 
 export interface RAGContextResult {
@@ -128,6 +133,7 @@ export async function searchKnowledge(
     scope?: 'personal' | 'team' | 'role' | 'all';
     projectId?: string;
     roleTag?: string;
+    knowledgeType?: KnowledgeType;
     limit?: number;
   },
 ): Promise<RAGSearchResult[]> {
@@ -136,6 +142,7 @@ export async function searchKnowledge(
     scope: options?.scope || 'all',
     projectId: options?.projectId,
     roleTag: options?.roleTag,
+    knowledgeType: options?.knowledgeType,
     limit: options?.limit || 10,
   });
 

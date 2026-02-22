@@ -125,17 +125,29 @@ export function BrainInsightsPanel({ projectId }: BrainInsightsPanelProps) {
     );
   };
 
-  // Loading state
+  // Loading state — skeleton UI for perceived performance
   if (loading && !insights) {
     return (
       <Card className="p-6 shadow-card">
         <div className="flex items-center gap-2 mb-4">
           <Brain className="w-5 h-5 text-violet-500" />
           <h3 className="text-lg font-semibold text-foreground">{t('brainInsights')}</h3>
+          <div className="ml-auto flex items-center gap-1.5 text-xs text-muted-foreground">
+            <div className="w-4 h-4 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" />
+            분석 중...
+          </div>
         </div>
-        <div className="flex items-center justify-center py-8">
-          <div className="w-5 h-5 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" />
-          <span className="ml-2 text-sm text-muted-foreground">Analyzing conversations...</span>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="space-y-2.5 py-2">
+              <div className="h-4 w-24 bg-muted rounded animate-pulse" />
+              <div className="space-y-2">
+                <div className="h-3 w-full bg-muted rounded animate-pulse" />
+                <div className="h-3 w-4/5 bg-muted rounded animate-pulse" />
+                <div className="h-3 w-3/5 bg-muted rounded animate-pulse" />
+              </div>
+            </div>
+          ))}
         </div>
       </Card>
     );

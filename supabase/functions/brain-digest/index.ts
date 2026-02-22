@@ -271,7 +271,7 @@ Deno.serve(async (req) => {
               projectTitle: undefined,
               teamMembers,
             },
-            anthropicKey,
+            apiKey,
           );
 
           let ragCreated = 0;
