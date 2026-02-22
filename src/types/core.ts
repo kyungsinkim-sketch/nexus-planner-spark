@@ -174,7 +174,7 @@ export interface CalendarEvent {
 }
 
 // Chat message types for rich content sharing
-export type ChatMessageType = 'text' | 'file' | 'location' | 'schedule' | 'decision' | 'brain_action';
+export type ChatMessageType = 'text' | 'file' | 'location' | 'schedule' | 'decision' | 'brain_action' | 'persona_response';
 
 // ============================================================
 // Brain AI Types
@@ -221,6 +221,23 @@ export interface BrainExtractedLocation {
   title: string;
   address: string;
   searchQuery: string;       // "서울역" → Map search query
+}
+
+// ============================================================
+// AI Persona Types (@pablo CEO persona)
+// ============================================================
+
+export interface PersonaResponseData {
+  personaId: string;
+  personaName: string;
+  response: string;
+  ragContext?: Array<{
+    id: string;
+    summary: string;
+    type: string;
+    similarity: number;
+  }>;
+  queryLogId: string;
 }
 
 // ============================================================
@@ -359,6 +376,7 @@ export interface ChatMessage {
   scheduleData?: ScheduleShare;
   decisionData?: DecisionShare;
   brainActionData?: BrainAction; // Brain AI extracted action
+  personaResponseData?: PersonaResponseData; // AI persona response (@pablo)
 }
 
 export interface FileGroup {

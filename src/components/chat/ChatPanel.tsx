@@ -52,6 +52,7 @@ import { BRAIN_BOT_USER_ID } from '@/types/core';
 import * as chatService from '@/services/chatService';
 import * as fileService from '@/services/fileService';
 import * as brainService from '@/services/brainService';
+import * as personaService from '@/services/personaService';
 import { isSupabaseConfigured } from '@/lib/supabase';
 import { toast } from 'sonner';
 
@@ -300,11 +301,15 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
   }, [selectedChat?.type, selectedChat?.id, selectedChat?.roomId, currentUser?.id, addMessage]);
 
   const [brainProcessing, setBrainProcessing] = useState(false);
+  const [pabloProcessing, setPabloProcessing] = useState(false);
 
   const handleSendMessage = async (forceBrain = false) => {
     if (!newMessage.trim() || !selectedChat || !currentUser) return;
 
     const trimmed = newMessage.trim();
+
+    // 1. Check for @pablo mention FIRST (takes priority over brain)
+    const { isPabloMention, cleanContent: pabloCleanContent, personaId } = personaService.detectPabloMention(trimmed);
 
     // Strip @ai prefix if present (backward compat), otherwise use as-is
     const { cleanContent } = brainService.detectBrainMention(trimmed);
@@ -328,7 +333,29 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
 
     setNewMessage('');
 
-    // Brain AI: triggered ONLY by Cmd+Enter (forceBrain) — works for both project and DM chats
+    // 2. @pablo persona query — triggered by @pablo mention in message
+    if (isPabloMention && pabloCleanContent) {
+      setPabloProcessing(true);
+      try {
+        await personaService.queryPersona({
+          personaId,
+          query: pabloCleanContent,
+          projectId: selectedChat.type === 'project' ? selectedChat.id : undefined,
+          roomId: selectedChat.roomId,
+          directChatUserId: selectedChat.type === 'direct' ? selectedChat.id : undefined,
+        });
+        // Bot message arrives via realtime subscription — no need to add locally
+        console.log('[Pablo] Persona query completed');
+      } catch (personaErr) {
+        console.error('[Pablo] Persona query failed:', personaErr);
+        toast.error(`Pablo AI 응답 실패: ${(personaErr as Error).message}`);
+      } finally {
+        setPabloProcessing(false);
+      }
+      return; // Skip brain processing if @pablo was triggered
+    }
+
+    // 3. Brain AI: triggered ONLY by Cmd+Enter (forceBrain) — works for both project and DM chats
     if (forceBrain && cleanContent) {
       setBrainProcessing(true);
       try {
@@ -1334,6 +1361,16 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
 
           <Separator />
 
+          {/* Pablo AI Processing Indicator */}
+          {pabloProcessing && (
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-amber-50 dark:bg-amber-950/30 border-t border-amber-200/50 dark:border-amber-800/50">
+              <div className="w-3 h-3 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
+              <span className="text-xs text-amber-600 dark:text-amber-400 font-medium">
+                Pablo AI가 생각하는 중...
+              </span>
+            </div>
+          )}
+
           {/* Brain Processing Indicator */}
           {brainProcessing && (
             <div className="flex items-center gap-2 px-3 py-1.5 bg-violet-50 dark:bg-violet-950/30 border-t border-violet-200/50 dark:border-violet-800/50">
@@ -1380,6 +1417,7 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
                     ? projects.find(p => p.id === selectedChat.id)?.teamMemberIds
                     : undefined
                 }
+                showPersonaMentions
               />
               <Button
                 variant="ghost"
@@ -1414,6 +1452,9 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
               <span className="text-[10px] text-muted-foreground flex items-center gap-1">
                 <Brain className="w-3 h-3 text-violet-400" />
                 <kbd className="px-1 py-0.5 rounded bg-muted text-[9px] font-mono">⌘</kbd>+<kbd className="px-1 py-0.5 rounded bg-muted text-[9px] font-mono">Enter</kbd> Brain AI
+              </span>
+              <span className="text-[10px] text-amber-500 font-medium">
+                @pablo → CEO AI
               </span>
             </div>
           </div>

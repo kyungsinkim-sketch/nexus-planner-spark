@@ -27,6 +27,7 @@ import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import * as fileService from '@/services/fileService';
 import type { ChatMessage, FileItem } from '@/types/core';
 import { BrainActionBubble } from './BrainActionBubble';
+import { PersonaResponseBubble } from './PersonaResponseBubble';
 
 /**
  * Renders message content with @mention highlights.
@@ -81,6 +82,11 @@ interface ChatMessageBubbleProps {
 
 export function ChatMessageBubble({ message, isCurrentUser, onVoteDecision, onAcceptSchedule, onDelete, onPin, onConfirmBrainAction, onRejectBrainAction }: ChatMessageBubbleProps) {
   const { messageType } = message;
+
+  // AI Persona response message (@pablo)
+  if (messageType === 'persona_response') {
+    return <PersonaResponseBubble message={message} />;
+  }
 
   // Brain AI bot message
   if (messageType === 'brain_action') {

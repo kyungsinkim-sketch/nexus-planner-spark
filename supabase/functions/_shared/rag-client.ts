@@ -60,7 +60,11 @@ export type SourceType =
   // 신규 3종 (migration 053)
   | 'notion_page'
   | 'gmail'
-  | 'voice_recording';
+  | 'voice_recording'
+  // 신규 1종 (migration 057)
+  | 'flow_chat_log'
+  // 신규 1종 (migration 059)
+  | 'ceo_pattern_seed';
 
 export interface EmbeddingResult {
   embedding: number[];

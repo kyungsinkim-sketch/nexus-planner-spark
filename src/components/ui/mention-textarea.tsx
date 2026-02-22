@@ -2,11 +2,21 @@
  * MentionTextarea — Textarea with @mention user suggestion dropdown.
  * When user types @, shows a dropdown of matching users.
  * Selecting a user inserts @name into the text.
+ * Optionally shows AI persona mentions (e.g., @pablo) at the top.
  */
 
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { useAppStore } from '@/stores/appStore';
 import type { User } from '@/types/core';
+
+/** Virtual mention item — can be a real user or an AI persona */
+interface MentionItem {
+  id: string;
+  name: string;
+  email?: string;
+  isPersona?: boolean;
+  personaLabel?: string;
+}
 
 interface MentionTextareaProps {
   value: string;
@@ -19,6 +29,8 @@ interface MentionTextareaProps {
   autoFocus?: boolean;
   /** Restrict mention suggestions to these user IDs */
   mentionableUserIds?: string[];
+  /** Show AI persona mentions (e.g., Pablo AI) in the dropdown */
+  showPersonaMentions?: boolean;
 }
 
 export function MentionTextarea({
@@ -31,6 +43,7 @@ export function MentionTextarea({
   style,
   autoFocus,
   mentionableUserIds,
+  showPersonaMentions,
 }: MentionTextareaProps) {
   const users = useAppStore((s) => s.users);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -39,6 +52,20 @@ export function MentionTextarea({
   const [mentionQuery, setMentionQuery] = useState('');
   const [mentionIndex, setMentionIndex] = useState(0);
   const [mentionStartPos, setMentionStartPos] = useState(-1);
+
+  // AI persona entries
+  const personaEntries: MentionItem[] = useMemo(() => {
+    if (!showPersonaMentions) return [];
+    return [
+      {
+        id: 'persona-pablo',
+        name: 'pablo',
+        email: 'CEO AI',
+        isPersona: true,
+        personaLabel: 'Pablo AI',
+      },
+    ];
+  }, [showPersonaMentions]);
 
   const availableUsers = useMemo(() => {
     // Filter to valid users with name & email, then scope to mentionableUserIds if provided
@@ -49,13 +76,25 @@ export function MentionTextarea({
     return valid;
   }, [users, mentionableUserIds]);
 
-  const filteredUsers = useMemo(() => {
-    if (!mentionQuery) return availableUsers.slice(0, 8);
+  const filteredItems: MentionItem[] = useMemo(() => {
     const q = mentionQuery.toLowerCase();
-    return availableUsers
+
+    // Filter persona entries
+    const matchedPersonas = personaEntries.filter(p =>
+      !q || p.name.toLowerCase().includes(q) || (p.personaLabel || '').toLowerCase().includes(q)
+    );
+
+    // Filter real users
+    const matchedUsers: MentionItem[] = (!mentionQuery ? availableUsers.slice(0, 8) : availableUsers
       .filter(u => (u.name || '').toLowerCase().includes(q) || (u.email || '').toLowerCase().includes(q))
-      .slice(0, 8);
-  }, [availableUsers, mentionQuery]);
+      .slice(0, 7)
+    ).map(u => ({ id: u.id, name: u.name, email: u.email }));
+
+    return [...matchedPersonas, ...matchedUsers];
+  }, [availableUsers, mentionQuery, personaEntries]);
+
+  // Backward compat alias
+  const filteredUsers = filteredItems;
 
   // Detect @ pattern in text
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -85,13 +124,13 @@ export function MentionTextarea({
     setShowMentions(false);
   }, [onChange]);
 
-  const insertMention = useCallback((user: User) => {
+  const insertMention = useCallback((item: MentionItem) => {
     if (mentionStartPos < 0) return;
     const textarea = textareaRef.current;
     const cursorPos = textarea?.selectionStart || value.length;
     const before = value.slice(0, mentionStartPos);
     const after = value.slice(cursorPos);
-    const mention = `@${user.name} `;
+    const mention = `@${item.name} `;
     const newValue = before + mention + after;
     onChange(newValue);
     setShowMentions(false);
@@ -181,15 +220,15 @@ export function MentionTextarea({
       />
 
       {/* Mention dropdown */}
-      {showMentions && filteredUsers.length > 0 && (
+      {showMentions && filteredItems.length > 0 && (
         <div
           ref={dropdownRef}
           className="absolute bottom-full left-0 mb-1 w-56 max-h-48 overflow-y-auto
                      bg-popover border border-border rounded-lg shadow-lg z-50"
         >
-          {filteredUsers.map((user, idx) => (
+          {filteredItems.map((item, idx) => (
             <button
-              key={user.id}
+              key={item.id}
               className={`w-full flex items-center gap-2 px-3 py-2 text-sm text-left transition-colors ${
                 idx === mentionIndex
                   ? 'bg-accent text-accent-foreground'
@@ -197,16 +236,27 @@ export function MentionTextarea({
               }`}
               onMouseDown={(e) => {
                 e.preventDefault(); // Don't blur textarea
-                insertMention(user);
+                insertMention(item);
               }}
               onMouseEnter={() => setMentionIndex(idx)}
             >
-              <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-medium text-primary shrink-0">
-                {user.name?.[0] || '?'}
-              </div>
+              {item.isPersona ? (
+                /* AI Persona entry — amber/gold style */
+                <div className="w-6 h-6 rounded-full bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center text-[10px] font-bold text-amber-600 dark:text-amber-400 shrink-0">
+                  👑
+                </div>
+              ) : (
+                <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-medium text-primary shrink-0">
+                  {item.name?.[0] || '?'}
+                </div>
+              )}
               <div className="min-w-0">
-                <p className="text-sm font-medium truncate">{user.name}</p>
-                <p className="text-[10px] text-muted-foreground truncate">{user.email}</p>
+                <p className={`text-sm font-medium truncate ${item.isPersona ? 'text-amber-700 dark:text-amber-400' : ''}`}>
+                  {item.isPersona ? item.personaLabel : item.name}
+                </p>
+                <p className="text-[10px] text-muted-foreground truncate">
+                  {item.isPersona ? 'CEO AI 어시스턴트' : item.email}
+                </p>
               </div>
             </button>
           ))}

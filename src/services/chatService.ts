@@ -1,5 +1,5 @@
 import { supabase, isSupabaseConfigured, handleSupabaseError } from '@/lib/supabase';
-import type { ChatMessage, ChatRoom, ChatRoomMember, ChatMessageType, LocationShare, ScheduleShare, DecisionShare, BrainAction } from '@/types/core';
+import type { ChatMessage, ChatRoom, ChatRoomMember, ChatMessageType, LocationShare, ScheduleShare, DecisionShare, BrainAction, PersonaResponseData } from '@/types/core';
 import type { Database } from '@/types/database';
 
 type MessageRow = Database['public']['Tables']['chat_messages']['Row'];
@@ -26,6 +26,7 @@ const transformMessage = (row: MessageRow): ChatMessage => {
         scheduleData: row.schedule_data as unknown as ScheduleShare | undefined,
         decisionData: row.decision_data as unknown as DecisionShare | undefined,
         brainActionData: row.brain_action_data as unknown as BrainAction | undefined,
+        personaResponseData: row.persona_response_data as unknown as PersonaResponseData | undefined,
     };
 };
 

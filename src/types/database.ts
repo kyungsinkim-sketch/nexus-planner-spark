@@ -231,11 +231,12 @@ export interface Database {
                     attachment_id: string | null
                     direct_chat_user_id: string | null
                     room_id: string | null
-                    message_type: 'text' | 'file' | 'location' | 'schedule' | 'decision' | 'brain_action'
+                    message_type: 'text' | 'file' | 'location' | 'schedule' | 'decision' | 'brain_action' | 'persona_response'
                     location_data: Json | null
                     schedule_data: Json | null
                     decision_data: Json | null
                     brain_action_data: Json | null
+                    persona_response_data: Json | null
                     created_at: string
                 }
                 Insert: {
@@ -246,11 +247,12 @@ export interface Database {
                     attachment_id?: string | null
                     direct_chat_user_id?: string | null
                     room_id?: string | null
-                    message_type?: 'text' | 'file' | 'location' | 'schedule' | 'decision' | 'brain_action'
+                    message_type?: 'text' | 'file' | 'location' | 'schedule' | 'decision' | 'brain_action' | 'persona_response'
                     location_data?: Json | null
                     schedule_data?: Json | null
                     decision_data?: Json | null
                     brain_action_data?: Json | null
+                    persona_response_data?: Json | null
                     created_at?: string
                 }
                 Update: {
@@ -261,11 +263,12 @@ export interface Database {
                     attachment_id?: string | null
                     direct_chat_user_id?: string | null
                     room_id?: string | null
-                    message_type?: 'text' | 'file' | 'location' | 'schedule' | 'decision' | 'brain_action'
+                    message_type?: 'text' | 'file' | 'location' | 'schedule' | 'decision' | 'brain_action' | 'persona_response'
                     location_data?: Json | null
                     schedule_data?: Json | null
                     decision_data?: Json | null
                     brain_action_data?: Json | null
+                    persona_response_data?: Json | null
                     created_at?: string
                 }
             }
