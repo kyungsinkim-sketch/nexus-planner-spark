@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { User, Project, CalendarEvent, ChatMessage, ChatRoom, ChatMessageType, LocationShare, ScheduleShare, DecisionShare, FileGroup, FileItem, PerformanceSnapshot, PortfolioItem, PeerFeedback, ProjectContribution, ScoreSettings, UserWorkStatus, PersonalTodo, ImportantNote, InspirationQuote, CompanyNotification, GmailMessage, EmailBrainSuggestion, BrainNotification, BrainReport, BrainFeedback, BrainExtractedEvent, BrainExtractedTodo, VoiceRecording, RecordingMetadata, AppNotification, extractEmailDomain, isFreelancerDomain } from '@/types/core';
+import { User, Project, CalendarEvent, ChatMessage, ChatRoom, ChatMessageType, LocationShare, ScheduleShare, DecisionShare, FileGroup, FileItem, PerformanceSnapshot, PortfolioItem, PeerFeedback, ProjectContribution, ScoreSettings, UserWorkStatus, PersonalTodo, ImportantNote, InspirationQuote, CompanyNotification, GmailMessage, EmailBrainSuggestion, BrainNotification, BrainReport, BrainFeedback, BrainExtractedEvent, BrainExtractedTodo, VoiceRecording, RecordingMetadata, AppNotification, BoardGroup, BoardTask, BoardTaskStatus, extractEmailDomain, isFreelancerDomain } from '@/types/core';
 import { mockUsers, mockProjects, mockEvents, mockMessages, mockFileGroups, mockFiles, mockPerformanceSnapshots, mockPortfolioItems, mockPeerFeedback, mockProjectContributions, mockPersonalTodos, currentUser } from '@/mock/data';
 import * as gmailService from '@/services/gmailService';
 import * as audioService from '@/services/audioService';
@@ -12,6 +12,7 @@ import * as authService from '@/services/authService';
 import * as chatService from '@/services/chatService';
 import * as todoService from '@/services/todoService';
 import * as fileService from '@/services/fileService';
+import * as boardService from '@/services/boardService';
 import { playNotificationSound } from '@/services/notificationSoundService';
 import { useWidgetStore } from '@/stores/widgetStore';
 
@@ -87,6 +88,10 @@ interface AppState {
   // (server-side trash requires gmail.modify scope which may not be granted yet)
   trashedGmailMessageIds: string[];
 
+  // Board Tasks (Project Board Widget)
+  boardGroups: BoardGroup[];
+  boardTasks: BoardTask[];
+
   // Mock data persistence — track deleted mock event IDs across refreshes
   deletedMockEventIds: string[];
 
@@ -108,6 +113,15 @@ interface AppState {
   loadUsers: () => Promise<void>;
   loadTodos: () => Promise<void>;
   loadFileGroups: (projectId: string) => Promise<void>;
+
+  // Board Task Actions
+  loadBoardData: (projectId: string) => Promise<void>;
+  addBoardGroup: (projectId: string, title: string, color?: string) => Promise<void>;
+  updateBoardGroup: (groupId: string, updates: { title?: string; color?: string; orderNo?: number }) => Promise<void>;
+  deleteBoardGroup: (groupId: string) => Promise<void>;
+  addBoardTask: (task: { boardGroupId: string; projectId: string; title: string; ownerId: string; status?: BoardTaskStatus; startDate?: string; endDate?: string; dueDate?: string }) => Promise<void>;
+  updateBoardTask: (taskId: string, updates: Partial<{ title: string; status: BoardTaskStatus; ownerId: string; reviewerIds: string[]; startDate: string | null; endDate: string | null; dueDate: string | null; progress: number; boardGroupId: string }>) => Promise<void>;
+  deleteBoardTask: (taskId: string) => Promise<void>;
 
   // UI Actions
   setSelectedProject: (projectId: string | null) => void;
@@ -342,6 +356,8 @@ export const useAppStore = create<AppState>()(
       brainFeedback: [],
       voiceRecordings: [],
       appNotifications: [],
+      boardGroups: [],
+      boardTasks: [],
       trashedGmailMessageIds: [],
       deletedMockEventIds: [],
       selectedProjectId: null,
@@ -599,6 +615,160 @@ export const useAppStore = create<AppState>()(
           });
         } catch (error) {
           console.error('Failed to load file groups:', error);
+        }
+      },
+
+      // ── Board Task Actions ─────────────────────────────────────
+
+      loadBoardData: async (projectId: string) => {
+        if (!isSupabaseConfigured()) {
+          // Mock mode: generate default groups if none exist for this project
+          const { boardGroups } = get();
+          if (!boardGroups.some(g => g.projectId === projectId)) {
+            const defaultGroups: BoardGroup[] = [
+              { id: `bg-${projectId}-1`, projectId, title: '기획', color: '#0073EA', orderNo: 0, createdAt: new Date().toISOString() },
+              { id: `bg-${projectId}-2`, projectId, title: '디자인', color: '#E44258', orderNo: 1, createdAt: new Date().toISOString() },
+              { id: `bg-${projectId}-3`, projectId, title: '제작', color: '#FDAB3D', orderNo: 2, createdAt: new Date().toISOString() },
+            ];
+            set((state) => ({
+              boardGroups: [...state.boardGroups, ...defaultGroups],
+            }));
+          }
+          return;
+        }
+
+        try {
+          const [groups, tasks] = await Promise.all([
+            boardService.getBoardGroups(projectId),
+            boardService.getBoardTasks(projectId),
+          ]);
+
+          set((state) => ({
+            boardGroups: [...state.boardGroups.filter(g => g.projectId !== projectId), ...groups],
+            boardTasks: [...state.boardTasks.filter(t => t.projectId !== projectId), ...tasks],
+          }));
+        } catch (error) {
+          console.error('Failed to load board data:', error);
+        }
+      },
+
+      addBoardGroup: async (projectId, title, color) => {
+        if (!isSupabaseConfigured()) {
+          const newGroup: BoardGroup = {
+            id: `bg-${Date.now()}`,
+            projectId,
+            title,
+            color: color || '#0073EA',
+            orderNo: get().boardGroups.filter(g => g.projectId === projectId).length,
+            createdAt: new Date().toISOString(),
+          };
+          set((state) => ({ boardGroups: [...state.boardGroups, newGroup] }));
+          return;
+        }
+
+        try {
+          const orderNo = get().boardGroups.filter(g => g.projectId === projectId).length;
+          const group = await boardService.createBoardGroup(projectId, title, color || '#0073EA', orderNo);
+          set((state) => ({ boardGroups: [...state.boardGroups, group] }));
+        } catch (error) {
+          console.error('Failed to add board group:', error);
+        }
+      },
+
+      updateBoardGroup: async (groupId, updates) => {
+        // Optimistic update
+        set((state) => ({
+          boardGroups: state.boardGroups.map(g =>
+            g.id === groupId ? { ...g, ...updates } : g
+          ),
+        }));
+
+        if (!isSupabaseConfigured()) return;
+
+        try {
+          await boardService.updateBoardGroup(groupId, updates);
+        } catch (error) {
+          console.error('Failed to update board group:', error);
+        }
+      },
+
+      deleteBoardGroup: async (groupId) => {
+        set((state) => ({
+          boardGroups: state.boardGroups.filter(g => g.id !== groupId),
+          boardTasks: state.boardTasks.filter(t => t.boardGroupId !== groupId),
+        }));
+
+        if (!isSupabaseConfigured()) return;
+
+        try {
+          await boardService.deleteBoardGroup(groupId);
+        } catch (error) {
+          console.error('Failed to delete board group:', error);
+        }
+      },
+
+      addBoardTask: async (task) => {
+        const currentUser = get().currentUser;
+        if (!currentUser) return;
+
+        if (!isSupabaseConfigured()) {
+          const newTask: BoardTask = {
+            id: `bt-${Date.now()}`,
+            boardGroupId: task.boardGroupId,
+            projectId: task.projectId,
+            title: task.title,
+            status: task.status || 'backlog',
+            ownerId: task.ownerId,
+            reviewerIds: [],
+            startDate: task.startDate,
+            endDate: task.endDate,
+            dueDate: task.dueDate,
+            progress: 0,
+            orderNo: get().boardTasks.filter(t => t.boardGroupId === task.boardGroupId).length,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          };
+          set((state) => ({ boardTasks: [...state.boardTasks, newTask] }));
+          return;
+        }
+
+        try {
+          const orderNo = get().boardTasks.filter(t => t.boardGroupId === task.boardGroupId).length;
+          const created = await boardService.createBoardTask({ ...task, orderNo });
+          set((state) => ({ boardTasks: [...state.boardTasks, created] }));
+        } catch (error) {
+          console.error('Failed to add board task:', error);
+        }
+      },
+
+      updateBoardTask: async (taskId, updates) => {
+        // Optimistic update
+        set((state) => ({
+          boardTasks: state.boardTasks.map(t =>
+            t.id === taskId ? { ...t, ...updates, updatedAt: new Date().toISOString() } : t
+          ),
+        }));
+
+        if (!isSupabaseConfigured()) return;
+
+        try {
+          await boardService.updateBoardTask(taskId, updates);
+        } catch (error) {
+          console.error('Failed to update board task:', error);
+        }
+      },
+
+      deleteBoardTask: async (taskId) => {
+        set((state) => ({
+          boardTasks: state.boardTasks.filter(t => t.id !== taskId),
+        }));
+
+        if (!isSupabaseConfigured()) return;
+
+        try {
+          await boardService.deleteBoardTask(taskId);
+        } catch (error) {
+          console.error('Failed to delete board task:', error);
         }
       },
 
@@ -1926,7 +2096,7 @@ export const useAppStore = create<AppState>()(
     }),
     {
       name: 're-be-storage',
-      version: 7, // v2: clear garbled gmail cache, v3: brainNotifications+brainReports, v4: trashedGmailMessageIds, v5: brainFeedback, v6: voiceRecordings, v7: appNotifications
+      version: 8, // v2: clear garbled gmail cache, v3: brainNotifications+brainReports, v4: trashedGmailMessageIds, v5: brainFeedback, v6: voiceRecordings, v7: appNotifications, v8: boardGroups+boardTasks
       migrate: (persisted, version) => {
         const state = persisted as Record<string, unknown>;
         if (version < 2) {
@@ -1975,6 +2145,8 @@ export const useAppStore = create<AppState>()(
         brainFeedback: state.brainFeedback,
         voiceRecordings: state.voiceRecordings,
         appNotifications: state.appNotifications,
+        boardGroups: state.boardGroups,
+        boardTasks: state.boardTasks,
       }),
       merge: (persisted, current) => {
         const merged = { ...current, ...(persisted as Partial<AppState>) };

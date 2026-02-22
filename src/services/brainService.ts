@@ -279,15 +279,23 @@ export async function getActionsByMessage(
 }
 
 /**
- * Detect @AiAssistant mention in message content.
- * Returns true only if user explicitly typed @AiAssistant.
- * Also strips legacy @ai prefix for backward compat.
+ * Detect @Brain mention in message content.
+ * Returns true only if user explicitly typed @Brain (or legacy @AiAssistant / @ai).
  */
 export function detectBrainMention(content: string): {
   isBrainMention: boolean;
   cleanContent: string;
 } {
-  // New trigger: @AiAssistant
+  // Primary trigger: @Brain
+  const brainPattern = /@Brain\b\s*/i;
+  if (brainPattern.test(content)) {
+    return {
+      isBrainMention: true,
+      cleanContent: content.replace(brainPattern, '').trim(),
+    };
+  }
+
+  // Legacy: @AiAssistant (backward compat)
   const brainAssistantPattern = /@AiAssistant\b\s*/i;
   if (brainAssistantPattern.test(content)) {
     return {

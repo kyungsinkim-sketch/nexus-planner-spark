@@ -1331,6 +1331,8 @@ export const translations = {
     statusReview: '검토 요청',
     addItem: '+ 아이템 추가',
     noTasks: '등록된 작업이 없습니다',
+    owner: '담당자',
+    timeline: '기간',
 
     // Notification Center (Global)
     notificationCenter: '알림 센터',
@@ -2690,6 +2692,8 @@ export const translations = {
     statusReview: 'Review',
     addItem: '+ Add item',
     noTasks: 'No tasks registered',
+    owner: 'Owner',
+    timeline: 'Timeline',
 
     // Notification Center (Global)
     notificationCenter: 'Notifications',

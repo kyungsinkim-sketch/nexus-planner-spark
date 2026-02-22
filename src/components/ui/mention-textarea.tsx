@@ -85,10 +85,10 @@ export function MentionTextarea({
       },
       {
         id: 'persona-brain',
-        name: 'AiAssistant',
-        email: 'Re-Be Brain AI',
+        name: 'Brain',
+        email: '',
         isPersona: true,
-        personaLabel: '🧠 Brain AI (AiAssistant)',
+        personaLabel: '🧠 Brain AI',
         personaIcon: '🧠',
         isBrain: true,
       },
@@ -289,9 +289,11 @@ export function MentionTextarea({
                 }`}>
                   {item.isPersona ? item.personaLabel : item.name}
                 </p>
-                <p className="text-[10px] text-muted-foreground truncate">
-                  {item.isPersona ? item.email : item.email}
-                </p>
+                {!item.isPersona && (
+                  <p className="text-[10px] text-muted-foreground truncate">
+                    {item.email}
+                  </p>
+                )}
               </div>
             </button>
           ))}

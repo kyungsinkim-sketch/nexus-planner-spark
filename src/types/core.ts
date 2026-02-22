@@ -497,6 +497,38 @@ export type ProjectStatus = Project['status'];
 export type FileCategory = FileGroup['category'];
 
 // ============================================================
+// Board Task Types (Project Board Widget)
+// ============================================================
+
+export type BoardTaskStatus = 'done' | 'working' | 'stuck' | 'waiting' | 'backlog' | 'review';
+
+export interface BoardGroup {
+  id: string;
+  projectId: string;
+  title: string;
+  color: string;
+  orderNo: number;
+  createdAt: string;
+}
+
+export interface BoardTask {
+  id: string;
+  boardGroupId: string;
+  projectId: string;
+  title: string;
+  status: BoardTaskStatus;
+  ownerId: string;
+  reviewerIds?: string[];
+  startDate?: string;
+  endDate?: string;
+  dueDate?: string;
+  progress: number; // 0-100
+  orderNo: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ============================================================
 // Gmail + Brain Email Analysis Types
 // ============================================================
 

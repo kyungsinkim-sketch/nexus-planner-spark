@@ -1027,6 +1027,82 @@ export interface Database {
                     updated_at?: string
                 }
             }
+            board_groups: {
+                Row: {
+                    id: string
+                    project_id: string
+                    title: string
+                    color: string
+                    order_no: number
+                    created_at: string
+                }
+                Insert: {
+                    id?: string
+                    project_id: string
+                    title: string
+                    color?: string
+                    order_no?: number
+                    created_at?: string
+                }
+                Update: {
+                    id?: string
+                    project_id?: string
+                    title?: string
+                    color?: string
+                    order_no?: number
+                    created_at?: string
+                }
+            }
+            board_tasks: {
+                Row: {
+                    id: string
+                    board_group_id: string
+                    project_id: string
+                    title: string
+                    status: 'done' | 'working' | 'stuck' | 'waiting' | 'backlog' | 'review'
+                    owner_id: string
+                    reviewer_ids: string[] | null
+                    start_date: string | null
+                    end_date: string | null
+                    due_date: string | null
+                    progress: number
+                    order_no: number
+                    created_at: string
+                    updated_at: string
+                }
+                Insert: {
+                    id?: string
+                    board_group_id: string
+                    project_id: string
+                    title: string
+                    status?: 'done' | 'working' | 'stuck' | 'waiting' | 'backlog' | 'review'
+                    owner_id: string
+                    reviewer_ids?: string[] | null
+                    start_date?: string | null
+                    end_date?: string | null
+                    due_date?: string | null
+                    progress?: number
+                    order_no?: number
+                    created_at?: string
+                    updated_at?: string
+                }
+                Update: {
+                    id?: string
+                    board_group_id?: string
+                    project_id?: string
+                    title?: string
+                    status?: 'done' | 'working' | 'stuck' | 'waiting' | 'backlog' | 'review'
+                    owner_id?: string
+                    reviewer_ids?: string[] | null
+                    start_date?: string | null
+                    end_date?: string | null
+                    due_date?: string | null
+                    progress?: number
+                    order_no?: number
+                    created_at?: string
+                    updated_at?: string
+                }
+            }
         }
         Views: {
             [_ in never]: never

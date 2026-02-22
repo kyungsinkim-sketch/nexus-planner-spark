@@ -1464,10 +1464,7 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
               </span>
               <span className="text-[10px] text-violet-500 font-medium flex items-center gap-1">
                 <Brain className="w-3 h-3" />
-                @AiAssistant → Brain AI
-              </span>
-              <span className="text-[10px] text-amber-500 font-medium">
-                @pablo @cd @pd → AI 페르소나
+                @Brain AI @pablo @cd @pd → AI 페르소나
               </span>
             </div>
           </div>
