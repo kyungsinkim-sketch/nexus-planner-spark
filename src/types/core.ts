@@ -3,6 +3,8 @@ export type UserRole = 'ADMIN' | 'MANAGER' | 'PRODUCER' | 'MEMBER';
 // User work status
 export type UserWorkStatus = 'AT_WORK' | 'NOT_AT_WORK' | 'LUNCH' | 'TRAINING' | 'REMOTE' | 'OVERSEAS' | 'FILMING' | 'FIELD';
 
+export type UserAccessType = 'company' | 'freelancer';
+
 export interface User {
   id: string;
   name: string;
@@ -11,6 +13,40 @@ export interface User {
   role: UserRole;
   department?: string;
   workStatus?: UserWorkStatus;
+  accessType?: UserAccessType; // 'company' = same domain, 'freelancer' = external
+  companyDomain?: string; // e.g. 'paulus.pro' — extracted from email
+}
+
+// Extract domain from email address
+export function extractEmailDomain(email: string): string {
+  const parts = email.split('@');
+  return parts.length > 1 ? parts[1].toLowerCase() : '';
+}
+
+// Check if a domain is a generic/free email provider (freelancer)
+const FREE_EMAIL_DOMAINS = new Set([
+  'gmail.com', 'naver.com', 'daum.net', 'hanmail.net', 'kakao.com',
+  'yahoo.com', 'hotmail.com', 'outlook.com', 'icloud.com', 'mail.com',
+  'protonmail.com', 'nate.com', 'live.com', 'msn.com',
+]);
+
+export function isFreelancerDomain(domain: string): boolean {
+  return FREE_EMAIL_DOMAINS.has(domain.toLowerCase());
+}
+
+// App Notification — unified notification item for the global notification center
+export type AppNotificationType = 'chat' | 'todo' | 'event' | 'brain' | 'company';
+
+export interface AppNotification {
+  id: string;
+  type: AppNotificationType;
+  title: string;
+  message: string;
+  projectId?: string;
+  roomId?: string;
+  sourceId?: string; // reference to the original item
+  createdAt: string;
+  read: boolean;
 }
 
 export type ProjectType = 'BIDDING' | 'EXECUTION';

@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { User, Project, CalendarEvent, ChatMessage, ChatRoom, ChatMessageType, LocationShare, ScheduleShare, DecisionShare, FileGroup, FileItem, PerformanceSnapshot, PortfolioItem, PeerFeedback, ProjectContribution, ScoreSettings, UserWorkStatus, PersonalTodo, ImportantNote, InspirationQuote, CompanyNotification, GmailMessage, EmailBrainSuggestion, BrainNotification, BrainReport, BrainFeedback, BrainExtractedEvent, BrainExtractedTodo, VoiceRecording, RecordingMetadata } from '@/types/core';
+import { User, Project, CalendarEvent, ChatMessage, ChatRoom, ChatMessageType, LocationShare, ScheduleShare, DecisionShare, FileGroup, FileItem, PerformanceSnapshot, PortfolioItem, PeerFeedback, ProjectContribution, ScoreSettings, UserWorkStatus, PersonalTodo, ImportantNote, InspirationQuote, CompanyNotification, GmailMessage, EmailBrainSuggestion, BrainNotification, BrainReport, BrainFeedback, BrainExtractedEvent, BrainExtractedTodo, VoiceRecording, RecordingMetadata, AppNotification, extractEmailDomain, isFreelancerDomain } from '@/types/core';
 import { mockUsers, mockProjects, mockEvents, mockMessages, mockFileGroups, mockFiles, mockPerformanceSnapshots, mockPortfolioItems, mockPeerFeedback, mockProjectContributions, mockPersonalTodos, currentUser } from '@/mock/data';
 import * as gmailService from '@/services/gmailService';
 import * as audioService from '@/services/audioService';
@@ -79,6 +79,9 @@ interface AppState {
 
   // Voice Recordings (Voice-to-Brain)
   voiceRecordings: VoiceRecording[];
+
+  // Global App Notifications (unified notification center)
+  appNotifications: AppNotification[];
 
   // Track locally-trashed Gmail message IDs so they don't reappear on sync
   // (server-side trash requires gmail.modify scope which may not be granted yet)
@@ -216,6 +219,13 @@ interface AppState {
     },
   ) => Promise<void>;
 
+  // App Notification Actions
+  addAppNotification: (notification: Omit<AppNotification, 'id' | 'createdAt' | 'read'>) => void;
+  markAppNotificationRead: (id: string) => void;
+  markAllAppNotificationsRead: () => void;
+  clearAppNotifications: () => void;
+  getUnreadAppNotificationCount: () => number;
+
   // Settings Actions
   updateScoreSettings: (settings: Partial<ScoreSettings>) => void;
 
@@ -331,6 +341,7 @@ export const useAppStore = create<AppState>()(
       brainReports: [],
       brainFeedback: [],
       voiceRecordings: [],
+      appNotifications: [],
       trashedGmailMessageIds: [],
       deletedMockEventIds: [],
       selectedProjectId: null,
@@ -431,11 +442,29 @@ export const useAppStore = create<AppState>()(
 
         try {
           const allProjects = await projectService.getProjects();
-          const { currentUser } = get();
+          const { currentUser, users: allUsers } = get();
           // ADMIN sees all projects; others only see projects they're a team member of
-          const projects = (currentUser && currentUser.role !== 'ADMIN')
-            ? allProjects.filter(p => p.teamMemberIds?.includes(currentUser.id))
-            : allProjects;
+          // Domain-based sharing: users with same email domain share the project dashboard
+          let projects = allProjects;
+          if (currentUser && currentUser.role !== 'ADMIN') {
+            const userDomain = currentUser.email ? extractEmailDomain(currentUser.email) : '';
+            const isFreelancer = !userDomain || isFreelancerDomain(userDomain);
+
+            if (isFreelancer) {
+              // Freelancers only see projects where they're explicitly a team member
+              projects = allProjects.filter(p => p.teamMemberIds?.includes(currentUser.id));
+            } else {
+              // Company users: see projects where ANY same-domain user is a team member
+              const sameDomainUserIds = new Set(
+                allUsers
+                  .filter(u => u.email && extractEmailDomain(u.email) === userDomain)
+                  .map(u => u.id)
+              );
+              projects = allProjects.filter(p =>
+                p.teamMemberIds?.some(id => sameDomainUserIds.has(id))
+              );
+            }
+          }
           set({ projects });
         } catch (error) {
           console.error('Failed to load projects:', error);
@@ -769,6 +798,18 @@ export const useAppStore = create<AppState>()(
           playNotificationSound('message');
         }
         set({ messages: [...state.messages, message] });
+        // Create app notification for messages from other users
+        if (state.currentUser && message.userId !== state.currentUser.id && message.messageType === 'text') {
+          const sender = state.users.find(u => u.id === message.userId);
+          get().addAppNotification({
+            type: 'chat',
+            title: sender?.name || 'New message',
+            message: message.content.slice(0, 100),
+            projectId: message.projectId || undefined,
+            roomId: message.roomId || undefined,
+            sourceId: message.id,
+          });
+        }
       },
 
       deleteMessage: async (messageId) => {
@@ -1093,6 +1134,16 @@ export const useAppStore = create<AppState>()(
               requestedById: todo.requestedById || currentUser.id,
             });
             set((state) => ({ personalTodos: [...state.personalTodos, newTodo] }));
+            // Push app notification for assigned todo
+            if (newTodo.assigneeIds?.includes(currentUser.id)) {
+              get().addAppNotification({
+                type: 'todo',
+                title: newTodo.title,
+                message: `마감: ${new Date(newTodo.dueDate).toLocaleDateString('ko-KR')}`,
+                projectId: newTodo.projectId,
+                sourceId: newTodo.id,
+              });
+            }
           } catch (error) {
             console.error('Failed to create todo:', error);
             throw error;
@@ -1111,6 +1162,16 @@ export const useAppStore = create<AppState>()(
             createdAt: new Date().toISOString(),
           };
           set((state) => ({ personalTodos: [...state.personalTodos, newTodo] }));
+          // Push app notification for assigned todo
+          if (newTodo.assigneeIds?.includes(currentUser.id)) {
+            get().addAppNotification({
+              type: 'todo',
+              title: newTodo.title,
+              message: `마감: ${new Date(newTodo.dueDate).toLocaleDateString('ko-KR')}`,
+              projectId: newTodo.projectId,
+              sourceId: newTodo.id,
+            });
+          }
         }
       },
 
@@ -1817,6 +1878,34 @@ export const useAppStore = create<AppState>()(
       })),
 
       // Settings Actions
+      // App Notification Actions
+      addAppNotification: (notification) => {
+        const newNotif: AppNotification = {
+          ...notification,
+          id: `an-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          createdAt: new Date().toISOString(),
+          read: false,
+        };
+        set((state) => ({
+          appNotifications: [newNotif, ...state.appNotifications].slice(0, 200),
+        }));
+        // Play sound
+        if (get().notificationSoundEnabled) {
+          playNotificationSound('message');
+        }
+      },
+      markAppNotificationRead: (id) => set((state) => ({
+        appNotifications: state.appNotifications.map(n =>
+          n.id === id ? { ...n, read: true } : n
+        ),
+      })),
+      markAllAppNotificationsRead: () => set((state) => ({
+        appNotifications: state.appNotifications.map(n => ({ ...n, read: true })),
+      })),
+      clearAppNotifications: () => set({ appNotifications: [] }),
+      getUnreadAppNotificationCount: () =>
+        get().appNotifications.filter(n => !n.read).length,
+
       updateScoreSettings: (settings) => set((state) => ({
         scoreSettings: { ...state.scoreSettings, ...settings }
       })),
@@ -1837,7 +1926,7 @@ export const useAppStore = create<AppState>()(
     }),
     {
       name: 're-be-storage',
-      version: 6, // v2: clear garbled gmail cache, v3: brainNotifications+brainReports, v4: trashedGmailMessageIds, v5: brainFeedback, v6: voiceRecordings
+      version: 7, // v2: clear garbled gmail cache, v3: brainNotifications+brainReports, v4: trashedGmailMessageIds, v5: brainFeedback, v6: voiceRecordings, v7: appNotifications
       migrate: (persisted, version) => {
         const state = persisted as Record<string, unknown>;
         if (version < 2) {
@@ -1855,6 +1944,9 @@ export const useAppStore = create<AppState>()(
         }
         if (version < 6) {
           state.voiceRecordings = [];
+        }
+        if (version < 7) {
+          state.appNotifications = [];
         }
         return state;
       },
@@ -1882,6 +1974,7 @@ export const useAppStore = create<AppState>()(
         brainReports: state.brainReports,
         brainFeedback: state.brainFeedback,
         voiceRecordings: state.voiceRecordings,
+        appNotifications: state.appNotifications,
       }),
       merge: (persisted, current) => {
         const merged = { ...current, ...(persisted as Partial<AppState>) };

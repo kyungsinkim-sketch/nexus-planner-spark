@@ -10,9 +10,8 @@
 
 import { useMemo, useCallback } from 'react';
 import { useAppStore } from '@/stores/appStore';
-// useWidgetStore no longer needed — chat message click navigation removed
 import { useTranslation } from '@/hooks/useTranslation';
-import { Bell, Calendar, Check, Megaphone, Brain } from 'lucide-react';
+import { Bell, Calendar, Check, Megaphone, Brain, MessageSquare, ListTodo } from 'lucide-react';
 import type { WidgetDataContext } from '@/types/widget';
 
 function NotificationsWidget({ context }: { context: WidgetDataContext }) {
@@ -21,10 +20,13 @@ function NotificationsWidget({ context }: { context: WidgetDataContext }) {
     events, currentUser, getUserById,
     companyNotifications, brainNotifications,
     dismissedNotificationIds, dismissNotification, dismissAllNotifications,
+    appNotifications,
   } = useAppStore();
 
 
   const dismissedSet = useMemo(() => new Set(dismissedNotificationIds), [dismissedNotificationIds]);
+
+  const isProjectContext = context.type === 'project' && !!context.projectId;
 
   // Build notification list
   const notifications = useMemo(() => {
@@ -33,13 +35,38 @@ function NotificationsWidget({ context }: { context: WidgetDataContext }) {
       icon: typeof Bell;
       text: string;
       time: string;
-      type: 'event' | 'company' | 'brain';
+      type: 'event' | 'company' | 'brain' | 'chat' | 'todo';
       senderName?: string;
       projectId?: string;
     }[] = [];
 
-    // Chat message notifications completely removed per user request.
-    // Only Brain AI, company, and event notifications are shown.
+    // App notifications (chat, todo, brain) — filtered by project if in project context
+    const relevantAppNotifs = isProjectContext
+      ? appNotifications.filter(n => n.projectId === context.projectId)
+      : appNotifications;
+
+    relevantAppNotifs
+      .filter(n => !n.read)
+      .slice(0, 10)
+      .forEach((n) => {
+        const id = `app-${n.id}`;
+        if (dismissedSet.has(id)) return;
+        const iconMap: Record<string, typeof Bell> = {
+          chat: MessageSquare,
+          todo: ListTodo,
+          event: Calendar,
+          brain: Brain,
+          company: Megaphone,
+        };
+        items.push({
+          id,
+          icon: iconMap[n.type] || Bell,
+          text: `${n.title}: ${n.message}`,
+          time: new Date(n.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          type: n.type as 'event' | 'company' | 'brain' | 'chat' | 'todo',
+          projectId: n.projectId,
+        });
+      });
 
     // Upcoming events (next 24h) — only current user's events
     const now = new Date();
@@ -51,7 +78,7 @@ function NotificationsWidget({ context }: { context: WidgetDataContext }) {
         if (currentUser && e.ownerId && e.ownerId !== currentUser.id) return false;
         const start = new Date(e.startAt);
         const match = start >= now && start <= next24h;
-        if (context.type === 'project' && context.projectId) {
+        if (isProjectContext) {
           return match && e.projectId === context.projectId;
         }
         return match;
@@ -80,33 +107,40 @@ function NotificationsWidget({ context }: { context: WidgetDataContext }) {
         });
       });
 
-    // Company-wide notifications (newest first, shown before other items)
-    const companyItems: typeof items = [];
-    companyNotifications
-      .slice()
-      .reverse()
-      .forEach((cn) => {
-        const id = `company-${cn.id}`;
-        if (dismissedSet.has(id)) return;
-        const sender = getUserById(cn.sentBy);
-        companyItems.push({
-          id,
-          icon: Megaphone,
-          text: `${cn.title}: ${cn.message}`,
-          time: new Date(cn.sentAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          type: 'company',
-          senderName: sender?.name || 'Admin',
+    // Company-wide notifications (only in global dashboard, not per-project)
+    if (!isProjectContext) {
+      companyNotifications
+        .slice()
+        .reverse()
+        .forEach((cn) => {
+          const id = `company-${cn.id}`;
+          if (dismissedSet.has(id)) return;
+          const sender = getUserById(cn.sentBy);
+          items.push({
+            id,
+            icon: Megaphone,
+            text: `${cn.title}: ${cn.message}`,
+            time: new Date(cn.sentAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            type: 'company',
+            senderName: sender?.name || 'Admin',
+          });
         });
-      });
+    }
 
-    // Brain AI notifications (newest first)
-    const brainItems: typeof items = [];
+    // Brain AI notifications (newest first) — filtered by project context
     brainNotifications
       .slice(0, 10)
       .forEach((bn) => {
+        // In project context, only show brain notifs linked to this project's chat rooms
+        if (isProjectContext && bn.chatRoomId) {
+          // Check if chatRoom belongs to this project
+          const { chatRooms } = useAppStore.getState();
+          const room = chatRooms.find(r => r.id === bn.chatRoomId);
+          if (room && room.projectId !== context.projectId) return;
+        }
         const id = `brain-${bn.id}`;
         if (dismissedSet.has(id)) return;
-        brainItems.push({
+        items.push({
           id,
           icon: Brain,
           text: `${bn.title}: ${bn.message}`,
@@ -116,11 +150,8 @@ function NotificationsWidget({ context }: { context: WidgetDataContext }) {
         });
       });
 
-    // Sort: brain → company → events
-    const eventItems = items.filter((i) => i.type === 'event');
-
-    return [...brainItems, ...companyItems, ...eventItems].slice(0, 20);
-  }, [events, context, dismissedSet, currentUser, companyNotifications, brainNotifications, t]);
+    return items.slice(0, 20);
+  }, [events, context, dismissedSet, currentUser, companyNotifications, brainNotifications, appNotifications, isProjectContext, t]);
 
   const handleDismissAll = useCallback(() => {
     dismissAllNotifications(notifications.map((n) => n.id));

@@ -48,7 +48,7 @@ import { useTranslation } from '@/hooks/useTranslation';
 import { ChatMessageBubble } from '@/components/chat/ChatMessageBubble';
 import { FileUploadModal } from '@/components/project/FileUploadModal';
 import type { LocationShare, ScheduleShare, DecisionShare, ChatMessage, ChatRoom, FileCategory } from '@/types/core';
-import { BRAIN_BOT_USER_ID } from '@/types/core';
+import { BRAIN_BOT_USER_ID, extractEmailDomain, isFreelancerDomain } from '@/types/core';
 import * as chatService from '@/services/chatService';
 import * as fileService from '@/services/fileService';
 import * as brainService from '@/services/brainService';
@@ -93,8 +93,14 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
   const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [showFileUpload, setShowFileUpload] = useState(false);
-  const [analyzingTxt, setAnalyzingTxt] = useState(false);
-  const txtFileInputRef = useRef<HTMLInputElement>(null);
+  // /analyze command removed — no longer available in chat
+
+  // Freelancer detection — freelancers can only access sub-chat rooms, not default/main
+  const isFreelancer = useMemo(() => {
+    if (!currentUser?.email) return false;
+    const domain = extractEmailDomain(currentUser.email);
+    return !domain || isFreelancerDomain(domain);
+  }, [currentUser?.email]);
 
   // Auto-select project chat room when defaultProjectId is provided (widget on project tab)
   const hasAutoSelectedRef = useRef(false);
@@ -305,58 +311,10 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
   const [brainProcessing, setBrainProcessing] = useState(false);
   const [pabloProcessing, setPabloProcessing] = useState(false);
 
-  // /analyze command: trigger TXT file picker
-  const handleAnalyzeTxtFile = async (file: File) => {
-    if (!selectedChat || !currentUser) return;
-    if (!file.name.endsWith('.txt')) {
-      toast.error('TXT 파일만 분석 가능합니다.');
-      return;
-    }
-    setAnalyzingTxt(true);
-    try {
-      const txtContent = await file.text();
-      if (!txtContent.trim()) {
-        toast.error('빈 파일입니다.');
-        return;
-      }
-      toast.info(`📄 "${file.name}" 분석 시작... (${Math.ceil(txtContent.length / 1000)}KB)`);
-      const result = await personaService.analyzeTxt(
-        txtContent,
-        file.name,
-        selectedChat.type === 'project' ? selectedChat.id : undefined,
-      );
-      toast.success(`✅ ${result.message}`);
-      // Send a system-like message to the chat about the analysis
-      const summaryMsg = `📊 대화록 분석 완료: "${file.name}"\n• 추출 패턴: ${result.itemCount}개\n• 분석 시간: ${(result.timeMs / 1000).toFixed(1)}초\n• 청크: ${result.chunkCount}개`;
-      if (selectedChat.type === 'project') {
-        if (selectedChat.roomId) {
-          await sendRoomMessage(selectedChat.roomId, selectedChat.id, summaryMsg);
-        } else {
-          await sendProjectMessage(selectedChat.id, summaryMsg);
-        }
-      } else {
-        await sendDirectMessage(selectedChat.id, summaryMsg);
-      }
-    } catch (err) {
-      console.error('[Analyze] TXT analysis failed:', err);
-      toast.error(`분석 실패: ${(err as Error).message}`);
-    } finally {
-      setAnalyzingTxt(false);
-    }
-  };
-
   const handleSendMessage = async (forceBrain = false) => {
     if (!newMessage.trim() || !selectedChat || !currentUser) return;
 
     const trimmed = newMessage.trim();
-
-    // 0. Check for /analyze command — opens TXT file picker
-    const { isAnalyzeCommand } = personaService.detectAnalyzeCommand(trimmed);
-    if (isAnalyzeCommand) {
-      setNewMessage('');
-      txtFileInputRef.current?.click();
-      return;
-    }
 
     // 1. Check for ANY persona mention (@pablo, @cd, @pd) — takes priority over brain
     const { isPersonaMention, cleanContent: personaCleanContent, personaId } = personaService.detectPersonaMention(trimmed);
@@ -1000,11 +958,13 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
     await loadChatRooms(projectId);
 
     const rooms = getChatRoomsByProject(projectId);
-    const defaultRoom = rooms.find(r => r.isDefault) || rooms[0];
+    // Freelancers cannot auto-select the default (main) room
+    const availableRooms = isFreelancer ? rooms.filter(r => !r.isDefault) : rooms;
+    const defaultRoom = availableRooms.find(r => r.isDefault) || availableRooms[0];
     if (defaultRoom) {
       setSelectedChat({ type: 'project', id: projectId, roomId: defaultRoom.id });
     }
-  }, [expandedProjectId, loadChatRooms, getChatRoomsByProject]);
+  }, [expandedProjectId, loadChatRooms, getChatRoomsByProject, isFreelancer]);
 
   const handleSelectRoom = (projectId: string, room: ChatRoom) => {
     setSelectedChat({ type: 'project', id: projectId, roomId: room.id });
@@ -1173,16 +1133,32 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
                             <div className="bg-muted/20 border-t border-border/50">
                               {rooms.map((room) => {
                                 const isRoomSelected = selectedChat?.roomId === room.id;
+                                const isDefaultRoom = room.isDefault;
+                                const isRoomLocked = isFreelancer && isDefaultRoom;
                                 return (
                                   <button
                                     key={room.id}
-                                    onClick={() => handleSelectRoom(project.id, room)}
-                                    className={`w-full flex items-center gap-2 px-3 py-2 pl-12 hover:bg-muted/50 transition-colors text-left text-xs ${isRoomSelected ? 'bg-primary/10 text-primary' : 'text-muted-foreground'}`}
+                                    onClick={() => {
+                                      if (isRoomLocked) {
+                                        toast.info(t('mainChatRestricted'));
+                                        return;
+                                      }
+                                      handleSelectRoom(project.id, room);
+                                    }}
+                                    className={`w-full flex items-center gap-2 px-3 py-2 pl-12 hover:bg-muted/50 transition-colors text-left text-xs ${
+                                      isRoomLocked ? 'opacity-40 cursor-not-allowed' :
+                                      isRoomSelected ? 'bg-primary/10 text-primary' : 'text-muted-foreground'
+                                    }`}
                                   >
                                     <Hash className="w-3 h-3 shrink-0" />
                                     <span className="truncate">{room.name}</span>
-                                    {room.isDefault && (
+                                    {isDefaultRoom && (
                                       <span className="text-[9px] bg-muted px-1 py-0.5 rounded-full shrink-0">{t('defaultRoom')}</span>
+                                    )}
+                                    {isRoomLocked && (
+                                      <span className="text-[9px] bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 px-1 py-0.5 rounded-full shrink-0">
+                                        {t('subChatOnly')}
+                                      </span>
                                     )}
                                   </button>
                                 );
@@ -1430,15 +1406,7 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
             </div>
           )}
 
-          {/* TXT Analysis Processing Indicator */}
-          {analyzingTxt && (
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-50 dark:bg-emerald-950/30 border-t border-emerald-200/50 dark:border-emerald-800/50">
-              <div className="w-3 h-3 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
-              <span className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">
-                📄 대화록 분석 중... (시간이 걸릴 수 있습니다)
-              </span>
-            </div>
-          )}
+          {/* /analyze command removed */}
 
           {/* Message Input — Enter=send, Cmd+Enter=Brain AI */}
           <div className="p-2.5 bg-background shrink-0 min-w-0">
@@ -1515,9 +1483,6 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
               <span className="text-[10px] text-amber-500 font-medium">
                 @pablo @cd @pd → AI 페르소나
               </span>
-              <span className="text-[10px] text-emerald-500 font-medium">
-                /analyze → 대화록 분석
-              </span>
             </div>
           </div>
         </div>
@@ -1533,18 +1498,7 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
         />
       )}
 
-      {/* Hidden file input for /analyze command */}
-      <input
-        ref={txtFileInputRef}
-        type="file"
-        accept=".txt"
-        className="hidden"
-        onChange={(e) => {
-          const file = e.target.files?.[0];
-          if (file) handleAnalyzeTxtFile(file);
-          e.target.value = ''; // Reset for re-upload
-        }}
-      />
+      {/* /analyze file input removed */}
 
       {/* Create Room Dialog */}
       <Dialog open={showCreateRoom} onOpenChange={setShowCreateRoom}>

@@ -26,6 +26,7 @@ import { useTranslation } from '@/hooks/useTranslation';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import * as fileService from '@/services/fileService';
 import type { ChatMessage, FileItem } from '@/types/core';
+import { BRAIN_BOT_USER_ID } from '@/types/core';
 import { BrainActionBubble } from './BrainActionBubble';
 import { PersonaResponseBubble } from './PersonaResponseBubble';
 
@@ -82,20 +83,54 @@ interface ChatMessageBubbleProps {
 
 export function ChatMessageBubble({ message, isCurrentUser, onVoteDecision, onAcceptSchedule, onDelete, onPin, onConfirmBrainAction, onRejectBrainAction }: ChatMessageBubbleProps) {
   const { messageType } = message;
+  const { currentUser, messages: allMessages } = useAppStore();
 
-  // AI Persona response message (@pablo)
+  // For AI messages (persona_response, brain_action), check if the current user
+  // was the one who triggered the AI by finding the preceding user message
+  const isAiMessageCaller = (messageType === 'persona_response' || messageType === 'brain_action') && currentUser
+    ? (() => {
+        const msgIndex = allMessages.findIndex(m => m.id === message.id);
+        if (msgIndex <= 0) return false;
+        // Walk backwards to find the user message that triggered this AI response
+        for (let i = msgIndex - 1; i >= Math.max(0, msgIndex - 3); i--) {
+          const prev = allMessages[i];
+          if (prev.userId !== BRAIN_BOT_USER_ID && prev.messageType !== 'brain_action' && prev.messageType !== 'persona_response') {
+            return prev.userId === currentUser.id;
+          }
+        }
+        return false;
+      })()
+    : false;
+
+  // AI Persona response message (@pablo) — wrapped with delete/pin for caller
   if (messageType === 'persona_response') {
-    return <PersonaResponseBubble message={message} />;
+    return (
+      <AiMessageWrapper
+        canManage={isAiMessageCaller}
+        onDelete={onDelete}
+        onPin={onPin}
+        messageId={message.id}
+      >
+        <PersonaResponseBubble message={message} />
+      </AiMessageWrapper>
+    );
   }
 
-  // Brain AI bot message
+  // Brain AI bot message — wrapped with delete/pin for caller
   if (messageType === 'brain_action') {
     return (
-      <BrainActionBubble
-        message={message}
-        onConfirmAction={onConfirmBrainAction}
-        onRejectAction={onRejectBrainAction}
-      />
+      <AiMessageWrapper
+        canManage={isAiMessageCaller}
+        onDelete={onDelete}
+        onPin={onPin}
+        messageId={message.id}
+      >
+        <BrainActionBubble
+          message={message}
+          onConfirmAction={onConfirmBrainAction}
+          onRejectAction={onRejectBrainAction}
+        />
+      </AiMessageWrapper>
     );
   }
 
@@ -186,6 +221,43 @@ function MessageWrapper({ children, isCurrentUser, onDelete, onPin, messageId }:
         <button
           onClick={() => onDelete(messageId)}
           className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover/msg:opacity-100 transition-opacity shadow-sm hover:bg-destructive/90 z-10"
+          title="Delete message"
+        >
+          <Trash2 className="w-3 h-3" />
+        </button>
+      )}
+    </div>
+  );
+}
+
+// Wrapper for AI messages (persona + brain) that adds delete/pin buttons for the caller
+function AiMessageWrapper({ children, canManage, onDelete, onPin, messageId }: {
+  children: React.ReactNode;
+  canManage: boolean;
+  onDelete?: (messageId: string) => void;
+  onPin?: (messageId: string) => void;
+  messageId: string;
+}) {
+  if (!canManage) return <div className="max-w-full overflow-hidden">{children}</div>;
+
+  return (
+    <div className="group/ai-msg relative max-w-full overflow-visible">
+      {children}
+      {/* Pin button — left side */}
+      {onPin && (
+        <button
+          onClick={() => onPin(messageId)}
+          className="absolute -top-2 -left-2 w-6 h-6 rounded-full bg-amber-500 text-white flex items-center justify-center opacity-0 group-hover/ai-msg:opacity-100 transition-opacity shadow-sm hover:bg-amber-600 z-10"
+          title="Pin message"
+        >
+          <Pin className="w-3 h-3" />
+        </button>
+      )}
+      {/* Delete button — right side */}
+      {onDelete && (
+        <button
+          onClick={() => onDelete(messageId)}
+          className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover/ai-msg:opacity-100 transition-opacity shadow-sm hover:bg-destructive/90 z-10"
           title="Delete message"
         >
           <Trash2 className="w-3 h-3" />

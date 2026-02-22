@@ -1309,6 +1309,26 @@ export const translations = {
     pin: '고정',
     unpin: '고정 해제',
     lastSync: '마지막 동기화',
+
+    // Notification Center (Global)
+    notificationCenter: '알림 센터',
+    noNotifications: '새로운 알림이 없습니다',
+    newChatMessage: '새 메시지',
+    newTodoAssigned: '새 할 일',
+    newCalendarEvent: '새 일정',
+    viewAll: '모두 보기',
+    clearAll: '모두 지우기',
+
+    // Domain / Company
+    companyDashboard: '회사 대시보드',
+    freelancerAccess: '외부 프리랜서',
+    subChatOnly: '하위 채팅방만 접근 가능',
+    mainChatRestricted: '메인 채팅방은 회사 멤버만 접근 가능합니다',
+
+    // AI Message actions
+    deleteAiMessage: 'AI 메시지 삭제',
+    pinAiMessage: 'AI 메시지 고정',
+    onlyCallerCanDelete: '요청자만 삭제할 수 있습니다',
   },
   en: {
     // Navigation
@@ -2626,6 +2646,26 @@ export const translations = {
     pin: 'Pin',
     unpin: 'Unpin',
     lastSync: 'Last sync',
+
+    // Notification Center (Global)
+    notificationCenter: 'Notifications',
+    noNotifications: 'No new notifications',
+    newChatMessage: 'New message',
+    newTodoAssigned: 'New todo',
+    newCalendarEvent: 'New event',
+    viewAll: 'View all',
+    clearAll: 'Clear all',
+
+    // Domain / Company
+    companyDashboard: 'Company Dashboard',
+    freelancerAccess: 'External Freelancer',
+    subChatOnly: 'Sub-chat rooms only',
+    mainChatRestricted: 'Main chat room is accessible only by company members',
+
+    // AI Message actions
+    deleteAiMessage: 'Delete AI message',
+    pinAiMessage: 'Pin AI message',
+    onlyCallerCanDelete: 'Only the requester can delete this',
   },
 } as const;
 

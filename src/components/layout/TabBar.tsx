@@ -8,6 +8,8 @@
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useWidgetStore } from '@/stores/widgetStore';
 import { useAppStore } from '@/stores/appStore';
+import type { AppNotificationType } from '@/types/core';
+import { useState, useRef, useEffect } from 'react';
 import {
   X,
   LayoutDashboard,
@@ -25,6 +27,12 @@ import {
   Film,
   MapPinned,
   Plus,
+  Bell,
+  MessageSquare,
+  ListTodo,
+  Calendar,
+  Brain,
+  Megaphone,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTranslation } from '@/hooks/useTranslation';
@@ -80,13 +88,39 @@ export function TabBar() {
     toggleTheme,
     setProjectCreateDialogOpen,
     projects,
+    appNotifications,
+    markAppNotificationRead,
+    markAllAppNotificationsRead,
   } = useAppStore();
+  const [showNotifications, setShowNotifications] = useState(false);
+  const notifRef = useRef<HTMLDivElement>(null);
+  const unreadCount = appNotifications.filter(n => !n.read).length;
   const isAdmin = currentUser?.role === 'ADMIN' || currentUser?.role === 'MANAGER';
   const isOnAdminRoute = location.pathname === '/admin';
   const currentStatus = workStatusConfig[userWorkStatus];
   const isDark = theme === 'dark';
   // Whether we're on a sub-route (admin, settings, budget, deposits)
   const isOnSubRoute = location.pathname !== '/';
+
+  // Close notification popup on outside click
+  useEffect(() => {
+    if (!showNotifications) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (notifRef.current && !notifRef.current.contains(e.target as Node)) {
+        setShowNotifications(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showNotifications]);
+
+  const notifIconMap: Record<string, typeof Bell> = {
+    chat: MessageSquare,
+    todo: ListTodo,
+    event: Calendar,
+    brain: Brain,
+    company: Megaphone,
+  };
 
   // Resolve keyColor from project data (reactive to keyColor changes)
   const getTabKeyColor = (tab: typeof openTabs[0]) => {
@@ -188,6 +222,95 @@ export function TabBar() {
 
       {/* === Right: Controls === */}
       <div className="flex items-center gap-1 shrink-0 ml-2 self-center">
+        {/* Notification Bell */}
+        <div className="relative" ref={notifRef}>
+          <button
+            onClick={() => setShowNotifications(!showNotifications)}
+            className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-white/10 transition-colors relative"
+            title={t('notificationCenter')}
+          >
+            <Bell className="w-4 h-4" />
+            {unreadCount > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full bg-red-500 text-white text-[9px] font-bold flex items-center justify-center leading-none">
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </span>
+            )}
+          </button>
+
+          {/* Notification Popup */}
+          {showNotifications && (
+            <div className="absolute bottom-full right-0 mb-2 w-80 max-h-96 bg-card border border-border rounded-xl shadow-2xl z-50 overflow-hidden">
+              <div className="flex items-center justify-between px-3 py-2 border-b border-border">
+                <span className="text-xs font-semibold text-foreground">{t('notificationCenter')}</span>
+                {unreadCount > 0 && (
+                  <button
+                    onClick={() => markAllAppNotificationsRead()}
+                    className="text-[10px] text-primary hover:text-primary/80 transition-colors"
+                  >
+                    {t('markAllRead')}
+                  </button>
+                )}
+              </div>
+              <div className="overflow-y-auto max-h-80">
+                {appNotifications.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-8 text-muted-foreground/60">
+                    <Bell className="w-5 h-5 mb-1" />
+                    <span className="text-xs">{t('noNotifications')}</span>
+                  </div>
+                ) : (
+                  appNotifications.slice(0, 30).map((n) => {
+                    const Icon = notifIconMap[n.type] || Bell;
+                    return (
+                      <button
+                        key={n.id}
+                        onClick={() => {
+                          markAppNotificationRead(n.id);
+                          // Navigate to source if possible
+                          if (n.projectId) {
+                            const { openTabs, openProjectTab } = useWidgetStore.getState();
+                            const project = projects.find(p => p.id === n.projectId);
+                            if (project) {
+                              const existing = openTabs.find(t => t.projectId === n.projectId);
+                              if (!existing) {
+                                openProjectTab(project.id, project.title, project.keyColor);
+                              }
+                            }
+                            navigate('/');
+                          }
+                          setShowNotifications(false);
+                        }}
+                        className={`w-full flex items-start gap-2.5 px-3 py-2 text-left hover:bg-muted/50 transition-colors border-b border-border/30 ${
+                          !n.read ? 'bg-primary/5' : ''
+                        }`}
+                      >
+                        <Icon className={`w-3.5 h-3.5 shrink-0 mt-0.5 ${
+                          n.type === 'chat' ? 'text-blue-500' :
+                          n.type === 'todo' ? 'text-green-500' :
+                          n.type === 'event' ? 'text-amber-500' :
+                          n.type === 'brain' ? 'text-violet-500' :
+                          'text-muted-foreground'
+                        }`} />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between gap-1">
+                            <span className="text-xs font-medium text-foreground truncate">{n.title}</span>
+                            <span className="text-[9px] text-muted-foreground shrink-0">
+                              {new Date(n.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          </div>
+                          <p className="text-[10px] text-muted-foreground truncate mt-0.5">{n.message}</p>
+                        </div>
+                        {!n.read && (
+                          <span className="w-2 h-2 rounded-full bg-red-500 shrink-0 mt-1.5" />
+                        )}
+                      </button>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+
         {/* Theme toggle */}
         <button
           onClick={toggleTheme}
