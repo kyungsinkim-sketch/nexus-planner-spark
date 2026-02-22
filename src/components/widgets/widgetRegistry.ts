@@ -32,6 +32,7 @@ import {
   Mic,
   CalendarDays,
   BookOpen,
+  LayoutGrid,
 } from 'lucide-react';
 import type { WidgetDefinition, WidgetType, WidgetDataContext } from '@/types/widget';
 
@@ -62,6 +63,7 @@ export const WIDGET_COMPONENTS: Record<WidgetType, ComponentType<{ context: Widg
   voiceRecorder:  lazy(() => import('./VoiceRecorderWidget')),
   todayDate:      lazy(() => import('./TodayDateWidget')),
   notion:         lazy(() => import('./NotionWidget')),
+  projectBoard:   lazy(() => import('./ProjectBoardWidget')),
 };
 
 // Widget definitions (metadata)
@@ -266,5 +268,13 @@ export const WIDGET_DEFINITIONS: Record<WidgetType, WidgetDefinition> = {
     defaultSize: { w: 4, h: 4 },
     minSize: { w: 3, h: 3 },
     contexts: ['dashboard', 'project'],
+  },
+  projectBoard: {
+    type: 'projectBoard',
+    titleKey: 'projectBoard',
+    icon: LayoutGrid,
+    defaultSize: { w: 9, h: 6 },
+    minSize: { w: 6, h: 4 },
+    contexts: ['project'],
   },
 };

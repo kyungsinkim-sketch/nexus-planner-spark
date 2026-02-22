@@ -50,6 +50,7 @@ const DEFAULT_PROJECT_LAYOUT: WidgetLayoutItem[] = [
   { i: 'files',          x: 0,  y: 10, w: 3, h: 2, minW: 2, minH: 2 },
   { i: 'brainInsights',  x: 3,  y: 10, w: 3, h: 2, minW: 3, minH: 2 },
   { i: 'teamLoad',       x: 6,  y: 10, w: 3, h: 2, minW: 3, minH: 2 },
+  { i: 'projectBoard',   x: 0,  y: 12, w: 9, h: 6, minW: 6, minH: 4 },
 ];
 
 // Dashboard tab is always present
