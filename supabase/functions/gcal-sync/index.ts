@@ -306,44 +306,47 @@ Deno.serve(async (req) => {
     }
 
     // ─── Phase 2: Push Re-Be → Google ────────────────────
-    // TEMPORARILY DISABLED: Phase 2 Push was causing a duplication loop where
-    // PAULUS events exported to Google were re-imported as new rows on next sync.
-    // TODO: Re-enable after implementing proper bidirectional dedup logic.
-    // Key fix needed: when exporting, mark events so they're not re-imported.
-    /*
+    // Export PAULUS-created events that haven't been pushed to Google yet.
+    // Dedup is handled by Phase 1: once google_event_id is set, pull phase
+    // will match by existingByGoogleId and update instead of re-inserting.
     try {
+      // Only push events created in the last 6 months (avoid pushing ancient events)
+      const pushCutoff = new Date();
+      pushCutoff.setMonth(pushCutoff.getMonth() - 6);
+
       const { data: localEvents } = await supabase
         .from('calendar_events')
         .select('*')
         .eq('owner_id', userId)
         .eq('source', 'PAULUS')
-        .is('google_event_id', null);
+        .is('google_event_id', null)
+        .gte('start_at', pushCutoff.toISOString());
 
       if (localEvents && localEvents.length > 0) {
-        const batch = localEvents.slice(0, 10);
-        await Promise.all(
-          batch.map(async (localEvent) => {
-            try {
-              const googleEvent = await createGoogleEvent(
-                accessToken,
-                dbEventToGoogleEvent(localEvent),
-                tokenRow.calendar_id || 'primary',
-              );
-              await supabase
-                .from('calendar_events')
-                .update({ google_event_id: googleEvent.id })
-                .eq('id', localEvent.id);
-              exported++;
-            } catch (err) {
-              console.error('[gcal-sync] Failed to export event:', localEvent.title, err);
-            }
-          }),
-        );
+        // Process in batches of 10 to avoid Google API rate limits
+        const batch = localEvents.slice(0, 20);
+        for (const localEvent of batch) {
+          try {
+            const googleEvent = await createGoogleEvent(
+              accessToken,
+              dbEventToGoogleEvent(localEvent),
+              tokenRow.calendar_id || 'primary',
+            );
+            // Store google_event_id so Phase 1 won't re-import it
+            await supabase
+              .from('calendar_events')
+              .update({ google_event_id: googleEvent.id })
+              .eq('id', localEvent.id);
+            exported++;
+          } catch (err) {
+            console.error('[gcal-sync] Failed to export event:', localEvent.title, err);
+          }
+        }
       }
     } catch (err) {
+      // Push errors are non-fatal — don't fail the entire sync
       console.error('[gcal-sync] Phase 2 (push) error:', err);
     }
-    */
 
     // 4. Update sync status
     await supabase

@@ -885,6 +885,26 @@ export const useAppStore = create<AppState>()(
           try {
             const newEvent = await eventService.createEvent(event);
             set((state) => ({ events: [...state.events, newEvent] }));
+
+            // Best-effort: push to Google Calendar if connected (non-blocking)
+            if (newEvent.source === 'PAULUS' && !newEvent.googleEventId) {
+              const { currentUser } = get();
+              if (currentUser?.id) {
+                import('@/lib/supabase').then(({ supabase: sb }) => {
+                  sb.functions.invoke('gcal-push-event', {
+                    body: { userId: currentUser.id, eventId: newEvent.id, action: 'create' },
+                  }).then(({ data }) => {
+                    if (data?.googleEventId) {
+                      set((state) => ({
+                        events: state.events.map((e) =>
+                          e.id === newEvent.id ? { ...e, googleEventId: data.googleEventId } : e
+                        ),
+                      }));
+                    }
+                  }).catch(() => { /* non-fatal */ });
+                });
+              }
+            }
           } catch (error) {
             console.error('Failed to create event:', error);
             throw error;
@@ -914,6 +934,26 @@ export const useAppStore = create<AppState>()(
                 e.id === eventId ? updatedEvent : e
               ),
             }));
+
+            // Best-effort: push update to Google Calendar if connected (non-blocking)
+            if (updatedEvent.source === 'PAULUS') {
+              const { currentUser } = get();
+              if (currentUser?.id) {
+                import('@/lib/supabase').then(({ supabase: sb }) => {
+                  sb.functions.invoke('gcal-push-event', {
+                    body: { userId: currentUser.id, eventId, action: 'update' },
+                  }).then(({ data }) => {
+                    if (data?.googleEventId && !updatedEvent.googleEventId) {
+                      set((state) => ({
+                        events: state.events.map((e) =>
+                          e.id === eventId ? { ...e, googleEventId: data.googleEventId } : e
+                        ),
+                      }));
+                    }
+                  }).catch(() => { /* non-fatal */ });
+                });
+              }
+            }
           } catch (error) {
             console.error('Failed to update event:', error);
             throw error;
