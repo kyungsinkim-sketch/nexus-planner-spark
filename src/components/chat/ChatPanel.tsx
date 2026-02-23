@@ -48,7 +48,7 @@ import { useTranslation } from '@/hooks/useTranslation';
 import { ChatMessageBubble } from '@/components/chat/ChatMessageBubble';
 import { FileUploadModal } from '@/components/project/FileUploadModal';
 import type { LocationShare, ScheduleShare, DecisionShare, ChatMessage, ChatRoom, FileCategory } from '@/types/core';
-import { BRAIN_BOT_USER_ID, extractEmailDomain, isFreelancerDomain, isAIPersonaUser, PERSONA_ID_MAP, PERSONA_PABLO_USER_ID, PERSONA_CD_USER_ID, PERSONA_PD_USER_ID } from '@/types/core';
+import { BRAIN_BOT_USER_ID, BRAIN_AI_USER_ID, isBrainAIUser, extractEmailDomain, isFreelancerDomain, isAIPersonaUser, PERSONA_ID_MAP, PERSONA_PABLO_USER_ID, PERSONA_CD_USER_ID, PERSONA_PD_USER_ID } from '@/types/core';
 import * as chatService from '@/services/chatService';
 import * as fileService from '@/services/fileService';
 import * as brainService from '@/services/brainService';
@@ -155,14 +155,15 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
     if (!currentUser) return users;
     const realUsers = users.filter(u => u.id !== currentUser.id);
 
-    // Add AI persona virtual users at the top
-    const personaUsers: typeof users = [
+    // Add Brain AI + AI persona virtual users at the top
+    const aiUsers: typeof users = [
+      { id: BRAIN_AI_USER_ID, name: 'Brain AI', role: 'ADMIN' as const, department: '업무 자동화 AI 어시스턴트' },
       { id: PERSONA_PABLO_USER_ID, name: 'Pablo AI', role: 'ADMIN' as const, department: 'CEO AI Advisor' },
       { id: PERSONA_CD_USER_ID, name: 'CD AI', role: 'MANAGER' as const, department: 'Creative Director AI' },
       { id: PERSONA_PD_USER_ID, name: 'PD AI', role: 'MANAGER' as const, department: 'Producer AI' },
     ];
 
-    return [...personaUsers, ...realUsers];
+    return [...aiUsers, ...realUsers];
   }, [users, currentUser]);
 
   // Filter users by search, sorted by most recent DM
@@ -205,6 +206,15 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
       return messages.filter(m => m.projectId === selectedChat.id);
     } else {
       if (!currentUser) return [];
+      // For Brain AI DM: show user messages sent to Brain AI + Brain bot responses
+      if (isBrainAIUser(selectedChat.id)) {
+        return messages.filter(m =>
+          // User messages TO Brain AI
+          (m.userId === currentUser.id && m.directChatUserId === BRAIN_AI_USER_ID) ||
+          // Brain bot responses IN Brain AI DM context
+          (m.userId === BRAIN_BOT_USER_ID && m.directChatUserId === BRAIN_AI_USER_ID)
+        );
+      }
       return messages.filter(m =>
         // Messages FROM current user TO selected user
         (m.userId === currentUser.id && m.directChatUserId === selectedChat.id) ||
@@ -365,7 +375,151 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
 
     setNewMessage('');
 
-    // NEW: If DM target is an AI persona, auto-trigger persona query (no @mention needed)
+    // NEW: If DM target is Brain AI, auto-trigger brain processing (no @Brain mention needed)
+    if (selectedChat.type === 'direct' && isBrainAIUser(selectedChat.id)) {
+      setBrainProcessing(true);
+      try {
+        // Build chat members from all users
+        const chatMembers = users.map(u => ({ id: u.id, name: u.name }));
+        if (!chatMembers.find(m => m.id === currentUser.id)) {
+          chatMembers.push({ id: currentUser.id, name: currentUser.name });
+        }
+
+        // Gather recent conversation context from Brain AI DM for accumulation
+        const brainDmMessages = messages
+          .filter(m =>
+            (m.userId === currentUser.id && m.directChatUserId === BRAIN_AI_USER_ID) ||
+            (m.userId === BRAIN_BOT_USER_ID && m.directChatUserId === BRAIN_AI_USER_ID)
+          )
+          .slice(-10); // last 10 messages for context
+
+        const conversationContext = brainDmMessages.map(m => {
+          if (m.userId === currentUser.id) {
+            return `User: ${m.content}`;
+          }
+          const replyMsg = (m.brainActionData as { replyMessage?: string })?.replyMessage || m.content;
+          return `Brain AI: ${replyMsg}`;
+        }).join('\n');
+
+        const contextualMessage = conversationContext
+          ? `[Previous conversation context]\n${conversationContext}\n\n[Current request]\n${trimmed}`
+          : trimmed;
+
+        const brainResult = await brainService.processMessageWithLLM({
+          messageContent: contextualMessage,
+          directChatUserId: BRAIN_AI_USER_ID,
+          userId: currentUser.id,
+          chatMembers,
+        });
+
+        // Auto-execute all pending actions (same as regular Brain processing)
+        const brainActions = brainResult.actions || [];
+        for (const action of brainActions) {
+          const actionId = (action as { id?: string }).id;
+          if (!actionId) continue;
+
+          const act = action as Record<string, unknown>;
+          const actionType = act.action_type || act.actionType;
+          if (actionType === 'submit_service_suggestion') {
+            const extracted = (act.extracted_data || act.extractedData) as Record<string, unknown> | undefined;
+            if (extracted) {
+              addBrainReport({
+                userId: currentUser.id,
+                userName: currentUser.name,
+                suggestion: (extracted.suggestion as string) || trimmed,
+                brainSummary: (extracted.brainSummary as string) || '',
+                category: (extracted.category as 'feature_request' | 'bug_report' | 'ui_improvement' | 'workflow_suggestion' | 'other') || 'other',
+                priority: (extracted.priority as 'low' | 'medium' | 'high') || 'medium',
+              });
+            }
+            continue;
+          }
+
+          try {
+            await brainService.updateActionStatus(actionId, 'confirmed', currentUser.id);
+            const execResult = await brainService.executeAction(actionId, currentUser.id);
+            const dataType = (execResult.executedData as { type?: string })?.type;
+            if (dataType === 'event') {
+              await loadEvents();
+              const execData = execResult.executedData as Record<string, unknown>;
+              if (!execData.updated) {
+                const newTitle = (execData.title as string) || '';
+                if (newTitle) {
+                  const { events: currentEvents, deleteEvent: delEvt } = useAppStore.getState();
+                  const dupes = currentEvents.filter(e => e.title === newTitle);
+                  if (dupes.length > 1) {
+                    const sorted = dupes.sort((a, b) => new Date(b.startAt).getTime() - new Date(a.startAt).getTime());
+                    for (let d = 1; d < sorted.length; d++) {
+                      await delEvt(sorted[d].id);
+                    }
+                  }
+                }
+              }
+            }
+            if (dataType === 'todo') {
+              await loadTodos();
+              const todoExecData = execResult.executedData as Record<string, unknown>;
+              const todoTitle = (todoExecData.title as string) || '';
+              if (todoTitle) {
+                const { personalTodos, deleteTodo } = useAppStore.getState();
+                const dupes = personalTodos.filter(td => td.title === todoTitle);
+                if (dupes.length > 1) {
+                  const sorted = [...dupes].sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+                  for (let d = 1; d < sorted.length; d++) {
+                    await deleteTodo(sorted[d].id);
+                  }
+                }
+              }
+              for (let retry = 1; retry <= 2; retry++) {
+                await new Promise(r => setTimeout(r, 1000));
+                await loadTodos().catch(() => {});
+              }
+            }
+            if (dataType === 'board_task') {
+              const taskProjectId = (execResult.executedData as Record<string, unknown>)?.project_id as string;
+              if (taskProjectId) await loadBoardData(taskProjectId);
+            }
+          } catch (execErr) {
+            console.error('[Brain DM] Auto-execute failed:', actionId, execErr);
+          }
+        }
+
+        // Sync bot message statuses
+        const botMessageId = (brainResult.message as { id?: string })?.id;
+        if (botMessageId && brainActions.length > 0 && isSupabaseConfigured()) {
+          try {
+            const dbActions = await brainService.getActionsByMessage(botMessageId);
+            if (dbActions.length > 0) {
+              const updatedBrainData = {
+                hasAction: brainResult.llmResponse.hasAction,
+                replyMessage: brainResult.llmResponse.replyMessage,
+                actions: dbActions.map(a => ({
+                  id: a.id,
+                  type: a.actionType,
+                  confidence: 1,
+                  data: a.extractedData || {},
+                  status: a.status,
+                })),
+              };
+              const { supabase: sb } = await import('@/lib/supabase');
+              await sb.from('chat_messages').update({ brain_action_data: updatedBrainData }).eq('id', botMessageId);
+            }
+          } catch (updateErr) {
+            console.warn('[Brain DM] Failed to sync statuses:', updateErr);
+          }
+        }
+
+        console.log('[Brain DM] Auto-query completed');
+      } catch (brainErr) {
+        console.error('[Brain DM] query failed:', brainErr);
+        toast.error(`Brain AI 응답 실패: ${(brainErr as Error).message}`);
+      } finally {
+        setBrainProcessing(false);
+      }
+      return; // Skip persona/brain mention processing
+    }
+
+    // If DM target is an AI persona, auto-trigger persona query (no @mention needed)
     if (selectedChat.type === 'direct' && isAIPersonaUser(selectedChat.id)) {
       const personaInfo = PERSONA_ID_MAP[selectedChat.id];
       if (personaInfo) {
@@ -1114,6 +1268,10 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
         thumbnail: project.thumbnail,
       };
     } else {
+      // Check if it's Brain AI
+      if (isBrainAIUser(selectedChat.id)) {
+        return { name: 'Brain AI', subtitle: '업무 자동화 AI 어시스턴트 · 일정, 할일, 업무 요청' };
+      }
       // Check if it's an AI persona
       if (isAIPersonaUser(selectedChat.id)) {
         const personaInfo = PERSONA_ID_MAP[selectedChat.id];
@@ -1305,19 +1463,26 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
                           <Avatar className="w-8 h-8 shrink-0">
                             {user.avatar && <AvatarImage src={user.avatar} alt={user.name} />}
                             <AvatarFallback className={`text-xs ${
-                              isAIPersonaUser(user.id)
-                                ? PERSONA_ID_MAP[user.id]?.color === 'amber' ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300'
-                                  : PERSONA_ID_MAP[user.id]?.color === 'blue' ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300'
-                                  : 'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300'
-                                : 'bg-primary/10 text-primary'
+                              isBrainAIUser(user.id)
+                                ? 'bg-violet-100 dark:bg-violet-900/40 text-violet-700 dark:text-violet-300'
+                                : isAIPersonaUser(user.id)
+                                  ? PERSONA_ID_MAP[user.id]?.color === 'amber' ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300'
+                                    : PERSONA_ID_MAP[user.id]?.color === 'blue' ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300'
+                                    : 'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300'
+                                  : 'bg-primary/10 text-primary'
                             }`}>
-                              {isAIPersonaUser(user.id) ? '\uD83E\uDD16' : getInitials(user.name)}
+                              {isBrainAIUser(user.id) ? '🧠' : isAIPersonaUser(user.id) ? '\uD83E\uDD16' : getInitials(user.name)}
                             </AvatarFallback>
                           </Avatar>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center justify-between gap-1">
                               <h3 className="font-medium text-foreground text-xs flex items-center gap-1">
                                 {user.name}
+                                {isBrainAIUser(user.id) && (
+                                  <span className="text-[9px] px-1 py-0.5 rounded-full font-medium bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300">
+                                    AI
+                                  </span>
+                                )}
                                 {isAIPersonaUser(user.id) && (
                                   <span className={`text-[9px] px-1 py-0.5 rounded-full font-medium ${
                                     PERSONA_ID_MAP[user.id]?.color === 'amber' ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300' :
@@ -1378,8 +1543,14 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
             ) : (
               <Avatar className="w-8 h-8">
                 {selectedChatInfo?.avatar && <AvatarImage src={selectedChatInfo.avatar} alt={selectedChatInfo?.name} />}
-                <AvatarFallback className="bg-primary/10 text-primary text-xs">
-                  {selectedChatInfo?.name ? getInitials(selectedChatInfo.name) : '?'}
+                <AvatarFallback className={`text-xs ${
+                  selectedChat?.id && isBrainAIUser(selectedChat.id)
+                    ? 'bg-violet-100 dark:bg-violet-900/40 text-violet-700 dark:text-violet-300'
+                    : 'bg-primary/10 text-primary'
+                }`}>
+                  {selectedChat?.id && isBrainAIUser(selectedChat.id)
+                    ? '🧠'
+                    : selectedChatInfo?.name ? getInitials(selectedChatInfo.name) : '?'}
                 </AvatarFallback>
               </Avatar>
             )}
@@ -1541,7 +1712,11 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
                 <Paperclip className="w-4 h-4" />
               </Button>
               <MentionTextarea
-                placeholder={t('typeMessage')}
+                placeholder={
+                  selectedChat?.type === 'direct' && selectedChat?.id && isBrainAIUser(selectedChat.id)
+                    ? t('brainAIPlaceholder')
+                    : t('typeMessage')
+                }
                 value={newMessage}
                 onChange={setNewMessage}
                 onKeyDown={(e) => {
@@ -1582,10 +1757,17 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
               <span className="text-[10px] text-muted-foreground">
                 <kbd className="px-1 py-0.5 rounded bg-muted text-[9px] font-mono">Shift</kbd>+<kbd className="px-1 py-0.5 rounded bg-muted text-[9px] font-mono">Enter</kbd> {t('newLine')}
               </span>
-              <span className="text-[10px] text-violet-500 font-medium flex items-center gap-1">
-                <Brain className="w-3 h-3" />
-                @Brain AI @pablo @cd @pd → AI 페르소나
-              </span>
+              {selectedChat?.type === 'direct' && selectedChat?.id && isBrainAIUser(selectedChat.id) ? (
+                <span className="text-[10px] text-violet-500 font-medium flex items-center gap-1">
+                  <Brain className="w-3 h-3" />
+                  Brain AI와 직접 대화 · 대화 내용이 누적됩니다
+                </span>
+              ) : (
+                <span className="text-[10px] text-violet-500 font-medium flex items-center gap-1">
+                  <Brain className="w-3 h-3" />
+                  @Brain AI @pablo @cd @pd → AI 페르소나
+                </span>
+              )}
             </div>
           </div>
         </div>

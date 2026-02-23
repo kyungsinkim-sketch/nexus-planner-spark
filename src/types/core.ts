@@ -218,6 +218,13 @@ export type ChatMessageType = 'text' | 'file' | 'location' | 'schedule' | 'decis
 
 export const BRAIN_BOT_USER_ID = '00000000-0000-0000-0000-000000000099';
 
+// Brain AI virtual user ID (for DM list — direct 1:1 conversation)
+export const BRAIN_AI_USER_ID = '00000000-0000-0000-0000-000000000100';
+
+export function isBrainAIUser(userId: string): boolean {
+  return userId === BRAIN_AI_USER_ID;
+}
+
 // AI Persona virtual user IDs (for DM list display)
 export const PERSONA_PABLO_USER_ID = '00000000-0000-0000-0000-000000000101';
 export const PERSONA_CD_USER_ID = '00000000-0000-0000-0000-000000000102';

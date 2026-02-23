@@ -280,14 +280,14 @@ export async function getActionsByMessage(
 
 /**
  * Detect @Brain mention in message content.
- * Returns true only if user explicitly typed @Brain (or legacy @AiAssistant / @ai).
+ * Returns true only if user explicitly typed @Brain / @BrainAI / @brainai (or legacy @AiAssistant / @ai).
  */
 export function detectBrainMention(content: string): {
   isBrainMention: boolean;
   cleanContent: string;
 } {
-  // Primary trigger: @Brain
-  const brainPattern = /@Brain\b\s*/i;
+  // Primary triggers: @Brain, @BrainAI, @brainai
+  const brainPattern = /@Brain\s*AI\b\s*|@Brain\b\s*|@brainai\b\s*/i;
   if (brainPattern.test(content)) {
     return {
       isBrainMention: true,
