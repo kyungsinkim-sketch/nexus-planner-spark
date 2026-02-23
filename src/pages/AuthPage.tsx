@@ -55,8 +55,13 @@ export function AuthPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-secondary/5 p-4">
-      <Card className="w-full max-w-md shadow-lg">
+    <div className="min-h-screen flex items-center justify-center p-4 relative">
+      <div
+        className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+        style={{ backgroundImage: "url('/images/auth-bg.jpg')" }}
+      />
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+      <Card className="w-full max-w-md shadow-lg relative z-10 bg-card/90 backdrop-blur-md">
         <CardHeader className="space-y-1 text-center">
           <div className="flex items-center justify-center mb-4">
             <img
