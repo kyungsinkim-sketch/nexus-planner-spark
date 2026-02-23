@@ -53,12 +53,17 @@ function rowToChatMessage(row: MessageRow): ChatMessage {
 
 export function useChatNotifications() {
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const currentUser = useAppStore((s) => s.currentUser);
 
   useEffect(() => {
     if (!isSupabaseConfigured()) return;
-
-    const { currentUser } = useAppStore.getState();
     if (!currentUser) return;
+
+    // Clean up any previous channel before creating a new one
+    if (channelRef.current) {
+      supabase.removeChannel(channelRef.current);
+      channelRef.current = null;
+    }
 
     // Subscribe to ALL chat_messages INSERT events
     const channel = supabase
@@ -133,5 +138,5 @@ export function useChatNotifications() {
         channelRef.current = null;
       }
     };
-  }, []);
+  }, [currentUser?.id]);
 }
