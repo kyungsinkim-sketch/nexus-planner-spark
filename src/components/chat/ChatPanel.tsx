@@ -83,6 +83,8 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
     loadBoardData, addBoardTask,
     clearChatNotificationsForRoom,
     setActiveChatContext,
+    pendingChatNavigation,
+    setPendingChatNavigation,
   } = useAppStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTab, setSelectedTab] = useState<'projects' | 'direct'>('projects');
@@ -95,6 +97,7 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
   const [newRoomDescription, setNewRoomDescription] = useState('');
   const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
   const [showFileUpload, setShowFileUpload] = useState(false);
   // /analyze command removed — no longer available in chat
 
@@ -286,7 +289,29 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
   };
 
   const scrollToBottom = (instant = false) => {
-    messagesEndRef.current?.scrollIntoView({ behavior: instant ? 'instant' : 'smooth' });
+    // Find the Radix ScrollArea Viewport (the actual scrollable container)
+    // messagesContainerRef is on the ScrollArea Root; the Viewport is its first child
+    // with data-radix-scroll-area-viewport attribute, or we traverse via messagesEndRef
+    const endEl = messagesEndRef.current;
+    if (!endEl) return;
+    // Walk up to find the nearest scrollable parent (Radix Viewport)
+    let scrollParent: HTMLElement | null = endEl.parentElement;
+    while (scrollParent) {
+      const { overflow, overflowY } = getComputedStyle(scrollParent);
+      if (overflow === 'auto' || overflow === 'scroll' || overflowY === 'auto' || overflowY === 'scroll') {
+        break;
+      }
+      // Radix viewport has data-radix-scroll-area-viewport
+      if (scrollParent.hasAttribute('data-radix-scroll-area-viewport')) break;
+      scrollParent = scrollParent.parentElement;
+    }
+    if (scrollParent) {
+      if (instant) {
+        scrollParent.scrollTop = scrollParent.scrollHeight;
+      } else {
+        scrollParent.scrollTo({ top: scrollParent.scrollHeight, behavior: 'smooth' });
+      }
+    }
   };
 
   // Track previous chat ID to detect room entry vs. new message
@@ -301,6 +326,26 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
     // Room entry → instant scroll; new message → smooth scroll
     scrollToBottom(isRoomEntry);
   }, [chatMessages, selectedChat]);
+
+  // Consume pending chat navigation from notification click
+  useEffect(() => {
+    if (!pendingChatNavigation) return;
+    const nav = pendingChatNavigation;
+    setPendingChatNavigation(null); // Consume immediately
+
+    if (nav.type === 'direct') {
+      setSelectedTab('direct');
+      handleSelectDirectChat(nav.id);
+    } else if (nav.type === 'project') {
+      setSelectedTab('projects');
+      if (nav.roomId) {
+        setSelectedChat({ type: 'project', id: nav.id, roomId: nav.roomId });
+      } else {
+        // Expand project and select default room
+        setExpandedProjectId(nav.id);
+      }
+    }
+  }, [pendingChatNavigation]);
 
   // Track active chat context globally (for notification suppression) + auto-clear notifications
   useEffect(() => {

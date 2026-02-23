@@ -91,6 +91,9 @@ export function TabBar() {
     appNotifications,
     markAppNotificationRead,
     markAllAppNotificationsRead,
+    setChatPanelCollapsed,
+    setPendingChatNavigation,
+    messages,
   } = useAppStore();
   const [showNotifications, setShowNotifications] = useState(false);
   const notifRef = useRef<HTMLDivElement>(null);
@@ -265,8 +268,54 @@ export function TabBar() {
                         key={n.id}
                         onClick={() => {
                           markAppNotificationRead(n.id);
-                          // Navigate to source if possible
-                          if (n.projectId) {
+
+                          if (n.type === 'chat') {
+                            // Find the original message to determine chat context
+                            const sourceMsg = n.sourceId ? messages.find(m => m.id === n.sourceId) : null;
+
+                            if (sourceMsg?.directChatUserId) {
+                              // DM notification → navigate to DM with the other user
+                              const otherUserId = sourceMsg.userId === useAppStore.getState().currentUser?.id
+                                ? sourceMsg.directChatUserId
+                                : sourceMsg.userId;
+                              setPendingChatNavigation({ type: 'direct', id: otherUserId });
+                              setChatPanelCollapsed(false);
+                              navigate('/');
+                            } else if (sourceMsg?.roomId || sourceMsg?.projectId) {
+                              // Project/room notification → open project tab + navigate to room
+                              const pid = sourceMsg.projectId || n.projectId;
+                              if (pid) {
+                                const { openTabs, openProjectTab } = useWidgetStore.getState();
+                                const project = projects.find(p => p.id === pid);
+                                if (project) {
+                                  const existing = openTabs.find(t => t.projectId === pid);
+                                  if (!existing) {
+                                    openProjectTab(project.id, project.title, project.keyColor);
+                                  }
+                                }
+                                setPendingChatNavigation({
+                                  type: 'project',
+                                  id: pid,
+                                  roomId: sourceMsg.roomId || undefined,
+                                });
+                                setChatPanelCollapsed(false);
+                                navigate('/');
+                              }
+                            } else if (n.projectId) {
+                              // Fallback: navigate to project
+                              const { openTabs, openProjectTab } = useWidgetStore.getState();
+                              const project = projects.find(p => p.id === n.projectId);
+                              if (project) {
+                                const existing = openTabs.find(t => t.projectId === n.projectId);
+                                if (!existing) {
+                                  openProjectTab(project.id, project.title, project.keyColor);
+                                }
+                              }
+                              setChatPanelCollapsed(false);
+                              navigate('/');
+                            }
+                          } else if (n.projectId) {
+                            // Non-chat notification with project → navigate to project tab
                             const { openTabs, openProjectTab } = useWidgetStore.getState();
                             const project = projects.find(p => p.id === n.projectId);
                             if (project) {

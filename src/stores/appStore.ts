@@ -67,6 +67,9 @@ interface AppState {
   // Currently active/open chat context — used to suppress notifications for visible chat
   activeChatContext: { type: 'project' | 'direct'; id: string; roomId?: string } | null;
 
+  // Pending chat navigation target — set by notification click, consumed by ChatPanel
+  pendingChatNavigation: { type: 'project' | 'direct'; id: string; roomId?: string } | null;
+
   // Notification Sound
   notificationSoundEnabled: boolean;
 
@@ -146,6 +149,7 @@ interface AppState {
   setProjectSearchOpen: (open: boolean) => void;
   setShowAutoCheckInDialog: (open: boolean) => void;
   setActiveChatContext: (ctx: { type: 'project' | 'direct'; id: string; roomId?: string } | null) => void;
+  setPendingChatNavigation: (nav: { type: 'project' | 'direct'; id: string; roomId?: string } | null) => void;
   setWorldClockSettingsOpen: (open: boolean) => void;
   setWeatherSettingsOpen: (open: boolean) => void;
   setNotificationSoundEnabled: (enabled: boolean) => void;
@@ -358,6 +362,7 @@ export const useAppStore = create<AppState>()(
       showAutoCheckInDialog: false,
       autoCheckInPosition: null,
       activeChatContext: null,
+      pendingChatNavigation: null,
       worldClockSettingsOpen: false,
       weatherSettingsOpen: false,
       notificationSoundEnabled: true,
@@ -2175,6 +2180,7 @@ export const useAppStore = create<AppState>()(
       setProjectSearchOpen: (open) => set({ projectSearchOpen: open }),
       setShowAutoCheckInDialog: (open) => set({ showAutoCheckInDialog: open }),
       setActiveChatContext: (ctx: { type: 'project' | 'direct'; id: string; roomId?: string } | null) => set({ activeChatContext: ctx }),
+      setPendingChatNavigation: (nav: { type: 'project' | 'direct'; id: string; roomId?: string } | null) => set({ pendingChatNavigation: nav }),
       setWorldClockSettingsOpen: (open) => set({ worldClockSettingsOpen: open }),
       setWeatherSettingsOpen: (open) => set({ weatherSettingsOpen: open }),
       setNotificationSoundEnabled: (enabled) => set({ notificationSoundEnabled: enabled }),
