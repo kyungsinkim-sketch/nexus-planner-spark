@@ -64,6 +64,9 @@ interface AppState {
   worldClockSettingsOpen: boolean;
   weatherSettingsOpen: boolean;
 
+  // Currently active/open chat context — used to suppress notifications for visible chat
+  activeChatContext: { type: 'project' | 'direct'; id: string; roomId?: string } | null;
+
   // Notification Sound
   notificationSoundEnabled: boolean;
 
@@ -142,6 +145,7 @@ interface AppState {
   setImportantNoteAddOpen: (open: boolean) => void;
   setProjectSearchOpen: (open: boolean) => void;
   setShowAutoCheckInDialog: (open: boolean) => void;
+  setActiveChatContext: (ctx: { type: 'project' | 'direct'; id: string; roomId?: string } | null) => void;
   setWorldClockSettingsOpen: (open: boolean) => void;
   setWeatherSettingsOpen: (open: boolean) => void;
   setNotificationSoundEnabled: (enabled: boolean) => void;
@@ -353,6 +357,7 @@ export const useAppStore = create<AppState>()(
       projectSearchOpen: false,
       showAutoCheckInDialog: false,
       autoCheckInPosition: null,
+      activeChatContext: null,
       worldClockSettingsOpen: false,
       weatherSettingsOpen: false,
       notificationSoundEnabled: true,
@@ -1019,12 +1024,33 @@ export const useAppStore = create<AppState>()(
         const state = get();
         // Prevent duplicate messages (realtime subscription + local add race condition)
         if (state.messages.some(m => m.id === message.id)) return;
-        // Play notification sound for messages from other users
-        if (state.notificationSoundEnabled && state.currentUser && message.userId !== state.currentUser.id) {
+
+        // Check if this message belongs to the currently visible chat
+        const ctx = state.activeChatContext;
+        const isInActiveChat = ctx && (() => {
+          if (ctx.type === 'project') {
+            // Match by roomId first, then by projectId
+            if (ctx.roomId && message.roomId === ctx.roomId) return true;
+            if (!ctx.roomId && message.projectId === ctx.id && !message.roomId) return true;
+            return false;
+          }
+          // DM: match by directChatUserId (both directions)
+          if (ctx.type === 'direct') {
+            return message.directChatUserId === ctx.id ||
+              (message.userId === ctx.id && message.directChatUserId === state.currentUser?.id);
+          }
+          return false;
+        })();
+
+        // Play notification sound only for messages NOT in the active chat
+        if (!isInActiveChat && state.notificationSoundEnabled && state.currentUser && message.userId !== state.currentUser.id) {
           playNotificationSound('message');
         }
         set({ messages: [...state.messages, message] });
-        // Create app notification for messages from other users (text, file, brain_action, persona_response)
+
+        // Create app notification ONLY for messages NOT in the currently open chat
+        if (isInActiveChat) return; // User is already looking at this chat — no bell notification
+
         const notifiableTypes = ['text', 'file', 'brain_action', 'persona_response', 'location', 'schedule', 'decision'];
         if (state.currentUser && message.userId !== state.currentUser.id && notifiableTypes.includes(message.messageType || 'text')) {
           const BRAIN_BOT = '00000000-0000-0000-0000-000000000099';
@@ -2148,6 +2174,7 @@ export const useAppStore = create<AppState>()(
       setImportantNoteAddOpen: (open) => set({ importantNoteAddOpen: open }),
       setProjectSearchOpen: (open) => set({ projectSearchOpen: open }),
       setShowAutoCheckInDialog: (open) => set({ showAutoCheckInDialog: open }),
+      setActiveChatContext: (ctx: { type: 'project' | 'direct'; id: string; roomId?: string } | null) => set({ activeChatContext: ctx }),
       setWorldClockSettingsOpen: (open) => set({ worldClockSettingsOpen: open }),
       setWeatherSettingsOpen: (open) => set({ weatherSettingsOpen: open }),
       setNotificationSoundEnabled: (enabled) => set({ notificationSoundEnabled: enabled }),

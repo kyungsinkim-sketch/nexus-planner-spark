@@ -76,17 +76,27 @@ export function useChatNotifications() {
           // Skip own messages
           if (msg.user_id === currentUser.id) return;
 
-          // Add to global store (creates appNotification for bell icon)
-          // addMessage() handles duplicate prevention internally
+          // Add to global store (creates appNotification for bell icon if not in active chat)
+          // addMessage() handles duplicate prevention and active-chat suppression internally
           const chatMessage = rowToChatMessage(msg);
           useAppStore.getState().addMessage(chatMessage);
+
+          // Check if this message is for the currently active/visible chat — skip toast if so
+          const state = useAppStore.getState();
+          const ctx = state.activeChatContext;
+          if (ctx) {
+            const isActive =
+              (ctx.type === 'project' && ctx.roomId && msg.room_id === ctx.roomId) ||
+              (ctx.type === 'project' && !ctx.roomId && msg.project_id === ctx.id && !msg.room_id) ||
+              (ctx.type === 'direct' && (msg.direct_chat_user_id === ctx.id || msg.user_id === ctx.id));
+            if (isActive) return; // User is looking at this chat — no toast
+          }
 
           // Skip brain bot and non-text for toast popup (too noisy)
           if (msg.user_id === BRAIN_BOT_USER_ID) return;
           if (msg.message_type && msg.message_type !== 'text') return;
 
           // Get sender name from store
-          const state = useAppStore.getState();
           const sender = state.getUserById(msg.user_id);
           const senderName = sender?.name || '알 수 없는 사용자';
 

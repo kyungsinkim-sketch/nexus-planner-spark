@@ -82,6 +82,7 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
     addBrainReport, addBrainNotification,
     loadBoardData, addBoardTask,
     clearChatNotificationsForRoom,
+    setActiveChatContext,
   } = useAppStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTab, setSelectedTab] = useState<'projects' | 'direct'>('projects');
@@ -301,15 +302,27 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
     scrollToBottom(isRoomEntry);
   }, [chatMessages, selectedChat]);
 
-  // Auto-clear chat notifications when entering a chat room
+  // Track active chat context globally (for notification suppression) + auto-clear notifications
   useEffect(() => {
-    if (!selectedChat) return;
+    if (!selectedChat) {
+      setActiveChatContext(null);
+      return;
+    }
+    // Set active context so addMessage() knows not to create notifications for this chat
+    setActiveChatContext({
+      type: selectedChat.type,
+      id: selectedChat.id,
+      roomId: selectedChat.roomId,
+    });
+    // Auto-clear existing notifications for this chat
     if (selectedChat.type === 'project') {
       clearChatNotificationsForRoom(selectedChat.roomId, selectedChat.id);
     } else if (selectedChat.type === 'direct') {
       clearChatNotificationsForRoom(undefined, undefined, selectedChat.id);
     }
-  }, [selectedChat?.type, selectedChat?.id, selectedChat?.roomId, clearChatNotificationsForRoom]);
+    // Clear active context on unmount
+    return () => setActiveChatContext(null);
+  }, [selectedChat?.type, selectedChat?.id, selectedChat?.roomId, clearChatNotificationsForRoom, setActiveChatContext]);
 
   // Subscribe to realtime messages when selecting a room (INSERT + DELETE)
   useEffect(() => {
