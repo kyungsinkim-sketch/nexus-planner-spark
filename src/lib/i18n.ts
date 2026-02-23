@@ -78,7 +78,7 @@ export const translations = {
     teamLoad: '팀 부하',
     projectProgress: '프로젝트 진행률',
     weeklyActivity: '주간 활동',
-    attendance: '근태',
+    attendance: '출근 상태',
     notifications: '알림',
     nextActions: '다음 일정',
     importantNotes: '중요 기록',
@@ -1294,6 +1294,7 @@ export const translations = {
     // Project Board Widget
     projectBoard: '프로젝트 보드',
     projectBoardEmpty: '등록된 작업이 없습니다',
+    projectLinks: '공유 링크',
     overallProgress: '전체 진행률',
     upcomingSchedule: '다가오는 일정',
 
@@ -1319,6 +1320,7 @@ export const translations = {
     // Project Board Widget
     projectBoard: '프로젝트 보드',
     mainTable: '메인 테이블',
+    projectLinks: '공유 링크',
     ganttChart: '간트 차트',
     taskName: '아이템',
     taskStatus: '상태',
@@ -1431,7 +1433,7 @@ export const translations = {
     teamLoad: 'Team Load',
     projectProgress: 'Project Progress',
     weeklyActivity: 'Weekly Activity',
-    attendance: 'Attendance',
+    attendance: 'Work Status',
     nextActions: 'Upcoming Schedule',
     importantNotes: 'Important Notes',
     importantNotesCount: 'notes',
@@ -2655,6 +2657,7 @@ export const translations = {
     // Project Board Widget
     projectBoard: 'Project Board',
     projectBoardEmpty: 'No tasks registered yet',
+    projectLinks: 'Shared Links',
     overallProgress: 'Overall Progress',
     upcomingSchedule: 'Upcoming Schedule',
 
@@ -2680,6 +2683,7 @@ export const translations = {
     // Project Board Widget
     projectBoard: 'Project Board',
     mainTable: 'Main Table',
+    projectLinks: 'Shared Links',
     ganttChart: 'Gantt Chart',
     taskName: 'Item',
     taskStatus: 'Status',

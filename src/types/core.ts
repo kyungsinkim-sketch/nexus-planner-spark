@@ -218,6 +218,27 @@ export type ChatMessageType = 'text' | 'file' | 'location' | 'schedule' | 'decis
 
 export const BRAIN_BOT_USER_ID = '00000000-0000-0000-0000-000000000099';
 
+// AI Persona virtual user IDs (for DM list display)
+export const PERSONA_PABLO_USER_ID = '00000000-0000-0000-0000-000000000101';
+export const PERSONA_CD_USER_ID = '00000000-0000-0000-0000-000000000102';
+export const PERSONA_PD_USER_ID = '00000000-0000-0000-0000-000000000103';
+
+export const AI_PERSONA_USER_IDS = new Set([
+  PERSONA_PABLO_USER_ID,
+  PERSONA_CD_USER_ID,
+  PERSONA_PD_USER_ID,
+]);
+
+export function isAIPersonaUser(userId: string): boolean {
+  return AI_PERSONA_USER_IDS.has(userId);
+}
+
+export const PERSONA_ID_MAP: Record<string, { personaId: string; name: string; nameKo: string; description: string; descriptionKo: string; color: string }> = {
+  [PERSONA_PABLO_USER_ID]: { personaId: 'pablo_ai', name: 'Pablo AI', nameKo: 'Pablo AI', description: 'CEO AI Advisor', descriptionKo: 'CEO AI 어드바이저', color: 'amber' },
+  [PERSONA_CD_USER_ID]: { personaId: 'cd_ai', name: 'CD AI', nameKo: 'CD AI', description: 'Creative Director AI', descriptionKo: '크리에이티브 디렉터 AI', color: 'blue' },
+  [PERSONA_PD_USER_ID]: { personaId: 'pd_ai', name: 'PD AI', nameKo: 'PD AI', description: 'Producer AI', descriptionKo: '프로듀서 AI', color: 'green' },
+};
+
 export type BrainActionType = 'create_todo' | 'create_event' | 'share_location' | 'submit_service_suggestion' | 'create_board_task';
 export type BrainActionStatus = 'pending' | 'confirmed' | 'rejected' | 'executed' | 'failed';
 

@@ -195,7 +195,7 @@ export function BrainActionBubble({
       <div className="w-fit max-w-full rounded-2xl px-4 py-2.5 text-sm bg-gradient-to-br from-violet-50 to-blue-50 dark:from-violet-950/30 dark:to-blue-950/30 border border-violet-200/50 dark:border-violet-800/50" style={{ overflowWrap: 'anywhere', wordBreak: 'break-word' }}>
         <div className="flex items-center gap-1.5 mb-1">
           <Brain className="w-3.5 h-3.5 text-violet-500 shrink-0" />
-          <span className="text-xs font-semibold text-violet-600 dark:text-violet-400">Re-Be Brain</span>
+          <span className="text-xs font-semibold text-violet-600 dark:text-violet-400">Brain AI</span>
         </div>
         <p className="text-foreground leading-relaxed">{brainData.replyMessage}</p>
 

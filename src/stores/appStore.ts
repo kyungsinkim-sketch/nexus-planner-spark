@@ -58,6 +58,9 @@ interface AppState {
   todoCreateDialogOpen: boolean;
   projectCreateDialogOpen: boolean;
   importantNoteAddOpen: boolean;
+  projectSearchOpen: boolean;
+  showAutoCheckInDialog: boolean;
+  autoCheckInPosition: { latitude: number; longitude: number; address?: string } | null;
   worldClockSettingsOpen: boolean;
   weatherSettingsOpen: boolean;
 
@@ -137,6 +140,8 @@ interface AppState {
   setTodoCreateDialogOpen: (open: boolean) => void;
   setProjectCreateDialogOpen: (open: boolean) => void;
   setImportantNoteAddOpen: (open: boolean) => void;
+  setProjectSearchOpen: (open: boolean) => void;
+  setShowAutoCheckInDialog: (open: boolean) => void;
   setWorldClockSettingsOpen: (open: boolean) => void;
   setWeatherSettingsOpen: (open: boolean) => void;
   setNotificationSoundEnabled: (enabled: boolean) => void;
@@ -187,8 +192,9 @@ interface AppState {
   completeTodo: (todoId: string) => Promise<void>;
 
   // Important Notes Actions
-  addImportantNote: (note: Omit<ImportantNote, 'id' | 'createdAt'>) => void;
-  removeImportantNote: (noteId: string) => void;
+  loadImportantNotes: () => Promise<void>;
+  addImportantNote: (note: Omit<ImportantNote, 'id' | 'createdAt'>) => Promise<void>;
+  removeImportantNote: (noteId: string) => Promise<void>;
   getImportantNotesByProject: (projectId: string) => ImportantNote[];
 
   // Inspiration Quotes Actions
@@ -344,6 +350,9 @@ export const useAppStore = create<AppState>()(
       todoCreateDialogOpen: false,
       projectCreateDialogOpen: false,
       importantNoteAddOpen: false,
+      projectSearchOpen: false,
+      showAutoCheckInDialog: false,
+      autoCheckInPosition: null,
       worldClockSettingsOpen: false,
       weatherSettingsOpen: false,
       notificationSoundEnabled: true,
@@ -382,6 +391,7 @@ export const useAppStore = create<AppState>()(
           await get().loadEvents();
           await get().loadMessages();
           await get().loadTodos();
+          await get().loadImportantNotes();
           useWidgetStore.getState().loadLayoutFromDB();
         } finally {
           set({ isLoading: false });
@@ -445,6 +455,7 @@ export const useAppStore = create<AppState>()(
             await get().loadEvents();
             await get().loadMessages();
             await get().loadTodos();
+            await get().loadImportantNotes();
             useWidgetStore.getState().loadLayoutFromDB();
           }
         } finally {
@@ -1456,17 +1467,54 @@ export const useAppStore = create<AppState>()(
       },
 
       // Important Notes Actions
-      addImportantNote: (note) => set((state) => ({
-        importantNotes: [...state.importantNotes, {
-          ...note,
-          id: `note-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-          createdAt: new Date().toISOString(),
-        }],
-      })),
+      loadImportantNotes: async () => {
+        if (!isSupabaseConfigured()) return;
+        try {
+          const { getAllNotesForProjects } = await import('@/services/importantNoteService');
+          const projectIds = get().projects.map(p => p.id);
+          if (projectIds.length === 0) return;
+          const notes = await getAllNotesForProjects(projectIds);
+          set({ importantNotes: notes });
+        } catch (error) {
+          console.error('Failed to load important notes:', error);
+        }
+      },
 
-      removeImportantNote: (noteId) => set((state) => ({
-        importantNotes: state.importantNotes.filter((n) => n.id !== noteId),
-      })),
+      addImportantNote: async (note) => {
+        if (isSupabaseConfigured()) {
+          const { createNote } = await import('@/services/importantNoteService');
+          const created = await createNote(note);
+          if (created) {
+            set((state) => ({
+              importantNotes: [...state.importantNotes, created],
+            }));
+          }
+        } else {
+          set((state) => ({
+            importantNotes: [...state.importantNotes, {
+              ...note,
+              id: `note-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+              createdAt: new Date().toISOString(),
+            }],
+          }));
+        }
+      },
+
+      removeImportantNote: async (noteId) => {
+        if (isSupabaseConfigured()) {
+          const { deleteNote } = await import('@/services/importantNoteService');
+          const success = await deleteNote(noteId);
+          if (success) {
+            set((state) => ({
+              importantNotes: state.importantNotes.filter((n) => n.id !== noteId),
+            }));
+          }
+        } else {
+          set((state) => ({
+            importantNotes: state.importantNotes.filter((n) => n.id !== noteId),
+          }));
+        }
+      },
 
       getImportantNotesByProject: (projectId) =>
         get().importantNotes.filter((n) => n.projectId === projectId),
@@ -2082,6 +2130,8 @@ export const useAppStore = create<AppState>()(
       setTodoCreateDialogOpen: (open) => set({ todoCreateDialogOpen: open }),
       setProjectCreateDialogOpen: (open) => set({ projectCreateDialogOpen: open }),
       setImportantNoteAddOpen: (open) => set({ importantNoteAddOpen: open }),
+      setProjectSearchOpen: (open) => set({ projectSearchOpen: open }),
+      setShowAutoCheckInDialog: (open) => set({ showAutoCheckInDialog: open }),
       setWorldClockSettingsOpen: (open) => set({ worldClockSettingsOpen: open }),
       setWeatherSettingsOpen: (open) => set({ weatherSettingsOpen: open }),
       setNotificationSoundEnabled: (enabled) => set({ notificationSoundEnabled: enabled }),

@@ -33,6 +33,7 @@ import {
   CalendarDays,
   BookOpen,
   LayoutGrid,
+  Link2,
 } from 'lucide-react';
 import type { WidgetDefinition, WidgetType, WidgetDataContext } from '@/types/widget';
 
@@ -64,6 +65,7 @@ export const WIDGET_COMPONENTS: Record<WidgetType, ComponentType<{ context: Widg
   todayDate:      lazy(() => import('./TodayDateWidget')),
   notion:         lazy(() => import('./NotionWidget')),
   projectBoard:   lazy(() => import('./ProjectBoardWidget')),
+  projectLinks:   lazy(() => import('./LinksWidget')),
 };
 
 // Widget definitions (metadata)
@@ -177,8 +179,8 @@ export const WIDGET_DEFINITIONS: Record<WidgetType, WidgetDefinition> = {
     type: 'brainChat',
     titleKey: 'brainAI',
     icon: Brain,
-    defaultSize: { w: 6, h: 1 },
-    minSize: { w: 3, h: 1 },
+    defaultSize: { w: 6, h: 3 },
+    minSize: { w: 3, h: 2 },
     contexts: ['dashboard', 'project'],
   },
   brainInsights: {
@@ -275,6 +277,14 @@ export const WIDGET_DEFINITIONS: Record<WidgetType, WidgetDefinition> = {
     icon: LayoutGrid,
     defaultSize: { w: 9, h: 6 },
     minSize: { w: 6, h: 4 },
+    contexts: ['project'],
+  },
+  projectLinks: {
+    type: 'projectLinks',
+    titleKey: 'projectLinks',
+    icon: Link2,
+    defaultSize: { w: 3, h: 3 },
+    minSize: { w: 2, h: 2 },
     contexts: ['project'],
   },
 };

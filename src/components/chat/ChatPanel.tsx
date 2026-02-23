@@ -48,7 +48,7 @@ import { useTranslation } from '@/hooks/useTranslation';
 import { ChatMessageBubble } from '@/components/chat/ChatMessageBubble';
 import { FileUploadModal } from '@/components/project/FileUploadModal';
 import type { LocationShare, ScheduleShare, DecisionShare, ChatMessage, ChatRoom, FileCategory } from '@/types/core';
-import { BRAIN_BOT_USER_ID, extractEmailDomain, isFreelancerDomain } from '@/types/core';
+import { BRAIN_BOT_USER_ID, extractEmailDomain, isFreelancerDomain, isAIPersonaUser, PERSONA_ID_MAP, PERSONA_PABLO_USER_ID, PERSONA_CD_USER_ID, PERSONA_PD_USER_ID } from '@/types/core';
 import * as chatService from '@/services/chatService';
 import * as fileService from '@/services/fileService';
 import * as brainService from '@/services/brainService';
@@ -150,10 +150,19 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
     });
   }, [allProjects, searchQuery, messages]);
 
-  // Filter users (excluding current user)
+  // Filter users (excluding current user) + prepend AI persona virtual users
   const otherUsers = useMemo(() => {
     if (!currentUser) return users;
-    return users.filter(u => u.id !== currentUser.id);
+    const realUsers = users.filter(u => u.id !== currentUser.id);
+
+    // Add AI persona virtual users at the top
+    const personaUsers: typeof users = [
+      { id: PERSONA_PABLO_USER_ID, name: 'Pablo AI', role: 'ADMIN' as const, department: 'CEO AI Advisor' },
+      { id: PERSONA_CD_USER_ID, name: 'CD AI', role: 'MANAGER' as const, department: 'Creative Director AI' },
+      { id: PERSONA_PD_USER_ID, name: 'PD AI', role: 'MANAGER' as const, department: 'Producer AI' },
+    ];
+
+    return [...personaUsers, ...realUsers];
   }, [users, currentUser]);
 
   // Filter users by search, sorted by most recent DM
@@ -355,6 +364,28 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
     }
 
     setNewMessage('');
+
+    // NEW: If DM target is an AI persona, auto-trigger persona query (no @mention needed)
+    if (selectedChat.type === 'direct' && isAIPersonaUser(selectedChat.id)) {
+      const personaInfo = PERSONA_ID_MAP[selectedChat.id];
+      if (personaInfo) {
+        setPabloProcessing(true);
+        try {
+          await personaService.queryPersona({
+            personaId: personaInfo.personaId,
+            query: trimmed,
+            directChatUserId: selectedChat.id,
+          });
+          console.log(`[Persona DM] ${personaInfo.personaId} auto-query completed`);
+        } catch (personaErr) {
+          console.error(`[Persona DM] ${personaInfo.personaId} query failed:`, personaErr);
+          toast.error(`AI 페르소나 응답 실패: ${(personaErr as Error).message}`);
+        } finally {
+          setPabloProcessing(false);
+        }
+        return; // Skip brain processing for persona DM
+      }
+    }
 
     // 2. Persona query — triggered by @pablo, @cd, @pd mention in message
     if (isPersonaMention && personaCleanContent) {
@@ -1083,6 +1114,11 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
         thumbnail: project.thumbnail,
       };
     } else {
+      // Check if it's an AI persona
+      if (isAIPersonaUser(selectedChat.id)) {
+        const personaInfo = PERSONA_ID_MAP[selectedChat.id];
+        return personaInfo ? { name: personaInfo.name, subtitle: personaInfo.description } : null;
+      }
       const user = users.find(u => u.id === selectedChat.id);
       return user ? { name: user.name, subtitle: user.department, avatar: user.avatar } : null;
     }
@@ -1268,14 +1304,29 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
                         >
                           <Avatar className="w-8 h-8 shrink-0">
                             {user.avatar && <AvatarImage src={user.avatar} alt={user.name} />}
-                            <AvatarFallback className="bg-primary/10 text-primary text-xs">
-                              {getInitials(user.name)}
+                            <AvatarFallback className={`text-xs ${
+                              isAIPersonaUser(user.id)
+                                ? PERSONA_ID_MAP[user.id]?.color === 'amber' ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300'
+                                  : PERSONA_ID_MAP[user.id]?.color === 'blue' ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300'
+                                  : 'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300'
+                                : 'bg-primary/10 text-primary'
+                            }`}>
+                              {isAIPersonaUser(user.id) ? '\uD83E\uDD16' : getInitials(user.name)}
                             </AvatarFallback>
                           </Avatar>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center justify-between gap-1">
-                              <h3 className="font-medium text-foreground text-xs">
+                              <h3 className="font-medium text-foreground text-xs flex items-center gap-1">
                                 {user.name}
+                                {isAIPersonaUser(user.id) && (
+                                  <span className={`text-[9px] px-1 py-0.5 rounded-full font-medium ${
+                                    PERSONA_ID_MAP[user.id]?.color === 'amber' ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300' :
+                                    PERSONA_ID_MAP[user.id]?.color === 'blue' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300' :
+                                    'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300'
+                                  }`}>
+                                    AI
+                                  </span>
+                                )}
                               </h3>
                               {lastDM && (
                                 <span className="text-[10px] text-muted-foreground shrink-0">
@@ -1470,7 +1521,7 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
             <div className="flex items-center gap-2 px-3 py-1.5 bg-violet-50 dark:bg-violet-950/30 border-t border-violet-200/50 dark:border-violet-800/50">
               <div className="w-3 h-3 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" />
               <span className="text-xs text-violet-600 dark:text-violet-400 font-medium">
-                Re-Be Brain is thinking...
+                Brain AI is thinking...
               </span>
             </div>
           )}

@@ -1,8 +1,10 @@
 /**
  * AttendanceWidget — Shows all currently working team members.
- * Displays everyone whose status is NOT 'NOT_AT_WORK'.
+ * Horizontal flex-wrap layout with avatars, names, and status dots.
+ * Click on user opens a Popover with check-in time + accumulated work hours.
  */
 
+import { useEffect, useState } from 'react';
 import { useAppStore } from '@/stores/appStore';
 import {
   Building2,
@@ -14,6 +16,9 @@ import {
   Dumbbell,
   Clock,
 } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { isSupabaseConfigured } from '@/lib/supabase';
+import { getTeamTodayAttendance } from '@/services/attendanceService';
 import type { WidgetDataContext } from '@/types/widget';
 import type { UserWorkStatus } from '@/types/core';
 import { useTranslation } from '@/hooks/useTranslation';
@@ -28,11 +33,46 @@ const STATUS_CONFIG: Record<string, { icon: typeof Building2; color: string; lab
   TRAINING:  { icon: Dumbbell,         color: 'text-pink-500',   label: '운동중',   labelEn: 'Training' },
 };
 
+/** Dot color for status (bg- variant) */
+const STATUS_DOT_COLOR: Record<string, string> = {
+  AT_WORK:  'bg-green-500',
+  REMOTE:   'bg-blue-500',
+  OVERSEAS: 'bg-purple-500',
+  FILMING:  'bg-orange-500',
+  FIELD:    'bg-teal-500',
+  LUNCH:    'bg-amber-500',
+  TRAINING: 'bg-pink-500',
+};
+
 function AttendanceWidget({ context: _context }: { context: WidgetDataContext }) {
   const { currentUser, userWorkStatus, users } = useAppStore();
   const { language } = useTranslation();
 
-  // Build list of working users — merge current user's live status
+  // Real attendance data from Supabase
+  const [attendanceMap, setAttendanceMap] = useState<Map<string, { check_in_at: string; working_minutes: number }>>(new Map());
+
+  useEffect(() => {
+    if (!isSupabaseConfigured()) return;
+
+    getTeamTodayAttendance()
+      .then((records) => {
+        const map = new Map<string, { check_in_at: string; working_minutes: number }>();
+        for (const rec of records) {
+          if (rec.check_in_at) {
+            map.set(rec.user_id, {
+              check_in_at: rec.check_in_at,
+              working_minutes: rec.working_minutes || 0,
+            });
+          }
+        }
+        setAttendanceMap(map);
+      })
+      .catch((err) => {
+        console.error('[AttendanceWidget] Failed to load team attendance:', err);
+      });
+  }, []);
+
+  // Build list of working users -- merge current user's live status
   const workingUsers = (users || [])
     .map(u => {
       const status: UserWorkStatus =
@@ -51,43 +91,68 @@ function AttendanceWidget({ context: _context }: { context: WidgetDataContext })
   }
 
   return (
-    <div className="space-y-1 overflow-y-auto h-full p-1">
+    <div className="flex flex-wrap gap-2 p-2 overflow-y-auto h-full">
       {workingUsers.map(user => {
         const cfg = STATUS_CONFIG[user.liveStatus] || STATUS_CONFIG.AT_WORK;
         const Icon = cfg.icon;
         const isMe = user.id === currentUser?.id;
+        const dotColor = STATUS_DOT_COLOR[user.liveStatus] || 'bg-green-500';
+        const attendance = attendanceMap.get(user.id);
+
+        // Format check-in time
+        let checkInTime = '--:--';
+        if (attendance?.check_in_at) {
+          try {
+            const d = new Date(attendance.check_in_at);
+            checkInTime = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+          } catch {
+            checkInTime = '--:--';
+          }
+        }
+
+        // Format working minutes
+        const totalMinutes = attendance?.working_minutes || 0;
+        const hours = Math.floor(totalMinutes / 60);
+        const minutes = totalMinutes % 60;
 
         return (
-          <div
-            key={user.id}
-            className={`flex items-center gap-2 px-2 py-1.5 rounded-lg transition-colors ${
-              isMe ? 'bg-primary/10' : 'hover:bg-muted/30'
-            }`}
-          >
-            {/* Avatar or icon */}
-            {user.avatar ? (
-              <img src={user.avatar} alt="" className="w-6 h-6 rounded-full object-cover shrink-0" />
-            ) : (
-              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-white text-[10px] font-bold shrink-0 ${
-                isMe ? 'bg-primary' : 'bg-muted-foreground/40'
-              }`}>
-                {user.name.charAt(0)}
+          <Popover key={user.id}>
+            <PopoverTrigger asChild>
+              <button
+                className={`flex flex-col items-center gap-0.5 p-1.5 rounded-lg transition-colors ${
+                  isMe ? 'bg-primary/10' : 'hover:bg-muted/30'
+                }`}
+              >
+                <div className="relative">
+                  {user.avatar ? (
+                    <img src={user.avatar} alt="" className="w-8 h-8 rounded-full object-cover" />
+                  ) : (
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold ${
+                      isMe ? 'bg-primary' : 'bg-muted-foreground/40'
+                    }`}>
+                      {user.name.charAt(0)}
+                    </div>
+                  )}
+                  <div className={`w-3 h-3 rounded-full absolute -bottom-0.5 -right-0.5 border-2 border-background ${dotColor}`} />
+                </div>
+                <span className="text-[10px] truncate max-w-[48px]">{user.name}</span>
+              </button>
+            </PopoverTrigger>
+            <PopoverContent className="w-48 p-3 space-y-2">
+              <div className={`flex items-center gap-1.5 ${cfg.color}`}>
+                <Icon className="w-4 h-4" />
+                <span className="text-sm font-medium">
+                  {language === 'ko' ? cfg.label : cfg.labelEn}
+                </span>
               </div>
-            )}
-
-            {/* Name */}
-            <span className={`text-sm truncate flex-1 ${isMe ? 'font-semibold' : ''}`}>
-              {user.name}
-            </span>
-
-            {/* Status badge */}
-            <div className={`flex items-center gap-1 ${cfg.color}`}>
-              <Icon className="w-3.5 h-3.5" />
-              <span className="text-[10px] font-medium whitespace-nowrap">
-                {language === 'ko' ? cfg.label : cfg.labelEn}
-              </span>
-            </div>
-          </div>
+              <div className="text-xs text-muted-foreground space-y-0.5">
+                <p>{language === 'ko' ? '출근' : 'Check-in'}: {checkInTime}</p>
+                <p>
+                  {language === 'ko' ? '누적 근무' : 'Total'}: {hours}{language === 'ko' ? '시간' : 'h'} {minutes}{language === 'ko' ? '분' : 'm'}
+                </p>
+              </div>
+            </PopoverContent>
+          </Popover>
         );
       })}
     </div>

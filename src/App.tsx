@@ -11,6 +11,9 @@ import { isSupabaseConfigured } from "@/lib/supabase";
 import { Loader2 } from "lucide-react";
 import { playNotificationSound } from "@/services/notificationSoundService";
 import { useChatNotifications } from "@/hooks/useChatNotifications";
+import { useAutoCheckIn } from "@/hooks/useAutoCheckIn";
+import { useInactivityDetector } from "@/hooks/useInactivityDetector";
+import { AutoCheckInDialog } from "@/components/dashboard/AutoCheckInDialog";
 
 // Lazy-loaded page components for code splitting
 const AdminPage = lazy(() => import("./pages/AdminPage"));
@@ -29,6 +32,10 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   // Global chat notification popups (bottom-left toast)
   useChatNotifications();
 
+  // Auto check-in based on GPS + inactivity auto check-out
+  useAutoCheckIn();
+  useInactivityDetector();
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -41,7 +48,12 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
     return <Navigate to="/auth" replace />;
   }
 
-  return <>{children}</>;
+  return (
+    <>
+      {children}
+      <AutoCheckInDialog />
+    </>
+  );
 }
 
 // Admin Route Guard Component

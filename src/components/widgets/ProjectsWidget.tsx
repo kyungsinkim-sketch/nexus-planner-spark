@@ -2,13 +2,15 @@
  * ProjectsWidget — Shows project list as icon grid with thumbnails (Dashboard only).
  * Clicking a project opens it as a tab.
  * Displays thumbnail image or keyColor+initial fallback.
+ * Includes search functionality toggled by projectSearchOpen store state.
  */
 
-import { useState, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useAppStore } from '@/stores/appStore';
 import { useWidgetStore } from '@/stores/widgetStore';
 import { useTranslation } from '@/hooks/useTranslation';
-import { FolderKanban } from 'lucide-react';
+import { FolderKanban, Search, X } from 'lucide-react';
+import { Input } from '@/components/ui/input';
 import type { WidgetDataContext } from '@/types/widget';
 
 type StatusFilter = 'ACTIVE' | 'COMPLETED' | 'ARCHIVED' | 'ALL';
@@ -23,14 +25,32 @@ function getInitials(title: string): string {
 
 function ProjectsWidget({ context: _context }: { context: WidgetDataContext }) {
   const { projects } = useAppStore();
+  const projectSearchOpen = useAppStore((s) => s.projectSearchOpen);
+  const setProjectSearchOpen = useAppStore((s) => s.setProjectSearchOpen);
   const { openProjectTab } = useWidgetStore();
   const { t } = useTranslation();
   const [filter, setFilter] = useState<StatusFilter>('ACTIVE');
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // Clear searchQuery when projectSearchOpen closes
+  useEffect(() => {
+    if (!projectSearchOpen) {
+      setSearchQuery('');
+    }
+  }, [projectSearchOpen]);
 
   const filtered = useMemo(() => {
-    if (filter === 'ALL') return projects;
-    return projects.filter((p) => p.status === filter);
-  }, [projects, filter]);
+    let result = filter === 'ALL' ? projects : projects.filter((p) => p.status === filter);
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter(
+        (p) =>
+          p.title.toLowerCase().includes(q) ||
+          p.client.toLowerCase().includes(q)
+      );
+    }
+    return result;
+  }, [projects, filter, searchQuery]);
 
   const statusCounts = useMemo(() => ({
     ACTIVE: projects.filter((p) => p.status === 'ACTIVE').length,
@@ -40,6 +60,29 @@ function ProjectsWidget({ context: _context }: { context: WidgetDataContext }) {
 
   return (
     <div className="flex flex-col h-full">
+      {/* Search bar — shown when projectSearchOpen */}
+      {projectSearchOpen && (
+        <div className="flex items-center gap-1.5 mb-2 shrink-0">
+          <div className="relative flex-1">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+            <Input
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder={t('searchProject')}
+              className="pl-8 h-7 text-xs"
+              autoFocus
+            />
+          </div>
+          <button
+            onClick={() => setProjectSearchOpen(false)}
+            className="p-1 rounded hover:bg-white/20 transition-colors shrink-0"
+            title={t('close')}
+          >
+            <X className="w-3.5 h-3.5 text-muted-foreground" />
+          </button>
+        </div>
+      )}
+
       {/* Filter buttons */}
       <div className="flex gap-1 mb-2 shrink-0">
         {(['ACTIVE', 'COMPLETED', 'ARCHIVED'] as const).map((status) => (

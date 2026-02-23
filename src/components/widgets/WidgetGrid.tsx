@@ -16,7 +16,7 @@ import { useAppStore } from '@/stores/appStore';
 import { useTranslation } from '@/hooks/useTranslation';
 import { WidgetContainer } from './WidgetContainer';
 import { WIDGET_COMPONENTS, WIDGET_DEFINITIONS } from './widgetRegistry';
-import { Plus, Settings, X } from 'lucide-react';
+import { Plus, Settings, Search, X } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { EditProjectModal } from '@/components/project/EditProjectModal';
 import type { WidgetDataContext, WidgetLayoutItem, WidgetType } from '@/types/widget';
@@ -52,6 +52,7 @@ export function WidgetGrid({ context, projectKeyColor }: WidgetGridProps) {
   const currentUser = useAppStore((s) => s.currentUser);
   const setTodoCreateDialogOpen = useAppStore((s) => s.setTodoCreateDialogOpen);
   const setProjectCreateDialogOpen = useAppStore((s) => s.setProjectCreateDialogOpen);
+  const setProjectSearchOpen = useAppStore((s) => s.setProjectSearchOpen);
   const setImportantNoteAddOpen = useAppStore((s) => s.setImportantNoteAddOpen);
   const setWorldClockSettingsOpen = useAppStore((s) => s.setWorldClockSettingsOpen);
   const setWeatherSettingsOpen = useAppStore((s) => s.setWeatherSettingsOpen);
@@ -66,7 +67,10 @@ export function WidgetGrid({ context, projectKeyColor }: WidgetGridProps) {
       return [{ icon: Plus, onClick: () => setTodoCreateDialogOpen(true), title: t('newTodo') }];
     }
     if (widgetType === 'projects') {
-      return [{ icon: Plus, onClick: () => setProjectCreateDialogOpen(true), title: t('newProject') }];
+      return [
+        { icon: Search, onClick: () => setProjectSearchOpen(true), title: t('searchProject') },
+        { icon: Plus, onClick: () => setProjectCreateDialogOpen(true), title: t('newProject') },
+      ];
     }
     if (widgetType === 'importantNotes') {
       return [{ icon: Plus, onClick: () => setImportantNoteAddOpen(true), title: t('addNote') }];
@@ -78,7 +82,7 @@ export function WidgetGrid({ context, projectKeyColor }: WidgetGridProps) {
       return [{ icon: Settings, onClick: () => setWeatherSettingsOpen(true), title: t('settings') }];
     }
     return undefined;
-  }, [setTodoCreateDialogOpen, setProjectCreateDialogOpen, setImportantNoteAddOpen, setWorldClockSettingsOpen, setWeatherSettingsOpen, t]);
+  }, [setTodoCreateDialogOpen, setProjectCreateDialogOpen, setProjectSearchOpen, setImportantNoteAddOpen, setWorldClockSettingsOpen, setWeatherSettingsOpen, t]);
 
   // Get current project for settings dialog
   const projects = useAppStore((s) => s.projects);

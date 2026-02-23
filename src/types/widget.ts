@@ -34,7 +34,8 @@ export type WidgetType =
   | 'voiceRecorder'
   | 'todayDate'
   | 'notion'
-  | 'projectBoard';
+  | 'projectBoard'
+  | 'projectLinks';
 
 // Widget context — determines which data scope a widget uses
 export type WidgetContext = 'dashboard' | 'project';
