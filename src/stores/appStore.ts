@@ -238,6 +238,7 @@ interface AppState {
   markAppNotificationRead: (id: string) => void;
   markAllAppNotificationsRead: () => void;
   clearAppNotifications: () => void;
+  clearChatNotificationsForRoom: (roomId?: string, projectId?: string, directUserId?: string) => void;
   getUnreadAppNotificationCount: () => number;
 
   // Settings Actions
@@ -2073,6 +2074,25 @@ export const useAppStore = create<AppState>()(
         appNotifications: state.appNotifications.map(n => ({ ...n, read: true })),
       })),
       clearAppNotifications: () => set({ appNotifications: [] }),
+      clearChatNotificationsForRoom: (roomId, projectId, directUserId) => set((state) => ({
+        appNotifications: state.appNotifications.filter(n => {
+          if (n.type !== 'chat') return true;
+          // Match by roomId
+          if (roomId && n.roomId === roomId) return false;
+          // Match by projectId (project-level chat without room)
+          if (projectId && !roomId && n.projectId === projectId && !n.roomId) return false;
+          // Match DM notifications — sourceId is the message id, check via the messages
+          if (directUserId) {
+            // DM notifications don't have roomId but have sourceId (message id)
+            const msg = state.messages.find(m => m.id === n.sourceId);
+            if (msg && (
+              (msg.userId === directUserId && msg.directChatUserId === state.currentUser?.id) ||
+              (msg.userId === state.currentUser?.id && msg.directChatUserId === directUserId)
+            )) return false;
+          }
+          return true;
+        }),
+      })),
       getUnreadAppNotificationCount: () =>
         get().appNotifications.filter(n => !n.read).length,
 

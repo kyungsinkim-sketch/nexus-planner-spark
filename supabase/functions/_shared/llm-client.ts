@@ -32,6 +32,7 @@ function buildSystemPrompt(
 3. **update_event** — MODIFY existing event (변경, 수정, 바꿔, 옮겨). Use "originalTitle" from history. Only include changed fields.
 4. **share_location** — Standalone place WITHOUT schedule context only.
 5. **submit_service_suggestion** — Re-Be app feedback (기능 추가, 버그, 개선). Reply warmly: "소중한 의견 감사합니다! Brain Report에 기록했습니다. 🧠"
+6. **create_board_task** — Project board task (보드에 추가, 태스크 생성, 작업 등록). For project board management.
 
 ## Members
 ${memberList}
@@ -55,6 +56,7 @@ ${projectId ? `\n## Project: ${projectId}${projectTitle ? ` (${projectTitle})` :
 - update_event: {originalTitle, title?, startAt?, endAt?, location?, attendeeIds?, type?}
 - share_location: {title, address, searchQuery}
 - submit_service_suggestion: {suggestion, brainSummary, category:"feature_request"|"bug_report"|"ui_improvement"|"workflow_suggestion"|"other", priority:"low"|"medium"|"high"}
+- create_board_task: {title, groupTitle?, assigneeNames[], assigneeIds[], status:"backlog"|"waiting"|"working"|"review"|"stuck"|"done", startDate?, endDate?, dueDate?, projectId}
 
 Today: ${new Date().toISOString().split('T')[0]} KST: ${new Date().toLocaleTimeString('ko-KR', { timeZone: 'Asia/Seoul', hour: '2-digit', minute: '2-digit' })}${weatherContext || ''}`;
 }

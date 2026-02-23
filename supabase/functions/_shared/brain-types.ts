@@ -2,7 +2,7 @@
 
 export const BRAIN_BOT_USER_ID = '00000000-0000-0000-0000-000000000099';
 
-export type BrainActionType = 'create_todo' | 'create_event' | 'update_event' | 'share_location' | 'submit_service_suggestion';
+export type BrainActionType = 'create_todo' | 'create_event' | 'update_event' | 'share_location' | 'submit_service_suggestion' | 'create_board_task';
 export type BrainActionStatus = 'pending' | 'confirmed' | 'rejected' | 'executed' | 'failed';
 
 export interface BrainExtractedTodo {
@@ -48,10 +48,22 @@ export interface BrainExtractedServiceSuggestion {
   priority: 'low' | 'medium' | 'high';
 }
 
+export interface BrainExtractedBoardTask {
+  title: string;
+  groupTitle?: string;
+  assigneeNames: string[];
+  assigneeIds: string[];
+  status: 'backlog' | 'waiting' | 'working' | 'review' | 'stuck' | 'done';
+  startDate?: string;
+  endDate?: string;
+  dueDate?: string;
+  projectId?: string;
+}
+
 export interface LLMExtractedAction {
   type: BrainActionType;
   confidence: number;
-  data: BrainExtractedTodo | BrainExtractedEvent | BrainExtractedEventUpdate | BrainExtractedLocation | BrainExtractedServiceSuggestion;
+  data: BrainExtractedTodo | BrainExtractedEvent | BrainExtractedEventUpdate | BrainExtractedLocation | BrainExtractedServiceSuggestion | BrainExtractedBoardTask;
 }
 
 export interface LLMResponse {

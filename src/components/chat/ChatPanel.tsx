@@ -80,6 +80,8 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
     brainIntelligenceEnabled,
     loadEvents, loadTodos, addTodo, addEvent, updateEvent,
     addBrainReport, addBrainNotification,
+    loadBoardData, addBoardTask,
+    clearChatNotificationsForRoom,
   } = useAppStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTab, setSelectedTab] = useState<'projects' | 'direct'>('projects');
@@ -195,9 +197,12 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
     } else {
       if (!currentUser) return [];
       return messages.filter(m =>
-        m.directChatUserId === selectedChat.id ||
+        // Messages FROM current user TO selected user
         (m.userId === currentUser.id && m.directChatUserId === selectedChat.id) ||
-        (m.userId === selectedChat.id && m.directChatUserId === currentUser.id)
+        // Messages FROM selected user TO current user
+        (m.userId === selectedChat.id && m.directChatUserId === currentUser.id) ||
+        // Brain bot messages in this DM context
+        (m.userId === BRAIN_BOT_USER_ID && (m.directChatUserId === selectedChat.id || m.directChatUserId === currentUser.id))
       );
     }
   }, [messages, selectedChat, currentUser]);
@@ -276,6 +281,16 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
     // Room entry → instant scroll; new message → smooth scroll
     scrollToBottom(isRoomEntry);
   }, [chatMessages, selectedChat]);
+
+  // Auto-clear chat notifications when entering a chat room
+  useEffect(() => {
+    if (!selectedChat) return;
+    if (selectedChat.type === 'project') {
+      clearChatNotificationsForRoom(selectedChat.roomId, selectedChat.id);
+    } else if (selectedChat.type === 'direct') {
+      clearChatNotificationsForRoom(undefined, undefined, selectedChat.id);
+    }
+  }, [selectedChat?.type, selectedChat?.id, selectedChat?.roomId, clearChatNotificationsForRoom]);
 
   // Subscribe to realtime messages when selecting a room (INSERT + DELETE)
   useEffect(() => {
@@ -487,6 +502,13 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
                 await loadTodos().catch(() => {});
               }
             }
+            if (dataType === 'board_task') {
+              const taskProjectId = (execResult.executedData as Record<string, unknown>)?.project_id as string;
+              if (taskProjectId) {
+                await loadBoardData(taskProjectId);
+              }
+              console.log('[Brain] Auto-executed board task from chat, refreshed');
+            }
           } catch (execErr) {
             console.error('[Brain] Auto-execute failed for action:', actionId, execErr);
             // Mock mode fallback: create/update todo/event locally from action's extracted data
@@ -559,6 +581,22 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
                 });
                 console.log('[Brain] Service suggestion saved to Brain Report');
               }
+              if (actionType === 'create_board_task' && extracted) {
+                const taskProjectId = (extracted.projectId as string) || selectedChat?.id;
+                if (taskProjectId) {
+                  await addBoardTask({
+                    boardGroupId: '', // Will be resolved in store
+                    projectId: taskProjectId,
+                    title: (extracted.title as string) || 'Untitled Task',
+                    ownerId: (extracted.assigneeIds as string[])?.[0] || currentUser.id,
+                    status: (extracted.status as 'backlog' | 'working') || 'backlog',
+                    startDate: (extracted.startDate as string) || new Date().toISOString().slice(0, 10),
+                    endDate: extracted.endDate as string,
+                    dueDate: extracted.dueDate as string,
+                  });
+                  console.log('[Brain] Mock fallback: board task created locally');
+                }
+              }
             }
           }
         }
@@ -627,7 +665,9 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
             ? 'Event created successfully!'
             : dataType === 'update_event'
               ? 'Event updated successfully!'
-              : 'Action completed!';
+              : dataType === 'board_task'
+                ? '보드 태스크가 생성되었습니다!'
+                : 'Action completed!';
       toast.success(actionLabel);
 
       // Push brain notification for confirmed chat Brain actions
@@ -647,6 +687,18 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
           message: (execData.title as string) || 'Todo',
           chatRoomId: selectedChat?.roomId,
         });
+      } else if (dataType === 'board_task') {
+        const execData = result.executedData as Record<string, unknown>;
+        addBrainNotification({
+          type: 'brain_todo',
+          title: '보드 태스크 생성됨',
+          message: (execData.title as string) || 'Board Task',
+          chatRoomId: selectedChat?.roomId,
+        });
+        const taskProjectId = execData.project_id as string;
+        if (taskProjectId) {
+          await loadBoardData(taskProjectId);
+        }
       }
 
       // Force immediate refresh + retries for the created/updated entity
@@ -970,8 +1022,25 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
     setSelectedChat({ type: 'project', id: projectId, roomId: room.id });
   };
 
-  const handleSelectDirectChat = (userId: string) => {
+  const handleSelectDirectChat = async (userId: string) => {
     setSelectedChat({ type: 'direct', id: userId });
+    // Preload DM history for this conversation (ensures first-time chats work)
+    if (isSupabaseConfigured() && currentUser) {
+      try {
+        const msgs = await chatService.getDirectMessages(currentUser.id, userId);
+        if (msgs.length > 0) {
+          const existingIds = new Set(useAppStore.getState().messages.map(m => m.id));
+          const newMsgs = msgs.filter(m => !existingIds.has(m.id));
+          if (newMsgs.length > 0) {
+            useAppStore.setState((state) => ({
+              messages: [...state.messages, ...newMsgs],
+            }));
+          }
+        }
+      } catch (e) {
+        console.error('Failed to preload DM history:', e);
+      }
+    }
   };
 
   const handleBackToList = () => {

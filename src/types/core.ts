@@ -218,7 +218,7 @@ export type ChatMessageType = 'text' | 'file' | 'location' | 'schedule' | 'decis
 
 export const BRAIN_BOT_USER_ID = '00000000-0000-0000-0000-000000000099';
 
-export type BrainActionType = 'create_todo' | 'create_event' | 'share_location' | 'submit_service_suggestion';
+export type BrainActionType = 'create_todo' | 'create_event' | 'share_location' | 'submit_service_suggestion' | 'create_board_task';
 export type BrainActionStatus = 'pending' | 'confirmed' | 'rejected' | 'executed' | 'failed';
 
 export interface BrainAction {

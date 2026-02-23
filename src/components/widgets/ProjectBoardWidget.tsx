@@ -4,15 +4,18 @@
  * Uses real data from appStore (boardGroups + boardTasks).
  * Supports inline editing of task title, status, owner, dates, and progress.
  * Each project has its own independent board data.
+ *
+ * v2: Multiple owners, searchable owner selector, gantt drag-and-drop,
+ *     group-colored gantt bars, default dates on task creation.
  */
 
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { useTranslation } from '@/hooks/useTranslation';
 import { useAppStore } from '@/stores/appStore';
 import type { WidgetDataContext } from '@/types/widget';
-import type { User, BoardGroup, BoardTask, BoardTaskStatus } from '@/types/core';
+import type { User, BoardGroup, BoardTask, BoardTaskStatus, Project } from '@/types/core';
 import { cn } from '@/lib/utils';
-import { LayoutGrid, GanttChart, ChevronDown, ChevronRight, Plus, Trash2, X, Check } from 'lucide-react';
+import { LayoutGrid, GanttChart, ChevronDown, ChevronRight, Plus, Trash2, X, Check, Search } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -38,13 +41,13 @@ const ALL_STATUSES: BoardTaskStatus[] = ['backlog', 'waiting', 'working', 'revie
 
 // ── Sub-components ─────────────────────────────────────────
 
-function OwnerAvatar({ user }: { user?: User }) {
-  if (!user) return <div className="w-7 h-7 rounded-full bg-muted" />;
+function OwnerAvatar({ user, size = 7 }: { user?: User; size?: number }) {
+  if (!user) return <div className={`w-${size} h-${size} rounded-full bg-muted`} style={{ width: size * 4, height: size * 4 }} />;
   return (
     <TooltipProvider delayDuration={200}>
       <Tooltip>
         <TooltipTrigger asChild>
-          <Avatar className="w-7 h-7 text-[10px] cursor-default">
+          <Avatar className="text-[10px] cursor-default" style={{ width: size * 4, height: size * 4 }}>
             <AvatarFallback className="bg-primary/10 text-primary font-medium">
               {user.name.slice(-2)}
             </AvatarFallback>
@@ -155,24 +158,6 @@ function ProgressBar({ value, onChange }: { value: number; onChange?: (v: number
   );
 }
 
-function TimelineBar({ startDate, endDate, rangeStart, totalDays }: { startDate: string; endDate: string; rangeStart: Date; totalDays: number }) {
-  const start = parseISO(startDate);
-  const end = parseISO(endDate);
-  const leftDays = Math.max(0, differenceInDays(start, rangeStart));
-  const widthDays = Math.max(1, differenceInDays(end, start) + 1);
-  const leftPct = (leftDays / totalDays) * 100;
-  const widthPct = (widthDays / totalDays) * 100;
-
-  return (
-    <div className="relative h-6 w-full">
-      <div
-        className="absolute top-1 h-4 rounded-full bg-primary/70"
-        style={{ left: `${leftPct}%`, width: `${Math.min(widthPct, 100 - leftPct)}%` }}
-      />
-    </div>
-  );
-}
-
 // ── Inline editable cell ──────────────────────────────────
 
 function EditableCell({
@@ -195,7 +180,7 @@ function EditableCell({
         className={cn('cursor-pointer hover:bg-accent/30 rounded px-1 py-0.5 transition-colors', className)}
         onClick={() => { setEditVal(value); setEditing(true); }}
       >
-        {value || '-'}
+        {type === 'date' && value ? format(parseISO(value), 'M/d') : (value || '-')}
       </span>
     );
   }
@@ -216,40 +201,121 @@ function EditableCell({
   );
 }
 
-// ── Owner selector ────────────────────────────────────────
+// ── Multi-Owner selector with search ──────────────────────
 
-function OwnerSelector({ currentOwnerId, users, onSelect }: {
-  currentOwnerId: string;
+function MultiOwnerSelector({
+  ownerIds,
+  users,
+  onSelect,
+}: {
+  ownerIds: string[];
   users: User[];
-  onSelect: (userId: string) => void;
+  onSelect: (userIds: string[]) => void;
 }) {
   const [open, setOpen] = useState(false);
-  const currentUser = users.find(u => u.id === currentOwnerId);
+  const [search, setSearch] = useState('');
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const selectedUsers = useMemo(() => ownerIds.map(id => users.find(u => u.id === id)).filter(Boolean) as User[], [ownerIds, users]);
+
+  const filteredUsers = useMemo(() => {
+    if (!search) return users;
+    const q = search.toLowerCase();
+    return users.filter(u => u.name.toLowerCase().includes(q) || u.email?.toLowerCase().includes(q));
+  }, [users, search]);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setOpen(false);
+        setSearch('');
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  const toggleUser = (userId: string) => {
+    if (ownerIds.includes(userId)) {
+      // Don't remove if it's the last owner
+      if (ownerIds.length <= 1) return;
+      onSelect(ownerIds.filter(id => id !== userId));
+    } else {
+      onSelect([...ownerIds, userId]);
+    }
+  };
 
   return (
-    <div className="relative">
-      <div className="cursor-pointer" onClick={() => setOpen(!open)}>
-        <OwnerAvatar user={currentUser} />
-      </div>
-      {open && (
-        <div className="absolute top-full left-0 mt-1 bg-popover border border-border rounded-lg shadow-lg z-50 max-h-40 overflow-y-auto min-w-[140px]">
-          {users.map(u => (
-            <button
-              key={u.id}
-              onClick={() => { onSelect(u.id); setOpen(false); }}
-              className={cn(
-                'w-full flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-accent transition-colors text-left',
-                u.id === currentOwnerId && 'bg-accent'
-              )}
-            >
-              <Avatar className="w-5 h-5 text-[8px]">
+    <div className="relative" ref={dropdownRef}>
+      <div className="flex items-center gap-0.5 cursor-pointer" onClick={() => { setOpen(!open); setSearch(''); }}>
+        {selectedUsers.length === 0 ? (
+          <div className="w-7 h-7 rounded-full bg-muted" />
+        ) : selectedUsers.length === 1 ? (
+          <OwnerAvatar user={selectedUsers[0]} />
+        ) : (
+          <div className="flex -space-x-2">
+            {selectedUsers.slice(0, 3).map(u => (
+              <Avatar key={u.id} className="w-6 h-6 text-[8px] border-2 border-background">
                 <AvatarFallback className="bg-primary/10 text-primary font-medium">
                   {u.name.slice(-2)}
                 </AvatarFallback>
               </Avatar>
-              <span className="truncate">{u.name}</span>
-            </button>
-          ))}
+            ))}
+            {selectedUsers.length > 3 && (
+              <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center text-[8px] border-2 border-background">
+                +{selectedUsers.length - 3}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+      {open && (
+        <div className="absolute top-full left-0 mt-1 bg-popover border border-border rounded-lg shadow-lg z-50 max-h-52 overflow-hidden min-w-[180px]">
+          <div className="p-1.5 border-b border-border">
+            <div className="relative">
+              <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground" />
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="이름 검색..."
+                className="w-full h-6 text-xs border border-border rounded bg-background pl-6 pr-2"
+                autoFocus
+              />
+            </div>
+          </div>
+          <div className="max-h-36 overflow-y-auto">
+            {filteredUsers.map(u => {
+              const isSelected = ownerIds.includes(u.id);
+              return (
+                <button
+                  key={u.id}
+                  onClick={() => toggleUser(u.id)}
+                  className={cn(
+                    'w-full flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-accent transition-colors text-left',
+                    isSelected && 'bg-accent'
+                  )}
+                >
+                  <div className="relative">
+                    <Avatar className="w-5 h-5 text-[8px]">
+                      <AvatarFallback className="bg-primary/10 text-primary font-medium">
+                        {u.name.slice(-2)}
+                      </AvatarFallback>
+                    </Avatar>
+                    {isSelected && (
+                      <Check className="absolute -top-0.5 -right-0.5 w-3 h-3 text-emerald-500 bg-background rounded-full" />
+                    )}
+                  </div>
+                  <span className="truncate">{u.name}</span>
+                </button>
+              );
+            })}
+            {filteredUsers.length === 0 && (
+              <div className="px-3 py-2 text-xs text-muted-foreground text-center">검색 결과 없음</div>
+            )}
+          </div>
         </div>
       )}
     </div>
@@ -278,7 +344,6 @@ function MainTableView({
   onAddTask: (groupId: string) => void;
 }) {
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
-  const userMap = useMemo(() => new Map(users.map(u => [u.id, u])), [users]);
 
   const toggleGroup = (id: string) => setCollapsed(prev => ({ ...prev, [id]: !prev[id] }));
 
@@ -290,7 +355,7 @@ function MainTableView({
     <ScrollArea className="w-full h-full">
       <div className="min-w-[700px]">
         {/* Column header */}
-        <div className="grid grid-cols-[minmax(200px,2fr)_80px_80px_100px_80px_110px_36px] gap-1 px-3 py-2 text-xs font-medium text-muted-foreground border-b border-border sticky top-0 bg-background z-10">
+        <div className="grid grid-cols-[minmax(200px,2fr)_80px_80px_80px_80px_110px_36px] gap-1 px-3 py-2 text-xs font-medium text-muted-foreground border-b border-border sticky top-0 bg-background z-10">
           <span>{t('taskName')}</span>
           <span className="text-center">{t('taskStatus')}</span>
           <span className="text-center">{t('owner')}</span>
@@ -320,105 +385,107 @@ function MainTableView({
               </button>
 
               {/* Task rows */}
-              {!isCollapsed && groupTasks.map(task => (
-                <div
-                  key={task.id}
-                  className="grid grid-cols-[minmax(200px,2fr)_80px_80px_100px_80px_110px_36px] gap-1 px-3 py-1.5 items-center border-l-[3px] hover:bg-muted/30 transition-colors group/row"
-                  style={{ borderLeftColor: group.color }}
-                >
-                  {/* Title - editable */}
-                  <div className="pl-5">
-                    <EditableCell
-                      value={task.title}
-                      onSave={(v) => { if (v.trim()) onUpdateTask(task.id, { title: v.trim() }); }}
-                      className="text-sm truncate block w-full"
-                    />
-                  </div>
+              {!isCollapsed && groupTasks.map(task => {
+                const ownerIds = task.reviewerIds?.length
+                  ? [task.ownerId, ...task.reviewerIds]
+                  : [task.ownerId];
 
-                  {/* Status - clickable dropdown */}
-                  <div className="flex justify-center">
-                    <StatusBadge
-                      status={task.status}
-                      t={t}
-                      onStatusChange={(s) => {
-                        const updates: Record<string, unknown> = { status: s };
-                        if (s === 'done') updates.progress = 100;
-                        onUpdateTask(task.id, updates);
-                      }}
-                    />
-                  </div>
+                return (
+                  <div
+                    key={task.id}
+                    className="grid grid-cols-[minmax(200px,2fr)_80px_80px_80px_80px_110px_36px] gap-1 px-3 py-1.5 items-center border-l-[3px] hover:bg-muted/30 transition-colors group/row"
+                    style={{ borderLeftColor: group.color }}
+                  >
+                    {/* Title - editable */}
+                    <div className="pl-5">
+                      <EditableCell
+                        value={task.title}
+                        onSave={(v) => { if (v.trim()) onUpdateTask(task.id, { title: v.trim() }); }}
+                        className="text-sm truncate block w-full"
+                      />
+                    </div>
 
-                  {/* Owner - clickable */}
-                  <div className="flex justify-center gap-0.5">
-                    <OwnerSelector
-                      currentOwnerId={task.ownerId}
-                      users={users}
-                      onSelect={(id) => onUpdateTask(task.id, { ownerId: id })}
-                    />
-                  </div>
+                    {/* Status - clickable dropdown */}
+                    <div className="flex justify-center">
+                      <StatusBadge
+                        status={task.status}
+                        t={t}
+                        onStatusChange={(s) => {
+                          const updates: Record<string, unknown> = { status: s };
+                          if (s === 'done') updates.progress = 100;
+                          onUpdateTask(task.id, updates);
+                        }}
+                      />
+                    </div>
 
-                  {/* Timeline - editable dates */}
-                  <div className="text-center text-xs text-muted-foreground">
-                    {task.startDate && task.endDate
-                      ? `${format(parseISO(task.startDate), 'M/d')} - ${format(parseISO(task.endDate), 'M/d')}`
-                      : (
-                        <EditableCell
-                          value=""
-                          type="date"
-                          onSave={(v) => {
-                            if (v) {
-                              const end = new Date(v);
-                              end.setDate(end.getDate() + 7);
-                              onUpdateTask(task.id, { startDate: v, endDate: end.toISOString().slice(0, 10) });
-                            }
-                          }}
-                          className="text-xs"
-                        />
-                      )}
-                  </div>
+                    {/* Owner - multi-select with search */}
+                    <div className="flex justify-center gap-0.5">
+                      <MultiOwnerSelector
+                        ownerIds={ownerIds}
+                        users={users}
+                        onSelect={(ids) => {
+                          const [primaryOwner, ...reviewers] = ids;
+                          onUpdateTask(task.id, {
+                            ownerId: primaryOwner,
+                            reviewerIds: reviewers,
+                          });
+                        }}
+                      />
+                    </div>
 
-                  {/* Due date - editable */}
-                  <div className="text-center text-xs text-muted-foreground">
-                    <EditableCell
-                      value={task.dueDate || ''}
-                      type="date"
-                      onSave={(v) => onUpdateTask(task.id, { dueDate: v || null })}
-                      className="text-xs"
-                    />
-                  </div>
+                    {/* Start date - editable */}
+                    <div className="text-center text-xs text-muted-foreground">
+                      <EditableCell
+                        value={task.startDate || ''}
+                        type="date"
+                        onSave={(v) => onUpdateTask(task.id, { startDate: v || null })}
+                        className="text-xs"
+                      />
+                    </div>
 
-                  {/* Progress - editable */}
-                  <div className="flex justify-center">
-                    <ProgressBar
-                      value={task.progress}
-                      onChange={(v) => {
-                        const updates: Record<string, unknown> = { progress: v };
-                        if (v === 100) updates.status = 'done';
-                        onUpdateTask(task.id, updates);
-                      }}
-                    />
-                  </div>
+                    {/* Due date - editable */}
+                    <div className="text-center text-xs text-muted-foreground">
+                      <EditableCell
+                        value={task.dueDate || ''}
+                        type="date"
+                        onSave={(v) => onUpdateTask(task.id, { dueDate: v || null })}
+                        className="text-xs"
+                      />
+                    </div>
 
-                  {/* Delete button */}
-                  <div className="flex justify-center opacity-0 group-hover/row:opacity-100 transition-opacity">
-                    <button
-                      onClick={() => onDeleteTask(task.id)}
-                      className="w-5 h-5 rounded flex items-center justify-center hover:bg-red-100 dark:hover:bg-red-900/30 text-muted-foreground hover:text-red-500 transition-colors"
-                    >
-                      <Trash2 className="w-3 h-3" />
-                    </button>
+                    {/* Progress - editable */}
+                    <div className="flex justify-center">
+                      <ProgressBar
+                        value={task.progress}
+                        onChange={(v) => {
+                          const updates: Record<string, unknown> = { progress: v };
+                          if (v === 100) updates.status = 'done';
+                          onUpdateTask(task.id, updates);
+                        }}
+                      />
+                    </div>
+
+                    {/* Delete button */}
+                    <div className="flex justify-center opacity-0 group-hover/row:opacity-100 transition-opacity">
+                      <button
+                        onClick={() => onDeleteTask(task.id)}
+                        className="w-5 h-5 rounded flex items-center justify-center hover:bg-red-100 dark:hover:bg-red-900/30 text-muted-foreground hover:text-red-500 transition-colors"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
 
               {/* Add item row */}
               {!isCollapsed && (
-                <div className="grid grid-cols-[minmax(200px,2fr)_80px_80px_100px_80px_110px_36px] gap-1 px-3 py-1.5 border-l-[3px] border-transparent bg-muted/20 text-xs text-muted-foreground">
+                <div className="grid grid-cols-[minmax(200px,2fr)_80px_80px_80px_80px_110px_36px] gap-1 px-3 py-1.5 border-l-[3px] border-transparent bg-muted/20 text-xs text-muted-foreground">
                   <button
                     onClick={() => onAddTask(group.id)}
                     className="pl-5 flex items-center gap-1 cursor-pointer hover:text-primary transition-colors text-left"
                   >
-                    <Plus className="w-3 h-3" />{t('addItem')}
+                    {t('addItem')}
                   </button>
                   <span />
                   <span />
@@ -439,29 +506,45 @@ function MainTableView({
   );
 }
 
-// ── Gantt Chart View ───────────────────────────────────────
+// ── Gantt Chart View with drag-and-drop ────────────────────
 
 function GanttChartView({
   groups,
   tasks,
   users,
   t,
+  onUpdateTask,
 }: {
   groups: BoardGroup[];
   tasks: BoardTask[];
   users: User[];
   t: (k: string) => string;
+  onUpdateTask: (taskId: string, updates: Record<string, unknown>) => void;
 }) {
   const userMap = useMemo(() => new Map(users.map(u => [u.id, u])), [users]);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [dragging, setDragging] = useState<{
+    taskId: string;
+    mode: 'move' | 'resize-left' | 'resize-right';
+    startX: number;
+    origStart: string;
+    origEnd: string;
+  } | null>(null);
 
   const getGroupTasks = useCallback((groupId: string) => {
     return tasks.filter(t => t.boardGroupId === groupId).sort((a, b) => a.orderNo - b.orderNo);
   }, [tasks]);
 
+  // Build group color map
+  const groupColorMap = useMemo(() => {
+    const map = new Map<string, string>();
+    groups.forEach(g => map.set(g.id, g.color));
+    return map;
+  }, [groups]);
+
   // Calculate date range from all tasks
   const allDates = useMemo(() => {
-    const dates = tasks.flatMap(t => [t.startDate, t.endDate].filter(Boolean)) as string[];
-    return dates;
+    return tasks.flatMap(t => [t.startDate, t.endDate].filter(Boolean)) as string[];
   }, [tasks]);
 
   const minDate = allDates.length ? parseISO(allDates.sort()[0]) : new Date();
@@ -473,6 +556,57 @@ function GanttChartView({
   for (let d = 0; d < totalDays; d += 7) {
     weeks.push(addDays(rangeStart, d));
   }
+
+  // Drag handler
+  const handleMouseMove = useCallback((e: MouseEvent) => {
+    if (!dragging || !containerRef.current) return;
+    const container = containerRef.current;
+    const rect = container.getBoundingClientRect();
+    const containerWidth = rect.width;
+    const dx = e.clientX - dragging.startX;
+    const daysDelta = Math.round((dx / containerWidth) * totalDays);
+    if (daysDelta === 0) return;
+
+    const origStart = parseISO(dragging.origStart);
+    const origEnd = parseISO(dragging.origEnd);
+
+    if (dragging.mode === 'move') {
+      const newStart = addDays(origStart, daysDelta);
+      const newEnd = addDays(origEnd, daysDelta);
+      onUpdateTask(dragging.taskId, {
+        startDate: format(newStart, 'yyyy-MM-dd'),
+        endDate: format(newEnd, 'yyyy-MM-dd'),
+      });
+    } else if (dragging.mode === 'resize-left') {
+      const newStart = addDays(origStart, daysDelta);
+      if (differenceInDays(origEnd, newStart) >= 0) {
+        onUpdateTask(dragging.taskId, { startDate: format(newStart, 'yyyy-MM-dd') });
+      }
+    } else if (dragging.mode === 'resize-right') {
+      const newEnd = addDays(origEnd, daysDelta);
+      if (differenceInDays(newEnd, origStart) >= 0) {
+        onUpdateTask(dragging.taskId, { endDate: format(newEnd, 'yyyy-MM-dd') });
+      }
+    }
+  }, [dragging, totalDays, onUpdateTask]);
+
+  const handleMouseUp = useCallback(() => {
+    setDragging(null);
+  }, []);
+
+  useEffect(() => {
+    if (!dragging) return;
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [dragging, handleMouseMove, handleMouseUp]);
+
+  const startDrag = (taskId: string, mode: 'move' | 'resize-left' | 'resize-right', startX: number, origStart: string, origEnd: string) => {
+    setDragging({ taskId, mode, startX, origStart, origEnd });
+  };
 
   return (
     <ScrollArea className="w-full h-full">
@@ -503,7 +637,7 @@ function GanttChartView({
           </div>
 
           {/* Right side: timeline */}
-          <div className="flex-1 overflow-hidden">
+          <div className="flex-1 overflow-hidden" ref={containerRef}>
             {/* Week headers */}
             <div className="flex h-8 border-b border-border">
               {weeks.map((w, i) => (
@@ -516,30 +650,75 @@ function GanttChartView({
             {/* Bars */}
             {groups.map(group => {
               const groupTasks = getGroupTasks(group.id);
+              const groupColor = group.color;
               return (
                 <div key={group.id}>
                   <div className="h-[30px] bg-muted/30" />
-                  {groupTasks.map(task => (
-                    <div key={task.id} className="h-[30px] relative">
-                      {/* Grid lines */}
-                      <div className="absolute inset-0 flex">
-                        {weeks.map((_, i) => (
-                          <div key={i} className="flex-shrink-0 border-r border-border/20" style={{ width: `${(7 / totalDays) * 100}%`, minWidth: 60 }} />
-                        ))}
-                      </div>
-                      {/* Bar */}
-                      {task.startDate && task.endDate && (
-                        <div className="absolute inset-x-0 top-0 h-full px-0">
-                          <TimelineBar
-                            startDate={task.startDate}
-                            endDate={task.endDate}
-                            rangeStart={rangeStart}
-                            totalDays={totalDays}
-                          />
+                  {groupTasks.map(task => {
+                    const hasDateRange = task.startDate && task.endDate;
+                    let leftPct = 0;
+                    let widthPct = 0;
+                    if (hasDateRange) {
+                      const start = parseISO(task.startDate!);
+                      const end = parseISO(task.endDate!);
+                      const leftDays = Math.max(0, differenceInDays(start, rangeStart));
+                      const widthDays = Math.max(1, differenceInDays(end, start) + 1);
+                      leftPct = (leftDays / totalDays) * 100;
+                      widthPct = (widthDays / totalDays) * 100;
+                    }
+
+                    return (
+                      <div key={task.id} className="h-[30px] relative">
+                        {/* Grid lines */}
+                        <div className="absolute inset-0 flex">
+                          {weeks.map((_, i) => (
+                            <div key={i} className="flex-shrink-0 border-r border-border/20" style={{ width: `${(7 / totalDays) * 100}%`, minWidth: 60 }} />
+                          ))}
                         </div>
-                      )}
-                    </div>
-                  ))}
+                        {/* Bar — colored by group */}
+                        {hasDateRange && (
+                          <div
+                            className="absolute top-1 h-5 rounded-full flex items-center group/bar"
+                            style={{
+                              left: `${leftPct}%`,
+                              width: `${Math.min(widthPct, 100 - leftPct)}%`,
+                              backgroundColor: groupColor,
+                              opacity: 0.8,
+                              cursor: dragging ? 'grabbing' : 'grab',
+                              minWidth: 12,
+                            }}
+                            onMouseDown={(e) => {
+                              e.preventDefault();
+                              startDrag(task.id, 'move', e.clientX, task.startDate!, task.endDate!);
+                            }}
+                          >
+                            {/* Left resize handle */}
+                            <div
+                              className="absolute left-0 top-0 w-2 h-full cursor-col-resize rounded-l-full opacity-0 group-hover/bar:opacity-100 hover:bg-black/20 transition-opacity"
+                              onMouseDown={(e) => {
+                                e.stopPropagation();
+                                e.preventDefault();
+                                startDrag(task.id, 'resize-left', e.clientX, task.startDate!, task.endDate!);
+                              }}
+                            />
+                            {/* Task title on bar */}
+                            <span className="text-[9px] text-white font-medium truncate px-2 select-none">
+                              {task.title}
+                            </span>
+                            {/* Right resize handle */}
+                            <div
+                              className="absolute right-0 top-0 w-2 h-full cursor-col-resize rounded-r-full opacity-0 group-hover/bar:opacity-100 hover:bg-black/20 transition-opacity"
+                              onMouseDown={(e) => {
+                                e.stopPropagation();
+                                e.preventDefault();
+                                startDrag(task.id, 'resize-right', e.clientX, task.startDate!, task.endDate!);
+                              }}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               );
             })}
@@ -615,6 +794,7 @@ export default function ProjectBoardWidget({ context }: { context: WidgetDataCon
   const {
     users,
     currentUser,
+    projects,
     boardGroups,
     boardTasks,
     loadBoardData,
@@ -628,6 +808,9 @@ export default function ProjectBoardWidget({ context }: { context: WidgetDataCon
   const [newTaskTitle, setNewTaskTitle] = useState('');
 
   const projectId = context.type === 'project' ? context.projectId : undefined;
+
+  // Get the project for default date info
+  const project = useMemo(() => projects.find(p => p.id === projectId), [projects, projectId]);
 
   // Load board data for this project
   useEffect(() => {
@@ -649,13 +832,11 @@ export default function ProjectBoardWidget({ context }: { context: WidgetDataCon
 
   // Project team members for owner selection
   const projectUsers = useMemo(() => {
-    const projects = useAppStore.getState().projects;
-    const project = projects.find(p => p.id === projectId);
     if (project?.teamMemberIds?.length) {
       return users.filter(u => project.teamMemberIds!.includes(u.id));
     }
     return users;
-  }, [users, projectId]);
+  }, [users, project]);
 
   const handleUpdateTask = useCallback((taskId: string, updates: Record<string, unknown>) => {
     updateBoardTask(taskId, updates as any);
@@ -674,17 +855,26 @@ export default function ProjectBoardWidget({ context }: { context: WidgetDataCon
   const handleConfirmAddTask = useCallback(() => {
     if (!newTaskTitle.trim() || !newTaskGroupId || !projectId || !currentUser) return;
 
+    // Default startDate = today, default dueDate = project endDate
+    const today = new Date().toISOString().slice(0, 10);
+    const projectEndDate = project?.endDate
+      ? new Date(project.endDate).toISOString().slice(0, 10)
+      : undefined;
+
     addBoardTask({
       boardGroupId: newTaskGroupId,
       projectId,
       title: newTaskTitle.trim(),
       ownerId: currentUser.id,
+      startDate: today,
+      endDate: projectEndDate || addDays(new Date(), 7).toISOString().slice(0, 10),
+      dueDate: projectEndDate,
     });
 
     setNewTaskGroupId(null);
     setNewTaskTitle('');
     toast.success(t('todoCreated') || '작업이 추가되었습니다');
-  }, [newTaskTitle, newTaskGroupId, projectId, currentUser, addBoardTask, t]);
+  }, [newTaskTitle, newTaskGroupId, projectId, currentUser, project, addBoardTask, t]);
 
   const handleAddGroup = useCallback((title: string, color: string) => {
     if (!projectId) return;
@@ -742,6 +932,7 @@ export default function ProjectBoardWidget({ context }: { context: WidgetDataCon
             tasks={projectTasks}
             users={projectUsers}
             t={t}
+            onUpdateTask={handleUpdateTask}
           />
         )}
       </div>

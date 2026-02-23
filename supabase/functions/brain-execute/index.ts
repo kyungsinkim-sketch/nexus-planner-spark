@@ -274,6 +274,84 @@ Deno.serve(async (req) => {
         break;
       }
 
+      case 'create_board_task': {
+        const taskData = extractedData;
+        const taskProjectId = (taskData.projectId as string) || null;
+        const assigneeIds = (taskData.assigneeIds as string[]) || [];
+        const primaryOwner = assigneeIds.length > 0 ? assigneeIds[0] : userId;
+        const reviewerIds = assigneeIds.length > 1 ? assigneeIds.slice(1) : [];
+
+        // Find matching board group by title, or use the first group
+        let boardGroupId: string | null = null;
+        if (taskProjectId && taskData.groupTitle) {
+          const { data: groups } = await supabase
+            .from('board_groups')
+            .select('id, title')
+            .eq('project_id', taskProjectId)
+            .ilike('title', `%${taskData.groupTitle}%`)
+            .limit(1);
+          if (groups && groups.length > 0) {
+            boardGroupId = groups[0].id;
+          }
+        }
+        // Fallback: use first group for project
+        if (!boardGroupId && taskProjectId) {
+          const { data: groups } = await supabase
+            .from('board_groups')
+            .select('id')
+            .eq('project_id', taskProjectId)
+            .order('order_no', { ascending: true })
+            .limit(1);
+          if (groups && groups.length > 0) {
+            boardGroupId = groups[0].id;
+          }
+        }
+        // Still no group? Create a default one
+        if (!boardGroupId && taskProjectId) {
+          const { data: newGroup } = await supabase
+            .from('board_groups')
+            .insert({ project_id: taskProjectId, title: '기획', color: '#0073EA', order_no: 0 })
+            .select()
+            .single();
+          if (newGroup) boardGroupId = newGroup.id;
+        }
+
+        if (!boardGroupId) {
+          throw new Error('Cannot create board task: no board group available');
+        }
+
+        // Get order number
+        const { count } = await supabase
+          .from('board_tasks')
+          .select('*', { count: 'exact', head: true })
+          .eq('board_group_id', boardGroupId);
+
+        const { data: boardTask, error: boardError } = await supabase
+          .from('board_tasks')
+          .insert({
+            board_group_id: boardGroupId,
+            project_id: taskProjectId,
+            title: taskData.title,
+            status: taskData.status || 'backlog',
+            owner_id: primaryOwner,
+            reviewer_ids: reviewerIds.length > 0 ? reviewerIds : null,
+            start_date: taskData.startDate || new Date().toISOString().slice(0, 10),
+            end_date: taskData.endDate || null,
+            due_date: taskData.dueDate || null,
+            progress: 0,
+            order_no: (count || 0),
+          })
+          .select()
+          .single();
+
+        if (boardError) {
+          throw new Error(`Failed to create board task: ${boardError.message}`);
+        }
+
+        executedData = { boardTaskId: boardTask.id, type: 'board_task', ...boardTask };
+        break;
+      }
+
       case 'share_location': {
         // Location sharing doesn't create a DB entity — it's just surfaced in chat.
         // We mark it as executed and store the search URL.
