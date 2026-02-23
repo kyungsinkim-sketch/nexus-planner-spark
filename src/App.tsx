@@ -11,6 +11,7 @@ import { isSupabaseConfigured } from "@/lib/supabase";
 import { Loader2 } from "lucide-react";
 import { playNotificationSound } from "@/services/notificationSoundService";
 import { useChatNotifications } from "@/hooks/useChatNotifications";
+import { useTodoSync } from "@/hooks/useTodoSync";
 import { useAutoCheckIn } from "@/hooks/useAutoCheckIn";
 import { useInactivityDetector } from "@/hooks/useInactivityDetector";
 import { AutoCheckInDialog } from "@/components/dashboard/AutoCheckInDialog";
@@ -31,6 +32,9 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
   // Global chat notification popups (bottom-left toast)
   useChatNotifications();
+
+  // Real-time todo sync (assignee updates, notifications for new assignments)
+  useTodoSync();
 
   // Auto check-in based on GPS + inactivity auto check-out
   useAutoCheckIn();

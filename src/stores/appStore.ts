@@ -1034,12 +1034,10 @@ export const useAppStore = create<AppState>()(
         const ctx = state.activeChatContext;
         const isInActiveChat = ctx && (() => {
           if (ctx.type === 'project') {
-            // Match by roomId first, then by projectId
             if (ctx.roomId && message.roomId === ctx.roomId) return true;
             if (!ctx.roomId && message.projectId === ctx.id && !message.roomId) return true;
             return false;
           }
-          // DM: match by directChatUserId (both directions)
           if (ctx.type === 'direct') {
             return message.directChatUserId === ctx.id ||
               (message.userId === ctx.id && message.directChatUserId === state.currentUser?.id);
@@ -1053,9 +1051,10 @@ export const useAppStore = create<AppState>()(
         }
         set({ messages: [...state.messages, message] });
 
-        // Create app notification ONLY for messages NOT in the currently open chat
-        if (isInActiveChat) return; // User is already looking at this chat — no bell notification
-
+        // ALWAYS create app notification for messages from others (even for active chat).
+        // This ensures bell-icon notifications are never missed due to race conditions
+        // between multiple ChatPanel instances or realtime subscription ordering.
+        // For active chat, the notification is immediately cleared below.
         const notifiableTypes = ['text', 'file', 'brain_action', 'persona_response', 'location', 'schedule', 'decision'];
         if (state.currentUser && message.userId !== state.currentUser.id && notifiableTypes.includes(message.messageType || 'text')) {
           const BRAIN_BOT = '00000000-0000-0000-0000-000000000099';
@@ -1082,6 +1081,16 @@ export const useAppStore = create<AppState>()(
             roomId: message.roomId || undefined,
             sourceId: message.id,
           });
+
+          // If user is currently looking at this chat, immediately clear the notification
+          // so the bell badge doesn't flash unnecessarily
+          if (isInActiveChat) {
+            if (ctx?.type === 'project') {
+              get().clearChatNotificationsForRoom(message.roomId, message.projectId || undefined);
+            } else if (ctx?.type === 'direct') {
+              get().clearChatNotificationsForRoom(undefined, undefined, ctx.id);
+            }
+          }
         }
       },
 
@@ -2203,10 +2212,7 @@ export const useAppStore = create<AppState>()(
         set((state) => ({
           appNotifications: [newNotif, ...state.appNotifications].slice(0, 200),
         }));
-        // Play sound
-        if (get().notificationSoundEnabled) {
-          playNotificationSound('message');
-        }
+        // Sound is played by addMessage() — no duplicate sound here
       },
       markAppNotificationRead: (id) => set((state) => ({
         appNotifications: state.appNotifications.map(n =>
