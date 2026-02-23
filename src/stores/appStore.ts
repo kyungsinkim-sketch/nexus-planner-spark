@@ -1024,13 +1024,29 @@ export const useAppStore = create<AppState>()(
           playNotificationSound('message');
         }
         set({ messages: [...state.messages, message] });
-        // Create app notification for messages from other users
-        if (state.currentUser && message.userId !== state.currentUser.id && message.messageType === 'text') {
-          const sender = state.users.find(u => u.id === message.userId);
+        // Create app notification for messages from other users (text, file, brain_action, persona_response)
+        const notifiableTypes = ['text', 'file', 'brain_action', 'persona_response', 'location', 'schedule', 'decision'];
+        if (state.currentUser && message.userId !== state.currentUser.id && notifiableTypes.includes(message.messageType || 'text')) {
+          const BRAIN_BOT = '00000000-0000-0000-0000-000000000099';
+          // Use sender name, or "Brain AI" for bot messages
+          const sender = message.userId === BRAIN_BOT
+            ? { name: 'Brain AI' }
+            : state.users.find(u => u.id === message.userId);
+          // Determine preview text based on message type
+          let preview = message.content.slice(0, 100);
+          if (message.messageType === 'brain_action') {
+            const replyMsg = (message.brainActionData as { replyMessage?: string })?.replyMessage;
+            preview = replyMsg ? replyMsg.slice(0, 100) : 'Brain AI 응답';
+          } else if (message.messageType === 'persona_response') {
+            const personaData = message.personaResponseData as { personaName?: string; response?: string } | undefined;
+            preview = personaData?.response ? personaData.response.slice(0, 100) : 'AI 페르소나 응답';
+          } else if (message.messageType === 'file') {
+            preview = '📎 ' + message.content.slice(0, 80);
+          }
           get().addAppNotification({
             type: 'chat',
             title: sender?.name || 'New message',
-            message: message.content.slice(0, 100),
+            message: preview,
             projectId: message.projectId || undefined,
             roomId: message.roomId || undefined,
             sourceId: message.id,

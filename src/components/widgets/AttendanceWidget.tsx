@@ -4,7 +4,7 @@
  * Click on user opens a Popover with check-in time + accumulated work hours.
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useAppStore } from '@/stores/appStore';
 import {
   Building2,
@@ -49,19 +49,39 @@ function AttendanceWidget({ context: _context }: { context: WidgetDataContext })
   const { language } = useTranslation();
 
   // Real attendance data from Supabase
-  const [attendanceMap, setAttendanceMap] = useState<Map<string, { check_in_at: string; working_minutes: number }>>(new Map());
+  const [attendanceMap, setAttendanceMap] = useState<Map<string, {
+    check_in_at: string;
+    check_out_at: string | null;
+    working_minutes: number;
+    status: string;
+  }>>(new Map());
+
+  // Current time ticker for real-time elapsed calculation (updates every 60s)
+  const [now, setNow] = useState(() => Date.now());
 
   useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 60_000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const loadAttendance = useCallback(() => {
     if (!isSupabaseConfigured()) return;
 
     getTeamTodayAttendance()
       .then((records) => {
-        const map = new Map<string, { check_in_at: string; working_minutes: number }>();
+        const map = new Map<string, {
+          check_in_at: string;
+          check_out_at: string | null;
+          working_minutes: number;
+          status: string;
+        }>();
         for (const rec of records) {
           if (rec.check_in_at) {
             map.set(rec.user_id, {
               check_in_at: rec.check_in_at,
+              check_out_at: rec.check_out_at || null,
               working_minutes: rec.working_minutes || 0,
+              status: rec.status || 'working',
             });
           }
         }
@@ -71,6 +91,10 @@ function AttendanceWidget({ context: _context }: { context: WidgetDataContext })
         console.error('[AttendanceWidget] Failed to load team attendance:', err);
       });
   }, []);
+
+  useEffect(() => {
+    loadAttendance();
+  }, [loadAttendance]);
 
   // Build list of working users -- merge current user's live status
   const workingUsers = (users || [])
@@ -110,8 +134,18 @@ function AttendanceWidget({ context: _context }: { context: WidgetDataContext })
           }
         }
 
-        // Format working minutes
-        const totalMinutes = attendance?.working_minutes || 0;
+        // Calculate working minutes: real-time elapsed if still working, DB value if checked out
+        let totalMinutes = 0;
+        if (attendance) {
+          if (attendance.check_out_at && attendance.working_minutes > 0) {
+            // Already checked out → use DB computed value
+            totalMinutes = attendance.working_minutes;
+          } else if (attendance.check_in_at && !attendance.check_out_at) {
+            // Still working → calculate elapsed from check-in to now
+            const checkInMs = new Date(attendance.check_in_at).getTime();
+            totalMinutes = Math.max(0, Math.floor((now - checkInMs) / 60000));
+          }
+        }
         const hours = Math.floor(totalMinutes / 60);
         const minutes = totalMinutes % 60;
 

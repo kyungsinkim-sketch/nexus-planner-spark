@@ -1,6 +1,7 @@
 /**
- * useChatNotifications — Global hook for showing toast popups when
- * new chat messages arrive via Supabase Realtime.
+ * useChatNotifications — Global hook for:
+ * 1. Showing toast popups when new chat messages arrive via Supabase Realtime.
+ * 2. Adding messages to the global store so bell-icon (appNotifications) are generated.
  *
  * Shows a bottom-left toast with sender name + message preview.
  * Only fires for messages from OTHER users (not the current user or brain bot).
@@ -11,7 +12,7 @@ import { toast } from 'sonner';
 import { useAppStore } from '@/stores/appStore';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import { BRAIN_BOT_USER_ID } from '@/types/core';
-import { playNotificationSound } from '@/services/notificationSoundService';
+import type { ChatMessage, ChatMessageType } from '@/types/core';
 
 interface MessageRow {
   id: string;
@@ -22,6 +23,32 @@ interface MessageRow {
   room_id?: string;
   direct_chat_user_id?: string;
   created_at: string;
+  brain_action_data?: Record<string, unknown>;
+  persona_response_data?: Record<string, unknown>;
+  attachment_id?: string;
+  location_data?: Record<string, unknown>;
+  schedule_data?: Record<string, unknown>;
+  decision_data?: Record<string, unknown>;
+}
+
+/** Map Supabase row to ChatMessage for store injection */
+function rowToChatMessage(row: MessageRow): ChatMessage {
+  return {
+    id: row.id,
+    userId: row.user_id,
+    content: row.content,
+    messageType: (row.message_type || 'text') as ChatMessageType,
+    projectId: row.project_id || '',
+    roomId: row.room_id || undefined,
+    directChatUserId: row.direct_chat_user_id || undefined,
+    createdAt: row.created_at,
+    brainActionData: row.brain_action_data || undefined,
+    personaResponseData: row.persona_response_data || undefined,
+    attachmentId: row.attachment_id || undefined,
+    locationData: row.location_data as ChatMessage['locationData'],
+    scheduleData: row.schedule_data as ChatMessage['scheduleData'],
+    decisionData: row.decision_data as ChatMessage['decisionData'],
+  };
 }
 
 export function useChatNotifications() {
@@ -46,10 +73,16 @@ export function useChatNotifications() {
         (payload) => {
           const msg = payload.new as MessageRow;
 
-          // Skip own messages and brain bot messages
+          // Skip own messages
           if (msg.user_id === currentUser.id) return;
+
+          // Add to global store (creates appNotification for bell icon)
+          // addMessage() handles duplicate prevention internally
+          const chatMessage = rowToChatMessage(msg);
+          useAppStore.getState().addMessage(chatMessage);
+
+          // Skip brain bot and non-text for toast popup (too noisy)
           if (msg.user_id === BRAIN_BOT_USER_ID) return;
-          // Skip non-text messages (file uploads, brain actions, etc.)
           if (msg.message_type && msg.message_type !== 'text') return;
 
           // Get sender name from store
@@ -78,11 +111,6 @@ export function useChatNotifications() {
             position: 'bottom-left',
             icon: '💬',
           });
-
-          // Play notification sound
-          if (state.notificationSoundEnabled) {
-            playNotificationSound('message');
-          }
         },
       )
       .subscribe();
