@@ -64,11 +64,13 @@ export function AuthPage() {
       <Card className="w-full max-w-md shadow-lg relative z-10 bg-card/90 backdrop-blur-md">
         <CardHeader className="space-y-1 text-center">
           <div className="flex items-center justify-center mb-4">
-            <img
-              src="/icons/rebe-logo.png"
-              alt="Re-Be.io Logo"
-              className="w-20 h-20 object-contain drop-shadow-lg"
-            />
+            <div className="w-20 h-20 rounded-[18px] overflow-hidden drop-shadow-lg">
+              <img
+                src="/icons/rebe-logo.png"
+                alt="Re-Be.io Logo"
+                className="w-full h-full object-cover"
+              />
+            </div>
           </div>
           <CardTitle className="text-2xl font-bold">Re-Be.io</CardTitle>
           <CardDescription className="text-sm italic tracking-wide">
