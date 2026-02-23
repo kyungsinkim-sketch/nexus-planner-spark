@@ -68,7 +68,7 @@ export function AuthPage() {
               <img
                 src="/icons/rebe-logo.png"
                 alt="Re-Be.io Logo"
-                className="w-full h-full object-cover"
+                className="w-[110%] h-[110%] object-cover -m-[5%]"
               />
             </div>
           </div>
