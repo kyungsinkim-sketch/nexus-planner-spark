@@ -9,6 +9,7 @@ const transformUser = (row: ProfileRow): User => {
     return {
         id: row.id,
         name: row.name,
+        email: (row as Record<string, unknown>).email as string | undefined,
         avatar: row.avatar || undefined,
         role: row.role as UserRole,
         department: row.department || undefined,

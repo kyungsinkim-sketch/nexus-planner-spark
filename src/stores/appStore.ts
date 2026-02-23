@@ -376,10 +376,10 @@ export const useAppStore = create<AppState>()(
           const user = await authService.signIn(email, password);
           set({ currentUser: user, isAuthenticated: true });
 
-          // Load user data + widget layouts
+          // Load users FIRST so loadProjects can do domain-based filtering
+          await get().loadUsers();
           await get().loadProjects();
           await get().loadEvents();
-          await get().loadUsers();
           await get().loadMessages();
           await get().loadTodos();
           useWidgetStore.getState().loadLayoutFromDB();
@@ -439,9 +439,10 @@ export const useAppStore = create<AppState>()(
           const user = await authService.getCurrentUser();
           if (user) {
             set({ currentUser: user, isAuthenticated: true });
+            // Load users FIRST so loadProjects can do domain-based filtering
+            await get().loadUsers();
             await get().loadProjects();
             await get().loadEvents();
-            await get().loadUsers();
             await get().loadMessages();
             await get().loadTodos();
             useWidgetStore.getState().loadLayoutFromDB();
@@ -472,11 +473,14 @@ export const useAppStore = create<AppState>()(
               projects = allProjects.filter(p => p.teamMemberIds?.includes(currentUser.id));
             } else {
               // Company users: see projects where ANY same-domain user is a team member
-              const sameDomainUserIds = new Set(
-                allUsers
-                  .filter(u => u.email && extractEmailDomain(u.email) === userDomain)
-                  .map(u => u.id)
-              );
+              // Always include the current user (their email is always available from auth)
+              const sameDomainUserIds = new Set<string>([currentUser.id]);
+              // Also add other users with matching domain (if their email is available)
+              for (const u of allUsers) {
+                if (u.email && extractEmailDomain(u.email) === userDomain) {
+                  sameDomainUserIds.add(u.id);
+                }
+              }
               projects = allProjects.filter(p =>
                 p.teamMemberIds?.some(id => sameDomainUserIds.has(id))
               );
@@ -2137,6 +2141,10 @@ export const useAppStore = create<AppState>()(
         }
         if (version < 7) {
           state.appNotifications = [];
+        }
+        if (version < 8) {
+          state.boardGroups = [];
+          state.boardTasks = [];
         }
         return state;
       },
