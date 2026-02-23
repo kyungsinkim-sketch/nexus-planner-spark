@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
-import { Loader2, Sparkles, ExternalLink } from 'lucide-react';
+import { Loader2, ExternalLink } from 'lucide-react';
 
 export function AuthPage() {
   const { signIn, signUp, isLoading } = useAppStore();
@@ -59,9 +59,11 @@ export function AuthPage() {
       <Card className="w-full max-w-md shadow-lg">
         <CardHeader className="space-y-1 text-center">
           <div className="flex items-center justify-center mb-4">
-            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center shadow-lg">
-              <Sparkles className="w-7 h-7 text-white" />
-            </div>
+            <img
+              src="/icons/rebe-logo.png"
+              alt="Re-Be.io Logo"
+              className="w-20 h-20 object-contain drop-shadow-lg"
+            />
           </div>
           <CardTitle className="text-2xl font-bold">Re-Be.io</CardTitle>
           <CardDescription className="text-sm italic tracking-wide">
