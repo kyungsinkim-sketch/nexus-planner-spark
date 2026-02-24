@@ -12,6 +12,7 @@
 import { useEffect, useRef } from 'react';
 import { useAppStore } from '@/stores/appStore';
 import { isSupabaseConfigured } from '@/lib/supabase';
+import { isTauriApp } from '@/lib/platform';
 import * as attendanceService from '@/services/attendanceService';
 import { toast } from 'sonner';
 
@@ -81,7 +82,15 @@ export function useAutoCheckIn() {
           return;
         }
 
-        // 3. Get GPS position
+        // 3. Desktop Tauri app → skip GPS, show dialog directly
+        if (isTauriApp()) {
+          console.log('[AutoCheckIn] Desktop/Tauri app detected, skipping GPS');
+          useAppStore.setState({ autoCheckInPlatform: 'desktop' });
+          setShowAutoCheckInDialog(true);
+          return;
+        }
+
+        // 4. Web/Mobile → Get GPS position
         if (!navigator.geolocation) {
           console.log('[AutoCheckIn] Geolocation not supported, showing dialog');
           setShowAutoCheckInDialog(true);

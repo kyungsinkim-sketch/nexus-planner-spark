@@ -61,6 +61,7 @@ interface AppState {
   projectSearchOpen: boolean;
   showAutoCheckInDialog: boolean;
   autoCheckInPosition: { latitude: number; longitude: number; address?: string } | null;
+  autoCheckInPlatform: 'web' | 'desktop' | null;
   worldClockSettingsOpen: boolean;
   weatherSettingsOpen: boolean;
 
@@ -361,6 +362,7 @@ export const useAppStore = create<AppState>()(
       projectSearchOpen: false,
       showAutoCheckInDialog: false,
       autoCheckInPosition: null,
+      autoCheckInPlatform: null,
       activeChatContext: null,
       pendingChatNavigation: null,
       worldClockSettingsOpen: false,

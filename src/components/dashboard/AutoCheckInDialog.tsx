@@ -1,6 +1,7 @@
 /**
- * AutoCheckInDialog — Shows when GPS doesn't match office location.
- * User selects their work type: Remote, Overseas, Filming, Field.
+ * AutoCheckInDialog — Shows when GPS doesn't match office location or on desktop.
+ * User selects their work type: Office, Remote, Overseas, Filming, Field.
+ * Desktop: "사무실 출근" is first and highlighted since GPS is unavailable.
  */
 
 import { useState } from 'react';
@@ -18,7 +19,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Home, Plane, Film, MapPin, Building2, X } from 'lucide-react';
+import { Home, Plane, Film, MapPin, Building2, X, Monitor } from 'lucide-react';
 
 const WORK_TYPE_OPTIONS: Array<{
   type: AttendanceType;
@@ -28,17 +29,19 @@ const WORK_TYPE_OPTIONS: Array<{
   labelEn: string;
   color: string;
 }> = [
+  { type: 'office', workStatus: 'AT_WORK', icon: Building2, labelKo: '사무실 출근', labelEn: 'Office', color: 'bg-blue-500' },
   { type: 'remote', workStatus: 'REMOTE', icon: Home, labelKo: '재택근무', labelEn: 'Remote', color: 'bg-green-500' },
   { type: 'overseas', workStatus: 'OVERSEAS', icon: Plane, labelKo: '해외출장', labelEn: 'Overseas', color: 'bg-purple-500' },
   { type: 'filming', workStatus: 'FILMING', icon: Film, labelKo: '촬영 현장', labelEn: 'Filming', color: 'bg-orange-500' },
   { type: 'field', workStatus: 'FIELD', icon: MapPin, labelKo: '현장 방문', labelEn: 'Field Work', color: 'bg-teal-500' },
-  { type: 'office', workStatus: 'AT_WORK', icon: Building2, labelKo: '사무실 출근', labelEn: 'Office', color: 'bg-blue-500' },
 ];
 
 export function AutoCheckInDialog() {
   const { language } = useTranslation();
-  const { showAutoCheckInDialog, setShowAutoCheckInDialog, autoCheckInPosition, setUserWorkStatus, currentUser } = useAppStore();
+  const { showAutoCheckInDialog, setShowAutoCheckInDialog, autoCheckInPosition, autoCheckInPlatform, setUserWorkStatus, currentUser } = useAppStore();
   const [loading, setLoading] = useState<string | null>(null);
+
+  const isDesktop = autoCheckInPlatform === 'desktop';
 
   const handleSelect = async (option: typeof WORK_TYPE_OPTIONS[0]) => {
     if (!currentUser) return;
@@ -52,7 +55,9 @@ export function AutoCheckInDialog() {
           type: option.type,
           latitude: autoCheckInPosition?.latitude,
           longitude: autoCheckInPosition?.longitude,
-          note: `Manual selection: ${option.labelEn}`,
+          note: isDesktop
+            ? `Desktop app: ${option.labelEn}`
+            : `Manual selection: ${option.labelEn}`,
         });
       }
 
@@ -76,28 +81,37 @@ export function AutoCheckInDialog() {
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Building2 className="w-5 h-5 text-primary" />
+            {isDesktop ? (
+              <Monitor className="w-5 h-5 text-primary" />
+            ) : (
+              <Building2 className="w-5 h-5 text-primary" />
+            )}
             {language === 'ko' ? '출근 유형 선택' : 'Select Work Type'}
           </DialogTitle>
         </DialogHeader>
 
         <p className="text-sm text-muted-foreground mb-4">
-          {language === 'ko'
-            ? '현재 위치가 사무실과 다릅니다. 출근 유형을 선택해주세요.'
-            : 'Your location differs from the office. Please select your work type.'}
+          {isDesktop
+            ? (language === 'ko'
+              ? '데스크탑 앱에서는 GPS를 사용할 수 없습니다. 출근 유형을 선택해주세요.'
+              : 'GPS is not available on desktop. Please select your work type.')
+            : (language === 'ko'
+              ? '현재 위치가 사무실과 다릅니다. 출근 유형을 선택해주세요.'
+              : 'Your location differs from the office. Please select your work type.')}
         </p>
 
         <div className="grid grid-cols-1 gap-2">
-          {WORK_TYPE_OPTIONS.map((option) => {
+          {WORK_TYPE_OPTIONS.map((option, index) => {
             const Icon = option.icon;
             const label = language === 'ko' ? option.labelKo : option.labelEn;
             const isLoading = loading === option.type;
+            const isHighlighted = isDesktop && index === 0; // Highlight "사무실 출근" on desktop
 
             return (
               <Button
                 key={option.type}
-                variant="outline"
-                className="justify-start gap-3 h-12 text-left"
+                variant={isHighlighted ? 'default' : 'outline'}
+                className={`justify-start gap-3 h-12 text-left ${isHighlighted ? 'ring-2 ring-primary' : ''}`}
                 disabled={loading !== null}
                 onClick={() => handleSelect(option)}
               >
@@ -105,6 +119,11 @@ export function AutoCheckInDialog() {
                   <Icon className="w-4 h-4 text-white" />
                 </div>
                 <span className="flex-1 font-medium">{label}</span>
+                {isHighlighted && (
+                  <span className="text-xs opacity-70">
+                    {language === 'ko' ? '추천' : 'Recommended'}
+                  </span>
+                )}
                 {isLoading && (
                   <span className="text-xs text-muted-foreground animate-pulse">...</span>
                 )}
