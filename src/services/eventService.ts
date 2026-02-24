@@ -48,34 +48,54 @@ const transformToInsert = (event: Partial<CalendarEvent>): EventInsert => {
     };
 };
 
-// Get all events (scoped to reasonable date range to handle large Google Calendar syncs)
+// Get all events (scoped to reasonable date range).
+// Uses pagination to fetch ALL events — Supabase PostgREST caps each
+// request to max_rows (default 1000). Without pagination the newest
+// events are silently dropped when total count exceeds the cap.
 export const getEvents = async (): Promise<CalendarEvent[]> => {
     if (!isSupabaseConfigured()) {
         throw new Error('Supabase not configured');
     }
 
-    // Scope to past 3 months → future 12 months to avoid hitting Supabase row limits
+    // Scope to past 3 months → future 12 months
     const rangeStart = new Date();
     rangeStart.setMonth(rangeStart.getMonth() - 3);
     const rangeEnd = new Date();
     rangeEnd.setMonth(rangeEnd.getMonth() + 12);
 
-    const { data, error } = await withSupabaseRetry(
-        () => supabase
-            .from('calendar_events')
-            .select('*')
-            .gte('start_at', rangeStart.toISOString())
-            .lte('start_at', rangeEnd.toISOString())
-            .order('start_at', { ascending: true })
-            .limit(2000),
-        { label: 'getEvents' },
-    );
+    const PAGE_SIZE = 1000;
+    const MAX_TOTAL = 10000; // safety valve
+    const allRows: EventRow[] = [];
+    let offset = 0;
+    let hasMore = true;
 
-    if (error) {
-        throw new Error(handleSupabaseError(error));
+    while (hasMore && allRows.length < MAX_TOTAL) {
+        const { data, error } = await withSupabaseRetry(
+            () => supabase
+                .from('calendar_events')
+                .select('*')
+                .gte('start_at', rangeStart.toISOString())
+                .lte('start_at', rangeEnd.toISOString())
+                .order('start_at', { ascending: true })
+                .range(offset, offset + PAGE_SIZE - 1),
+            { label: `getEvents(page=${offset / PAGE_SIZE})` },
+        );
+
+        if (error) {
+            throw new Error(handleSupabaseError(error));
+        }
+
+        if (data && data.length > 0) {
+            allRows.push(...data);
+            offset += data.length;
+            // If we got fewer rows than PAGE_SIZE, we've reached the end
+            hasMore = data.length === PAGE_SIZE;
+        } else {
+            hasMore = false;
+        }
     }
 
-    return data.map(transformEvent);
+    return allRows.map(transformEvent);
 };
 
 // Get events by date range
