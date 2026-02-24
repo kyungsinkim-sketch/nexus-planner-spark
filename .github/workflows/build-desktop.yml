@@ -17,16 +17,19 @@ jobs:
         include:
           - platform: windows-latest
             target: x86_64-pc-windows-msvc
+            rust_targets: x86_64-pc-windows-msvc
             label: Windows
-            features: onnx
+            args: --target x86_64-pc-windows-msvc --features onnx
           - platform: macos-latest
             target: universal-apple-darwin
+            rust_targets: aarch64-apple-darwin,x86_64-apple-darwin
             label: macOS-Universal
-            features: ''
+            args: --target universal-apple-darwin
           - platform: ubuntu-22.04
             target: x86_64-unknown-linux-gnu
+            rust_targets: x86_64-unknown-linux-gnu
             label: Linux
-            features: onnx
+            args: --target x86_64-unknown-linux-gnu --features onnx
 
     runs-on: ${{ matrix.platform }}
     name: Build (${{ matrix.label }})
@@ -44,7 +47,7 @@ jobs:
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
         with:
-          targets: aarch64-apple-darwin,x86_64-apple-darwin
+          targets: ${{ matrix.rust_targets }}
 
       - name: Rust cache
         uses: swatinem/rust-cache@v2
@@ -77,6 +80,7 @@ jobs:
           APPLE_CERTIFICATE_PASSWORD: ''
           APPLE_SIGNING_IDENTITY: ''
         with:
+          tauriScript: npx tauri
           tagName: ${{ github.ref_name }}
           releaseName: 'Re-Be.io ${{ github.ref_name }}'
           releaseBody: |
@@ -92,7 +96,7 @@ jobs:
             **Windows**: Click "More info" → "Run anyway" if SmartScreen appears
           releaseDraft: true
           prerelease: false
-          args: --target ${{ matrix.target }} ${{ matrix.features != '' && format('--features {0}', matrix.features) || '' }}
+          args: ${{ matrix.args }}
 
       # Upload artifacts even without tag (for workflow_dispatch)
       - name: Upload artifacts
