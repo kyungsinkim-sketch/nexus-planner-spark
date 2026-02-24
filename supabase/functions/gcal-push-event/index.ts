@@ -1,13 +1,14 @@
 /**
  * gcal-push-event — Push a single Re-Be event to Google Calendar.
  *
- * Called when a user creates or updates an event in Re-Be.
- * Creates/updates the event in Google Calendar and saves the google_event_id.
+ * Called when a user creates, updates, or deletes an event in Re-Be.
+ * Creates/updates/deletes the event in Google Calendar and saves the google_event_id.
  *
  * Request body: {
  *   userId: string,
  *   eventId: string,
- *   action: 'create' | 'update'
+ *   action: 'create' | 'update' | 'delete',
+ *   googleEventId?: string   // for delete when event already removed from DB
  * }
  * Response: { success: true, googleEventId: string } or { error: string }
  */
@@ -17,6 +18,7 @@ import {
   ensureValidToken,
   createGoogleEvent,
   updateGoogleEvent,
+  deleteGoogleEvent,
   dbEventToGoogleEvent,
   type GoogleTokenRow,
 } from '../_shared/gcal-client.ts';
@@ -32,7 +34,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { userId, eventId, action = 'create' } = await req.json();
+    const { userId, eventId, action = 'create', googleEventId: providedGoogleEventId } = await req.json();
 
     if (!userId || !eventId) {
       return new Response(
@@ -82,7 +84,27 @@ Deno.serve(async (req) => {
       );
     }
 
-    // 3. Load the event from DB
+    const calendarId = tokenRow.calendar_id || 'primary';
+
+    // ── DELETE action ──
+    if (action === 'delete') {
+      const gEventId = providedGoogleEventId;
+      if (gEventId) {
+        try {
+          await deleteGoogleEvent(accessToken, gEventId, calendarId);
+          console.log(`[gcal-push-event] Deleted Google event: ${gEventId}`);
+        } catch (err) {
+          // If event already deleted from Google, that's fine
+          console.warn('[gcal-push-event] Delete failed (may already be deleted):', (err as Error).message);
+        }
+      }
+      return new Response(
+        JSON.stringify({ success: true, deleted: true }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      );
+    }
+
+    // 3. Load the event from DB (for create/update)
     const { data: dbEvent, error: eventError } = await supabase
       .from('calendar_events')
       .select('*')
@@ -96,11 +118,8 @@ Deno.serve(async (req) => {
       );
     }
 
-    const calendarId = tokenRow.calendar_id || 'primary';
-
-    // 4. Create or update in Google Calendar
+    // ── UPDATE action ──
     if (action === 'update' && dbEvent.google_event_id) {
-      // Update existing Google event
       try {
         const googleEvent = await updateGoogleEvent(
           accessToken,
@@ -113,12 +132,27 @@ Deno.serve(async (req) => {
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
         );
       } catch (err) {
-        // If update fails (event may have been deleted from Google), create a new one
-        console.warn('[gcal-push-event] Update failed, creating new:', (err as Error).message);
+        // If update fails because event was deleted from Google, DON'T create a new one
+        // — just clear the stale google_event_id and let the next sync handle it
+        console.warn('[gcal-push-event] Update failed:', (err as Error).message);
+        await supabase
+          .from('calendar_events')
+          .update({ google_event_id: null })
+          .eq('id', eventId);
+        // Fall through to create
       }
     }
 
-    // Create new Google event
+    // ── CREATE action ──
+    // Guard: skip if already has google_event_id (prevent duplicates)
+    if (dbEvent.google_event_id) {
+      console.log(`[gcal-push-event] Event ${eventId} already has google_event_id, skipping create`);
+      return new Response(
+        JSON.stringify({ success: true, googleEventId: dbEvent.google_event_id, skipped: true }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      );
+    }
+
     const googleEvent = await createGoogleEvent(
       accessToken,
       dbEventToGoogleEvent(dbEvent),

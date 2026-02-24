@@ -491,23 +491,9 @@ export const useAppStore = create<AppState>()(
             const userDomain = currentUser.email ? extractEmailDomain(currentUser.email) : '';
             const isFreelancer = !userDomain || isFreelancerDomain(userDomain);
 
-            if (isFreelancer) {
-              // Freelancers only see projects where they're explicitly a team member
-              projects = allProjects.filter(p => p.teamMemberIds?.includes(currentUser.id));
-            } else {
-              // Company users: see projects where ANY same-domain user is a team member
-              // Always include the current user (their email is always available from auth)
-              const sameDomainUserIds = new Set<string>([currentUser.id]);
-              // Also add other users with matching domain (if their email is available)
-              for (const u of allUsers) {
-                if (u.email && extractEmailDomain(u.email) === userDomain) {
-                  sameDomainUserIds.add(u.id);
-                }
-              }
-              projects = allProjects.filter(p =>
-                p.teamMemberIds?.some(id => sameDomainUserIds.has(id))
-              );
-            }
+            // All non-admin users: only see projects where they're explicitly a team member
+          // (Previously domain-based sharing was too permissive — uninvited users could see projects)
+          projects = allProjects.filter(p => p.teamMemberIds?.includes(currentUser.id));
           }
           set({ projects });
         } catch (error) {
@@ -770,6 +756,8 @@ export const useAppStore = create<AppState>()(
       },
 
       updateBoardTask: async (taskId, updates) => {
+        // Save previous state for rollback
+        const prevTasks = get().boardTasks;
         // Optimistic update
         set((state) => ({
           boardTasks: state.boardTasks.map(t =>
@@ -783,10 +771,16 @@ export const useAppStore = create<AppState>()(
           await boardService.updateBoardTask(taskId, updates);
         } catch (error) {
           console.error('Failed to update board task:', error);
+          // Rollback on failure
+          set({ boardTasks: prevTasks });
+          const { toast } = await import('sonner');
+          toast.error('보드 아이템 수정에 실패했습니다');
         }
       },
 
       deleteBoardTask: async (taskId) => {
+        // Save previous state for rollback
+        const prevTasks = get().boardTasks;
         set((state) => ({
           boardTasks: state.boardTasks.filter(t => t.id !== taskId),
         }));
@@ -797,6 +791,10 @@ export const useAppStore = create<AppState>()(
           await boardService.deleteBoardTask(taskId);
         } catch (error) {
           console.error('Failed to delete board task:', error);
+          // Rollback on failure
+          set({ boardTasks: prevTasks });
+          const { toast } = await import('sonner');
+          toast.error('보드 아이템 삭제에 실패했습니다');
         }
       },
 
@@ -1053,15 +1051,24 @@ export const useAppStore = create<AppState>()(
               events: state.events.filter((e) => e.id !== eventId),
             }));
 
-            // Best-effort sync: delete from Google Calendar if it's a Google event
-            if (event?.source === 'GOOGLE' && event.googleEventId) {
+            // Best-effort sync: delete from Google Calendar regardless of source
+            if (event?.googleEventId) {
               const { currentUser } = get();
               if (currentUser?.id) {
-                import('@/services/googleCalendarService').then((gcal) => {
-                  gcal.deleteGoogleCalendarEvent(currentUser.id, event.googleEventId!).catch(() => {
-                    // Non-fatal: Google event may already be deleted
+                if (event.source === 'GOOGLE') {
+                  // Google-sourced: use frontend delete
+                  import('@/services/googleCalendarService').then((gcal) => {
+                    gcal.deleteGoogleCalendarEvent(currentUser.id, event.googleEventId!).catch(() => {
+                      // Non-fatal: Google event may already be deleted
+                    });
                   });
-                });
+                } else {
+                  // PAULUS-sourced: use Edge Function to delete from Google
+                  const sb = (await import('@/lib/supabase')).supabase;
+                  sb.functions.invoke('gcal-push-event', {
+                    body: { userId: currentUser.id, eventId, action: 'delete', googleEventId: event.googleEventId },
+                  }).catch(() => { /* non-fatal */ });
+                }
               }
             }
           } catch (error) {

@@ -1358,15 +1358,23 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
     }
   }, [selectedChat, projects, currentUser]);
 
+  // Sort messages chronologically, then group by date
   const groupedMessages = useMemo(() => {
-    return chatMessages.reduce((groups, message) => {
+    const sorted = [...chatMessages].sort(
+      (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+    );
+    const groups: Record<string, typeof chatMessages> = {};
+    const dateOrder: string[] = [];
+    for (const message of sorted) {
       const date = formatDate(message.createdAt);
       if (!groups[date]) {
         groups[date] = [];
+        dateOrder.push(date);
       }
       groups[date].push(message);
-      return groups;
-    }, {} as Record<string, typeof chatMessages>);
+    }
+    // Return as ordered entries array to preserve date order
+    return { groups, dateOrder };
   }, [chatMessages]);
 
   return (
@@ -1669,7 +1677,9 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
               </div>
             ) : (
               <div className="space-y-4 max-w-full">
-                {Object.entries(groupedMessages).map(([date, dateMessages]) => (
+                {groupedMessages.dateOrder.map((date) => {
+                  const dateMessages = groupedMessages.groups[date];
+                  return (
                   <div key={date} className="max-w-full">
                     <div className="flex items-center gap-2 mb-3">
                       <Separator className="flex-1" />
@@ -1735,7 +1745,8 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
                       })}
                     </div>
                   </div>
-                ))}
+                  );
+                })}
                 <div ref={messagesEndRef} />
               </div>
             )}
