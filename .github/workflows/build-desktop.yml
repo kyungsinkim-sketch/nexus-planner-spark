@@ -18,12 +18,15 @@ jobs:
           - platform: windows-latest
             target: x86_64-pc-windows-msvc
             label: Windows
+            features: onnx
           - platform: macos-latest
-            target: aarch64-apple-darwin
-            label: macOS-arm64
+            target: universal-apple-darwin
+            label: macOS-Universal
+            features: ''
           - platform: ubuntu-22.04
             target: x86_64-unknown-linux-gnu
             label: Linux
+            features: onnx
 
     runs-on: ${{ matrix.platform }}
     name: Build (${{ matrix.label }})
@@ -41,7 +44,7 @@ jobs:
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
         with:
-          targets: ${{ matrix.target }}
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
 
       - name: Rust cache
         uses: swatinem/rust-cache@v2
@@ -63,14 +66,6 @@ jobs:
             libjavascriptcoregtk-4.1-dev \
             libsoup-3.0-dev
 
-      # Windows: install ONNX Runtime (ort-sys needs it)
-      - name: Setup ONNX Runtime (Windows)
-        if: matrix.platform == 'windows-latest'
-        shell: pwsh
-        run: |
-          # ort with download-binaries feature will auto-download
-          echo "ONNX Runtime will be downloaded by ort build script"
-
       - name: Install npm dependencies
         run: npm ci
 
@@ -78,7 +73,6 @@ jobs:
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # Skip code signing for now (add Apple/Windows certs later)
           APPLE_CERTIFICATE: ''
           APPLE_CERTIFICATE_PASSWORD: ''
           APPLE_SIGNING_IDENTITY: ''
@@ -90,7 +84,7 @@ jobs:
 
             ### Download
             - **Windows**: `.msi` or `.exe` installer
-            - **macOS (Apple Silicon)**: `_aarch64.dmg` (Intel Mac은 Rosetta 2로 실행 가능)
+            - **macOS**: Universal `.dmg` (Apple Silicon + Intel)
             - **Linux**: `.deb` or `.AppImage`
 
             ### Installation Notes
@@ -98,7 +92,7 @@ jobs:
             **Windows**: Click "More info" → "Run anyway" if SmartScreen appears
           releaseDraft: true
           prerelease: false
-          args: --target ${{ matrix.target }}
+          args: --target ${{ matrix.target }} ${{ matrix.features != '' && format('--features {0}', matrix.features) || '' }}
 
       # Upload artifacts even without tag (for workflow_dispatch)
       - name: Upload artifacts

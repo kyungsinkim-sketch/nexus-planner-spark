@@ -1,8 +1,8 @@
 /// Embedding Engine for Local RAG
 ///
 /// Supports two modes:
-/// 1. ONNX: all-MiniLM-L6-v2 (384-dim, ~22MB INT8) — production quality
-/// 2. Pseudo: deterministic hash-based vectors — fallback when model unavailable
+/// 1. ONNX: all-MiniLM-L6-v2 (384-dim, ~22MB INT8) — production quality (requires `onnx` feature)
+/// 2. Pseudo: deterministic hash-based vectors — fallback when model unavailable or onnx feature disabled
 ///
 /// Model files expected at:
 ///   <app_data_dir>/models/all-MiniLM-L6-v2/model.onnx
@@ -14,16 +14,18 @@ use std::sync::Mutex;
 /// Embedding dimension for all-MiniLM-L6-v2
 pub const EMBEDDING_DIM: usize = 384;
 
-/// Embedding engine state
-pub struct EmbeddingEngine {
-    model_dir: PathBuf,
-    onnx_session: Mutex<Option<OnnxSession>>,
-}
-
-/// Holds the loaded ONNX session + tokenizer
+/// Holds the loaded ONNX session + tokenizer (only when onnx feature enabled)
+#[cfg(feature = "onnx")]
 struct OnnxSession {
     session: ort::session::Session,
     tokenizer: tokenizers::Tokenizer,
+}
+
+/// Embedding engine state
+pub struct EmbeddingEngine {
+    model_dir: PathBuf,
+    #[cfg(feature = "onnx")]
+    onnx_session: Mutex<Option<OnnxSession>>,
 }
 
 /// Result of embedding a text
@@ -37,18 +39,27 @@ impl EmbeddingEngine {
     pub fn new(model_dir: PathBuf) -> Self {
         Self {
             model_dir,
+            #[cfg(feature = "onnx")]
             onnx_session: Mutex::new(None),
         }
     }
 
     /// Check if the ONNX model files exist on disk.
     pub fn is_model_available(&self) -> bool {
-        let model_path = self.model_dir.join("model.onnx");
-        let tokenizer_path = self.model_dir.join("tokenizer.json");
-        model_path.exists() && tokenizer_path.exists()
+        #[cfg(feature = "onnx")]
+        {
+            let model_path = self.model_dir.join("model.onnx");
+            let tokenizer_path = self.model_dir.join("tokenizer.json");
+            model_path.exists() && tokenizer_path.exists()
+        }
+        #[cfg(not(feature = "onnx"))]
+        {
+            false
+        }
     }
 
     /// Lazy-load the ONNX session + tokenizer.
+    #[cfg(feature = "onnx")]
     fn ensure_onnx_loaded(&self) -> Result<(), String> {
         let mut guard = self.onnx_session.lock().map_err(|e| e.to_string())?;
         if guard.is_some() {
@@ -87,11 +98,14 @@ impl EmbeddingEngine {
     /// Generate embedding for a text string.
     /// Falls back to pseudo-embedding if ONNX model is not available.
     pub fn embed(&self, text: &str) -> Result<EmbeddingResult, String> {
-        if self.is_model_available() {
-            match self.embed_onnx(text) {
-                Ok(result) => return Ok(result),
-                Err(e) => {
-                    log::warn!("ONNX embedding failed, falling back to pseudo: {}", e);
+        #[cfg(feature = "onnx")]
+        {
+            if self.is_model_available() {
+                match self.embed_onnx(text) {
+                    Ok(result) => return Ok(result),
+                    Err(e) => {
+                        log::warn!("ONNX embedding failed, falling back to pseudo: {}", e);
+                    }
                 }
             }
         }
@@ -99,6 +113,7 @@ impl EmbeddingEngine {
     }
 
     /// Generate embedding using ONNX Runtime.
+    #[cfg(feature = "onnx")]
     fn embed_onnx(&self, text: &str) -> Result<EmbeddingResult, String> {
         self.ensure_onnx_loaded()?;
 
