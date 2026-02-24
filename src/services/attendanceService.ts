@@ -4,6 +4,7 @@
  */
 
 import { supabase, handleSupabaseError, isSupabaseConfigured } from '@/lib/supabase';
+import { withSupabaseRetry } from '@/lib/retry';
 import { getTranslation, type Language } from '@/lib/i18n';
 import { useAppStore } from '@/stores/appStore';
 
@@ -171,12 +172,15 @@ export async function getTodayAttendance(): Promise<AttendanceRecord | null> {
 
     const today = new Date().toISOString().split('T')[0];
 
-    const { data, error } = await supabase
-        .from('nexus_attendance')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('work_date', today)
-        .single();
+    const { data, error } = await withSupabaseRetry(
+        () => supabase
+            .from('nexus_attendance')
+            .select('*')
+            .eq('user_id', user.id)
+            .eq('work_date', today)
+            .single(),
+        { label: 'getTodayAttendance' },
+    );
 
     if (error && error.code !== 'PGRST116') { // PGRST116 = no rows
         throw handleSupabaseError(error);
@@ -268,13 +272,16 @@ export async function getAttendanceHistory(
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return [];
 
-    const { data, error } = await supabase
-        .from('nexus_attendance')
-        .select('*')
-        .eq('user_id', user.id)
-        .gte('work_date', startDate)
-        .lte('work_date', endDate)
-        .order('work_date', { ascending: false });
+    const { data, error } = await withSupabaseRetry(
+        () => supabase
+            .from('nexus_attendance')
+            .select('*')
+            .eq('user_id', user.id)
+            .gte('work_date', startDate)
+            .lte('work_date', endDate)
+            .order('work_date', { ascending: false }),
+        { label: 'getAttendanceHistory' },
+    );
 
     if (error) throw handleSupabaseError(error);
     return data as AttendanceRecord[];
@@ -294,12 +301,15 @@ export async function getMonthlyAttendanceSummary(year: number, month: number) {
     const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
     const endDate = new Date(year, month, 0).toISOString().split('T')[0]; // Last day of month
 
-    const { data, error } = await supabase
-        .from('nexus_attendance')
-        .select('*')
-        .eq('user_id', user.id)
-        .gte('work_date', startDate)
-        .lte('work_date', endDate);
+    const { data, error } = await withSupabaseRetry(
+        () => supabase
+            .from('nexus_attendance')
+            .select('*')
+            .eq('user_id', user.id)
+            .gte('work_date', startDate)
+            .lte('work_date', endDate),
+        { label: 'getMonthlyAttendanceSummary' },
+    );
 
     if (error) throw handleSupabaseError(error);
 
@@ -328,9 +338,10 @@ export async function getTeamTodayAttendance(): Promise<AttendanceRecord[]> {
 
     const today = new Date().toISOString().split('T')[0];
 
-    const { data, error } = await supabase
-        .from('nexus_attendance')
-        .select(`
+    const { data, error } = await withSupabaseRetry(
+        () => supabase
+            .from('nexus_attendance')
+            .select(`
       *,
       profiles:user_id (
         id,
@@ -339,8 +350,10 @@ export async function getTeamTodayAttendance(): Promise<AttendanceRecord[]> {
         department
       )
     `)
-        .eq('work_date', today)
-        .order('check_in_at', { ascending: true });
+            .eq('work_date', today)
+            .order('check_in_at', { ascending: true }),
+        { label: 'getTeamTodayAttendance' },
+    );
 
     if (error) throw handleSupabaseError(error);
     return data as AttendanceRecord[];

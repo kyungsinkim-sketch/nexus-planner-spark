@@ -1,4 +1,5 @@
 import { supabase, isSupabaseConfigured, handleSupabaseError } from '@/lib/supabase';
+import { withSupabaseRetry } from '@/lib/retry';
 import type { ChatMessage, ChatRoom, ChatRoomMember, ChatMessageType, LocationShare, ScheduleShare, DecisionShare, BrainAction, PersonaResponseData } from '@/types/core';
 import type { Database } from '@/types/database';
 
@@ -61,12 +62,15 @@ export const getRoomsByProject = async (projectId: string): Promise<ChatRoom[]> 
         throw new Error('Supabase not configured');
     }
 
-    const { data, error } = await supabase
-        .from('chat_rooms')
-        .select('*')
-        .eq('project_id', projectId)
-        .order('is_default', { ascending: false })
-        .order('created_at', { ascending: true });
+    const { data, error } = await withSupabaseRetry(
+        () => supabase
+            .from('chat_rooms')
+            .select('*')
+            .eq('project_id', projectId)
+            .order('is_default', { ascending: false })
+            .order('created_at', { ascending: true }),
+        { label: 'getRoomsByProject' },
+    );
 
     if (error) {
         throw new Error(handleSupabaseError(error));
@@ -186,11 +190,14 @@ export const getMessagesByRoom = async (roomId: string): Promise<ChatMessage[]> 
         throw new Error('Supabase not configured');
     }
 
-    const { data, error } = await supabase
-        .from('chat_messages')
-        .select('*')
-        .eq('room_id', roomId)
-        .order('created_at', { ascending: true });
+    const { data, error } = await withSupabaseRetry(
+        () => supabase
+            .from('chat_messages')
+            .select('*')
+            .eq('room_id', roomId)
+            .order('created_at', { ascending: true }),
+        { label: 'getMessagesByRoom' },
+    );
 
     if (error) {
         throw new Error(handleSupabaseError(error));
@@ -300,12 +307,15 @@ export const getMessagesByProject = async (projectId: string): Promise<ChatMessa
 
     // Load only the most recent 200 messages per project to prevent memory bloat.
     // Older messages can be loaded on-demand via scroll pagination (future).
-    const { data, error } = await supabase
-        .from('chat_messages')
-        .select('*')
-        .eq('project_id', projectId)
-        .order('created_at', { ascending: false })
-        .limit(200);
+    const { data, error } = await withSupabaseRetry(
+        () => supabase
+            .from('chat_messages')
+            .select('*')
+            .eq('project_id', projectId)
+            .order('created_at', { ascending: false })
+            .limit(200),
+        { label: 'getMessagesByProject' },
+    );
 
     if (error) {
         throw new Error(handleSupabaseError(error));

@@ -1,4 +1,5 @@
 import { supabase, isSupabaseConfigured, handleSupabaseError } from '@/lib/supabase';
+import { withSupabaseRetry } from '@/lib/retry';
 import type { PersonalTodo } from '@/types/core';
 import type { Database } from '@/types/database';
 
@@ -43,10 +44,13 @@ export const getTodos = async (): Promise<PersonalTodo[]> => {
         throw new Error('Supabase not configured');
     }
 
-    const { data, error } = await supabase
-        .from('personal_todos')
-        .select('*')
-        .order('created_at', { ascending: false });
+    const { data, error } = await withSupabaseRetry(
+        () => supabase
+            .from('personal_todos')
+            .select('*')
+            .order('created_at', { ascending: false }),
+        { label: 'getTodos' },
+    );
 
     if (error) {
         throw new Error(handleSupabaseError(error));
@@ -61,11 +65,14 @@ export const getTodosByAssignee = async (assigneeId: string): Promise<PersonalTo
         throw new Error('Supabase not configured');
     }
 
-    const { data, error } = await supabase
-        .from('personal_todos')
-        .select('*')
-        .contains('assignee_ids', [assigneeId])
-        .order('due_date', { ascending: true });
+    const { data, error } = await withSupabaseRetry(
+        () => supabase
+            .from('personal_todos')
+            .select('*')
+            .contains('assignee_ids', [assigneeId])
+            .order('due_date', { ascending: true }),
+        { label: 'getTodosByAssignee' },
+    );
 
     if (error) {
         throw new Error(handleSupabaseError(error));
@@ -80,11 +87,14 @@ export const getTodosByProject = async (projectId: string): Promise<PersonalTodo
         throw new Error('Supabase not configured');
     }
 
-    const { data, error } = await supabase
-        .from('personal_todos')
-        .select('*')
-        .eq('project_id', projectId)
-        .order('due_date', { ascending: true });
+    const { data, error } = await withSupabaseRetry(
+        () => supabase
+            .from('personal_todos')
+            .select('*')
+            .eq('project_id', projectId)
+            .order('due_date', { ascending: true }),
+        { label: 'getTodosByProject' },
+    );
 
     if (error) {
         throw new Error(handleSupabaseError(error));

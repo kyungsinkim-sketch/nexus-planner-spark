@@ -1,4 +1,5 @@
 import { supabase, isSupabaseConfigured, handleSupabaseError } from '@/lib/supabase';
+import { withSupabaseRetry } from '@/lib/retry';
 import type { Project } from '@/types/core';
 import type { Database } from '@/types/database';
 
@@ -72,10 +73,13 @@ export const getProjects = async (): Promise<Project[]> => {
         throw new Error('Supabase not configured');
     }
 
-    const { data, error } = await supabase
-        .from('projects')
-        .select('*')
-        .order('created_at', { ascending: false });
+    const { data, error } = await withSupabaseRetry(
+        () => supabase
+            .from('projects')
+            .select('*')
+            .order('created_at', { ascending: false }),
+        { label: 'getProjects' },
+    );
 
     if (error) {
         throw new Error(handleSupabaseError(error));
@@ -90,11 +94,14 @@ export const getProjectById = async (id: string): Promise<Project | null> => {
         throw new Error('Supabase not configured');
     }
 
-    const { data, error } = await supabase
-        .from('projects')
-        .select('*')
-        .eq('id', id)
-        .single();
+    const { data, error } = await withSupabaseRetry(
+        () => supabase
+            .from('projects')
+            .select('*')
+            .eq('id', id)
+            .single(),
+        { label: 'getProjectById' },
+    );
 
     if (error) {
         if (error.code === 'PGRST116') {
