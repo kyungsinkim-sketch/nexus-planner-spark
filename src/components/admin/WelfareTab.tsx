@@ -339,15 +339,17 @@ export function WelfareTab() {
                     source: 'PAULUS',
                 });
                 toast.success(`${user.name}${t('bookingCreatedWithCalendar')}`);
-            } catch {
-                toast.error(t('bookingCreated'));
+                setIsBookingDialogOpen(false);
+                setSelectedUserId('');
+                setUserSearchQuery('');
+            } catch (err) {
+                console.error('Failed to create training booking:', err);
+                toast.error(t('bookingFailed') || '예약 생성에 실패했습니다');
             }
         } else {
             toast.error(t('slotAlreadyBooked'));
         }
 
-        setIsBookingDialogOpen(false);
-        setSelectedUserId('');
         setIsCreatingBooking(false);
     };
 
@@ -392,29 +394,14 @@ export function WelfareTab() {
         setSelectedUserId('');
     };
 
-    // Handle confirmation
-    const handleConfirm = (sessionId: string, type: 'trainer' | 'trainee') => {
-        setTrainingSessions(prev =>
-            prev.map(s =>
-                s.id === sessionId
-                    ? {
-                        ...s,
-                        trainerConfirmed: type === 'trainer' ? true : s.trainerConfirmed,
-                        traineeConfirmed: type === 'trainee' ? true : s.traineeConfirmed,
-                    }
-                    : s
-            )
-        );
+    // Handle confirmation — TODO: persist to DB via welfareService when backend is ready
+    const handleConfirm = (_sessionId: string, type: 'trainer' | 'trainee') => {
         toast.success(`${type === 'trainer' ? 'Trainer' : 'Trainee'} ${t('confirmationComplete')}`);
     };
 
-    // Update exercise content
-    const handleUpdateExerciseContent = (sessionId: string, content: string) => {
-        setTrainingSessions(prev =>
-            prev.map(s =>
-                s.id === sessionId ? { ...s, exerciseContent: content } : s
-            )
-        );
+    // Update exercise content — TODO: persist to DB via welfareService when backend is ready
+    const handleUpdateExerciseContent = (_sessionId: string, _content: string) => {
+        // no-op: trainingSessions are derived from calendar events (useMemo)
     };
 
     // Get today's sessions sorted by time
@@ -836,7 +823,7 @@ export function WelfareTab() {
                         <Button variant="outline" onClick={() => setIsBookingDialogOpen(false)}>
                             {t('cancel')}
                         </Button>
-                        <Button onClick={handleCreateBooking} disabled={isCreatingBooking}>{t('createBooking')}</Button>
+                        <Button onClick={handleCreateBooking} disabled={isCreatingBooking || !selectedUserId}>{t('createBooking')}</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
