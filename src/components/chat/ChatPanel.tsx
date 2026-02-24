@@ -219,13 +219,21 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
           (m.userId === BRAIN_BOT_USER_ID && m.directChatUserId === BRAIN_AI_USER_ID)
         );
       }
+      // For AI Persona DMs (@pablo, @cd, @pd): strict scoping to persona ID
+      if (isAIPersonaUser(selectedChat.id)) {
+        return messages.filter(m =>
+          // User messages TO this persona
+          (m.userId === currentUser.id && m.directChatUserId === selectedChat.id) ||
+          // Bot responses scoped to this persona's DM thread
+          (m.userId === BRAIN_BOT_USER_ID && m.directChatUserId === selectedChat.id)
+        );
+      }
+      // Regular DM with real users
       return messages.filter(m =>
         // Messages FROM current user TO selected user
         (m.userId === currentUser.id && m.directChatUserId === selectedChat.id) ||
         // Messages FROM selected user TO current user
-        (m.userId === selectedChat.id && m.directChatUserId === currentUser.id) ||
-        // Brain bot messages in this DM context
-        (m.userId === BRAIN_BOT_USER_ID && (m.directChatUserId === selectedChat.id || m.directChatUserId === currentUser.id))
+        (m.userId === selectedChat.id && m.directChatUserId === currentUser.id)
       );
     }
   }, [messages, selectedChat, currentUser]);

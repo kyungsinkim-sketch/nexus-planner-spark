@@ -319,7 +319,7 @@ Deno.serve(async (req) => {
             histQuery = histQuery.or(
               `and(user_id.eq.${userId},direct_chat_user_id.eq.${directChatUserId}),` +
               `and(user_id.eq.${directChatUserId},direct_chat_user_id.eq.${userId}),` +
-              `user_id.eq.${BRAIN_BOT_USER_ID}`
+              `and(user_id.eq.${BRAIN_BOT_USER_ID},direct_chat_user_id.eq.${directChatUserId})`
             );
           } else if (roomId) {
             histQuery = histQuery.eq('room_id', roomId);
@@ -438,8 +438,10 @@ Deno.serve(async (req) => {
         };
 
         // Set room/project/DM context
+        // directChatUserId = persona user ID (e.g., PERSONA_PABLO_USER_ID)
+        // Bot response must be scoped to the persona's DM thread, not the requester
         if (directChatUserId) {
-          messageInsert.direct_chat_user_id = userId;
+          messageInsert.direct_chat_user_id = directChatUserId;
         } else if (roomId) {
           messageInsert.room_id = roomId;
           if (projectId) {
