@@ -151,9 +151,9 @@ export function AttendanceWidget() {
             });
             setAttendance(result);
             setShowCheckInDialog(false);
-            // Sync work status with sidebar
+            // Sync work status with sidebar (skip GPS — already handled by check-in flow)
             const workStatus = ATTENDANCE_TO_WORK_STATUS[selectedType] || 'AT_WORK';
-            setUserWorkStatus(workStatus);
+            setUserWorkStatus(workStatus, true);
             toast.success(t('checkInSuccess'));
         } catch (error) {
             console.error('Check-in error:', error);

@@ -274,7 +274,6 @@ export const translations = {
     yourWorkload: '업무량의',
     notificationsWidget: '알림',
     myTodoList: '내 할 일 목록',
-    allCaughtUp: '모두 완료했습니다! 🎉',
     due: '마감',
     strategy: '전략',
     production: '제작',
@@ -1144,7 +1143,6 @@ export const translations = {
     noImportantFiles: '중요 파일이 없습니다',
     markAsImportantHint: '파일을 중요 표시하여 여기에 고정하세요',
     noFilesInCategory: '이 카테고리에 파일이 없습니다',
-    fromChat: '채팅에서',
     removeFromImportant: '중요 파일에서 제거',
     addToImportant: '중요 파일에 추가',
     editComment: '코멘트 편집',
@@ -1208,7 +1206,6 @@ export const translations = {
     brainAiActive: 'AI 활성',
 
     // Gmail + Brain Email
-    email: '이메일',
     gmailConnect: 'Gmail 연동',
     gmailNotConnected: 'Gmail이 연동되어 있지 않습니다',
     gmailSync: '동기화',
@@ -1218,7 +1215,6 @@ export const translations = {
     sending: '전송 중...',
     typeReply: '답장을 입력하세요...',
     confirmSuggestionToo: 'Brain 제안도 함께 확인',
-    cancel: '취소',
     composeEmail: '새 이메일',
     reply: '답장',
     to: '받는 사람',
@@ -1318,17 +1314,13 @@ export const translations = {
     lastSync: '마지막 동기화',
 
     // Project Board Widget
-    projectBoard: '프로젝트 보드',
     mainTable: '메인 테이블',
-    projectLinks: '공유 링크',
     ganttChart: '간트 차트',
     taskName: '아이템',
     taskStatus: '상태',
-    progressStatus: '진행상황',
     statusDone: '완료',
     statusWorking: '작업 중',
     statusStuck: '막힘',
-    statusWaiting: '대기',
     statusBacklog: 'Backlog',
     statusReview: '검토 요청',
     addItem: '아이템 추가',
@@ -1338,11 +1330,8 @@ export const translations = {
 
     // Notification Center (Global)
     notificationCenter: '알림 센터',
-    noNotifications: '새로운 알림이 없습니다',
-    newChatMessage: '새 메시지',
     newTodoAssigned: '새 할 일',
     newCalendarEvent: '새 일정',
-    viewAll: '모두 보기',
     clearAll: '모두 지우기',
 
     // Domain / Company
@@ -1637,7 +1626,6 @@ export const translations = {
     yourWorkload: 'of your workload',
     notificationsWidget: 'NOTIFICATIONS',
     myTodoList: 'MY TO-DO LIST',
-    allCaughtUp: 'All caught up! 🎉',
     due: 'Due',
     strategy: 'Strategy',
     production: 'Production',
@@ -2507,7 +2495,6 @@ export const translations = {
     noImportantFiles: 'No important files yet',
     markAsImportantHint: 'Mark files as important to pin them here',
     noFilesInCategory: 'No files in this category',
-    fromChat: 'From Chat',
     removeFromImportant: 'Remove from Important',
     addToImportant: 'Add to Important Files',
     editComment: 'Edit Comment',
@@ -2571,7 +2558,6 @@ export const translations = {
     brainAiActive: 'AI Active',
 
     // Gmail + Brain Email
-    email: 'Email',
     gmailConnect: 'Connect Gmail',
     gmailNotConnected: 'Gmail is not connected',
     gmailSync: 'Sync',
@@ -2581,7 +2567,6 @@ export const translations = {
     sending: 'Sending...',
     typeReply: 'Type your reply...',
     confirmSuggestionToo: 'Also confirm Brain suggestion',
-    cancel: 'Cancel',
     composeEmail: 'New Email',
     reply: 'Reply',
     to: 'To',
@@ -2681,17 +2666,13 @@ export const translations = {
     lastSync: 'Last sync',
 
     // Project Board Widget
-    projectBoard: 'Project Board',
     mainTable: 'Main Table',
-    projectLinks: 'Shared Links',
     ganttChart: 'Gantt Chart',
     taskName: 'Item',
     taskStatus: 'Status',
-    progressStatus: 'Progress',
     statusDone: 'Done',
     statusWorking: 'Working on it',
     statusStuck: 'Stuck',
-    statusWaiting: 'Waiting',
     statusBacklog: 'Backlog',
     statusReview: 'Review',
     addItem: 'Add item',
@@ -2701,11 +2682,8 @@ export const translations = {
 
     // Notification Center (Global)
     notificationCenter: 'Notifications',
-    noNotifications: 'No new notifications',
-    newChatMessage: 'New message',
     newTodoAssigned: 'New todo',
     newCalendarEvent: 'New event',
-    viewAll: 'View all',
     clearAll: 'Clear all',
 
     // Domain / Company

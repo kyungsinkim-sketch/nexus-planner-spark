@@ -69,7 +69,7 @@ export function useAutoCheckIn() {
 
         if (trainingEvent) {
           console.log('[AutoCheckIn] Training event detected, setting TRAINING status');
-          setUserWorkStatus('TRAINING');
+          setUserWorkStatus('TRAINING', true);
           if (isSupabaseConfigured()) {
             try {
               await attendanceService.checkIn({ type: 'office', note: 'Renatus Training (auto)' });
@@ -96,8 +96,8 @@ export function useAutoCheckIn() {
             console.log(`[AutoCheckIn] Distance to office: ${Math.round(distance)}m`);
 
             if (distance <= OFFICE_RADIUS_METERS) {
-              // Within office range → auto check-in
-              setUserWorkStatus('AT_WORK');
+              // Within office range → auto check-in (skip GPS re-check, already verified)
+              setUserWorkStatus('AT_WORK', true);
               if (isSupabaseConfigured()) {
                 try {
                   await attendanceService.checkIn({

@@ -135,7 +135,18 @@ export function AdminSettingsTab() {
                 },
             });
 
-            if (error) throw new Error(error.message);
+            if (error) {
+                // Try to extract detailed error from response context
+                let detailedMsg = error.message;
+                try {
+                    if (error.context && typeof error.context.json === 'function') {
+                        const errBody = await error.context.json();
+                        detailedMsg = errBody?.error || errBody?.message || detailedMsg;
+                    }
+                } catch { /* ignore parse errors */ }
+                console.error('[AdminSettings] createUser error:', detailedMsg, error);
+                throw new Error(detailedMsg);
+            }
             if (!data?.success) throw new Error(data?.error || t('userCreateFailed'));
 
             toast.success(`${newUserName} ${t('accountCreatedWithPassword')}`);

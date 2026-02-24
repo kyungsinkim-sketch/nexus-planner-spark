@@ -4,16 +4,32 @@ import type { Database } from '@/types/database';
 
 type ProfileRow = Database['public']['Tables']['profiles']['Row'];
 
+const STALE_THRESHOLD_MS = 30 * 60 * 1000; // 30 minutes
+
 // Transform database row to app User type
+// If last_active_at is older than 30 minutes, override workStatus to NOT_AT_WORK
 const transformUser = (row: ProfileRow): User => {
+    const raw = row as Record<string, unknown>;
+    let workStatus = (raw.work_status as UserWorkStatus) || 'NOT_AT_WORK';
+    const lastActiveAt = raw.last_active_at as string | undefined;
+
+    // Stale detection: if user hasn't sent a heartbeat in 30 min, treat as offline
+    if (lastActiveAt && workStatus !== 'NOT_AT_WORK') {
+        const elapsed = Date.now() - new Date(lastActiveAt).getTime();
+        if (elapsed > STALE_THRESHOLD_MS) {
+            workStatus = 'NOT_AT_WORK';
+        }
+    }
+
     return {
         id: row.id,
         name: row.name,
-        email: (row as Record<string, unknown>).email as string | undefined,
+        email: raw.email as string | undefined,
         avatar: row.avatar || undefined,
         role: row.role as UserRole,
         department: row.department || undefined,
-        workStatus: ((row as Record<string, unknown>).work_status as UserWorkStatus) || 'NOT_AT_WORK',
+        workStatus,
+        lastActiveAt,
     };
 };
 
@@ -186,7 +202,7 @@ export const updateUserProfile = async (
     return transformUser(data);
 };
 
-// Update work status
+// Update work status (also updates last_active_at for heartbeat)
 export const updateWorkStatus = async (
     userId: string,
     status: UserWorkStatus
@@ -197,11 +213,30 @@ export const updateWorkStatus = async (
 
     const { error } = await supabase
         .from('profiles')
-        .update({ work_status: status } as unknown as Record<string, unknown>)
+        .update({
+            work_status: status,
+            last_active_at: new Date().toISOString(),
+        } as unknown as Record<string, unknown>)
         .eq('id', userId);
 
     if (error) {
         throw new Error(handleSupabaseError(error));
+    }
+};
+
+// Heartbeat — update last_active_at without changing work_status
+export const sendHeartbeat = async (userId: string): Promise<void> => {
+    if (!isSupabaseConfigured()) return;
+
+    try {
+        await supabase
+            .from('profiles')
+            .update({
+                last_active_at: new Date().toISOString(),
+            } as unknown as Record<string, unknown>)
+            .eq('id', userId);
+    } catch {
+        // Best effort, silently fail
     }
 };
 

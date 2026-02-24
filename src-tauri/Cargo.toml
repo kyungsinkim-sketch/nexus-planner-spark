@@ -1,0 +1,60 @@
+[package]
+name = "re-be-app"
+version = "0.2.0"
+description = "Re-Be.io — Privacy-first creative collaboration with local RAG"
+authors = ["Paulus.ai"]
+license = "MIT"
+repository = "https://github.com/paulus-ai/re-be"
+edition = "2021"
+rust-version = "1.77.2"
+
+[lib]
+name = "app_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2.5.4", features = [] }
+
+[dependencies]
+serde_json = "1.0"
+serde = { version = "1.0", features = ["derive"] }
+log = "0.4"
+tauri = { version = "2.10.0", features = [] }
+tauri-plugin-log = "2"
+
+# Local RAG: SQLite + sqlite-vec (replaces in-memory scan)
+rusqlite = { version = "0.32", features = ["bundled"] }
+sqlite-vec = "0.1.7-alpha.10"
+uuid = { version = "1.0", features = ["v4"] }
+chrono = { version = "0.4", features = ["serde"] }
+
+# ONNX embedding: all-MiniLM-L6-v2 INT8 (384-dim, ~22MB)
+ort = { version = "2.0.0-rc.11", default-features = false, features = ["ndarray", "std", "download-binaries", "copy-dylibs", "tls-native"] }
+tokenizers = { version = "0.20", default-features = false, features = ["onig"] }
+ndarray = "0.17"
+
+# Claude API calls for digest/persona
+reqwest = { version = "0.12", features = ["json", "rustls-tls"], default-features = false }
+tokio = { version = "1", features = ["full"] }
+
+# DID Ed25519 keypairs + multibase encoding
+ed25519-dalek = { version = "2.0", features = ["rand_core"] }
+rand = "0.8"
+bs58 = "0.5"
+hex = "0.4"
+sha2 = "0.10"
+
+# E2E encrypted sync (AES-256-GCM + HKDF)
+aes-gcm = "0.10"
+hkdf = "0.12"
+base64 = "0.22"
+
+# macOS native notifications + badge
+tauri-plugin-notification = "2"
+
+[features]
+default = []
+# Enable real ONNX inference (disable for faster dev builds)
+onnx = []
+# Mobile-specific features
+mobile = []

@@ -137,7 +137,7 @@ interface AppState {
   toggleSidebar: () => void;
   toggleChatPanel: () => void;
   setChatPanelCollapsed: (collapsed: boolean) => void;
-  setUserWorkStatus: (status: UserWorkStatus) => void;
+  setUserWorkStatus: (status: UserWorkStatus, skipGpsCheck?: boolean) => void;
   setLanguage: (lang: Language) => void;
   setTheme: (theme: 'light' | 'dark') => void;
   toggleTheme: () => void;
@@ -804,10 +804,61 @@ export const useAppStore = create<AppState>()(
       toggleChatPanel: () => set((state) => ({ chatPanelCollapsed: !state.chatPanelCollapsed })),
       setChatPanelCollapsed: (collapsed) => set({ chatPanelCollapsed: collapsed }),
 
-      setUserWorkStatus: async (status) => {
+      setUserWorkStatus: async (status, skipGpsCheck = false) => {
+        const { currentUser } = get();
+
+        // GPS validation: AT_WORK requires proximity to office (200m)
+        // Skip GPS check when called from useAutoCheckIn (already verified) or inactivity re-activation
+        if (status === 'AT_WORK' && !skipGpsCheck && navigator.geolocation) {
+          try {
+            const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
+              navigator.geolocation.getCurrentPosition(resolve, reject, {
+                enableHighAccuracy: true,
+                timeout: 8000,
+                maximumAge: 60000,
+              });
+            });
+
+            const OFFICE_LAT = 37.51439957906593;
+            const OFFICE_LNG = 127.02599429742935;
+            const OFFICE_RADIUS = 200;
+
+            // Haversine distance
+            const R = 6371000;
+            const toRad = (d: number) => (d * Math.PI) / 180;
+            const dLat = toRad(pos.coords.latitude - OFFICE_LAT);
+            const dLng = toRad(pos.coords.longitude - OFFICE_LNG);
+            const a =
+              Math.sin(dLat / 2) ** 2 +
+              Math.cos(toRad(OFFICE_LAT)) * Math.cos(toRad(pos.coords.latitude)) *
+              Math.sin(dLng / 2) ** 2;
+            const distance = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+            if (distance > OFFICE_RADIUS) {
+              // Not near office — block AT_WORK and suggest remote
+              const lang = get().language;
+              const msg = lang === 'ko'
+                ? `사무실에서 ${Math.round(distance)}m 떨어져 있습니다. 사무실 출근은 200m 이내에서만 가능합니다.`
+                : `You are ${Math.round(distance)}m from the office. Office status requires being within 200m.`;
+              // Import toast dynamically to avoid circular deps
+              const { toast } = await import('sonner');
+              toast.error(msg);
+              return; // Block the status change
+            }
+          } catch {
+            // GPS failed — block AT_WORK
+            const lang = get().language;
+            const msg = lang === 'ko'
+              ? '위치 정보를 확인할 수 없어 사무실 출근을 설정할 수 없습니다. 다른 근무 유형을 선택해주세요.'
+              : 'Cannot verify location. Please select a different work type.';
+            const { toast } = await import('sonner');
+            toast.error(msg);
+            return; // Block the status change
+          }
+        }
+
         set({ userWorkStatus: status });
 
-        const { currentUser } = get();
         if (currentUser && isSupabaseConfigured()) {
           try {
             await authService.updateWorkStatus(currentUser.id, status);
@@ -2213,16 +2264,47 @@ export const useAppStore = create<AppState>()(
           appNotifications: [newNotif, ...state.appNotifications].slice(0, 200),
         }));
         // Sound is played by addMessage() — no duplicate sound here
+
+        // Phase 6: macOS native notification + dock badge
+        import('@/services/nativeNotificationService').then(({ sendNotificationIfBackground, updateBadgeFromUnreadCount }) => {
+          // Send native notification only when app is in background
+          sendNotificationIfBackground({
+            title: newNotif.title,
+            body: newNotif.message,
+            type: newNotif.type,
+          });
+          // Update dock badge with total unread count
+          const unreadCount = get().appNotifications.filter(n => !n.read).length;
+          updateBadgeFromUnreadCount(unreadCount);
+        }).catch(() => {}); // Silently fail in web mode
       },
-      markAppNotificationRead: (id) => set((state) => ({
-        appNotifications: state.appNotifications.map(n =>
-          n.id === id ? { ...n, read: true } : n
-        ),
-      })),
-      markAllAppNotificationsRead: () => set((state) => ({
-        appNotifications: state.appNotifications.map(n => ({ ...n, read: true })),
-      })),
-      clearAppNotifications: () => set({ appNotifications: [] }),
+      markAppNotificationRead: (id) => {
+        set((state) => ({
+          appNotifications: state.appNotifications.map(n =>
+            n.id === id ? { ...n, read: true } : n
+          ),
+        }));
+        // Update dock badge
+        import('@/services/nativeNotificationService').then(({ updateBadgeFromUnreadCount }) => {
+          updateBadgeFromUnreadCount(get().appNotifications.filter(n => !n.read).length);
+        }).catch(() => {});
+      },
+      markAllAppNotificationsRead: () => {
+        set((state) => ({
+          appNotifications: state.appNotifications.map(n => ({ ...n, read: true })),
+        }));
+        // Clear dock badge
+        import('@/services/nativeNotificationService').then(({ clearBadge }) => {
+          clearBadge();
+        }).catch(() => {});
+      },
+      clearAppNotifications: () => {
+        set({ appNotifications: [] });
+        // Clear dock badge
+        import('@/services/nativeNotificationService').then(({ clearBadge }) => {
+          clearBadge();
+        }).catch(() => {});
+      },
       clearChatNotificationsForRoom: (roomId, projectId, directUserId) => set((state) => ({
         appNotifications: state.appNotifications.filter(n => {
           if (n.type !== 'chat') return true;

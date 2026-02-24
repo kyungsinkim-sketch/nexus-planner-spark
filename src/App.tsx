@@ -14,6 +14,7 @@ import { useChatNotifications } from "@/hooks/useChatNotifications";
 import { useTodoSync } from "@/hooks/useTodoSync";
 import { useAutoCheckIn } from "@/hooks/useAutoCheckIn";
 import { useInactivityDetector } from "@/hooks/useInactivityDetector";
+import { useUserStatusRefresh } from "@/hooks/useUserStatusRefresh";
 import { AutoCheckInDialog } from "@/components/dashboard/AutoCheckInDialog";
 
 // Lazy-loaded page components for code splitting
@@ -39,6 +40,9 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   // Auto check-in based on GPS + inactivity auto check-out
   useAutoCheckIn();
   useInactivityDetector();
+
+  // Periodic user list refresh for stale work status detection (every 10 min)
+  useUserStatusRefresh();
 
   if (isLoading) {
     return (
@@ -99,6 +103,17 @@ const App = () => {
       document.documentElement.classList.remove('dark');
     }
   }, [theme]);
+
+  // Phase 6: Initialize native notifications + focus tracking (macOS)
+  useEffect(() => {
+    import('@/services/nativeNotificationService').then(({
+      initNativeNotifications,
+      setupFocusTracking,
+    }) => {
+      initNativeNotifications();
+      setupFocusTracking();
+    }).catch(() => {}); // Silent fail in web mode
+  }, []);
 
   // Cross-tab sync: listen for localStorage changes from other tabs/windows
   // Messages, company notifications, important notes propagate in real-time

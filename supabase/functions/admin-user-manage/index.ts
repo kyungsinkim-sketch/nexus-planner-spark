@@ -13,7 +13,6 @@
  * Request body: { action: string, ...params }
  */
 
-import { createClient } from 'jsr:@supabase/supabase-js@2';
 import { authenticateAdmin } from '../_shared/auth.ts';
 
 const corsHeaders = {
@@ -70,8 +69,15 @@ Deno.serve(async (req) => {
         });
 
         if (!response.ok) {
-          const err = await response.json();
-          return jsonResponse({ error: err.msg || err.message || 'Failed to create user' }, response.status);
+          let errMsg = 'Failed to create user';
+          try {
+            const err = await response.json();
+            errMsg = err.msg || err.message || err.error_description || errMsg;
+          } catch {
+            errMsg = `Auth API returned ${response.status}: ${await response.text().catch(() => 'unknown')}`;
+          }
+          console.error('[admin-user-manage] createUser error:', errMsg);
+          return jsonResponse({ error: errMsg }, response.status);
         }
 
         const userData = await response.json();
@@ -179,7 +185,8 @@ Deno.serve(async (req) => {
     if (err instanceof Response) {
       return err;
     }
-    console.error('[admin-user-manage] Error:', err);
-    return jsonResponse({ error: (err as Error).message }, 500);
+    const errMsg = err instanceof Error ? err.message : String(err);
+    console.error('[admin-user-manage] Unhandled error:', errMsg, err);
+    return jsonResponse({ error: errMsg || 'Internal server error' }, 500);
   }
 });

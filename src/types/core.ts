@@ -13,6 +13,7 @@ export interface User {
   role: UserRole;
   department?: string;
   workStatus?: UserWorkStatus;
+  lastActiveAt?: string; // ISO timestamp — heartbeat for stale detection
   accessType?: UserAccessType; // 'company' = same domain, 'freelancer' = external
   companyDomain?: string; // e.g. 'paulus.pro' — extracted from email
 }

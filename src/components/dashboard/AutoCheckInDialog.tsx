@@ -45,7 +45,7 @@ export function AutoCheckInDialog() {
     setLoading(option.type);
 
     try {
-      setUserWorkStatus(option.workStatus);
+      setUserWorkStatus(option.workStatus, true); // skip GPS re-check — dialog already handles location
 
       if (isSupabaseConfigured()) {
         await attendanceService.checkIn({
