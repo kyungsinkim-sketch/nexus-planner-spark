@@ -33,24 +33,33 @@ function CalendarWidget({ context }: { context: WidgetDataContext }) {
   const { language } = useTranslation();
 
   // Debounced loadEvents to prevent rapid-fire calls that cause AbortError cascades
+  // Use isMounted ref to prevent setState on unmounted component
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isMountedRef = useRef(true);
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => { isMountedRef.current = false; };
+  }, []);
+
   const debouncedLoadEvents = useCallback(() => {
     if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
     debounceTimerRef.current = setTimeout(() => {
-      loadEvents();
+      if (isMountedRef.current) loadEvents();
     }, 500);
   }, [loadEvents]);
 
   // Subscribe to realtime calendar_events changes so brain-created events
   // appear without page refresh
   useEffect(() => {
-    const unsubscribe = subscribeToEvents((event, eventType) => {
-      console.log('[CalendarWidget] Realtime event:', eventType, event?.id, event?.title);
+    const unsubscribe = subscribeToEvents((_event, _eventType) => {
       debouncedLoadEvents();
     });
     return () => {
       unsubscribe();
-      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+        debounceTimerRef.current = null;
+      }
     };
   }, [debouncedLoadEvents]);
 

@@ -57,12 +57,8 @@ function AttendanceWidget({ context: _context }: { context: WidgetDataContext })
   }>>(new Map());
 
   // Current time ticker for real-time elapsed calculation (updates every 60s)
+  // Also refreshes attendance data from DB on each tick for live status
   const [now, setNow] = useState(() => Date.now());
-
-  useEffect(() => {
-    const timer = setInterval(() => setNow(Date.now()), 60_000);
-    return () => clearInterval(timer);
-  }, []);
 
   const loadAttendance = useCallback(() => {
     if (!isSupabaseConfigured()) return;
@@ -92,8 +88,14 @@ function AttendanceWidget({ context: _context }: { context: WidgetDataContext })
       });
   }, []);
 
+  // Time ticker + periodic attendance refresh (every 60s)
   useEffect(() => {
-    loadAttendance();
+    loadAttendance(); // Initial load
+    const timer = setInterval(() => {
+      setNow(Date.now());
+      loadAttendance(); // Refresh attendance data from DB each tick
+    }, 60_000);
+    return () => clearInterval(timer);
   }, [loadAttendance]);
 
   // Build list of working users -- merge current user's live status

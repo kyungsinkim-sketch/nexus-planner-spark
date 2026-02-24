@@ -377,36 +377,35 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
     return () => setActiveChatContext(null);
   }, [selectedChat?.type, selectedChat?.id, selectedChat?.roomId, clearChatNotificationsForRoom, setActiveChatContext]);
 
-  // Subscribe to realtime messages when selecting a room (INSERT + DELETE)
+  // Subscribe to realtime DELETE events for the active chat room.
+  // INSERT events are handled by the global useChatNotifications hook
+  // to avoid dual subscriptions and race conditions.
   useEffect(() => {
     if (!isSupabaseConfigured() || !selectedChat) return;
 
     let unsubscribe: (() => void) | null = null;
 
-    const onInsert = (message: ChatMessage) => {
-      const exists = useAppStore.getState().messages.some(m => m.id === message.id);
-      if (!exists) addMessage(message);
-    };
+    // INSERT is a no-op — the global hook (useChatNotifications) handles all INSERTs
+    const onInsertNoop = () => {};
 
     const onRemoteDelete = (messageId: string) => {
-      // Remove from local state when another user deletes a message
       useAppStore.setState((state) => ({
         messages: state.messages.filter(m => m.id !== messageId),
       }));
     };
 
     if (selectedChat.type === 'project' && selectedChat.roomId) {
-      unsubscribe = chatService.subscribeToRoomMessages(selectedChat.roomId, onInsert, onRemoteDelete);
+      unsubscribe = chatService.subscribeToRoomMessages(selectedChat.roomId, onInsertNoop, onRemoteDelete);
     } else if (selectedChat.type === 'project') {
-      unsubscribe = chatService.subscribeToProjectMessages(selectedChat.id, onInsert, onRemoteDelete);
+      unsubscribe = chatService.subscribeToProjectMessages(selectedChat.id, onInsertNoop, onRemoteDelete);
     } else if (selectedChat.type === 'direct' && currentUser) {
-      unsubscribe = chatService.subscribeToDirectMessages(currentUser.id, selectedChat.id, onInsert, onRemoteDelete);
+      unsubscribe = chatService.subscribeToDirectMessages(currentUser.id, selectedChat.id, onInsertNoop, onRemoteDelete);
     }
 
     return () => {
       if (unsubscribe) unsubscribe();
     };
-  }, [selectedChat?.type, selectedChat?.id, selectedChat?.roomId, currentUser?.id, addMessage]);
+  }, [selectedChat?.type, selectedChat?.id, selectedChat?.roomId, currentUser?.id]);
 
   const [brainProcessing, setBrainProcessing] = useState(false);
   const [pabloProcessing, setPabloProcessing] = useState(false);

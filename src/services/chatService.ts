@@ -298,17 +298,21 @@ export const getMessagesByProject = async (projectId: string): Promise<ChatMessa
         throw new Error('Supabase not configured');
     }
 
+    // Load only the most recent 200 messages per project to prevent memory bloat.
+    // Older messages can be loaded on-demand via scroll pagination (future).
     const { data, error } = await supabase
         .from('chat_messages')
         .select('*')
         .eq('project_id', projectId)
-        .order('created_at', { ascending: true });
+        .order('created_at', { ascending: false })
+        .limit(200);
 
     if (error) {
         throw new Error(handleSupabaseError(error));
     }
 
-    return (data as MessageRow[]).map(transformMessage);
+    // Reverse to ascending order after limit
+    return (data as MessageRow[]).reverse().map(transformMessage);
 };
 
 // Send message to project (legacy — without room)

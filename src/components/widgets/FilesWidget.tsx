@@ -88,13 +88,16 @@ function FilesWidget({ context }: { context: WidgetDataContext }) {
   const commentsEndRef = useRef<HTMLDivElement>(null);
 
   // Load file groups on mount / when project context changes
+  // Also clear selected file when switching projects to prevent stale data
   useEffect(() => {
     if (context.type === 'project' && context.projectId) {
       loadFileGroups(context.projectId).catch(() => {});
     }
+    setSelectedFile(null); // Clear selection on project change
   }, [context.type, context.projectId, loadFileGroups]);
 
   // ─── Realtime: file_items changes (INSERT/DELETE across users) ───
+  // Re-subscribe when project context changes to ensure proper cleanup
   useEffect(() => {
     if (!isSupabaseConfigured()) return;
 
@@ -102,7 +105,6 @@ function FilesWidget({ context }: { context: WidgetDataContext }) {
       // onInsert — another user uploaded a file
       (newFile) => {
         useAppStore.setState((state) => {
-          // Avoid duplicates
           if (state.files.some((f) => f.id === newFile.id)) return state;
           return { files: [...state.files, newFile] };
         });
@@ -118,15 +120,12 @@ function FilesWidget({ context }: { context: WidgetDataContext }) {
         useAppStore.setState((state) => ({
           files: state.files.filter((f) => f.id !== deletedId),
         }));
-        // Close preview if the deleted file is open
-        if (selectedFile?.id === deletedId) {
-          setSelectedFile(null);
-        }
+        setSelectedFile((prev) => prev?.id === deletedId ? null : prev);
       },
     );
 
     return unsub;
-  }, [selectedFile?.id]);
+  }, [context.projectId]); // Re-subscribe on project change for proper cleanup
 
   // ─── Load comments from DB when a file is selected ───
   useEffect(() => {
