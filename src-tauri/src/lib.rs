@@ -20,6 +20,7 @@ use rag::knowledge;
 use rag::query;
 use rag::seed;
 use sync::sync as sync_engine;
+use std::path::PathBuf;
 use std::sync::Arc;
 use tauri::Manager;
 
@@ -628,15 +629,35 @@ pub fn run() {
 
     builder
         .setup(|app| {
-            // Initialize local RAG database
-            let app_data_dir = app
-                .path()
-                .app_data_dir()
-                .expect("Failed to get app data directory");
-            std::fs::create_dir_all(&app_data_dir).expect("Failed to create app data dir");
+            // Initialize local RAG database (gracefully handle failures on mobile)
+            let app_data_dir = match app.path().app_data_dir() {
+                Ok(dir) => dir,
+                Err(e) => {
+                    log::error!("Failed to get app data directory: {}", e);
+                    // Use a temp dir as fallback
+                    std::env::temp_dir().join("re-be-io")
+                }
+            };
+            if let Err(e) = std::fs::create_dir_all(&app_data_dir) {
+                log::error!("Failed to create app data dir: {}", e);
+            }
 
             let db_path = app_data_dir.join("rag.db");
-            let db = RagDb::open(&db_path).expect("Failed to open RAG database");
+            let db = match RagDb::open(&db_path) {
+                Ok(db) => {
+                    log::info!("RAG database opened successfully");
+                    db
+                }
+                Err(e) => {
+                    log::error!("Failed to open RAG database: {} — creating fallback in-memory", e);
+                    // Fallback: open in-memory DB so the app doesn't crash
+                    RagDb::open(&PathBuf::from(":memory:"))
+                        .unwrap_or_else(|e2| {
+                            log::error!("In-memory DB also failed: {}", e2);
+                            panic!("Cannot initialize any database");
+                        })
+                }
+            };
             let db = Arc::new(db);
 
             // Initialize embedding engine
@@ -666,7 +687,7 @@ pub fn run() {
             }
             let did_identity = Arc::new(did_identity);
 
-            // CEO pattern seeding on first launch
+            // CEO pattern seeding on first launch (non-fatal on mobile)
             match seed::seed_ceo_patterns(&db, &embedding) {
                 Ok(count) if count > 0 => {
                     log::info!("Seeded {} CEO knowledge patterns on first launch", count);
