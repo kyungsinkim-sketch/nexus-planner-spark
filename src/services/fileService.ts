@@ -193,6 +193,9 @@ export const createFileItem = async (fileItem: Partial<FileItem>): Promise<FileI
     return transformFileItem(data as FileItemRow);
 };
 
+// Maximum file upload size: 50MB
+const MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024;
+
 // Upload file to storage
 export const uploadFile = async (
     file: File,
@@ -201,6 +204,17 @@ export const uploadFile = async (
 ): Promise<{ path: string; url: string }> => {
     if (!isSupabaseConfigured()) {
         throw new Error('Supabase not configured');
+    }
+
+    // Pre-validate file size before uploading to save bandwidth
+    if (file.size > MAX_FILE_SIZE_BYTES) {
+        const sizeMB = (file.size / (1024 * 1024)).toFixed(1);
+        throw new Error(`파일 크기(${sizeMB}MB)가 최대 업로드 크기(50MB)를 초과합니다.`);
+    }
+
+    // Reject empty files
+    if (file.size === 0) {
+        throw new Error('빈 파일은 업로드할 수 없습니다.');
     }
 
     const fileExt = file.name.split('.').pop();

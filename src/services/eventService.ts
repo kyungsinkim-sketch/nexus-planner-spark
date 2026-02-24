@@ -1,4 +1,5 @@
 import { supabase, isSupabaseConfigured, handleSupabaseError } from '@/lib/supabase';
+import { withSupabaseRetry } from '@/lib/retry';
 import type { CalendarEvent } from '@/types/core';
 import type { Database } from '@/types/database';
 
@@ -59,13 +60,16 @@ export const getEvents = async (): Promise<CalendarEvent[]> => {
     const rangeEnd = new Date();
     rangeEnd.setMonth(rangeEnd.getMonth() + 12);
 
-    const { data, error } = await supabase
-        .from('calendar_events')
-        .select('*')
-        .gte('start_at', rangeStart.toISOString())
-        .lte('start_at', rangeEnd.toISOString())
-        .order('start_at', { ascending: true })
-        .limit(2000);
+    const { data, error } = await withSupabaseRetry(
+        () => supabase
+            .from('calendar_events')
+            .select('*')
+            .gte('start_at', rangeStart.toISOString())
+            .lte('start_at', rangeEnd.toISOString())
+            .order('start_at', { ascending: true })
+            .limit(2000),
+        { label: 'getEvents' },
+    );
 
     if (error) {
         throw new Error(handleSupabaseError(error));
@@ -83,12 +87,17 @@ export const getEventsByDateRange = async (
         throw new Error('Supabase not configured');
     }
 
-    const { data, error } = await supabase
-        .from('calendar_events')
-        .select('*')
-        .gte('start_at', startDate)
-        .lte('end_at', endDate)
-        .order('start_at', { ascending: true });
+    // Use overlap logic: events where start_at <= rangeEnd AND end_at >= rangeStart
+    // This correctly includes events that span across the date range boundary.
+    const { data, error } = await withSupabaseRetry(
+        () => supabase
+            .from('calendar_events')
+            .select('*')
+            .lte('start_at', endDate)
+            .gte('end_at', startDate)
+            .order('start_at', { ascending: true }),
+        { label: 'getEventsByDateRange' },
+    );
 
     if (error) {
         throw new Error(handleSupabaseError(error));
@@ -103,11 +112,14 @@ export const getEventsByProject = async (projectId: string): Promise<CalendarEve
         throw new Error('Supabase not configured');
     }
 
-    const { data, error } = await supabase
-        .from('calendar_events')
-        .select('*')
-        .eq('project_id', projectId)
-        .order('start_at', { ascending: true });
+    const { data, error } = await withSupabaseRetry(
+        () => supabase
+            .from('calendar_events')
+            .select('*')
+            .eq('project_id', projectId)
+            .order('start_at', { ascending: true }),
+        { label: 'getEventsByProject' },
+    );
 
     if (error) {
         throw new Error(handleSupabaseError(error));
@@ -122,11 +134,14 @@ export const getEventsByOwner = async (ownerId: string): Promise<CalendarEvent[]
         throw new Error('Supabase not configured');
     }
 
-    const { data, error } = await supabase
-        .from('calendar_events')
-        .select('*')
-        .eq('owner_id', ownerId)
-        .order('start_at', { ascending: true });
+    const { data, error } = await withSupabaseRetry(
+        () => supabase
+            .from('calendar_events')
+            .select('*')
+            .eq('owner_id', ownerId)
+            .order('start_at', { ascending: true }),
+        { label: 'getEventsByOwner' },
+    );
 
     if (error) {
         throw new Error(handleSupabaseError(error));
