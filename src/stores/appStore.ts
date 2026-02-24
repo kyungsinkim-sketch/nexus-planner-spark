@@ -16,6 +16,9 @@ import * as boardService from '@/services/boardService';
 import { playNotificationSound } from '@/services/notificationSoundService';
 import { useWidgetStore } from '@/stores/widgetStore';
 
+// Module-level concurrency locks (avoid direct state mutation for async guards)
+let _loadingEventsLock = false;
+
 interface AppState {
   // Auth
   currentUser: User | null;
@@ -435,14 +438,27 @@ export const useAppStore = create<AppState>()(
         } catch (error) {
           console.error('Failed to sign out:', error);
         } finally {
-          // Always clear local state even if API call fails
+          // Clear ALL sensitive data on sign out
           set({
             currentUser: null,
             isAuthenticated: false,
             projects: [],
             events: [],
             messages: [],
+            importantNotes: [],
+            appNotifications: [],
+            gmailMessages: [],
+            emailSuggestions: [],
+            gmailLastSyncAt: null,
+            trashedGmailMessageIds: [],
+            brainNotifications: [],
+            brainReports: [],
+            brainFeedback: [],
+            voiceRecordings: [],
+            dismissedNotificationIds: [],
           });
+          // Also clear persisted localStorage to prevent data leaking between sessions
+          try { localStorage.removeItem('app-store'); } catch { /* noop */ }
         }
       },
 
@@ -506,13 +522,9 @@ export const useAppStore = create<AppState>()(
           return;
         }
 
-        // Concurrency guard — prevent multiple simultaneous loadEvents calls
-        // which cause AbortError cascades when requests overlap
-        const state = get();
-        if ((state as unknown as Record<string, boolean>)._loadingEvents) {
-          return;
-        }
-        (state as unknown as Record<string, boolean>)._loadingEvents = true;
+        // Concurrency guard — use module-level flag (not state mutation)
+        if (_loadingEventsLock) return;
+        _loadingEventsLock = true;
 
         try {
           const events = await eventService.getEvents();
@@ -526,7 +538,7 @@ export const useAppStore = create<AppState>()(
             console.error('Failed to load events:', error);
           }
         } finally {
-          (get() as unknown as Record<string, boolean>)._loadingEvents = false;
+          _loadingEventsLock = false;
         }
       },
 
@@ -756,8 +768,8 @@ export const useAppStore = create<AppState>()(
       },
 
       updateBoardTask: async (taskId, updates) => {
-        // Save previous state for rollback
-        const prevTasks = get().boardTasks;
+        // Deep clone for safe rollback (reference copy would be mutated by optimistic update)
+        const prevTasks = get().boardTasks.map(t => ({ ...t }));
         // Optimistic update
         set((state) => ({
           boardTasks: state.boardTasks.map(t =>
@@ -779,8 +791,8 @@ export const useAppStore = create<AppState>()(
       },
 
       deleteBoardTask: async (taskId) => {
-        // Save previous state for rollback
-        const prevTasks = get().boardTasks;
+        // Deep clone for safe rollback
+        const prevTasks = get().boardTasks.map(t => ({ ...t }));
         set((state) => ({
           boardTasks: state.boardTasks.filter(t => t.id !== taskId),
         }));
@@ -2260,10 +2272,11 @@ export const useAppStore = create<AppState>()(
       setWeatherSettingsOpen: (open) => set({ weatherSettingsOpen: open }),
       setNotificationSoundEnabled: (enabled) => set({ notificationSoundEnabled: enabled }),
       dismissNotification: (id) => set((state) => ({
-        dismissedNotificationIds: [...state.dismissedNotificationIds, id],
+        // Cap at 500 entries to prevent unbounded localStorage growth
+        dismissedNotificationIds: [...state.dismissedNotificationIds, id].slice(-500),
       })),
       dismissAllNotifications: (ids) => set((state) => ({
-        dismissedNotificationIds: [...new Set([...state.dismissedNotificationIds, ...ids])],
+        dismissedNotificationIds: [...new Set([...state.dismissedNotificationIds, ...ids])].slice(-500),
       })),
 
       // Settings Actions

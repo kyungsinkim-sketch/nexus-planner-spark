@@ -28,17 +28,8 @@ export async function loadBudget(projectId: string): Promise<ProjectBudget | nul
   if (!isSupabaseConfigured()) return null;
 
   try {
-    // Load all budget tables in parallel
-    const [
-      { data: summaryData },
-      { data: scheduleData },
-      { data: lineItemData },
-      { data: taxData },
-      { data: withholdingData },
-      { data: cardData },
-      { data: cashData },
-      { data: personalData },
-    ] = await Promise.all([
+    // Load all budget tables in parallel — use Promise.allSettled for partial failure resilience
+    const results = await Promise.allSettled([
       supabase.from('budget_summaries').select('*').eq('project_id', projectId).maybeSingle(),
       supabase.from('budget_payment_schedules').select('*').eq('project_id', projectId).order('row_index'),
       supabase.from('budget_line_items').select('*').eq('project_id', projectId).order('row_index'),
@@ -48,6 +39,18 @@ export async function loadBudget(projectId: string): Promise<ProjectBudget | nul
       supabase.from('budget_corporate_cash_expenses').select('*').eq('project_id', projectId).order('row_index'),
       supabase.from('budget_personal_expenses').select('*').eq('project_id', projectId).order('row_index'),
     ]);
+
+    // Extract data safely — failed queries return null/empty instead of crashing everything
+    const extract = <T,>(r: PromiseSettledResult<{ data: T; error: unknown }>): T | null =>
+      r.status === 'fulfilled' && !r.error ? r.value.data : null;
+    const summaryData = extract(results[0] as PromiseSettledResult<{ data: unknown; error: unknown }>) as Record<string, unknown> | null;
+    const scheduleData = (extract(results[1] as PromiseSettledResult<{ data: unknown; error: unknown }>) ?? []) as Record<string, unknown>[];
+    const lineItemData = (extract(results[2] as PromiseSettledResult<{ data: unknown; error: unknown }>) ?? []) as Record<string, unknown>[];
+    const taxData = (extract(results[3] as PromiseSettledResult<{ data: unknown; error: unknown }>) ?? []) as Record<string, unknown>[];
+    const withholdingData = (extract(results[4] as PromiseSettledResult<{ data: unknown; error: unknown }>) ?? []) as Record<string, unknown>[];
+    const cardData = (extract(results[5] as PromiseSettledResult<{ data: unknown; error: unknown }>) ?? []) as Record<string, unknown>[];
+    const cashData = (extract(results[6] as PromiseSettledResult<{ data: unknown; error: unknown }>) ?? []) as Record<string, unknown>[];
+    const personalData = (extract(results[7] as PromiseSettledResult<{ data: unknown; error: unknown }>) ?? []) as Record<string, unknown>[];
 
     // Check if any data exists at all
     const hasAnyData = summaryData ||

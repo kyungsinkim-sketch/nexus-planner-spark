@@ -7,12 +7,58 @@
  * - Lazy rendering via IntersectionObserver
  */
 
-import { useRef, Suspense, type ReactNode } from 'react';
-import { Minus, Plus, X } from 'lucide-react';
+import React, { useRef, Suspense, type ReactNode } from 'react';
+import { Minus, Plus, X, AlertTriangle, RotateCcw } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useIntersection } from '@/hooks/useIntersection';
 import { useTranslation } from '@/hooks/useTranslation';
 import { cn } from '@/lib/utils';
+
+// ─── Widget-level Error Boundary ─────────────────────
+// Catches render errors in individual widgets so one broken
+// widget doesn't crash the entire dashboard.
+
+interface WidgetErrorBoundaryState {
+  hasError: boolean;
+  error: Error | null;
+}
+
+class WidgetErrorBoundary extends React.Component<
+  { children: ReactNode; widgetId: string },
+  WidgetErrorBoundaryState
+> {
+  constructor(props: { children: ReactNode; widgetId: string }) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error: Error): WidgetErrorBoundaryState {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, info: React.ErrorInfo): void {
+    console.error(`[Widget:${this.props.widgetId}] Crash:`, error.message, info.componentStack);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="flex flex-col items-center justify-center h-full gap-2 p-4 text-muted-foreground/60">
+          <AlertTriangle className="w-5 h-5 text-amber-500/70" />
+          <p className="text-xs text-center">위젯 오류가 발생했습니다</p>
+          <button
+            onClick={() => this.setState({ hasError: false, error: null })}
+            className="flex items-center gap-1 text-[10px] px-2 py-1 rounded bg-muted hover:bg-muted/80 transition-colors"
+          >
+            <RotateCcw className="w-3 h-3" />
+            다시 시도
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 interface HeaderAction {
   icon: LucideIcon;
@@ -104,12 +150,14 @@ export function WidgetContainer({
         </div>
       </div>
 
-      {/* Content */}
+      {/* Content — wrapped in error boundary so one widget crash doesn't break dashboard */}
       {!collapsed && (
         <div className="widget-content flex-1 min-h-0 p-0">
-          <Suspense fallback={<WidgetSkeleton />}>
-            {isVisible ? children : <WidgetSkeleton />}
-          </Suspense>
+          <WidgetErrorBoundary widgetId={widgetId}>
+            <Suspense fallback={<WidgetSkeleton />}>
+              {isVisible ? children : <WidgetSkeleton />}
+            </Suspense>
+          </WidgetErrorBoundary>
         </div>
       )}
     </div>

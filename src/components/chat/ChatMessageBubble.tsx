@@ -92,7 +92,8 @@ export function ChatMessageBubble({ message, isCurrentUser, onVoteDecision, onAc
         const msgIndex = allMessages.findIndex(m => m.id === message.id);
         if (msgIndex <= 0) return false;
         // Walk backwards to find the user message that triggered this AI response
-        for (let i = msgIndex - 1; i >= Math.max(0, msgIndex - 3); i--) {
+        // Look back up to 10 messages to handle busy chat rooms
+        for (let i = msgIndex - 1; i >= Math.max(0, msgIndex - 10); i--) {
           const prev = allMessages[i];
           if (prev.userId !== BRAIN_BOT_USER_ID && prev.messageType !== 'brain_action' && prev.messageType !== 'persona_response') {
             return prev.userId === currentUser.id;
