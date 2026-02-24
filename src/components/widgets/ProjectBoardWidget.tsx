@@ -557,7 +557,10 @@ function GanttChartView({
     weeks.push(addDays(rangeStart, d));
   }
 
-  // Drag handler
+  // Track last applied delta to detect no-change on mouseUp
+  const lastDeltaRef = useRef(0);
+
+  // Drag handler — updates task dates for visual feedback on every move
   const handleMouseMove = useCallback((e: MouseEvent) => {
     if (!dragging || !containerRef.current) return;
     const container = containerRef.current;
@@ -565,7 +568,17 @@ function GanttChartView({
     const containerWidth = rect.width;
     const dx = e.clientX - dragging.startX;
     const daysDelta = Math.round((dx / containerWidth) * totalDays);
-    if (daysDelta === 0) return;
+    if (daysDelta === lastDeltaRef.current) return; // skip redundant updates
+    lastDeltaRef.current = daysDelta;
+
+    if (daysDelta === 0) {
+      // Snap back to original during drag
+      onUpdateTask(dragging.taskId, {
+        startDate: dragging.origStart,
+        endDate: dragging.origEnd,
+      });
+      return;
+    }
 
     const origStart = parseISO(dragging.origStart);
     const origEnd = parseISO(dragging.origEnd);
@@ -591,8 +604,16 @@ function GanttChartView({
   }, [dragging, totalDays, onUpdateTask]);
 
   const handleMouseUp = useCallback(() => {
+    if (dragging && lastDeltaRef.current === 0) {
+      // No actual change — ensure original dates are restored (safety rollback)
+      onUpdateTask(dragging.taskId, {
+        startDate: dragging.origStart,
+        endDate: dragging.origEnd,
+      });
+    }
+    lastDeltaRef.current = 0;
     setDragging(null);
-  }, []);
+  }, [dragging, onUpdateTask]);
 
   useEffect(() => {
     if (!dragging) return;

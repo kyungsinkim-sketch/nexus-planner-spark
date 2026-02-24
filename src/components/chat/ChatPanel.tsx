@@ -215,8 +215,8 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
         return messages.filter(m =>
           // User messages TO Brain AI
           (m.userId === currentUser.id && m.directChatUserId === BRAIN_AI_USER_ID) ||
-          // Brain bot responses IN Brain AI DM context
-          (m.userId === BRAIN_BOT_USER_ID && m.directChatUserId === BRAIN_AI_USER_ID)
+          // Brain bot responses TO current user (edge function sets directChatUserId = requesting userId)
+          (m.userId === BRAIN_BOT_USER_ID && m.directChatUserId === currentUser.id)
         );
       }
       // For AI Persona DMs (@pablo, @cd, @pd): strict scoping to persona ID
@@ -454,7 +454,7 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
         const brainDmMessages = messages
           .filter(m =>
             (m.userId === currentUser.id && m.directChatUserId === BRAIN_AI_USER_ID) ||
-            (m.userId === BRAIN_BOT_USER_ID && m.directChatUserId === BRAIN_AI_USER_ID)
+            (m.userId === BRAIN_BOT_USER_ID && m.directChatUserId === currentUser.id)
           )
           .slice(-10); // last 10 messages for context
 

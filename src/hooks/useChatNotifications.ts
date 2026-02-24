@@ -80,6 +80,11 @@ export function useChatNotifications() {
           // Skip own messages
           if (msg.user_id === currentUser.id) return;
 
+          // Skip brain bot DM messages from the global subscription — they are loaded
+          // through getDirectMessages() when the DM is opened, which scopes by
+          // conversation pair. This prevents cross-user AI response leakage.
+          if (msg.user_id === BRAIN_BOT_USER_ID && msg.direct_chat_user_id) return;
+
           // Add to global store (creates appNotification for bell icon if not in active chat)
           // addMessage() handles duplicate prevention and active-chat suppression internally
           const chatMessage = rowToChatMessage(msg);

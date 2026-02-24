@@ -36,6 +36,7 @@ function BrainChatWidget({ context }: { context: WidgetDataContext }) {
   const [history, setHistory] = useState<BrainHistoryItem[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const processingRef = useRef(false); // Ref-based guard to prevent concurrent submissions
   const { currentUser, users, projects, loadEvents, loadTodos, addTodo } = useAppStore();
   const { t } = useTranslation();
 
@@ -52,6 +53,9 @@ function BrainChatWidget({ context }: { context: WidgetDataContext }) {
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim() || processing || !currentUser) return;
+    // Ref-based guard: prevent double submission even if React state hasn't flushed yet
+    if (processingRef.current) return;
+    processingRef.current = true;
 
     const message = input.trim();
     setInput('');
@@ -179,6 +183,7 @@ function BrainChatWidget({ context }: { context: WidgetDataContext }) {
           }
         }
         for (let retry = 1; retry <= 2; retry++) {
+          if (!processingRef.current) break; // Abort retries if a new request started or unmounted
           await new Promise(r => setTimeout(r, 1000));
           await loadTodos().catch(() => {});
         }
@@ -196,6 +201,7 @@ function BrainChatWidget({ context }: { context: WidgetDataContext }) {
       };
       setHistory(prev => [...prev, errorItem]);
     } finally {
+      processingRef.current = false;
       setProcessing(false);
       inputRef.current?.focus();
     }
