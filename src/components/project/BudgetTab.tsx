@@ -180,12 +180,9 @@ export function BudgetTab({ projectId }: BudgetTabProps) {
   const { t, language } = useTranslation();
   const currentUser = useAppStore((s) => s.currentUser);
 
-  // Pre-existing 2025 projects (p1–p33) keep their mock budget data; new projects start empty
-  const isLegacyProject = /^p\d+$/.test(projectId);
+  // All projects start with empty budget — real data loaded from Supabase (Google Sheets sync)
   const [budget, setBudget] = useState<ProjectBudget>(
-    isLegacyProject
-      ? { ...mockBudgetData, summary: { ...mockBudgetData.summary, projectId } }
-      : { ...emptyBudgetData, summary: { ...emptyBudgetData.summary, projectId } }
+    { ...emptyBudgetData, summary: { ...emptyBudgetData.summary, projectId } }
   );
   const [activeSection, setActiveSection] = useState<BudgetSection>('contract');
   const [expenseTab, setExpenseTab] = useState<'tax_invoice' | 'withholding' | 'corporate_card' | 'corporate_cash' | 'personal'>('tax_invoice');

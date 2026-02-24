@@ -1590,9 +1590,15 @@ export const useAppStore = create<AppState>()(
           const projectIds = get().projects.map(p => p.id);
           if (projectIds.length === 0) return;
           const notes = await getAllNotesForProjects(projectIds);
-          set({ importantNotes: notes });
+          // Merge: replace notes for loaded projects, keep notes for any projects not in current list
+          // This prevents data loss when project visibility changes or network issues return partial data
+          const loadedProjectSet = new Set(projectIds);
+          const existingNotes = get().importantNotes;
+          const keptNotes = existingNotes.filter(n => !loadedProjectSet.has(n.projectId));
+          set({ importantNotes: [...notes, ...keptNotes] });
         } catch (error) {
           console.error('Failed to load important notes:', error);
+          // On error, keep existing notes — never wipe on failure
         }
       },
 
