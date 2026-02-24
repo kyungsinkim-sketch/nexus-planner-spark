@@ -6,6 +6,9 @@ on:
     tags:
       - 'v*'
 
+permissions:
+  contents: write
+
 env:
   CARGO_TERM_COLOR: always
 
@@ -19,17 +22,14 @@ jobs:
             target: x86_64-pc-windows-msvc
             rust_targets: x86_64-pc-windows-msvc
             label: Windows
-            args: --target x86_64-pc-windows-msvc --features onnx
           - platform: macos-latest
             target: universal-apple-darwin
             rust_targets: aarch64-apple-darwin,x86_64-apple-darwin
             label: macOS-Universal
-            args: --target universal-apple-darwin
           - platform: ubuntu-22.04
             target: x86_64-unknown-linux-gnu
             rust_targets: x86_64-unknown-linux-gnu
             label: Linux
-            args: --target x86_64-unknown-linux-gnu --features onnx
 
     runs-on: ${{ matrix.platform }}
     name: Build (${{ matrix.label }})
@@ -54,7 +54,7 @@ jobs:
         with:
           workspaces: src-tauri
 
-      # Linux: install system dependencies
+      # Linux: install system dependencies for Tauri
       - name: Install Linux dependencies
         if: matrix.platform == 'ubuntu-22.04'
         run: |
@@ -72,33 +72,10 @@ jobs:
       - name: Install npm dependencies
         run: npm ci
 
+      # Build directly with npx tauri (not via tauri-action for better error visibility)
       - name: Build Tauri app
-        uses: tauri-apps/tauri-action@v0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          APPLE_CERTIFICATE: ''
-          APPLE_CERTIFICATE_PASSWORD: ''
-          APPLE_SIGNING_IDENTITY: ''
-        with:
-          tauriScript: npx tauri
-          tagName: ${{ github.ref_name }}
-          releaseName: 'Re-Be.io ${{ github.ref_name }}'
-          releaseBody: |
-            ## Re-Be.io Desktop App
+        run: npx tauri build --target ${{ matrix.target }}
 
-            ### Download
-            - **Windows**: `.msi` or `.exe` installer
-            - **macOS**: Universal `.dmg` (Apple Silicon + Intel)
-            - **Linux**: `.deb` or `.AppImage`
-
-            ### Installation Notes
-            **macOS**: Right-click → Open for first launch (app is not notarized yet)
-            **Windows**: Click "More info" → "Run anyway" if SmartScreen appears
-          releaseDraft: true
-          prerelease: false
-          args: ${{ matrix.args }}
-
-      # Upload artifacts even without tag (for workflow_dispatch)
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -107,7 +84,40 @@ jobs:
             src-tauri/target/${{ matrix.target }}/release/bundle/**/*.dmg
             src-tauri/target/${{ matrix.target }}/release/bundle/**/*.exe
             src-tauri/target/${{ matrix.target }}/release/bundle/**/*.msi
+            src-tauri/target/${{ matrix.target }}/release/bundle/**/*.nsis*
             src-tauri/target/${{ matrix.target }}/release/bundle/**/*.deb
             src-tauri/target/${{ matrix.target }}/release/bundle/**/*.AppImage
             src-tauri/target/${{ matrix.target }}/release/bundle/**/*.rpm
           if-no-files-found: warn
+
+  # Create GitHub Release after all builds succeed
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: List artifacts
+        run: find artifacts -type f | head -50
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: true
+          name: 'Re-Be.io ${{ github.ref_name }}'
+          body: |
+            ## Re-Be.io Desktop App
+
+            ### Download
+            - **Windows**: `.exe` or `.msi` installer
+            - **macOS**: Universal `.dmg` (Apple Silicon + Intel)
+            - **Linux**: `.deb` or `.AppImage`
+
+            ### Installation Notes
+            **macOS**: Right-click → Open for first launch (not notarized yet)
+            **Windows**: Click "More info" → "Run anyway" if SmartScreen appears
+          files: artifacts/**/*
