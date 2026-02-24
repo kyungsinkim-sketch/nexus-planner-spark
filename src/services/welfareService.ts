@@ -1,4 +1,5 @@
 import { supabase, isSupabaseConfigured, handleSupabaseError } from '@/lib/supabase';
+import { withSupabaseRetry } from '@/lib/retry';
 import type { Database } from '@/types/database';
 
 // ============================================
@@ -102,16 +103,19 @@ export const getTrainingSessions = async (): Promise<TrainingSession[]> => {
         throw new Error('Supabase not configured');
     }
 
-    const { data, error } = await supabase
-        .from('training_sessions')
-        .select(`
-            *,
-            profiles:user_id (
-                name
-            )
-        `)
-        .order('date', { ascending: false })
-        .order('time_slot', { ascending: true });
+    const { data, error } = await withSupabaseRetry(
+        () => supabase
+            .from('training_sessions')
+            .select(`
+                *,
+                profiles:user_id (
+                    name
+                )
+            `)
+            .order('date', { ascending: false })
+            .order('time_slot', { ascending: true }),
+        { label: 'getTrainingSessions' },
+    );
 
     if (error) {
         throw new Error(handleSupabaseError(error));
@@ -128,16 +132,19 @@ export const getTrainingSessionsByDate = async (date: string): Promise<TrainingS
         throw new Error('Supabase not configured');
     }
 
-    const { data, error } = await supabase
-        .from('training_sessions')
-        .select(`
-            *,
-            profiles:user_id (
-                name
-            )
-        `)
-        .eq('date', date)
-        .order('time_slot', { ascending: true });
+    const { data, error } = await withSupabaseRetry(
+        () => supabase
+            .from('training_sessions')
+            .select(`
+                *,
+                profiles:user_id (
+                    name
+                )
+            `)
+            .eq('date', date)
+            .order('time_slot', { ascending: true }),
+        { label: 'getTrainingSessionsByDate' },
+    );
 
     if (error) {
         throw new Error(handleSupabaseError(error));
@@ -157,18 +164,21 @@ export const getTrainingSessionsByDateRange = async (
         throw new Error('Supabase not configured');
     }
 
-    const { data, error } = await supabase
-        .from('training_sessions')
-        .select(`
-            *,
-            profiles:user_id (
-                name
-            )
-        `)
-        .gte('date', startDate)
-        .lte('date', endDate)
-        .order('date', { ascending: true })
-        .order('time_slot', { ascending: true });
+    const { data, error } = await withSupabaseRetry(
+        () => supabase
+            .from('training_sessions')
+            .select(`
+                *,
+                profiles:user_id (
+                    name
+                )
+            `)
+            .gte('date', startDate)
+            .lte('date', endDate)
+            .order('date', { ascending: true })
+            .order('time_slot', { ascending: true }),
+        { label: 'getTrainingSessionsByDateRange' },
+    );
 
     if (error) {
         throw new Error(handleSupabaseError(error));
@@ -185,16 +195,19 @@ export const getTrainingSessionsByUser = async (userId: string): Promise<Trainin
         throw new Error('Supabase not configured');
     }
 
-    const { data, error } = await supabase
-        .from('training_sessions')
-        .select(`
-            *,
-            profiles:user_id (
-                name
-            )
-        `)
-        .eq('user_id', userId)
-        .order('date', { ascending: false });
+    const { data, error } = await withSupabaseRetry(
+        () => supabase
+            .from('training_sessions')
+            .select(`
+                *,
+                profiles:user_id (
+                    name
+                )
+            `)
+            .eq('user_id', userId)
+            .order('date', { ascending: false }),
+        { label: 'getTrainingSessionsByUser' },
+    );
 
     if (error) {
         throw new Error(handleSupabaseError(error));
@@ -377,15 +390,18 @@ export const getLockerAssignments = async (): Promise<LockerAssignment[]> => {
         throw new Error('Supabase not configured');
     }
 
-    const { data, error } = await supabase
-        .from('locker_assignments')
-        .select(`
-            *,
-            profiles:user_id (
-                name
-            )
-        `)
-        .order('locker_number', { ascending: true });
+    const { data, error } = await withSupabaseRetry(
+        () => supabase
+            .from('locker_assignments')
+            .select(`
+                *,
+                profiles:user_id (
+                    name
+                )
+            `)
+            .order('locker_number', { ascending: true }),
+        { label: 'getLockerAssignments' },
+    );
 
     if (error) {
         throw new Error(handleSupabaseError(error));

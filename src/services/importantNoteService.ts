@@ -4,6 +4,7 @@
  */
 
 import { supabase, isSupabaseConfigured, handleSupabaseError } from '@/lib/supabase';
+import { withSupabaseRetry } from '@/lib/retry';
 import type { ImportantNote } from '@/types/core';
 
 interface NoteRow {
@@ -27,11 +28,14 @@ const transformNote = (row: NoteRow): ImportantNote => ({
 export async function getNotesByProject(projectId: string): Promise<ImportantNote[]> {
   if (!isSupabaseConfigured()) return [];
 
-  const { data, error } = await supabase
-    .from('important_notes')
-    .select('*')
-    .eq('project_id', projectId)
-    .order('created_at', { ascending: false });
+  const { data, error } = await withSupabaseRetry(
+    () => supabase
+      .from('important_notes')
+      .select('*')
+      .eq('project_id', projectId)
+      .order('created_at', { ascending: false }),
+    { label: 'getNotesByProject' },
+  );
 
   if (error) {
     console.error('Failed to load important notes:', error);
@@ -82,11 +86,14 @@ export async function deleteNote(noteId: string): Promise<boolean> {
 export async function getAllNotesForProjects(projectIds: string[]): Promise<ImportantNote[]> {
   if (!isSupabaseConfigured() || projectIds.length === 0) return [];
 
-  const { data, error } = await supabase
-    .from('important_notes')
-    .select('*')
-    .in('project_id', projectIds)
-    .order('created_at', { ascending: false });
+  const { data, error } = await withSupabaseRetry(
+    () => supabase
+      .from('important_notes')
+      .select('*')
+      .in('project_id', projectIds)
+      .order('created_at', { ascending: false }),
+    { label: 'getAllNotesForProjects' },
+  );
 
   if (error) {
     console.error('Failed to load all important notes:', error);

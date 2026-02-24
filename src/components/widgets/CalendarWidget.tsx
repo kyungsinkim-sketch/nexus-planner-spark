@@ -114,7 +114,10 @@ function CalendarWidget({ context }: { context: WidgetDataContext }) {
         const isOwner = e.ownerId === userId;
         const isAttendee = e.attendeeIds?.includes(userId);
         const isTeamProject = e.projectId ? myProjectIds.has(e.projectId) : false;
-        return isOwner || isAttendee || isTeamProject;
+        // Company-wide event types without project scope are visible to all members
+        // (e.g. R_TRAINING events created from Welfare tab have no projectId)
+        const isCompanyEvent = !e.projectId && e.type === 'R_TRAINING';
+        return isOwner || isAttendee || isTeamProject || isCompanyEvent;
       });
     }
     return events;

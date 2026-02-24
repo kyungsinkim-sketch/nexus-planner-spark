@@ -4,6 +4,7 @@
  */
 
 import { supabase, isSupabaseConfigured, handleSupabaseError } from '@/lib/supabase';
+import { withSupabaseRetry } from '@/lib/retry';
 import type { BoardGroup, BoardTask, BoardTaskStatus } from '@/types/core';
 import type { Database } from '@/types/database';
 
@@ -43,11 +44,14 @@ const transformTask = (row: TaskRow): BoardTask => ({
 export async function getBoardGroups(projectId: string): Promise<BoardGroup[]> {
   if (!isSupabaseConfigured()) throw new Error('Supabase not configured');
 
-  const { data, error } = await supabase
-    .from('board_groups')
-    .select('*')
-    .eq('project_id', projectId)
-    .order('order_no', { ascending: true });
+  const { data, error } = await withSupabaseRetry(
+    () => supabase
+      .from('board_groups')
+      .select('*')
+      .eq('project_id', projectId)
+      .order('order_no', { ascending: true }),
+    { label: 'getBoardGroups' },
+  );
 
   if (error) throw new Error(handleSupabaseError(error));
   return (data || []).map(transformGroup);
@@ -109,11 +113,14 @@ export async function deleteBoardGroup(groupId: string): Promise<void> {
 export async function getBoardTasks(projectId: string): Promise<BoardTask[]> {
   if (!isSupabaseConfigured()) throw new Error('Supabase not configured');
 
-  const { data, error } = await supabase
-    .from('board_tasks')
-    .select('*')
-    .eq('project_id', projectId)
-    .order('order_no', { ascending: true });
+  const { data, error } = await withSupabaseRetry(
+    () => supabase
+      .from('board_tasks')
+      .select('*')
+      .eq('project_id', projectId)
+      .order('order_no', { ascending: true }),
+    { label: 'getBoardTasks' },
+  );
 
   if (error) throw new Error(handleSupabaseError(error));
   return (data || []).map(transformTask);

@@ -1,4 +1,5 @@
 import { supabase, isSupabaseConfigured, handleSupabaseError } from '@/lib/supabase';
+import { withSupabaseRetry } from '@/lib/retry';
 import type { FileGroup, FileItem, FileComment } from '@/types/core';
 import type { Database } from '@/types/database';
 
@@ -42,11 +43,14 @@ export const getFileGroupsByProject = async (projectId: string): Promise<FileGro
         throw new Error('Supabase not configured');
     }
 
-    const { data, error } = await supabase
-        .from('file_groups')
-        .select('*')
-        .eq('project_id', projectId)
-        .order('created_at', { ascending: true });
+    const { data, error } = await withSupabaseRetry(
+        () => supabase
+            .from('file_groups')
+            .select('*')
+            .eq('project_id', projectId)
+            .order('created_at', { ascending: true }),
+        { label: 'getFileGroupsByProject' },
+    );
 
     if (error) {
         throw new Error(handleSupabaseError(error));
@@ -86,11 +90,14 @@ export const getFilesByGroup = async (fileGroupId: string): Promise<FileItem[]> 
         throw new Error('Supabase not configured');
     }
 
-    const { data, error } = await supabase
-        .from('file_items')
-        .select('*')
-        .eq('file_group_id', fileGroupId)
-        .order('created_at', { ascending: false });
+    const { data, error } = await withSupabaseRetry(
+        () => supabase
+            .from('file_items')
+            .select('*')
+            .eq('file_group_id', fileGroupId)
+            .order('created_at', { ascending: false }),
+        { label: 'getFilesByGroup' },
+    );
 
     if (error) {
         throw new Error(handleSupabaseError(error));
@@ -107,10 +114,13 @@ export const getFilesByProject = async (projectId: string): Promise<FileItem[]> 
     }
 
     // 1. Get all file_group IDs for this project
-    const { data: groups, error: groupErr } = await supabase
-        .from('file_groups')
-        .select('id')
-        .eq('project_id', projectId);
+    const { data: groups, error: groupErr } = await withSupabaseRetry(
+        () => supabase
+            .from('file_groups')
+            .select('id')
+            .eq('project_id', projectId),
+        { label: 'getFilesByProject.groups' },
+    );
 
     if (groupErr) throw new Error(handleSupabaseError(groupErr));
 
@@ -119,23 +129,29 @@ export const getFilesByProject = async (projectId: string): Promise<FileItem[]> 
     // 2. Get all files in these groups
     let groupedFiles: FileItem[] = [];
     if (groupIds.length > 0) {
-        const { data: gFiles, error: gErr } = await supabase
-            .from('file_items')
-            .select('*')
-            .in('file_group_id', groupIds)
-            .order('created_at', { ascending: false });
+        const { data: gFiles, error: gErr } = await withSupabaseRetry(
+            () => supabase
+                .from('file_items')
+                .select('*')
+                .in('file_group_id', groupIds)
+                .order('created_at', { ascending: false }),
+            { label: 'getFilesByProject.groupedFiles' },
+        );
 
         if (gErr) throw new Error(handleSupabaseError(gErr));
         groupedFiles = (gFiles || []).map(transformFileItem);
     }
 
     // 3. Get chat-uploaded files for this project (file_items linked via chat_messages)
-    const { data: chatMsgs, error: chatErr } = await supabase
-        .from('chat_messages')
-        .select('attachment_id')
-        .eq('project_id', projectId)
-        .eq('message_type', 'file')
-        .not('attachment_id', 'is', null);
+    const { data: chatMsgs, error: chatErr } = await withSupabaseRetry(
+        () => supabase
+            .from('chat_messages')
+            .select('attachment_id')
+            .eq('project_id', projectId)
+            .eq('message_type', 'file')
+            .not('attachment_id', 'is', null),
+        { label: 'getFilesByProject.chatMsgs' },
+    );
 
     if (chatErr) throw new Error(handleSupabaseError(chatErr));
 
@@ -149,11 +165,14 @@ export const getFilesByProject = async (projectId: string): Promise<FileItem[]> 
 
     let chatFiles: FileItem[] = [];
     if (ungroupedChatFileIds.length > 0) {
-        const { data: cFiles, error: cErr } = await supabase
-            .from('file_items')
-            .select('*')
-            .in('id', ungroupedChatFileIds)
-            .order('created_at', { ascending: false });
+        const { data: cFiles, error: cErr } = await withSupabaseRetry(
+            () => supabase
+                .from('file_items')
+                .select('*')
+                .in('id', ungroupedChatFileIds)
+                .order('created_at', { ascending: false }),
+            { label: 'getFilesByProject.chatFiles' },
+        );
 
         if (cErr) throw new Error(handleSupabaseError(cErr));
         chatFiles = (cFiles || []).map(transformFileItem);
@@ -328,11 +347,14 @@ export const getFileComments = async (fileItemId: string): Promise<FileComment[]
         throw new Error('Supabase not configured');
     }
 
-    const { data, error } = await supabase
-        .from('file_comments')
-        .select('*')
-        .eq('file_item_id', fileItemId)
-        .order('created_at', { ascending: true });
+    const { data, error } = await withSupabaseRetry(
+        () => supabase
+            .from('file_comments')
+            .select('*')
+            .eq('file_item_id', fileItemId)
+            .order('created_at', { ascending: true }),
+        { label: 'getFileComments' },
+    );
 
     if (error) {
         throw new Error(handleSupabaseError(error));
