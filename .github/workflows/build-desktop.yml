@@ -74,6 +74,10 @@ jobs:
 
       # Build directly with npx tauri (not via tauri-action for better error visibility)
       - name: Build Tauri app
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          VITE_GOOGLE_CLIENT_ID: ${{ secrets.VITE_GOOGLE_CLIENT_ID }}
         run: npx tauri build --target ${{ matrix.target }}
 
       - name: Upload artifacts
