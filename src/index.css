@@ -1288,6 +1288,38 @@ html *:not(.react-grid-item):not(.react-grid-layout):not(.glass-widget):not(.wid
   @apply bg-card/95 backdrop-blur-md border-border/50;
 }
 
+/* ── Mobile Email: 1.2× font size scale ── */
+.mobile-email-view {
+  font-size: 1.2em;
+}
+.mobile-email-view .text-\[9px\] { font-size: 11px; }
+.mobile-email-view .text-\[10px\] { font-size: 12px; }
+.mobile-email-view .text-\[11px\] { font-size: 13px; }
+.mobile-email-view .text-xs { font-size: 0.85rem; }
+.mobile-email-view .text-sm { font-size: 0.95rem; }
+
+/* ── Mobile Calendar: month view improvements ── */
+@media (max-width: 767px) {
+  .calendar-widget-content .fc .fc-toolbar-title {
+    font-size: 1rem;
+  }
+  .calendar-widget-content .fc .fc-daygrid-day-number {
+    font-size: 11px;
+    padding: 2px 4px;
+  }
+  .calendar-widget-content .fc .fc-col-header-cell-cushion {
+    font-size: 10px;
+    padding: 2px;
+  }
+  /* More vertical space per day cell on mobile month view */
+  .calendar-widget-content .fc .fc-daygrid-day-frame {
+    min-height: 3.5rem;
+  }
+  .calendar-widget-content .fc .fc-daygrid-event {
+    margin: 1px 0;
+  }
+}
+
 /* Performance: Reduce motion for users who prefer it */
 @media (prefers-reduced-motion: reduce) {
 

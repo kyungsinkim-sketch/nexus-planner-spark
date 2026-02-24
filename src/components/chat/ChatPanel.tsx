@@ -12,6 +12,7 @@
 
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { useAppStore } from '@/stores/appStore';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { MentionTextarea } from '@/components/ui/mention-textarea';
@@ -71,6 +72,7 @@ interface ChatPanelProps {
 
 export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
   const { t } = useTranslation();
+  const isMobile = useIsMobile();
   const {
     projects, users, currentUser, messages, chatRooms,
     sendProjectMessage, sendDirectMessage, sendRoomMessage,
@@ -331,9 +333,12 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
     const chatId = selectedChat ? `${selectedChat.type}-${selectedChat.id}-${selectedChat.roomId || ''}` : null;
     const isRoomEntry = chatId !== prevChatIdRef.current;
     prevChatIdRef.current = chatId;
-    // Room entry → instant scroll; new message → smooth scroll
-    scrollToBottom(isRoomEntry);
-  }, [chatMessages, selectedChat]);
+    // Room entry → instant scroll (no animation delay);
+    // On mobile always use instant scroll to avoid "scroll lag" feeling
+    const useInstant = isRoomEntry || isMobile;
+    // Small delay to ensure DOM has rendered the messages
+    requestAnimationFrame(() => scrollToBottom(useInstant));
+  }, [chatMessages, selectedChat, isMobile]);
 
   // Consume pending chat navigation from notification click
   useEffect(() => {
@@ -1593,8 +1598,8 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
       ) : (
         /* When chat selected: show messages */
         <div className="flex flex-col h-full overflow-hidden">
-          {/* Chat Header */}
-          <div className="p-3 border-b border-border flex items-center gap-2.5 shrink-0 min-w-0 overflow-hidden">
+          {/* Chat Header — sticky on mobile so it never scrolls away */}
+          <div className={`p-3 border-b border-border flex items-center gap-2.5 shrink-0 min-w-0 overflow-hidden bg-background ${isMobile ? 'sticky top-0 z-20' : ''}`}>
             <Button
               variant="ghost"
               size="icon"
@@ -1776,7 +1781,7 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
           {/* /analyze command removed */}
 
           {/* Message Input — Enter=send, @AiAssistant=Brain AI, @pablo/@cd/@pd=Persona */}
-          <div className="p-2.5 bg-background shrink-0 min-w-0">
+          <div className={`p-2.5 bg-background shrink-0 min-w-0 ${isMobile ? 'sticky bottom-0 z-20 border-t' : ''}`}>
             <div className="flex items-center gap-1.5 min-w-0">
               <Button
                 variant="ghost"
@@ -1828,8 +1833,8 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
                 )}
               </Button>
             </div>
-            {/* Keyboard shortcut hints */}
-            <div className="flex items-center gap-3 mt-1 px-1">
+            {/* Keyboard shortcut hints — hidden on mobile */}
+            <div className={`flex items-center gap-3 mt-1 px-1 ${isMobile ? 'hidden' : ''}`}>
               <span className="text-[10px] text-muted-foreground">
                 <kbd className="px-1 py-0.5 rounded bg-muted text-[9px] font-mono">Shift</kbd>+<kbd className="px-1 py-0.5 rounded bg-muted text-[9px] font-mono">Enter</kbd> {t('newLine')}
               </span>

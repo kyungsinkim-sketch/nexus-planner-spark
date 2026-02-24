@@ -13,6 +13,7 @@
 import { useEffect, useCallback, useState } from 'react';
 import { useAppStore } from '@/stores/appStore';
 import { useTranslation } from '@/hooks/useTranslation';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { startGoogleOAuth, getGoogleCalendarStatus } from '@/services/googleCalendarService';
 import {
   Mail,
@@ -326,6 +327,7 @@ function EmailItem({
 
 function EmailWidget({ context: _context }: { context: WidgetDataContext }) {
   const { t } = useTranslation();
+  const isMobile = useIsMobile();
   const {
     currentUser,
     gmailMessages,
@@ -452,12 +454,12 @@ function EmailWidget({ context: _context }: { context: WidgetDataContext }) {
   }
 
   return (
-    <div className="flex flex-col h-full">
+    <div className={`flex flex-col h-full ${isMobile ? 'mobile-email-view' : ''}`}>
       {/* Header */}
       <div className="flex items-center justify-between px-2 py-1.5 border-b border-border/30 shrink-0">
         <div className="flex items-center gap-1.5">
-          <Mail className="w-3.5 h-3.5 text-primary" />
-          <span className="text-xs font-medium">Gmail</span>
+          <Mail className={`text-primary ${isMobile ? 'w-4 h-4' : 'w-3.5 h-3.5'}`} />
+          <span className={`font-medium ${isMobile ? 'text-sm' : 'text-xs'}`}>Gmail</span>
           {gmailMessages.filter(m => m.isUnread).length > 0 && (
             <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-primary/15 text-primary font-medium">
               {gmailMessages.filter(m => m.isUnread).length}

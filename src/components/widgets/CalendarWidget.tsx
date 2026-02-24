@@ -156,13 +156,13 @@ function CalendarWidget({ context }: { context: WidgetDataContext }) {
   // Custom event rendering — desktop: color dot + time + title; mobile: clean title only
   const renderEventContent = (eventInfo: { event: { title: string; extendedProps: { location?: string; type?: string; source?: string; dotColor?: string } }; timeText: string }) => {
     if (isMobile) {
-      // Mobile: no colored dot — just time + title for readability
+      // Mobile: vertical layout for better readability on small screens
       return (
-        <div className="fc-event-inner flex items-center gap-1 px-0.5 overflow-hidden min-w-0">
-          {eventInfo.timeText && (
-            <span className="text-[10px] text-muted-foreground shrink-0">{eventInfo.timeText}</span>
-          )}
+        <div className="fc-event-inner flex flex-col px-0.5 overflow-hidden min-w-0 leading-tight">
           <span className="truncate text-[11px] font-medium text-foreground">{eventInfo.event.title}</span>
+          {eventInfo.timeText && (
+            <span className="text-[9px] text-muted-foreground">{eventInfo.timeText}</span>
+          )}
         </div>
       );
     }
@@ -274,7 +274,7 @@ function CalendarWidget({ context }: { context: WidgetDataContext }) {
           headerToolbar={isMobile ? {
             left: 'prev,next',
             center: 'title',
-            right: 'listWeek,dayGridMonth,timeGridWeek',
+            right: 'listWeek,dayGridMonth',
           } : {
             left: 'prev,next today',
             center: 'title',
@@ -283,7 +283,11 @@ function CalendarWidget({ context }: { context: WidgetDataContext }) {
           views={{
             listWeek: { buttonText: language === 'ko' ? '목록' : 'List' },
             timeGridWeek: { buttonText: language === 'ko' ? '주간' : 'Week' },
-            dayGridMonth: { buttonText: language === 'ko' ? '월간' : 'Month' },
+            dayGridMonth: {
+              buttonText: language === 'ko' ? '월간' : 'Month',
+              // Mobile month view: limit events per day cell for readability
+              ...(isMobile ? { dayMaxEvents: 2 } : {}),
+            },
             listDay: { buttonText: language === 'ko' ? '일간' : 'Day' },
           }}
           buttonText={{
@@ -292,7 +296,7 @@ function CalendarWidget({ context }: { context: WidgetDataContext }) {
           events={calendarEvents}
           eventContent={renderEventContent}
           height="100%"
-          dayMaxEvents={false}
+          dayMaxEvents={isMobile ? 2 : false}
           nowIndicator={true}
           titleFormat={{ year: 'numeric', month: 'short' }}
           editable={true}
