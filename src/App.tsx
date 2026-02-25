@@ -22,6 +22,7 @@ const AdminPage = lazy(() => import("./pages/AdminPage"));
 const SettingsPage = lazy(() => import("./pages/SettingsPage"));
 const DepositStatusPage = lazy(() => import("./pages/DepositStatusPage"));
 const BudgetPage = lazy(() => import("./pages/BudgetPage"));
+const SmartCallPage = lazy(() => import("./pages/SmartCallPage"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const AuthPage = lazy(() => import("./pages/AuthPage").then(m => ({ default: m.AuthPage })));
 
@@ -207,6 +208,7 @@ const App = () => {
                   <Route path="/settings" element={<SettingsPage />} />
                   <Route path="/projects/:projectId/deposits" element={<DepositStatusPage />} />
                   <Route path="/projects/:projectId/budget" element={<BudgetRoute><BudgetPage /></BudgetRoute>} />
+                  <Route path="/smart-call" element={<SmartCallPage />} />
 
                   {/* Legacy routes redirect to root (now widget-based) */}
                   <Route path="/calendar" element={<Navigate to="/" replace />} />

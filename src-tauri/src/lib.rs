@@ -7,6 +7,7 @@
 // Phase 6: macOS native notifications + dock badge
 
 mod did;
+mod phone;
 mod rag;
 mod sync;
 
@@ -19,6 +20,8 @@ use rag::ingest;
 use rag::knowledge;
 use rag::query;
 use rag::seed;
+use phone::contacts;
+use phone::call;
 use sync::sync as sync_engine;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -753,6 +756,12 @@ pub fn run() {
             // macOS Notifications + Badge (Phase 6)
             set_badge_count,
             focus_window,
+            // Phone / Smart Call (Phase 7)
+            contacts::phone_get_contacts,
+            contacts::phone_search_contacts,
+            call::phone_make_call,
+            call::phone_get_call_state,
+            call::phone_stop_recording,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

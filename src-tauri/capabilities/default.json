@@ -12,6 +12,8 @@
     "notification:allow-request-permission",
     "notification:allow-notify",
     "notification:allow-get-pending",
-    "notification:allow-cancel"
-  ]
+    "notification:allow-cancel",
+    "core:default"
+  ],
+  "platforms": ["desktop", "android", "iOS"]
 }
