@@ -2366,13 +2366,14 @@ export const useAppStore = create<AppState>()(
         }));
         // Sound is played by addMessage() — no duplicate sound here
 
-        // Phase 6: macOS native notification + dock badge
-        import('@/services/nativeNotificationService').then(({ sendNotificationIfBackground, updateBadgeFromUnreadCount }) => {
-          // Send native notification only when app is in background
-          sendNotificationIfBackground({
+        // Phase 6: macOS/iOS native notification + dock badge
+        import('@/services/nativeNotificationService').then(({ sendNativeNotification, updateBadgeFromUnreadCount }) => {
+          // Always send to OS notification center (macOS Notification Center / iOS)
+          sendNativeNotification({
             title: newNotif.title,
             body: newNotif.message,
             type: newNotif.type,
+            group: newNotif.type, // Group by type (chat, todo, event, etc.)
           });
           // Update dock badge with total unread count
           const unreadCount = get().appNotifications.filter(n => !n.read).length;

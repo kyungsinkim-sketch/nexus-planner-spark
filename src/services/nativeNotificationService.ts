@@ -76,6 +76,8 @@ export async function sendNativeNotification(
     sendNotification({
       title: options.title,
       body: options.body,
+      sound: 'default',
+      ...(options.group ? { group: options.group } : {}),
     });
 
     console.log('[NativeNotif] Sent:', options.title);
