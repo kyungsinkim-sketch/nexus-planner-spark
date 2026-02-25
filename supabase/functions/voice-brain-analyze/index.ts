@@ -278,6 +278,25 @@ Deno.serve(async (req) => {
       })
       .eq('id', recordingId);
 
+    // Auto-trigger RAG ingestion if meaningful content exists
+    if (analysis.decisions?.length || analysis.keyQuotes?.length || analysis.summary) {
+      try {
+        const ingestUrl = `${supabaseUrl}/functions/v1/voice-call-ingest`;
+        await fetch(ingestUrl, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${supabaseServiceKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ userId, recordingId, analysis, transcript }),
+        });
+        console.log('[voice-brain-analyze] RAG ingestion triggered');
+      } catch (ingestErr) {
+        // Non-blocking — analysis is already saved
+        console.warn('[voice-brain-analyze] RAG ingestion failed (non-blocking):', (ingestErr as Error).message);
+      }
+    }
+
     return new Response(
       JSON.stringify({ analysis }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
