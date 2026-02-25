@@ -19,6 +19,51 @@ import { useWidgetStore } from '@/stores/widgetStore';
 // Module-level concurrency locks (avoid direct state mutation for async guards)
 let _loadingEventsLock = false;
 
+/**
+ * Initialize push notifications & cross-device notification sync.
+ * Called after successful sign-in / auth restore.
+ */
+function initPushAndSync(userId: string, get: () => AppState): void {
+  // 1. Push notification token registration (iOS)
+  import('@/services/pushNotificationService').then(({ initPushNotifications }) => {
+    initPushNotifications(userId, (payload) => {
+      // Handle notification tap — navigate to the relevant chat/item
+      console.log('[Push] Notification tapped with payload:', payload);
+      // Future: implement navigation based on payload.projectId, payload.roomId, etc.
+    });
+  }).catch(() => {});
+
+  // 2. Cross-device notification read sync
+  import('@/services/notificationSyncService').then(({ startNotificationSync }) => {
+    startNotificationSync(
+      userId,
+      // onRead: a single notification was read on another device
+      (event) => {
+        const state = get();
+        const notif = state.appNotifications.find(n => n.id === event.notificationId);
+        if (notif && !notif.read) {
+          // Use the store's markAppNotificationRead — isSyncSuppressed prevents loop
+          get().markAppNotificationRead(event.notificationId);
+        }
+      },
+      // onBulkRead: initial reconciliation — multiple read states
+      (events) => {
+        const readIds = new Set(events.map(e => e.notificationId));
+        const state = get();
+        const needsUpdate = state.appNotifications.some(n => readIds.has(n.id) && !n.read);
+        if (needsUpdate) {
+          // Directly update state to avoid triggering sync-back for each one
+          useAppStore.setState((s) => ({
+            appNotifications: s.appNotifications.map(n =>
+              readIds.has(n.id) ? { ...n, read: true } : n
+            ),
+          }));
+        }
+      },
+    );
+  }).catch(() => {});
+}
+
 interface AppState {
   // Auth
   currentUser: User | null;
@@ -408,6 +453,9 @@ export const useAppStore = create<AppState>()(
           await get().loadTodos();
           await get().loadImportantNotes();
           useWidgetStore.getState().loadLayoutFromDB();
+
+          // Initialize push notifications & cross-device sync
+          initPushAndSync(user.id, get);
         } finally {
           set({ isLoading: false });
         }
@@ -431,6 +479,18 @@ export const useAppStore = create<AppState>()(
         if (!isSupabaseConfigured()) {
           set({ currentUser: null, isAuthenticated: false, userWorkStatus: 'NOT_AT_WORK' });
           return;
+        }
+
+        // Deregister push token & stop sync before clearing state
+        const userId = get().currentUser?.id;
+        if (userId) {
+          import('@/services/pushNotificationService').then(({ deregisterDeviceToken, cleanupPushNotifications }) => {
+            deregisterDeviceToken(userId);
+            cleanupPushNotifications();
+          }).catch(() => {});
+          import('@/services/notificationSyncService').then(({ stopNotificationSync }) => {
+            stopNotificationSync();
+          }).catch(() => {});
         }
 
         try {
@@ -485,6 +545,9 @@ export const useAppStore = create<AppState>()(
             await get().loadTodos();
             await get().loadImportantNotes();
             useWidgetStore.getState().loadLayoutFromDB();
+
+            // Initialize push notifications & cross-device sync
+            initPushAndSync(user.id, get);
           }
         } finally {
           set({ isInitializing: false });
@@ -2282,9 +2345,19 @@ export const useAppStore = create<AppState>()(
       // Settings Actions
       // App Notification Actions
       addAppNotification: (notification) => {
+        // Deterministic ID based on sourceId so the same event
+        // generates the same notification ID across all devices.
+        const deterministicId = notification.sourceId
+          ? `an-${notification.sourceId}`
+          : `an-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+
+        // Skip if this notification ID already exists (prevents duplicates)
+        const existing = get().appNotifications.find(n => n.id === deterministicId);
+        if (existing) return;
+
         const newNotif: AppNotification = {
           ...notification,
-          id: `an-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          id: deterministicId,
           createdAt: new Date().toISOString(),
           read: false,
         };
@@ -2307,6 +2380,7 @@ export const useAppStore = create<AppState>()(
         }).catch(() => {}); // Silently fail in web mode
       },
       markAppNotificationRead: (id) => {
+        const notif = get().appNotifications.find(n => n.id === id);
         set((state) => ({
           appNotifications: state.appNotifications.map(n =>
             n.id === id ? { ...n, read: true } : n
@@ -2316,8 +2390,24 @@ export const useAppStore = create<AppState>()(
         import('@/services/nativeNotificationService').then(({ updateBadgeFromUnreadCount }) => {
           updateBadgeFromUnreadCount(get().appNotifications.filter(n => !n.read).length);
         }).catch(() => {});
+        // Cross-device sync
+        if (notif && get().currentUser?.id) {
+          import('@/services/notificationSyncService').then(({ syncNotificationRead, isSyncSuppressed }) => {
+            if (!isSyncSuppressed()) {
+              syncNotificationRead(
+                get().currentUser!.id,
+                id,
+                notif.type,
+                notif.sourceId,
+                notif.projectId,
+                notif.roomId,
+              );
+            }
+          }).catch(() => {});
+        }
       },
       markAllAppNotificationsRead: () => {
+        const unreadNotifs = get().appNotifications.filter(n => !n.read);
         set((state) => ({
           appNotifications: state.appNotifications.map(n => ({ ...n, read: true })),
         }));
@@ -2325,6 +2415,23 @@ export const useAppStore = create<AppState>()(
         import('@/services/nativeNotificationService').then(({ clearBadge }) => {
           clearBadge();
         }).catch(() => {});
+        // Cross-device bulk sync
+        if (unreadNotifs.length > 0 && get().currentUser?.id) {
+          import('@/services/notificationSyncService').then(({ syncBulkNotificationRead, isSyncSuppressed }) => {
+            if (!isSyncSuppressed()) {
+              syncBulkNotificationRead(
+                get().currentUser!.id,
+                unreadNotifs.map(n => ({
+                  id: n.id,
+                  type: n.type,
+                  sourceId: n.sourceId,
+                  projectId: n.projectId,
+                  roomId: n.roomId,
+                })),
+              );
+            }
+          }).catch(() => {});
+        }
       },
       clearAppNotifications: () => {
         set({ appNotifications: [] });
