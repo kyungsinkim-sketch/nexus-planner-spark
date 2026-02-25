@@ -677,6 +677,8 @@ export interface BrainReport {
 
 export type VoiceRecordingStatus = 'uploading' | 'transcribing' | 'analyzing' | 'completed' | 'error';
 
+export type RecordingType = 'phone_call' | 'offline_meeting' | 'online_meeting' | 'manual';
+
 export interface VoiceRecording {
   id: string;
   title: string;
@@ -685,6 +687,9 @@ export interface VoiceRecording {
   audioStoragePath: string;      // Storage path for Edge Function access
   duration: number;              // seconds
   status: VoiceRecordingStatus;
+  recordingType: RecordingType;  // Source type of recording
+  ragIngested: boolean;          // Whether analysis was ingested into RAG
+  knowledgeItemIds?: string[];   // IDs of knowledge_items created from this recording
   errorMessage?: string;
   transcript?: TranscriptSegment[];
   brainAnalysis?: VoiceBrainAnalysis;
@@ -711,6 +716,7 @@ export interface VoiceBrainAnalysis {
 export interface RecordingMetadata {
   title: string;
   projectId?: string;
+  recordingType?: RecordingType;
 }
 
 // Google Calendar Integration

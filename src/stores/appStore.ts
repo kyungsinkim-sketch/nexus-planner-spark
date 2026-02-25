@@ -1822,6 +1822,8 @@ export const useAppStore = create<AppState>()(
           audioStoragePath: '',
           duration: 0,
           status: 'uploading',
+          recordingType: metadata.recordingType || 'manual',
+          ragIngested: false,
           createdAt: new Date().toISOString(),
           createdBy: userId,
         };

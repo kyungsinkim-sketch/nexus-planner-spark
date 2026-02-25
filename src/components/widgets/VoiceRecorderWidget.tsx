@@ -42,7 +42,7 @@ import {
 } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import type { WidgetDataContext } from '@/types/widget';
-import type { VoiceRecording } from '@/types/core';
+import type { VoiceRecording, RecordingType } from '@/types/core';
 import {
   startRecording,
   stopRecording,
@@ -235,6 +235,11 @@ const RecordingListItem = memo(function RecordingListItem({
         {recording.brainAnalysis && (
           <Brain className="w-2.5 h-2.5 text-primary" />
         )}
+        {recording.ragIngested && (
+          <span className="inline-flex items-center text-[8px] px-1 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+            RAG
+          </span>
+        )}
       </div>
     </button>
   );
@@ -269,6 +274,7 @@ function VoiceRecorderWidget({ context }: { context: WidgetDataContext }) {
   const [isPaused, setIsPaused] = useState(false);
   const [title, setTitle] = useState('');
   const [projectId, setProjectId] = useState(context.projectId || '');
+  const [recordingType, setRecordingType] = useState<RecordingType>('manual');
   const [isProcessing, setIsProcessing] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const [selectedRecording, setSelectedRecording] = useState<VoiceRecording | null>(null);
@@ -315,6 +321,7 @@ function VoiceRecorderWidget({ context }: { context: WidgetDataContext }) {
         await startVoiceRecordingAction(blob, {
           title: title || `녹음 ${new Date().toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}`,
           projectId: projectId || undefined,
+          recordingType,
         });
         setTitle('');
         setTab('history');
@@ -348,6 +355,7 @@ function VoiceRecorderWidget({ context }: { context: WidgetDataContext }) {
       await uploadVoiceFileAction(file, {
         title: title || file.name.replace(/\.[^.]+$/, ''),
         projectId: projectId || undefined,
+        recordingType,
       });
       setTitle('');
       setTab('history');
@@ -440,6 +448,17 @@ function VoiceRecorderWidget({ context }: { context: WidgetDataContext }) {
                       {activeProjects.map(p => (
                         <SelectItem key={p.id} value={p.id}>{p.title}</SelectItem>
                       ))}
+                    </SelectContent>
+                  </Select>
+                  <Select value={recordingType} onValueChange={(v) => setRecordingType(v as RecordingType)}>
+                    <SelectTrigger className="h-8 text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="manual">🎙️ 직접 녹음</SelectItem>
+                      <SelectItem value="phone_call">📞 전화 통화</SelectItem>
+                      <SelectItem value="offline_meeting">🤝 오프라인 미팅</SelectItem>
+                      <SelectItem value="online_meeting">💻 온라인 미팅</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
