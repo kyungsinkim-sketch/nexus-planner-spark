@@ -80,7 +80,7 @@ function formatSize(size?: string) {
 }
 
 function FilesWidget({ context }: { context: WidgetDataContext }) {
-  const { fileGroups, files, loadFileGroups, currentUser, users, projects } = useAppStore();
+  const { fileGroups, files, loadFileGroups, currentUser, users, projects, messages } = useAppStore();
   const { t } = useTranslation();
   const [selectedFile, setSelectedFile] = useState<FileItem | null>(null);
   const [fileComments, setFileComments] = useState<FileComment[]>([]);
@@ -168,20 +168,37 @@ function FilesWidget({ context }: { context: WidgetDataContext }) {
   }, [selectedFile?.id]);
 
   const allFiles = useMemo(() => {
+    const isProjectContext = context.type === 'project' && context.projectId;
     const projectGroupIds = new Set(
-      context.type === 'project' && context.projectId
+      isProjectContext
         ? fileGroups.filter((g) => g.projectId === context.projectId).map((g) => g.id)
         : fileGroups.map((g) => g.id),
     );
+
+    // Build a set of file IDs that belong to the current project's chat messages
+    // This prevents DM files from leaking into project file widgets
+    const projectChatFileIds = new Set(
+      isProjectContext
+        ? messages
+            .filter((m) => m.projectId === context.projectId && m.messageType === 'file' && m.attachmentId)
+            .map((m) => m.attachmentId!)
+        : [],
+    );
+
     return files
       .filter((f) => {
+        // Files in this project's file groups
         if (f.fileGroupId && projectGroupIds.has(f.fileGroupId)) return true;
-        if (!f.fileGroupId && f.source === 'CHAT') return true;
+        // Chat-uploaded files: only show if they belong to this project's messages
+        if (!f.fileGroupId && f.source === 'CHAT') {
+          if (!isProjectContext) return true; // No project filter → show all
+          return projectChatFileIds.has(f.id);
+        }
         return false;
       })
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
       .slice(0, 20);
-  }, [fileGroups, files, context]);
+  }, [fileGroups, files, messages, context]);
 
   const handleFileClick = useCallback((file: FileItem) => {
     setSelectedFile(file);
