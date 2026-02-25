@@ -2369,11 +2369,16 @@ export const useAppStore = create<AppState>()(
         // Phase 6: macOS/iOS native notification + dock badge
         import('@/services/nativeNotificationService').then(({ sendNativeNotification, updateBadgeFromUnreadCount }) => {
           // Always send to OS notification center (macOS Notification Center / iOS)
+          // Include routing data so clicking the notification navigates to the chat/project
           sendNativeNotification({
             title: newNotif.title,
             body: newNotif.message,
             type: newNotif.type,
-            group: newNotif.type, // Group by type (chat, todo, event, etc.)
+            group: newNotif.type,
+            notificationId: newNotif.id,
+            sourceId: newNotif.sourceId,
+            projectId: newNotif.projectId,
+            roomId: newNotif.roomId,
           });
           // Update dock badge with total unread count
           const unreadCount = get().appNotifications.filter(n => !n.read).length;

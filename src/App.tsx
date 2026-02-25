@@ -104,14 +104,16 @@ const App = () => {
     }
   }, [theme]);
 
-  // Phase 6: Initialize native notifications + focus tracking (macOS)
+  // Phase 6: Initialize native notifications + focus tracking + click handler (macOS)
   useEffect(() => {
     import('@/services/nativeNotificationService').then(({
       initNativeNotifications,
       setupFocusTracking,
+      setupNotificationClickHandler,
     }) => {
       initNativeNotifications();
       setupFocusTracking();
+      setupNotificationClickHandler(); // Navigate to chat/project on notification click
     }).catch(() => {}); // Silent fail in web mode
   }, []);
 

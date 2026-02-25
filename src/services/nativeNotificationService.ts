@@ -5,7 +5,7 @@
  * When running in Tauri desktop mode:
  * - Pushes notifications to macOS Notification Center
  * - Updates Dock icon badge with unread count
- * - Handles notification click → focus app window
+ * - Handles notification click → navigate to relevant chat/project
  *
  * Falls back gracefully to no-ops when running in web/PWA mode.
  */
@@ -57,13 +57,21 @@ interface NativeNotificationOptions {
   type?: NotificationType;
   /** Optional group ID for stacking similar notifications */
   group?: string;
+  /** AppNotification ID — used for click-to-navigate */
+  notificationId?: string;
+  /** Source message / item ID */
+  sourceId?: string;
+  /** Project ID for navigation */
+  projectId?: string;
+  /** Chat room ID for navigation */
+  roomId?: string;
 }
 
 /**
  * Send a native macOS notification.
  *
  * Shows in macOS Notification Center with the app icon.
- * Clicking the notification will focus the app window.
+ * Clicking the notification will navigate to the relevant chat/project.
  */
 export async function sendNativeNotification(
   options: NativeNotificationOptions
@@ -73,17 +81,149 @@ export async function sendNativeNotification(
   try {
     const { sendNotification } = await import('@tauri-apps/plugin-notification');
 
+    // Build extra data payload for click handler
+    const extra: Record<string, string> = {};
+    if (options.notificationId) extra.notificationId = options.notificationId;
+    if (options.sourceId) extra.sourceId = options.sourceId;
+    if (options.projectId) extra.projectId = options.projectId;
+    if (options.roomId) extra.roomId = options.roomId;
+    if (options.type) extra.type = options.type;
+
     sendNotification({
       title: options.title,
       body: options.body,
       sound: 'default',
       ...(options.group ? { group: options.group } : {}),
+      ...(Object.keys(extra).length > 0 ? { extra } : {}),
     });
 
     console.log('[NativeNotif] Sent:', options.title);
   } catch (error) {
     console.warn('[NativeNotif] Send failed:', error);
   }
+}
+
+// ─── Notification Click Handler ─────────────────────────
+
+/**
+ * Setup listener for when user clicks a native OS notification.
+ * Navigates to the relevant chat room / project.
+ *
+ * Must be called after the store is initialized (on app startup).
+ */
+export async function setupNotificationClickHandler(): Promise<void> {
+  if (!isTauriApp()) return;
+
+  try {
+    const { onAction } = await import('@tauri-apps/plugin-notification');
+
+    await onAction((action) => {
+      console.log('[NativeNotif] Action received:', action);
+
+      const extra = (action.notification as { extra?: Record<string, string> })?.extra;
+      if (!extra) {
+        // No routing data — just focus the window
+        focusAppWindow();
+        return;
+      }
+
+      // Focus the window first
+      focusAppWindow();
+
+      // Navigate to the correct chat/project using the store
+      handleNotificationNavigation(extra);
+    });
+
+    console.log('[NativeNotif] Click handler registered');
+  } catch (error) {
+    // Fallback: try onNotificationReceived if onAction not available
+    try {
+      const plugin = await import('@tauri-apps/plugin-notification');
+      if ('onNotificationReceived' in plugin) {
+        // @ts-ignore — may not exist in all versions
+        await plugin.onNotificationReceived((notification: { extra?: Record<string, string> }) => {
+          console.log('[NativeNotif] Notification received:', notification);
+          focusAppWindow();
+          if (notification.extra) {
+            handleNotificationNavigation(notification.extra);
+          }
+        });
+        console.log('[NativeNotif] Fallback click handler registered');
+      }
+    } catch {
+      console.warn('[NativeNotif] Click handler setup failed:', error);
+    }
+  }
+}
+
+/**
+ * Handle navigation after notification click.
+ * Mirrors the logic in TabBar.tsx notification click handler.
+ */
+function handleNotificationNavigation(extra: Record<string, string>): void {
+  // Lazy import to avoid circular dependency
+  Promise.all([
+    import('@/stores/appStore'),
+    import('@/stores/widgetStore'),
+  ]).then(([{ useAppStore }, { useWidgetStore }]) => {
+    const store = useAppStore.getState();
+    const { notificationId, sourceId, projectId, roomId, type } = extra;
+
+    // Mark notification as read
+    if (notificationId) {
+      store.markAppNotificationRead(notificationId);
+    }
+
+    if (type === 'chat') {
+      // Find original message to determine DM vs project chat
+      const sourceMsg = sourceId ? store.messages.find(m => m.id === sourceId) : null;
+
+      if (sourceMsg?.directChatUserId) {
+        // DM → navigate to direct chat with the other user
+        const otherUserId = sourceMsg.userId === store.currentUser?.id
+          ? sourceMsg.directChatUserId
+          : sourceMsg.userId;
+        store.setPendingChatNavigation({ type: 'direct', id: otherUserId });
+        store.setChatPanelCollapsed(false);
+      } else if (sourceMsg?.roomId || sourceMsg?.projectId || projectId) {
+        // Project chat → open project tab + navigate to room
+        const pid = sourceMsg?.projectId || projectId;
+        if (pid) {
+          const widgetStore = useWidgetStore.getState();
+          const project = store.projects.find(p => p.id === pid);
+          if (project) {
+            const existing = widgetStore.openTabs.find(t => t.projectId === pid);
+            if (!existing) {
+              widgetStore.openProjectTab(project.id, project.title, project.keyColor);
+            }
+            // Activate the project tab
+            const tab = widgetStore.openTabs.find(t => t.projectId === pid);
+            if (tab) widgetStore.setActiveTab(tab.id);
+          }
+          store.setPendingChatNavigation({
+            type: 'project',
+            id: pid,
+            roomId: sourceMsg?.roomId || roomId || undefined,
+          });
+          store.setChatPanelCollapsed(false);
+        }
+      }
+    } else if (projectId) {
+      // Non-chat notification with project → open project tab
+      const widgetStore = useWidgetStore.getState();
+      const project = store.projects.find(p => p.id === projectId);
+      if (project) {
+        const existing = widgetStore.openTabs.find(t => t.projectId === projectId);
+        if (!existing) {
+          widgetStore.openProjectTab(project.id, project.title, project.keyColor);
+        }
+        const tab = widgetStore.openTabs.find(t => t.projectId === projectId);
+        if (tab) widgetStore.setActiveTab(tab.id);
+      }
+    }
+  }).catch((err) => {
+    console.warn('[NativeNotif] Navigation failed:', err);
+  });
 }
 
 /**
