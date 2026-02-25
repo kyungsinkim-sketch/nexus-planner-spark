@@ -158,7 +158,7 @@ Deno.serve(async (req) => {
     }
 
     const anthropicKey = Deno.env.get('ANTHROPIC_API_KEY') || '';
-    const openaiKey = Deno.env.get('OPENAI_API_KEY') || '';
+    // Embedding API key handled internally by rag-client (Voyage AI → OpenAI fallback)
 
     switch (action) {
       // ─── Query a persona ───────────────────────
@@ -220,15 +220,16 @@ Deno.serve(async (req) => {
         let ragDebug = '';
 
         try {
-          console.log(`[brain-persona] Generating embedding for query (openaiKey=${openaiKey ? 'present' : 'MISSING'}, len=${openaiKey?.length || 0})`);
-          queryEmbedding = await generateEmbedding(query, openaiKey || undefined);
+          console.log(`[brain-persona] Generating embedding for query`);
+          queryEmbedding = await generateEmbedding(query);
           const nonZero = queryEmbedding.filter(v => Math.abs(v) > 0.0001).length;
           console.log(`[brain-persona] Embedding generated: dims=${queryEmbedding.length}, nonZero=${nonZero}`);
 
           const ragFilter = config.rag_filter || {};
 
-          const { data: searchResults, error: searchErr } = await supabase.rpc('search_knowledge_v2', {
+          const { data: searchResults, error: searchErr } = await supabase.rpc('search_knowledge_v3', {
             query_embedding: JSON.stringify(queryEmbedding),
+            query_dims: queryEmbedding.length,
             search_scope: 'all',
             search_user_id: userId,
             search_project_id: projectId || null,
@@ -286,8 +287,9 @@ Deno.serve(async (req) => {
         let personalContext = '';
         if (queryEmbedding) {
           try {
-            const { data: personalResults } = await supabase.rpc('search_knowledge_v2', {
+            const { data: personalResults } = await supabase.rpc('search_knowledge_v3', {
               query_embedding: JSON.stringify(queryEmbedding),
+            query_dims: queryEmbedding.length,
               search_scope: 'personal',
               search_user_id: userId,
               match_threshold: 0.35,
@@ -679,7 +681,7 @@ Rules:
         let insertedCount = 0;
         for (const item of uniqueItems) {
           try {
-            const embedding = await generateEmbedding(item.content, openaiKey || undefined);
+            const embedding = await generateEmbedding(item.content);
 
             const { error: insertErr } = await supabase
               .from('knowledge_items')
@@ -703,7 +705,9 @@ Rules:
                   analyzed_by: userId,
                   chunk_count: chunks.length,
                 },
-                embedding: JSON.stringify(embedding),
+                ...(embedding.length <= 512
+                  ? { embedding_v2: JSON.stringify(embedding), embedding_model: 'voyage-3-lite' }
+                  : { embedding: JSON.stringify(embedding), embedding_model: 'openai-text-embedding-3-small' }),
               });
 
             if (!insertErr) {
@@ -732,7 +736,7 @@ Rules:
 
       // ─── Backfill embeddings for knowledge_items ──
       case 'backfill_embeddings': {
-        const openaiKeyForBackfill = Deno.env.get('OPENAI_API_KEY') || '';
+        
         const serviceClient = createServiceClient();
 
         const batchSize = body.batchSize || 20;
@@ -757,18 +761,20 @@ Rules:
           return jsonResponse({ success: true, message: 'No items need embedding backfill', updated: 0 });
         }
 
-        console.log(`[brain-persona] backfill_embeddings: ${items.length} items to process (force=${forceAll}, openaiKey=${openaiKeyForBackfill ? 'present' : 'MISSING'})`);
+        console.log(`[brain-persona] backfill_embeddings: ${items.length} items to process (force=${forceAll})`);
 
         let updatedCount = 0;
         const errors: string[] = [];
 
         for (const item of items) {
           try {
-            const embedding = await generateEmbedding(item.content, openaiKeyForBackfill || undefined);
+            const embedding = await generateEmbedding(item.content);
 
             const { error: updateErr } = await serviceClient
               .from('knowledge_items')
-              .update({ embedding: JSON.stringify(embedding) })
+              .update(embedding.length <= 512
+                ? { embedding_v2: JSON.stringify(embedding), embedding_model: 'voyage-3-lite' }
+                : { embedding: JSON.stringify(embedding), embedding_model: 'openai-text-embedding-3-small' })
               .eq('id', item.id);
 
             if (updateErr) {
@@ -788,7 +794,7 @@ Rules:
           message: `${updatedCount}/${items.length} embeddings generated (force=${forceAll})`,
           updated: updatedCount,
           total: items.length,
-          hasOpenAIKey: !!openaiKeyForBackfill,
+          embeddingProvider: Deno.env.get('VOYAGE_API_KEY') ? 'voyage' : 'legacy-openai',
           errors: errors.length > 0 ? errors : undefined,
         });
       }
@@ -796,20 +802,18 @@ Rules:
       // ─── Diagnostic: test RAG search pipeline ──
       case 'test_rag': {
         const testQuery = body.query || '조아라 분쟁 대응';
-        const openaiKeyTest = Deno.env.get('OPENAI_API_KEY') || '';
+        
         const serviceClient = createServiceClient();
 
         const diagnostics: Record<string, unknown> = {
-          openaiKeyPresent: !!openaiKeyTest,
-          openaiKeyLength: openaiKeyTest.length,
-          openaiKeyPrefix: openaiKeyTest.slice(0, 8) + '...',
+          embeddingProvider: Deno.env.get('VOYAGE_API_KEY') ? 'voyage' : (Deno.env.get('OPENAI_API_KEY') ? 'openai' : 'pseudo'),
           query: testQuery,
         };
 
         // 1. Generate query embedding
         let queryEmb: number[] | null = null;
         try {
-          queryEmb = await generateEmbedding(testQuery, openaiKeyTest || undefined);
+          queryEmb = await generateEmbedding(testQuery);
           diagnostics.embeddingGenerated = true;
           diagnostics.embeddingDims = queryEmb.length;
           // Check if pseudo-embedding: pseudo has mostly 0s
@@ -847,11 +851,12 @@ Rules:
           diagnostics.storedEmbeddingSample = 'NULL or not found';
         }
 
-        // 3. Run search_knowledge_v2
+        // 3. Run search_knowledge_v3
         if (queryEmb) {
           try {
-            const { data: results, error: searchErr } = await serviceClient.rpc('search_knowledge_v2', {
+            const { data: results, error: searchErr } = await serviceClient.rpc('search_knowledge_v3', {
               query_embedding: JSON.stringify(queryEmb),
+              query_dims: queryEmb.length,
               search_scope: 'all',
               search_user_id: userId,
               search_project_id: null,

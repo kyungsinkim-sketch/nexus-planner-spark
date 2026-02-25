@@ -1,7 +1,11 @@
 /**
  * RAG Client — Embedding generation and knowledge management utilities.
  *
- * Uses OpenAI text-embedding-3-small (1536 dims) for embedding.
+ * Embedding priority:
+ *   1. Voyage AI voyage-3-lite (512 dims) — primary, Anthropic-ecosystem
+ *   2. OpenAI text-embedding-3-small (1536 dims) — legacy migration fallback
+ *   3. Pseudo-embedding — last resort when no API key available
+ *
  * Anthropic Claude for knowledge extraction from digests/actions.
  *
  * Three knowledge scopes:
@@ -86,24 +90,86 @@ export interface RAGSearchResult {
 
 // ─── Embedding Generation ───────────────────────────
 
+const VOYAGE_EMBEDDING_URL = 'https://api.voyageai.com/v1/embeddings';
+const VOYAGE_MODEL = 'voyage-3-lite';
+const VOYAGE_DIMS = 512;
+
+// Legacy OpenAI config (for migration compatibility)
 const OPENAI_EMBEDDING_URL = 'https://api.openai.com/v1/embeddings';
-const EMBEDDING_MODEL = 'text-embedding-3-small';
+const LEGACY_OPENAI_MODEL = 'text-embedding-3-small';
 
 /**
  * Generate an embedding vector for a text string.
- * Uses OpenAI text-embedding-3-small (1536 dimensions).
- * Falls back to Anthropic-based hashing if OpenAI key is not available.
+ *
+ * Priority:
+ *   1. Voyage AI voyage-3-lite (512 dims) — primary, Anthropic-ecosystem aligned
+ *   2. OpenAI text-embedding-3-small (1536 dims) — legacy fallback during migration
+ *   3. Pseudo-embedding — last resort
+ *
+ * Data sovereignty note: Voyage AI does NOT train on API data.
+ * Embeddings are stateless — no user data is retained by the provider.
  */
 export async function generateEmbedding(
   text: string,
-  openaiKey?: string,
+  apiKey?: string,
 ): Promise<number[]> {
-  // If no OpenAI key, use deterministic hash-based pseudo-embedding
-  // (lower quality but works without external API)
-  if (!openaiKey) {
-    return generatePseudoEmbedding(text);
+  // 1. Try Voyage AI first
+  const voyageKey = Deno.env.get('VOYAGE_API_KEY') || '';
+  if (voyageKey) {
+    return generateVoyageEmbedding(text, voyageKey);
   }
 
+  // 2. Legacy OpenAI fallback (during migration period)
+  const openaiKey = apiKey || Deno.env.get('OPENAI_API_KEY') || '';
+  if (openaiKey) {
+    console.warn('[rag-client] Using legacy OpenAI embedding — migrate to Voyage AI');
+    return generateOpenAIEmbedding(text, openaiKey);
+  }
+
+  // 3. Pseudo-embedding fallback
+  console.warn('[rag-client] No embedding API key — using pseudo-embedding');
+  return generatePseudoEmbedding(text, VOYAGE_DIMS);
+}
+
+/**
+ * Generate embedding via Voyage AI (voyage-3-lite, 512 dimensions).
+ * Recommended by Anthropic. No data retention. $0.02/1M tokens.
+ */
+async function generateVoyageEmbedding(
+  text: string,
+  voyageKey: string,
+): Promise<number[]> {
+  const response = await fetch(VOYAGE_EMBEDDING_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${voyageKey}`,
+    },
+    body: JSON.stringify({
+      model: VOYAGE_MODEL,
+      input: [text.slice(0, 16000)], // Voyage supports up to 16K tokens
+      input_type: 'document',
+    }),
+  });
+
+  if (!response.ok) {
+    const err = await response.text();
+    console.error(`Voyage AI embedding error: ${response.status} ${err}`);
+    throw new Error(`Voyage AI embedding failed: ${response.status} — ${err.slice(0, 200)}`);
+  }
+
+  const data = await response.json();
+  return data.data[0].embedding as number[];
+}
+
+/**
+ * Legacy: Generate embedding via OpenAI (text-embedding-3-small, 1536 dims).
+ * Used only during migration period. Will be removed after full Voyage transition.
+ */
+async function generateOpenAIEmbedding(
+  text: string,
+  openaiKey: string,
+): Promise<number[]> {
   const response = await fetch(OPENAI_EMBEDDING_URL, {
     method: 'POST',
     headers: {
@@ -111,16 +177,14 @@ export async function generateEmbedding(
       Authorization: `Bearer ${openaiKey}`,
     },
     body: JSON.stringify({
-      model: EMBEDDING_MODEL,
-      input: text.slice(0, 8000), // Max input for embedding model
+      model: LEGACY_OPENAI_MODEL,
+      input: text.slice(0, 8000),
     }),
   });
 
   if (!response.ok) {
     const err = await response.text();
     console.error(`OpenAI embedding error: ${response.status} ${err}`);
-    // THROW instead of silent fallback — pseudo-embeddings cause RAG failures
-    // because pseudo ↔ real cosine similarity ≈ 0, yielding 0 search results
     throw new Error(`OpenAI embedding API failed: ${response.status} — ${err.slice(0, 200)}`);
   }
 
@@ -129,12 +193,24 @@ export async function generateEmbedding(
 }
 
 /**
+ * Get the current embedding dimensions based on the active provider.
+ * Used by migration tools and search functions.
+ */
+export function getEmbeddingDims(): number {
+  const voyageKey = Deno.env.get('VOYAGE_API_KEY') || '';
+  if (voyageKey) return VOYAGE_DIMS; // 512
+  const openaiKey = Deno.env.get('OPENAI_API_KEY') || '';
+  if (openaiKey) return 1536; // Legacy
+  return VOYAGE_DIMS; // Default to Voyage dims for pseudo-embedding
+}
+
+/**
  * Generate a deterministic pseudo-embedding using text hashing.
  * This is a fallback when no embedding API is available.
  * Quality is much lower than real embeddings but allows the system to function.
  */
-function generatePseudoEmbedding(text: string): number[] {
-  const dims = 1536;
+function generatePseudoEmbedding(text: string, dims?: number): number[] {
+  dims = dims || VOYAGE_DIMS;
   const embedding = new Array(dims).fill(0);
 
   // Simple character-level feature extraction

@@ -21,6 +21,7 @@
 
 import {
   generateEmbedding,
+  getEmbeddingDims,
   buildRAGContext,
   type RAGSearchResult,
 } from '../_shared/rag-client.ts';
@@ -55,8 +56,6 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: 'Missing action' }, 400);
     }
 
-    const openaiKey = Deno.env.get('OPENAI_API_KEY') || '';
-
     switch (action) {
       // ─── Semantic search ─────────────────────────
       case 'search': {
@@ -74,12 +73,14 @@ Deno.serve(async (req) => {
           return jsonResponse({ error: 'Missing query' }, 400);
         }
 
-        // Generate query embedding
-        const queryEmbedding = await generateEmbedding(query, openaiKey);
+        // Generate query embedding (Voyage AI → OpenAI fallback → pseudo)
+        const queryEmbedding = await generateEmbedding(query);
+        const queryDims = queryEmbedding.length;
 
-        // Call search_knowledge_v2 with hybrid scoring
-        const { data: results, error: searchError } = await supabase.rpc('search_knowledge_v2', {
+        // Use v3 search (supports both 512 and 1536 dims)
+        const { data: results, error: searchError } = await supabase.rpc('search_knowledge_v3', {
           query_embedding: JSON.stringify(queryEmbedding),
+          query_dims: queryDims,
           search_scope: scope,
           search_user_id: userId,
           search_project_id: projectId || null,
@@ -139,10 +140,12 @@ Deno.serve(async (req) => {
           return jsonResponse({ context: '', results: [] });
         }
 
-        const queryEmbedding = await generateEmbedding(query, openaiKey);
+        const queryEmbedding = await generateEmbedding(query);
+        const queryDims = queryEmbedding.length;
 
-        const { data: results } = await supabase.rpc('search_knowledge_v2', {
+        const { data: results } = await supabase.rpc('search_knowledge_v3', {
           query_embedding: JSON.stringify(queryEmbedding),
+          query_dims: queryDims,
           search_scope: scope,
           search_user_id: userId,
           search_project_id: projectId || null,

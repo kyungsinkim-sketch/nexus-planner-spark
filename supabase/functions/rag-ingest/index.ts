@@ -52,7 +52,7 @@ Deno.serve(async (req) => {
     const { action } = body;
 
     const anthropicKey = Deno.env.get('ANTHROPIC_API_KEY') || '';
-    const openaiKey = Deno.env.get('OPENAI_API_KEY') || '';
+    
 
     switch (action) {
       // ─── Ingest from chat digest ─────────────────
@@ -92,12 +92,14 @@ Deno.serve(async (req) => {
           let created = 0;
           for (const item of items) {
             try {
-              const embedding = await generateEmbedding(item.content, openaiKey);
+              const embedding = await generateEmbedding(item.content);
 
               await supabase.from('knowledge_items').insert({
                 ...item,
                 source_id: digestId,
-                embedding: JSON.stringify(embedding),
+                ...(embedding.length <= 512
+                  ? { embedding_v2: JSON.stringify(embedding), embedding_model: 'voyage-3-lite' }
+                  : { embedding: JSON.stringify(embedding), embedding_model: 'openai-text-embedding-3-small' }),
               });
               created++;
             } catch (err) {
@@ -138,12 +140,14 @@ Deno.serve(async (req) => {
         }
 
         try {
-          const embedding = await generateEmbedding(item.content, openaiKey);
+          const embedding = await generateEmbedding(item.content);
 
           await supabase.from('knowledge_items').insert({
             ...item,
             source_id: actionId,
-            embedding: JSON.stringify(embedding),
+            ...(embedding.length <= 512
+                  ? { embedding_v2: JSON.stringify(embedding), embedding_model: 'voyage-3-lite' }
+                  : { embedding: JSON.stringify(embedding), embedding_model: 'openai-text-embedding-3-small' }),
           });
 
           return jsonResponse({ success: true, itemsCreated: 1 });
@@ -168,11 +172,13 @@ Deno.serve(async (req) => {
         let created = 0;
         for (const item of items) {
           try {
-            const embedding = await generateEmbedding(item.content, openaiKey);
+            const embedding = await generateEmbedding(item.content);
 
             await supabase.from('knowledge_items').insert({
               ...item,
-              embedding: JSON.stringify(embedding),
+              ...(embedding.length <= 512
+                  ? { embedding_v2: JSON.stringify(embedding), embedding_model: 'voyage-3-lite' }
+                  : { embedding: JSON.stringify(embedding), embedding_model: 'openai-text-embedding-3-small' }),
             });
             created++;
           } catch (err) {
@@ -232,11 +238,13 @@ Deno.serve(async (req) => {
             // Insert items with embeddings
             for (const item of items) {
               try {
-                const embedding = await generateEmbedding(item.content, openaiKey);
+                const embedding = await generateEmbedding(item.content);
                 await supabase.from('knowledge_items').insert({
                   ...item,
                   source_id: digest.id,
-                  embedding: JSON.stringify(embedding),
+                  ...(embedding.length <= 512
+                  ? { embedding_v2: JSON.stringify(embedding), embedding_model: 'voyage-3-lite' }
+                  : { embedding: JSON.stringify(embedding), embedding_model: 'openai-text-embedding-3-small' }),
                 });
                 totalCreated++;
               } catch (insertErr) {
@@ -291,7 +299,7 @@ Deno.serve(async (req) => {
         let updated = 0;
         for (const item of items) {
           try {
-            const embedding = await generateEmbedding(item.content, openaiKey);
+            const embedding = await generateEmbedding(item.content);
             await supabase
               .from('knowledge_items')
               .update({ embedding: JSON.stringify(embedding) })

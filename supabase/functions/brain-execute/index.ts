@@ -395,7 +395,7 @@ Deno.serve(async (req) => {
     // 4. RAG knowledge extraction from executed action (fire-and-forget)
     try {
       const { extractKnowledgeFromAction, generateEmbedding } = await import('../_shared/rag-client.ts');
-      const openaiKey = Deno.env.get('OPENAI_API_KEY') || '';
+      
 
       const knowledgeItem = extractKnowledgeFromAction(
         { type: action.action_type, data: action.action_data, status: 'executed' },
@@ -404,11 +404,13 @@ Deno.serve(async (req) => {
       );
 
       if (knowledgeItem) {
-        const embedding = await generateEmbedding(knowledgeItem.content, openaiKey || undefined);
+        const embedding = await generateEmbedding(knowledgeItem.content);
         await supabase.from('knowledge_items').insert({
           ...knowledgeItem,
           source_id: actionId,
-          embedding: JSON.stringify(embedding),
+          ...(embedding.length <= 512
+            ? { embedding_v2: JSON.stringify(embedding), embedding_model: 'voyage-3-lite' }
+            : { embedding: JSON.stringify(embedding), embedding_model: 'openai-text-embedding-3-small' }),
         });
         console.log('RAG: extracted knowledge from executed action');
       }

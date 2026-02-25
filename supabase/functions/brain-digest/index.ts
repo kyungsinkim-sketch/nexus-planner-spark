@@ -259,7 +259,7 @@ Deno.serve(async (req) => {
         // 9. Trigger RAG knowledge extraction (fire-and-forget)
         try {
           const { extractKnowledgeFromDigest, generateEmbedding } = await import('../_shared/rag-client.ts');
-          const openaiKey = Deno.env.get('OPENAI_API_KEY') || '';
+          
 
           const knowledgeItems = await extractKnowledgeFromDigest(
             digestResult,
@@ -275,11 +275,13 @@ Deno.serve(async (req) => {
           let ragCreated = 0;
           for (const item of knowledgeItems) {
             try {
-              const embedding = await generateEmbedding(item.content, openaiKey || undefined);
+              const embedding = await generateEmbedding(item.content);
               await supabase.from('knowledge_items').insert({
                 ...item,
                 source_id: digestInserts[0]?.id || queueItem.id,
-                embedding: JSON.stringify(embedding),
+                ...(embedding.length <= 512
+                  ? { embedding_v2: JSON.stringify(embedding), embedding_model: 'voyage-3-lite' }
+                  : { embedding: JSON.stringify(embedding), embedding_model: 'openai-text-embedding-3-small' }),
               });
               ragCreated++;
             } catch (insertErr) {

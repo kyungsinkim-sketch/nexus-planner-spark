@@ -175,15 +175,17 @@ Deno.serve(async (req) => {
     // 5.5. Fetch RAG context — personalized knowledge from the knowledge base
     let ragContext: string | undefined;
     try {
-      const openaiKey = Deno.env.get('OPENAI_API_KEY') || '';
-      if (openaiKey || true) {
+      {
         // Import RAG client dynamically
         const { generateEmbedding, buildRAGContext } = await import('../_shared/rag-client.ts');
-        const queryEmbedding = await generateEmbedding(messageContent, openaiKey || undefined);
+        const queryEmbedding = await generateEmbedding(messageContent);
+        const queryDims = queryEmbedding.length;
 
         // Search across all scopes (personal + team + role)
-        const { data: ragResults } = await supabase.rpc('search_knowledge_v2', {
+        const { data: ragResults } = await supabase.rpc('search_knowledge_v3', {
           query_embedding: JSON.stringify(queryEmbedding),
+          query_dims: queryDims,
+          query_dims: queryDims,
           search_scope: 'all',
           search_user_id: userId,
           search_project_id: projectId || null,
