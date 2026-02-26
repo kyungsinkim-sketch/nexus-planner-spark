@@ -28,10 +28,67 @@ export function IncomingCallDialog() {
   const [joining, setJoining] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  // Subscribe to call_participants inserts for current user
+  // Check for incoming calls
+  const checkIncomingCalls = useCallback(async () => {
+    if (!currentUser?.id) return;
+
+    const currentCallState = getCallState();
+    if (currentCallState.status !== 'idle') return;
+
+    // Find rooms where current user is a non-host participant and room is waiting/active
+    const { data: rooms } = await supabase
+      .from('call_participants')
+      .select('room_id, role, call_rooms(id, title, livekit_room_name, status, created_by)')
+      .eq('user_id', currentUser.id)
+      .eq('role', 'participant')
+      .order('joined_at', { ascending: false })
+      .limit(1);
+
+    if (!rooms || rooms.length === 0) return;
+
+    const participant = rooms[0];
+    const room = (participant as any).call_rooms;
+
+    if (!room || room.status === 'ended' || room.status === 'completed' || room.status === 'processing') return;
+
+    // Don't show if we already dismissed this room
+    if (incoming?.roomId === room.id) return;
+    if (dismissedRoomIds.current.has(room.id)) return;
+
+    // Check room is recent (within last 60 seconds)
+    const caller = users.find(u => u.id === room.created_by);
+
+    setIncoming({
+      roomId: room.id,
+      roomName: room.livekit_room_name,
+      title: room.title || '음성 통화',
+      callerId: room.created_by,
+      callerName: caller?.name || '알 수 없음',
+    });
+
+    // Play ringtone
+    try {
+      if (!audioRef.current) {
+        audioRef.current = new Audio('/ringtone.mp3');
+        audioRef.current.loop = true;
+      }
+      audioRef.current.play().catch(() => {});
+    } catch {}
+  }, [currentUser?.id, users, incoming]);
+
+  const dismissedRoomIds = useRef(new Set<string>());
+
+  // Poll for incoming calls every 3 seconds + Realtime subscription
   useEffect(() => {
     if (!isSupabaseConfigured() || !currentUser?.id) return;
 
+    // Initial check
+    checkIncomingCalls();
+
+    // Poll every 3s as fallback
+    const pollInterval = setInterval(checkIncomingCalls, 3000);
+
+    // Also try Realtime
     const channel = supabase
       .channel(`incoming-calls-${currentUser.id}`)
       .on(
@@ -42,56 +99,25 @@ export function IncomingCallDialog() {
           table: 'call_participants',
           filter: `user_id=eq.${currentUser.id}`,
         },
-        async (payload: any) => {
-          const participant = payload.new;
-
-          // Don't show if we're the host (we created the call)
-          if (participant.role === 'host') return;
-
-          // Don't show if we're already in a call
-          const currentCallState = getCallState();
-          if (currentCallState.status !== 'idle') return;
-
-          // Get room info
-          const { data: room } = await supabase
-            .from('call_rooms')
-            .select('*')
-            .eq('id', participant.room_id)
-            .single();
-
-          if (!room || room.status === 'ended' || room.status === 'completed') return;
-
-          // Get caller info
-          const caller = users.find(u => u.id === room.created_by);
-
-          setIncoming({
-            roomId: room.id,
-            roomName: room.livekit_room_name,
-            title: room.title || '음성 통화',
-            callerId: room.created_by,
-            callerName: caller?.name || '알 수 없음',
-          });
-
-          // Play ringtone
-          try {
-            audioRef.current = new Audio('/ringtone.mp3');
-            audioRef.current.loop = true;
-            audioRef.current.play().catch(() => {});
-          } catch {}
+        () => {
+          // Trigger check immediately on realtime event
+          checkIncomingCalls();
         }
       )
       .subscribe();
 
     return () => {
+      clearInterval(pollInterval);
       supabase.removeChannel(channel);
     };
-  }, [currentUser?.id, users]);
+  }, [currentUser?.id, checkIncomingCalls]);
 
   // Auto-dismiss after 30s
   useEffect(() => {
     if (!incoming) return;
     const timer = setTimeout(() => {
       stopRingtone();
+      dismissedRoomIds.current.add(incoming.roomId);
       setIncoming(null);
     }, 30000);
     return () => clearTimeout(timer);
@@ -121,9 +147,11 @@ export function IncomingCallDialog() {
 
   const handleDecline = useCallback(() => {
     stopRingtone();
+    if (incoming) {
+      dismissedRoomIds.current.add(incoming.roomId);
+    }
     setIncoming(null);
-    // Optionally: update participant status to declined
-  }, []);
+  }, [incoming]);
 
   if (!incoming) return null;
 
