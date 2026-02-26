@@ -14,6 +14,7 @@ import { useChatNotifications } from "@/hooks/useChatNotifications";
 import { useTodoSync } from "@/hooks/useTodoSync";
 import { useAutoCheckIn } from "@/hooks/useAutoCheckIn";
 import { ActiveCallOverlay } from "@/components/call/ActiveCallOverlay";
+import { IncomingCallDialog } from "@/components/call/IncomingCallDialog";
 import { useInactivityDetector } from "@/hooks/useInactivityDetector";
 import { useUserStatusRefresh } from "@/hooks/useUserStatusRefresh";
 import { AutoCheckInDialog } from "@/components/dashboard/AutoCheckInDialog";
@@ -190,6 +191,7 @@ const App = () => {
           }>
             <ErrorBoundary>
               <ActiveCallOverlay />
+              <IncomingCallDialog />
               <Routes>
                 {/* Auth Route */}
                 <Route path="/auth" element={<AuthPage />} />
