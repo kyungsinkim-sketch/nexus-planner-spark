@@ -8,7 +8,7 @@
  */
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { AccessToken } from 'https://esm.sh/livekit-server-sdk@2.9.1';
+import { createLiveKitToken } from '../_shared/livekit-token.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -104,18 +104,17 @@ Deno.serve(async (req) => {
       .single();
 
     // Generate token
-    const at = new AccessToken(LIVEKIT_API_KEY, LIVEKIT_API_SECRET, {
+    const token = await createLiveKitToken(LIVEKIT_API_KEY, LIVEKIT_API_SECRET, {
       identity: user.id,
       name: userData?.name || 'Unknown',
+      ttlSeconds: 86400,
+      grant: {
+        room: room.livekit_room_name,
+        roomJoin: true,
+        canPublish: true,
+        canSubscribe: true,
+      },
     });
-    at.addGrant({
-      room: room.livekit_room_name,
-      roomJoin: true,
-      canPublish: true,
-      canSubscribe: true,
-    });
-    at.ttl = '24h';
-    const token = await at.toJwt();
 
     // Update room status to active + set start time
     if (room.status === 'waiting') {

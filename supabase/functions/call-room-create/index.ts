@@ -13,7 +13,7 @@
  */
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { AccessToken } from 'https://esm.sh/livekit-server-sdk@2.9.1';
+import { createLiveKitToken } from '../_shared/livekit-token.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -31,20 +31,18 @@ function generateRoomName(): string {
 }
 
 async function createToken(roomName: string, participantId: string, participantName: string): Promise<string> {
-  const at = new AccessToken(LIVEKIT_API_KEY, LIVEKIT_API_SECRET, {
+  return await createLiveKitToken(LIVEKIT_API_KEY, LIVEKIT_API_SECRET, {
     identity: participantId,
     name: participantName,
+    ttlSeconds: 86400,
+    grant: {
+      room: roomName,
+      roomJoin: true,
+      canPublish: true,
+      canSubscribe: true,
+      roomRecord: true,
+    },
   });
-  at.addGrant({
-    room: roomName,
-    roomJoin: true,
-    canPublish: true,
-    canSubscribe: true,
-    roomRecord: true,
-  });
-  // Token valid for 24 hours
-  at.ttl = '24h';
-  return await at.toJwt();
 }
 
 Deno.serve(async (req) => {
