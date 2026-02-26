@@ -1,4 +1,4 @@
-name: Build Desktop Apps
+name: Build Desktop & Mobile Apps
 
 on:
   workflow_dispatch:
@@ -13,7 +13,7 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  build:
+  build-desktop:
     strategy:
       fail-fast: false
       matrix:
@@ -72,7 +72,6 @@ jobs:
       - name: Install npm dependencies
         run: npm ci
 
-      # Build directly with npx tauri (not via tauri-action for better error visibility)
       - name: Build Tauri app
         env:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
@@ -94,9 +93,75 @@ jobs:
             src-tauri/target/${{ matrix.target }}/release/bundle/**/*.rpm
           if-no-files-found: warn
 
+  build-android:
+    runs-on: ubuntu-latest
+    name: Build (Android)
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android,x86_64-linux-android
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android NDK
+        run: |
+          sdkmanager --install "ndk;27.0.12077973"
+          echo "NDK_HOME=$ANDROID_HOME/ndk/27.0.12077973" >> $GITHUB_ENV
+
+      - name: Install npm dependencies
+        run: npm ci
+
+      - name: Install Tauri CLI
+        run: npm install -g @tauri-apps/cli
+
+      - name: Build Android APK
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          VITE_GOOGLE_CLIENT_ID: ${{ secrets.VITE_GOOGLE_CLIENT_ID }}
+          NDK_HOME: ${{ env.NDK_HOME }}
+        run: npx tauri android build --apk
+
+      - name: Find APK
+        run: |
+          find src-tauri -name "*.apk" -type f | head -20
+          echo "---"
+          find . -name "*.apk" -type f | head -20
+
+      - name: Upload Android APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: re-be-Android
+          path: |
+            src-tauri/gen/android/app/build/outputs/apk/**/*.apk
+          if-no-files-found: warn
+
   # Create GitHub Release after all builds succeed
   release:
-    needs: build
+    needs: [build-desktop, build-android]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v')
     steps:
@@ -114,14 +179,16 @@ jobs:
           draft: true
           name: 'Re-Be.io ${{ github.ref_name }}'
           body: |
-            ## Re-Be.io Desktop App
+            ## Re-Be.io App
 
             ### Download
             - **Windows**: `.exe` or `.msi` installer
             - **macOS**: Universal `.dmg` (Apple Silicon + Intel)
             - **Linux**: `.deb` or `.AppImage`
+            - **Android**: `.apk` (사이드로드)
 
             ### Installation Notes
             **macOS**: Right-click → Open for first launch (not notarized yet)
             **Windows**: Click "More info" → "Run anyway" if SmartScreen appears
+            **Android**: Settings → Security → Unknown sources 허용 후 설치
           files: artifacts/**/*
