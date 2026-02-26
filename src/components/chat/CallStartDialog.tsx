@@ -8,7 +8,7 @@
  * 참가자 선택 (복수 선택, 기본값: 전체 선택)
  */
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -87,7 +87,11 @@ export function CallStartDialog({
   // Initialize: select all users by default when opening
   const resetState = useCallback(() => {
     setMode(null);
-    setSelectedUserIds(selectableUsers.map(u => u.id));
+    // For direct chat with targetUserIds, use them directly even if not in selectableUsers
+    const initialIds = selectableUsers.length > 0
+      ? selectableUsers.map(u => u.id)
+      : (targetUserIds || []);
+    setSelectedUserIds(initialIds);
     setScheduleDate('');
     setScheduleTime('');
     setCallTitle('');
@@ -95,8 +99,13 @@ export function CallStartDialog({
   }, [selectableUsers]);
 
   // Reset when dialog opens
+  useEffect(() => {
+    if (open) {
+      resetState();
+    }
+  }, [open, resetState]);
+
   const handleOpenChange = (newOpen: boolean) => {
-    if (newOpen) resetState();
     onOpenChange(newOpen);
   };
 
