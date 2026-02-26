@@ -6,7 +6,7 @@
  * Can be minimized to a small floating bar.
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   Phone,
   PhoneOff,
@@ -27,14 +27,41 @@ import {
   formatDuration,
   type CallState,
 } from '@/services/callService';
+import { CallSuggestionsPanel } from './CallSuggestionsPanel';
 
 export function ActiveCallOverlay() {
   const [callState, setCallState] = useState<CallState | null>(null);
   const [minimized, setMinimized] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const lastRoomId = useRef<string | null>(null);
+
+  // Track room ID to show suggestions after call ends
+  useEffect(() => {
+    if (callState?.room?.id) {
+      lastRoomId.current = callState.room.id;
+    }
+    // When call transitions to idle and we had a room, show suggestions
+    if (callState?.status === 'idle' && lastRoomId.current && !showSuggestions) {
+      setShowSuggestions(true);
+    }
+  }, [callState?.status, callState?.room?.id]);
 
   useEffect(() => {
     return subscribeCallState(setCallState);
   }, []);
+
+  // Show suggestions panel after call ends
+  if (showSuggestions && lastRoomId.current) {
+    return (
+      <CallSuggestionsPanel
+        roomId={lastRoomId.current}
+        onClose={() => {
+          setShowSuggestions(false);
+          lastRoomId.current = null;
+        }}
+      />
+    );
+  }
 
   // Only show during active call states
   const status = callState?.status;

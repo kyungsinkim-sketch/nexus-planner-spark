@@ -158,11 +158,12 @@ Deno.serve(async (req) => {
             })
             .eq('id', roomId);
 
-          // Trigger STT pipeline (non-blocking)
+          // Trigger full analysis pipeline (non-blocking)
+          // STT → Brain Analysis → Suggestions → RAG
           const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
           const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
-          fetch(`${supabaseUrl}/functions/v1/voice-transcribe`, {
+          fetch(`${supabaseUrl}/functions/v1/call-analyze-pipeline`, {
             method: 'POST',
             headers: {
               'Authorization': `Bearer ${serviceKey}`,
@@ -173,7 +174,7 @@ Deno.serve(async (req) => {
               userId: user.id,
               callRoomId: roomId,
             }),
-          }).catch(err => console.error('[call-room-end] STT trigger failed:', err));
+          }).catch(err => console.error('[call-room-end] Pipeline trigger failed:', err));
         }
       }
     }
