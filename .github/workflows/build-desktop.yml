@@ -145,18 +145,43 @@ jobs:
           NDK_HOME: ${{ env.NDK_HOME }}
         run: npx tauri android build --apk
 
-      - name: Find APK
+      - name: Sign APK
         run: |
-          find src-tauri -name "*.apk" -type f | head -20
-          echo "---"
-          find . -name "*.apk" -type f | head -20
+          # Generate signing keystore on-the-fly
+          keytool -genkey -v \
+            -keystore /tmp/rebe-release.jks \
+            -keyalg RSA -keysize 2048 -validity 10000 \
+            -alias rebe \
+            -storepass rebe2026release \
+            -keypass rebe2026release \
+            -dname "CN=Re-Be.io, OU=Dev, O=Re-Be, L=Seoul, ST=Seoul, C=KR"
+          # Find unsigned APK
+          APK=$(find src-tauri -name "*.apk" -type f | head -1)
+          echo "Found APK: $APK"
+          # Get build-tools path
+          BT=${ANDROID_HOME}/build-tools/$(ls ${ANDROID_HOME}/build-tools/ | sort -V | tail -1)
+          # Align
+          $BT/zipalign -v 4 "$APK" /tmp/rebe-aligned.apk
+          # Sign
+          $BT/apksigner sign \
+            --ks /tmp/rebe-release.jks \
+            --ks-key-alias rebe \
+            --ks-pass pass:rebe2026release \
+            --key-pass pass:rebe2026release \
+            --out /tmp/Re-Be.io_signed.apk \
+            /tmp/rebe-aligned.apk
+          # Verify
+          $BT/apksigner verify /tmp/Re-Be.io_signed.apk
+          echo "✅ APK signed successfully"
+          mkdir -p signed-apk
+          cp /tmp/Re-Be.io_signed.apk signed-apk/
 
       - name: Upload Android APK
         uses: actions/upload-artifact@v4
         with:
           name: re-be-Android
           path: |
-            src-tauri/gen/android/app/build/outputs/apk/**/*.apk
+            signed-apk/*.apk
           if-no-files-found: warn
 
   # Create GitHub Release after all builds succeed
