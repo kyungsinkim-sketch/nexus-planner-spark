@@ -147,14 +147,8 @@ jobs:
 
       - name: Sign APK
         run: |
-          # Generate signing keystore on-the-fly
-          keytool -genkey -v \
-            -keystore /tmp/rebe-release.jks \
-            -keyalg RSA -keysize 2048 -validity 10000 \
-            -alias rebe \
-            -storepass rebe2026release \
-            -keypass rebe2026release \
-            -dname "CN=Re-Be.io, OU=Dev, O=Re-Be, L=Seoul, ST=Seoul, C=KR"
+          # Decode keystore from GitHub Secret
+          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > /tmp/rebe-release.jks
           # Find unsigned APK
           APK=$(find src-tauri -name "*.apk" -type f | head -1)
           echo "Found APK: $APK"
@@ -166,8 +160,8 @@ jobs:
           $BT/apksigner sign \
             --ks /tmp/rebe-release.jks \
             --ks-key-alias rebe \
-            --ks-pass pass:rebe2026release \
-            --key-pass pass:rebe2026release \
+            --ks-pass pass:${{ secrets.ANDROID_KEYSTORE_PASSWORD }} \
+            --key-pass pass:${{ secrets.ANDROID_KEYSTORE_PASSWORD }} \
             --out /tmp/Re-Be.io_signed.apk \
             /tmp/rebe-aligned.apk
           # Verify
