@@ -13,6 +13,7 @@ import { playNotificationSound } from "@/services/notificationSoundService";
 import { useChatNotifications } from "@/hooks/useChatNotifications";
 import { useTodoSync } from "@/hooks/useTodoSync";
 import { useAutoCheckIn } from "@/hooks/useAutoCheckIn";
+import { ActiveCallOverlay } from "@/components/call/ActiveCallOverlay";
 import { useInactivityDetector } from "@/hooks/useInactivityDetector";
 import { useUserStatusRefresh } from "@/hooks/useUserStatusRefresh";
 import { AutoCheckInDialog } from "@/components/dashboard/AutoCheckInDialog";
@@ -188,6 +189,7 @@ const App = () => {
             </div>
           }>
             <ErrorBoundary>
+              <ActiveCallOverlay />
               <Routes>
                 {/* Auth Route */}
                 <Route path="/auth" element={<AuthPage />} />
