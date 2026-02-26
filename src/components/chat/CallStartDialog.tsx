@@ -138,7 +138,7 @@ export function CallStartDialog({
       const targetName = selectableUsers.find(u => u.id === targetId)?.name;
       const title = callTitle || (mediaType === 'video' ? '화상 통화' : '음성 통화');
 
-      await createCall(targetId, projectId, title);
+      await createCall(targetId, projectId, title, mediaType === 'video');
       onOpenChange(false);
     } catch (err: any) {
       console.error('[CallStartDialog] Call failed:', err);

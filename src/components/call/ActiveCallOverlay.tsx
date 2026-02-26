@@ -6,7 +6,7 @@
  * Can be minimized to a small floating bar.
  */
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Phone,
   PhoneOff,
@@ -18,16 +18,76 @@ import {
   Maximize2,
   Loader2,
   User as UserIcon,
+  Video,
+  VideoOff,
+  SwitchCamera,
 } from 'lucide-react';
 import {
   subscribeCallState,
   endCall,
   toggleMute,
   toggleSpeaker,
+  toggleCamera,
   formatDuration,
+  getCurrentRoom,
   type CallState,
 } from '@/services/callService';
 import { CallSuggestionsPanel } from './CallSuggestionsPanel';
+
+// Video element that attaches to a LiveKit track
+function VideoRenderer({ track, className, mirror }: { track: any; className?: string; mirror?: boolean }) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    if (!track || !videoRef.current) return;
+    const el = track.attach(videoRef.current);
+    return () => { track.detach(el); };
+  }, [track]);
+
+  return (
+    <video
+      ref={videoRef}
+      autoPlay
+      playsInline
+      muted
+      className={`${className || ''} ${mirror ? 'scale-x-[-1]' : ''}`}
+    />
+  );
+}
+
+// Local camera preview (picture-in-picture)
+function LocalVideoPreview({ callState }: { callState: CallState }) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    if (!callState.isCameraOn || !videoRef.current) return;
+
+    const room = getCurrentRoom();
+    if (!room?.localParticipant) return;
+
+    // Find camera track
+    const videoPubs = Array.from(room.localParticipant.videoTrackPublications.values()) as any[];
+    const videoPub = videoPubs.find((p: any) => p.track);
+    if (videoPub?.track) {
+      videoPub.track.attach(videoRef.current);
+      return () => {
+        if (videoRef.current) videoPub.track.detach(videoRef.current);
+      };
+    }
+  }, [callState.isCameraOn]);
+
+  if (!callState.isCameraOn) return null;
+
+  return (
+    <video
+      ref={videoRef}
+      autoPlay
+      playsInline
+      muted
+      className="absolute bottom-28 right-4 w-28 h-40 rounded-xl object-cover border-2 border-white/20 shadow-xl scale-x-[-1] z-10"
+    />
+  );
+}
 
 export function ActiveCallOverlay() {
   const [callState, setCallState] = useState<CallState | null>(null);
@@ -121,34 +181,58 @@ export function ActiveCallOverlay() {
       {/* Active call */}
       {status === 'active' && (
         <>
-          {/* Remote participant */}
-          <div className="flex flex-col items-center gap-3 mb-6">
-            <div className="w-24 h-24 rounded-full bg-blue-500/20 flex items-center justify-center">
-              <UserIcon className="w-12 h-12 text-blue-400" />
-            </div>
-            <p className="text-white text-lg font-medium">
-              {callState.remoteParticipantName || '대기 중...'}
-            </p>
-          </div>
-
-          {/* Duration */}
-          <div className="text-5xl font-mono text-white/90 tabular-nums mb-8">
-            {formatDuration(callState.durationSeconds)}
-          </div>
-
-          {/* Waveform */}
-          <div className="flex items-center gap-1.5 h-10 mb-12">
-            {[...Array(7)].map((_, i) => (
-              <div
-                key={i}
-                className="w-1 bg-green-400/50 rounded-full"
-                style={{
-                  height: `${8 + Math.sin(Date.now() / 300 + i) * 16}px`,
-                  animation: `pulse 0.8s ease-in-out ${i * 0.1}s infinite alternate`,
-                }}
+          {/* Remote video (full-screen) or avatar */}
+          {callState.remoteVideoTrack ? (
+            <div className="absolute inset-0 z-0">
+              <VideoRenderer
+                track={callState.remoteVideoTrack}
+                className="w-full h-full object-cover"
               />
-            ))}
+              {/* Dark gradient overlay at bottom for controls */}
+              <div className="absolute inset-x-0 bottom-0 h-48 bg-gradient-to-t from-gray-950/90 to-transparent" />
+              <div className="absolute inset-x-0 top-0 h-20 bg-gradient-to-b from-gray-950/60 to-transparent" />
+            </div>
+          ) : (
+            <div className="flex flex-col items-center gap-3 mb-6 z-10">
+              <div className="w-24 h-24 rounded-full bg-blue-500/20 flex items-center justify-center">
+                <UserIcon className="w-12 h-12 text-blue-400" />
+              </div>
+              <p className="text-white text-lg font-medium">
+                {callState.remoteParticipantName || '대기 중...'}
+              </p>
+            </div>
+          )}
+
+          {/* Local camera preview (picture-in-picture) */}
+          <LocalVideoPreview callState={callState} />
+
+          {/* Duration + name overlay (when video) */}
+          <div className={`z-10 flex flex-col items-center ${callState.remoteVideoTrack ? 'absolute top-6' : ''}`}>
+            {callState.remoteVideoTrack && (
+              <p className="text-white text-sm font-medium mb-1">
+                {callState.remoteParticipantName || ''}
+              </p>
+            )}
+            <div className={`font-mono text-white/90 tabular-nums ${callState.remoteVideoTrack ? 'text-lg' : 'text-5xl mb-8'}`}>
+              {formatDuration(callState.durationSeconds)}
+            </div>
           </div>
+
+          {/* Waveform (audio-only) */}
+          {!callState.remoteVideoTrack && (
+            <div className="flex items-center gap-1.5 h-10 mb-12 z-10">
+              {[...Array(7)].map((_, i) => (
+                <div
+                  key={i}
+                  className="w-1 bg-green-400/50 rounded-full"
+                  style={{
+                    height: `${8 + Math.sin(Date.now() / 300 + i) * 16}px`,
+                    animation: `pulse 0.8s ease-in-out ${i * 0.1}s infinite alternate`,
+                  }}
+                />
+              ))}
+            </div>
+          )}
         </>
       )}
 
@@ -193,46 +277,63 @@ export function ActiveCallOverlay() {
       )}
 
       {/* Controls */}
-      <div className="flex items-center gap-8">
+      <div className="flex items-center gap-6 z-10">
         {/* Mute */}
         <div className="flex flex-col items-center gap-1">
           <button
             onClick={() => toggleMute()}
-            className={`w-16 h-16 rounded-full flex items-center justify-center transition-all ${
+            className={`w-14 h-14 rounded-full flex items-center justify-center transition-all ${
               callState.isMuted
                 ? 'bg-red-500/30 text-red-400 ring-2 ring-red-500/50'
                 : 'bg-white/10 text-white hover:bg-white/20'
             }`}
           >
-            {callState.isMuted ? <MicOff className="w-7 h-7" /> : <Mic className="w-7 h-7" />}
+            {callState.isMuted ? <MicOff className="w-6 h-6" /> : <Mic className="w-6 h-6" />}
           </button>
           <span className="text-[10px] text-white/50">
             {callState.isMuted ? '음소거 중' : '음소거'}
           </span>
         </div>
 
+        {/* Camera toggle */}
+        <div className="flex flex-col items-center gap-1">
+          <button
+            onClick={() => toggleCamera()}
+            className={`w-14 h-14 rounded-full flex items-center justify-center transition-all ${
+              callState.isCameraOn
+                ? 'bg-blue-500/30 text-blue-400 ring-2 ring-blue-500/50'
+                : 'bg-white/10 text-white hover:bg-white/20'
+            }`}
+          >
+            {callState.isCameraOn ? <Video className="w-6 h-6" /> : <VideoOff className="w-6 h-6" />}
+          </button>
+          <span className="text-[10px] text-white/50">
+            {callState.isCameraOn ? '카메라 끄기' : '카메라'}
+          </span>
+        </div>
+
         {/* End call */}
         <button
           onClick={() => endCall()}
-          className="w-20 h-20 rounded-full bg-red-600 hover:bg-red-500 flex items-center justify-center transition-colors shadow-lg shadow-red-600/30"
+          className="w-18 h-18 rounded-full bg-red-600 hover:bg-red-500 flex items-center justify-center transition-colors shadow-lg shadow-red-600/30 p-5"
         >
-          <PhoneOff className="w-8 h-8 text-white" />
+          <PhoneOff className="w-7 h-7 text-white" />
         </button>
 
         {/* Volume toggle */}
         <div className="flex flex-col items-center gap-1">
           <button
             onClick={() => toggleSpeaker()}
-            className={`w-16 h-16 rounded-full flex items-center justify-center transition-all ${
+            className={`w-14 h-14 rounded-full flex items-center justify-center transition-all ${
               !callState.isSpeakerOn
                 ? 'bg-amber-500/30 text-amber-400 ring-2 ring-amber-500/50'
                 : 'bg-white/10 text-white hover:bg-white/20'
             }`}
           >
-            {callState.isSpeakerOn ? <Volume2 className="w-7 h-7" /> : <VolumeX className="w-7 h-7" />}
+            {callState.isSpeakerOn ? <Volume2 className="w-6 h-6" /> : <VolumeX className="w-6 h-6" />}
           </button>
           <span className="text-[10px] text-white/50">
-            {callState.isSpeakerOn ? '볼륨 크게' : '볼륨 작게'}
+            {callState.isSpeakerOn ? '스피커' : '수화기'}
           </span>
         </div>
       </div>

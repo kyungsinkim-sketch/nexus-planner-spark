@@ -40,7 +40,11 @@ export interface CallState {
   error: string | null;
   isMuted: boolean;
   isSpeakerOn: boolean;
+  isCameraOn: boolean;
+  isVideoCall: boolean;
   remoteParticipantName: string | null;
+  remoteVideoTrack: RemoteTrack | null;
+  localVideoTrack: any | null; // LocalTrackPublication
 }
 
 export interface CallSuggestion {
@@ -67,6 +71,11 @@ export interface CallSuggestion {
 // ─── State ───────────────────────────────────────────
 
 let currentRoom: Room | null = null;
+
+/** Access current LiveKit Room (for video track attachment) */
+export function getCurrentRoom(): Room | null {
+  return currentRoom;
+}
 let mediaRecorder: MediaRecorder | null = null;
 let audioChunks: Blob[] = [];
 let durationTimer: ReturnType<typeof setInterval> | null = null;
@@ -146,7 +155,11 @@ let currentState: CallState = {
   error: null,
   isMuted: false,
   isSpeakerOn: false, // Default: earpiece mode (low volume)
+  isCameraOn: false,
+  isVideoCall: false,
   remoteParticipantName: null,
+  remoteVideoTrack: null,
+  localVideoTrack: null,
 };
 
 function setState(partial: Partial<CallState>) {
@@ -166,9 +179,9 @@ export function getCallState(): CallState {
 
 // ─── Create Call ─────────────────────────────────────
 
-export async function createCall(targetUserId: string, projectId?: string, title?: string): Promise<void> {
+export async function createCall(targetUserId: string, projectId?: string, title?: string, isVideo?: boolean): Promise<void> {
   try {
-    setState({ status: 'creating', error: null });
+    setState({ status: 'creating', error: null, isVideoCall: !!isVideo });
 
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) throw new Error('Not authenticated');
@@ -276,6 +289,10 @@ async function connectToRoom(wsUrl: string, token: string): Promise<void> {
   });
 
   room.on(RoomEvent.TrackSubscribed, (track: RemoteTrack, pub: RemoteTrackPublication, participant: RemoteParticipant) => {
+    if (track.kind === Track.Kind.Video) {
+      console.log('[Call] ✅ Remote video track subscribed');
+      setState({ remoteVideoTrack: track });
+    }
     if (track.kind === Track.Kind.Audio) {
       // Always attach audio element first (ensures playback on all platforms)
       const element = track.attach();
@@ -305,6 +322,9 @@ async function connectToRoom(wsUrl: string, token: string): Promise<void> {
   });
 
   room.on(RoomEvent.TrackUnsubscribed, (track: RemoteTrack) => {
+    if (track.kind === Track.Kind.Video) {
+      setState({ remoteVideoTrack: null });
+    }
     track.detach().forEach(el => el.remove());
   });
 
@@ -331,7 +351,17 @@ async function connectToRoom(wsUrl: string, token: string): Promise<void> {
     console.log('[Call] Microphone enabled');
   } catch (err: any) {
     console.warn('[Call] Microphone enable failed:', err);
-    // Don't fail the call, just warn
+  }
+
+  // Enable camera if video call
+  if (currentState.isVideoCall) {
+    try {
+      await room.localParticipant.setCameraEnabled(true);
+      setState({ isCameraOn: true });
+      console.log('[Call] Camera enabled');
+    } catch (err: any) {
+      console.warn('[Call] Camera enable failed:', err);
+    }
   }
 
   currentRoom = room;
@@ -401,6 +431,19 @@ export function toggleMute(): boolean {
   currentRoom.localParticipant.setMicrophoneEnabled(!newMuted);
   setState({ isMuted: newMuted });
   return newMuted;
+}
+
+export async function toggleCamera(): Promise<boolean> {
+  if (!currentRoom) return false;
+  const newCameraOn = !currentState.isCameraOn;
+  try {
+    await currentRoom.localParticipant.setCameraEnabled(newCameraOn);
+    setState({ isCameraOn: newCameraOn, isVideoCall: newCameraOn || currentState.isVideoCall });
+    console.log('[Call] Camera toggled:', newCameraOn);
+  } catch (err: any) {
+    console.warn('[Call] Camera toggle failed:', err);
+  }
+  return newCameraOn;
 }
 
 export function toggleSpeaker(): boolean {
@@ -489,7 +532,11 @@ export async function endCall(): Promise<void> {
     durationSeconds: 0,
     isMuted: false,
     isSpeakerOn: true,
+    isCameraOn: false,
+    isVideoCall: false,
     remoteParticipantName: null,
+    remoteVideoTrack: null,
+    localVideoTrack: null,
     error: null,
   });
 
