@@ -18,7 +18,7 @@ import {
   LocalParticipant,
   ConnectionState,
 } from 'livekit-client';
-import { supabase } from '@/lib/supabaseClient';
+import { supabase } from '@/lib/supabase';
 
 // ─── Types ───────────────────────────────────────────
 

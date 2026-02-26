@@ -44,7 +44,7 @@ import {
   type CallState,
   type CallSuggestion,
 } from '@/services/callService';
-import { useAppStore } from '@/store/appStore';
+import { useAppStore } from '@/stores/appStore';
 import type { User } from '@/types/core';
 
 // ─── Sub-Components ──────────────────────────────────
