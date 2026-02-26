@@ -15,5 +15,5 @@
     "notification:allow-cancel",
     "core:default"
   ],
-  "platforms": ["desktop", "android", "iOS"]
+  "platforms": ["linux", "macOS", "windows", "android", "iOS"]
 }
