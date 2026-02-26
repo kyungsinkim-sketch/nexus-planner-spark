@@ -42,6 +42,8 @@ import {
   Brain,
   Pin,
   X,
+  Phone,
+  Video,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { useTranslation } from '@/hooks/useTranslation';
@@ -50,6 +52,7 @@ import { ChatMessageBubble } from '@/components/chat/ChatMessageBubble';
 import { FileUploadModal } from '@/components/project/FileUploadModal';
 import type { LocationShare, ScheduleShare, DecisionShare, ChatMessage, ChatRoom, FileCategory } from '@/types/core';
 import { BRAIN_BOT_USER_ID, BRAIN_AI_USER_ID, isBrainAIUser, extractEmailDomain, isFreelancerDomain, isAIPersonaUser, PERSONA_ID_MAP, PERSONA_PABLO_USER_ID, PERSONA_CD_USER_ID, PERSONA_PD_USER_ID } from '@/types/core';
+import { CallStartDialog } from '@/components/chat/CallStartDialog';
 import * as chatService from '@/services/chatService';
 import * as fileService from '@/services/fileService';
 import * as brainService from '@/services/brainService';
@@ -94,6 +97,8 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
   const [newMessage, setNewMessage] = useState('');
   const [expandedProjectId, setExpandedProjectId] = useState<string | null>(null);
   const [showCreateRoom, setShowCreateRoom] = useState(false);
+  const [showCallDialog, setShowCallDialog] = useState(false);
+  const [callMediaType, setCallMediaType] = useState<'voice' | 'video'>('voice');
   const [pinnedAnnouncement, setPinnedAnnouncement] = useState<ChatMessage | null>(null);
   const [newRoomName, setNewRoomName] = useState('');
   const [newRoomDescription, setNewRoomDescription] = useState('');
@@ -1648,6 +1653,30 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
                 {selectedChatInfo?.subtitle}
               </p>
             </div>
+
+            {/* Call buttons — hide for Brain AI / AI persona chats */}
+            {selectedChat && !isBrainAIUser(selectedChat.id) && !isAIPersonaUser(selectedChat.id) && (
+              <div className="flex items-center gap-1 shrink-0">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="w-8 h-8 text-muted-foreground hover:text-green-500"
+                  onClick={() => { setCallMediaType('voice'); setShowCallDialog(true); }}
+                  title="음성 통화"
+                >
+                  <Phone className="w-4 h-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="w-8 h-8 text-muted-foreground hover:text-blue-500"
+                  onClick={() => { setCallMediaType('video'); setShowCallDialog(true); }}
+                  title="화상 통화"
+                >
+                  <Video className="w-4 h-4" />
+                </Button>
+              </div>
+            )}
           </div>
 
           {/* Pinned Announcement Banner */}
@@ -1927,6 +1956,27 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Call Start Dialog */}
+      <CallStartDialog
+        open={showCallDialog}
+        onOpenChange={setShowCallDialog}
+        mediaType={callMediaType}
+        targetUserIds={
+          selectedChat?.type === 'direct' && !isBrainAIUser(selectedChat.id) && !isAIPersonaUser(selectedChat.id)
+            ? [selectedChat.id]
+            : undefined
+        }
+        projectId={selectedChat?.type === 'project' ? selectedChat.id : undefined}
+        availableMembers={
+          selectedChat?.type === 'project'
+            ? users.filter(u => {
+                const project = projects.find(p => p.id === selectedChat.id);
+                return project?.teamMemberIds?.includes(u.id);
+              })
+            : undefined
+        }
+      />
     </div>
   );
 }
