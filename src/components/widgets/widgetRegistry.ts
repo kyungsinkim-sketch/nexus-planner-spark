@@ -67,7 +67,7 @@ export const WIDGET_COMPONENTS: Record<WidgetType, ComponentType<{ context: Widg
   notion:         lazy(() => import('./NotionWidget')),
   projectBoard:   lazy(() => import('./ProjectBoardWidget')),
   projectLinks:   lazy(() => import('./LinksWidget')),
-  call:           lazy(() => import('./CallWidget')),
+  // call widget removed — call UI is in ActiveCallOverlay
 };
 
 // Widget definitions (metadata)
@@ -289,12 +289,5 @@ export const WIDGET_DEFINITIONS: Record<WidgetType, WidgetDefinition> = {
     minSize: { w: 2, h: 2 },
     contexts: ['project'],
   },
-  call: {
-    type: 'call',
-    titleKey: 'voiceCall',
-    icon: Phone,
-    defaultSize: { w: 3, h: 4 },
-    minSize: { w: 3, h: 3 },
-    contexts: ['dashboard', 'project'],
-  },
+  // call widget removed — call UI is in ActiveCallOverlay
 };

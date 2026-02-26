@@ -8,7 +8,7 @@
  */
 
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { Brain, Send, Loader2, CheckCircle2, Clock, XCircle } from 'lucide-react';
+import { Brain, Send, Loader2, CheckCircle2, Clock, XCircle, Mic, MicOff } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAppStore } from '@/stores/appStore';
 import { useTranslation } from '@/hooks/useTranslation';
@@ -40,8 +40,57 @@ function BrainChatWidget({ context }: { context: WidgetDataContext }) {
   const { currentUser, users, projects, loadEvents, loadTodos, addTodo } = useAppStore();
   const { t } = useTranslation();
 
+  const [isListening, setIsListening] = useState(false);
+  const recognitionRef = useRef<any>(null);
+
   const projectId = context.type === 'project' ? context.projectId : undefined;
   const project = projectId ? projects.find(p => p.id === projectId) : undefined;
+
+  // Web Speech API voice recognition
+  const toggleVoice = useCallback(() => {
+    if (isListening && recognitionRef.current) {
+      recognitionRef.current.stop();
+      setIsListening(false);
+      return;
+    }
+
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      toast.error('이 브라우저에서 음성 인식을 지원하지 않습니다');
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'ko-KR';
+    recognition.continuous = false;
+    recognition.interimResults = true;
+
+    recognition.onresult = (event: any) => {
+      let transcript = '';
+      for (let i = 0; i < event.results.length; i++) {
+        transcript += event.results[i][0].transcript;
+      }
+      setInput(transcript);
+    };
+
+    recognition.onend = () => {
+      setIsListening(false);
+      recognitionRef.current = null;
+    };
+
+    recognition.onerror = (event: any) => {
+      console.warn('[Voice] Recognition error:', event.error);
+      setIsListening(false);
+      recognitionRef.current = null;
+      if (event.error === 'not-allowed') {
+        toast.error('마이크 권한이 필요합니다');
+      }
+    };
+
+    recognitionRef.current = recognition;
+    recognition.start();
+    setIsListening(true);
+  }, [isListening]);
 
   // Auto-scroll to bottom on new messages
   useEffect(() => {
@@ -333,6 +382,18 @@ function BrainChatWidget({ context }: { context: WidgetDataContext }) {
                        focus:outline-none
                        disabled:opacity-50"
           />
+          <button
+            type="button"
+            onClick={toggleVoice}
+            className={`p-1.5 rounded-lg transition-colors shrink-0 ${
+              isListening
+                ? 'bg-red-500 text-white animate-pulse'
+                : 'bg-muted hover:bg-muted/80 text-muted-foreground'
+            }`}
+            title={isListening ? '음성 인식 중지' : '음성으로 명령'}
+          >
+            {isListening ? <MicOff className="w-3 h-3" /> : <Mic className="w-3 h-3" />}
+          </button>
           <button
             type="submit"
             disabled={processing || !input.trim()}

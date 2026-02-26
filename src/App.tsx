@@ -9,6 +9,7 @@ import { TabLayout } from "@/components/layout";
 import { useAppStore } from "@/stores/appStore";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import { Loader2 } from "lucide-react";
+import { MeshLoader } from "@/components/ui/MeshLoader";
 import { playNotificationSound } from "@/services/notificationSoundService";
 import { useChatNotifications } from "@/hooks/useChatNotifications";
 import { useTodoSync } from "@/hooks/useTodoSync";
@@ -49,8 +50,8 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <MeshLoader size={140} />
       </div>
     );
   }
@@ -170,10 +171,7 @@ const App = () => {
   if (isInitializing && isSupabaseConfigured()) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="text-center space-y-4">
-          <Loader2 className="w-12 h-12 animate-spin text-primary mx-auto" />
-          <p className="text-muted-foreground">Loading Re-Be.io...</p>
-        </div>
+        <MeshLoader size={180} message="Loading Re-Be.io..." />
       </div>
     );
   }
@@ -186,7 +184,7 @@ const App = () => {
           <Sonner />
           <Suspense fallback={
             <div className="min-h-screen flex items-center justify-center bg-background">
-              <Loader2 className="w-8 h-8 animate-spin text-primary" />
+              <MeshLoader size={140} />
             </div>
           }>
             <ErrorBoundary>

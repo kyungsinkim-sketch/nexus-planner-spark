@@ -36,7 +36,7 @@ export type WidgetType =
   | 'notion'
   | 'projectBoard'
   | 'projectLinks'
-  | 'call';
+;
 
 // Widget context — determines which data scope a widget uses
 export type WidgetContext = 'dashboard' | 'project';

@@ -85,53 +85,68 @@ export const ATTENDANCE_TYPES: AttendanceTypeInfo[] = [
 // Geolocation Helper
 // ============================================
 export async function getCurrentPosition(): Promise<GeoPosition> {
-    return new Promise((resolve, reject) => {
-        if (!navigator.geolocation) {
-            reject(new Error('Geolocation is not supported by this browser'));
-            return;
-        }
+    if (!navigator.geolocation) {
+        throw new Error('Geolocation is not supported by this browser');
+    }
 
-        navigator.geolocation.getCurrentPosition(
-            async (position) => {
-                const { latitude, longitude, accuracy } = position.coords;
+    // Try multiple readings and pick the most accurate one
+    const attempts = 3;
+    let bestPosition: GeolocationPosition | null = null;
 
-                // Try to get address from coordinates (reverse geocoding)
-                let address: string | undefined;
-                try {
-                    address = await reverseGeocode(latitude, longitude);
-                } catch (e) {
-                    console.warn('Reverse geocoding failed:', e);
-                }
-
-                resolve({
-                    latitude,
-                    longitude,
-                    accuracy,
-                    address,
+    for (let i = 0; i < attempts; i++) {
+        try {
+            const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
+                navigator.geolocation.getCurrentPosition(resolve, reject, {
+                    enableHighAccuracy: true,
+                    timeout: 10000,
+                    maximumAge: 0,
                 });
-            },
-            (error) => {
-                let message = 'Failed to get location';
-                switch (error.code) {
-                    case error.PERMISSION_DENIED:
-                        message = getTranslation(getLang(), 'locationPermissionDenied');
-                        break;
-                    case error.POSITION_UNAVAILABLE:
-                        message = getTranslation(getLang(), 'locationUnavailable');
-                        break;
-                    case error.TIMEOUT:
-                        message = getTranslation(getLang(), 'locationTimeout');
-                        break;
-                }
-                reject(new Error(message));
-            },
-            {
-                enableHighAccuracy: true,
-                timeout: 15000,
-                maximumAge: 0,
+            });
+
+            if (!bestPosition || pos.coords.accuracy < bestPosition.coords.accuracy) {
+                bestPosition = pos;
             }
-        );
-    });
+
+            // Good enough — stop early
+            if (pos.coords.accuracy <= 20) break;
+
+            // Brief wait before retry for GPS to warm up
+            if (i < attempts - 1) {
+                await new Promise(r => setTimeout(r, 800));
+            }
+        } catch (error: any) {
+            // If permission denied, fail immediately
+            if (error?.code === 1) {
+                throw new Error(getTranslation(getLang(), 'locationPermissionDenied'));
+            }
+            // On last attempt, throw
+            if (i === attempts - 1 && !bestPosition) {
+                let message = 'Failed to get location';
+                switch (error?.code) {
+                    case 2: message = getTranslation(getLang(), 'locationUnavailable'); break;
+                    case 3: message = getTranslation(getLang(), 'locationTimeout'); break;
+                }
+                throw new Error(message);
+            }
+        }
+    }
+
+    if (!bestPosition) {
+        throw new Error('Failed to get location');
+    }
+
+    const { latitude, longitude, accuracy } = bestPosition.coords;
+    console.log(`[GPS] Best accuracy: ${accuracy.toFixed(1)}m (after up to ${attempts} attempts)`);
+
+    // Reverse geocode
+    let address: string | undefined;
+    try {
+        address = await reverseGeocode(latitude, longitude);
+    } catch (e) {
+        console.warn('Reverse geocoding failed:', e);
+    }
+
+    return { latitude, longitude, accuracy, address };
 }
 
 // Simple reverse geocoding using Nominatim (free, no API key required)
@@ -239,6 +254,21 @@ export async function checkOut(payload: CheckOutPayload): Promise<AttendanceReco
     const today = new Date().toISOString().split('T')[0];
     const now = new Date().toISOString();
 
+    // Calculate working minutes from check-in
+    const { data: existing } = await supabase
+        .from('nexus_attendance')
+        .select('check_in_at')
+        .eq('user_id', user.id)
+        .eq('work_date', today)
+        .single();
+
+    let workingMinutes: number | null = null;
+    if (existing?.check_in_at) {
+        const checkInMs = new Date(existing.check_in_at).getTime();
+        const nowMs = new Date(now).getTime();
+        workingMinutes = Math.max(0, Math.round((nowMs - checkInMs) / 60000));
+    }
+
     const { data, error } = await supabase
         .from('nexus_attendance')
         .update({
@@ -247,6 +277,7 @@ export async function checkOut(payload: CheckOutPayload): Promise<AttendanceReco
             check_out_longitude: payload.longitude,
             check_out_address: payload.address,
             check_out_note: payload.note,
+            working_minutes: workingMinutes,
             status: 'completed',
         })
         .eq('user_id', user.id)

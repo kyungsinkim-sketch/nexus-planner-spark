@@ -7,12 +7,36 @@
  * - Lazy rendering via IntersectionObserver
  */
 
-import React, { useRef, Suspense, type ReactNode } from 'react';
+import React, { useRef, useState, useEffect, useCallback, Suspense, type ReactNode } from 'react';
 import { Minus, Plus, X, AlertTriangle, RotateCcw } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useIntersection } from '@/hooks/useIntersection';
 import { useTranslation } from '@/hooks/useTranslation';
 import { cn } from '@/lib/utils';
+
+// ─── Responsive font scale based on widget container size ───
+function useWidgetScale(ref: React.RefObject<HTMLDivElement | null>) {
+  const [scale, setScale] = useState(1);
+
+  const updateScale = useCallback(() => {
+    if (!ref.current) return;
+    const { offsetWidth: w, offsetHeight: h } = ref.current;
+    // Scale down when widget is small; base size ~300px wide
+    const ws = Math.min(1, Math.max(0.65, w / 300));
+    const hs = Math.min(1, Math.max(0.65, h / 200));
+    setScale(Math.min(ws, hs));
+  }, [ref]);
+
+  useEffect(() => {
+    if (!ref.current) return;
+    const ro = new ResizeObserver(updateScale);
+    ro.observe(ref.current);
+    updateScale();
+    return () => ro.disconnect();
+  }, [ref, updateScale]);
+
+  return scale;
+}
 
 // ─── Widget-level Error Boundary ─────────────────────
 // Catches render errors in individual widgets so one broken
@@ -104,13 +128,17 @@ export function WidgetContainer({
   const { t } = useTranslation();
   const containerRef = useRef<HTMLDivElement>(null);
   const isVisible = useIntersection(containerRef);
+  const scale = useWidgetScale(containerRef);
 
   return (
     <div
       ref={containerRef}
       className={cn('glass-widget flex flex-col h-full', className)}
       data-widget-id={widgetId}
-      style={style}
+      style={{
+        ...style,
+        '--widget-scale': scale,
+      } as React.CSSProperties}
     >
       {/* Title bar = drag handle + activation trigger */}
       <div className="widget-titlebar widget-drag-handle" onMouseDown={onTitleBarClick}>
@@ -152,7 +180,14 @@ export function WidgetContainer({
 
       {/* Content — wrapped in error boundary so one widget crash doesn't break dashboard */}
       {!collapsed && (
-        <div className="widget-content flex-1 min-h-0 p-0">
+        <div
+          className="widget-content flex-1 min-h-0 p-0 origin-top-left"
+          style={scale < 0.95 ? {
+            transform: `scale(${scale})`,
+            width: `${100 / scale}%`,
+            height: `${100 / scale}%`,
+          } : undefined}
+        >
           <WidgetErrorBoundary widgetId={widgetId}>
             <Suspense fallback={<WidgetSkeleton />}>
               {isVisible ? children : <WidgetSkeleton />}

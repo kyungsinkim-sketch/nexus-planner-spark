@@ -11,16 +11,29 @@ import type { WidgetDataContext } from '@/types/widget';
 function ProgressChartWidget({ context: _context }: { context: WidgetDataContext }) {
   const { projects } = useAppStore();
 
+  const { todos } = useAppStore();
+
   const data = useMemo(
     () =>
       projects
         .filter((p) => p.status === 'ACTIVE')
         .slice(0, 8)
-        .map((p) => ({
-          name: p.title.length > 12 ? p.title.slice(0, 12) + '...' : p.title,
-          progress: p.progress || 0,
-        })),
-    [projects],
+        .map((p) => {
+          // Use explicit progress if set, otherwise calculate from todos
+          let progress = p.progress || 0;
+          if (progress === 0) {
+            const projectTodos = todos.filter(t => t.projectId === p.id);
+            if (projectTodos.length > 0) {
+              const done = projectTodos.filter(t => t.completed).length;
+              progress = Math.round((done / projectTodos.length) * 100);
+            }
+          }
+          return {
+            name: p.title.length > 12 ? p.title.slice(0, 12) + '...' : p.title,
+            progress,
+          };
+        }),
+    [projects, todos],
   );
 
   if (data.length === 0) {
