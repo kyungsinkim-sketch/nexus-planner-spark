@@ -187,20 +187,20 @@ export function ActiveCallOverlay() {
           <PhoneOff className="w-8 h-8 text-white" />
         </button>
 
-        {/* Speaker toggle */}
+        {/* Volume toggle */}
         <div className="flex flex-col items-center gap-1">
           <button
             onClick={() => toggleSpeaker()}
             className={`w-16 h-16 rounded-full flex items-center justify-center transition-all ${
-              callState.isSpeakerOn
-                ? 'bg-blue-500/30 text-blue-400 ring-2 ring-blue-500/50'
+              !callState.isSpeakerOn
+                ? 'bg-amber-500/30 text-amber-400 ring-2 ring-amber-500/50'
                 : 'bg-white/10 text-white hover:bg-white/20'
             }`}
           >
             {callState.isSpeakerOn ? <Volume2 className="w-7 h-7" /> : <VolumeX className="w-7 h-7" />}
           </button>
           <span className="text-[10px] text-white/50">
-            {callState.isSpeakerOn ? '스피커' : '수화기'}
+            {callState.isSpeakerOn ? '볼륨 크게' : '볼륨 작게'}
           </span>
         </div>
       </div>
