@@ -109,13 +109,18 @@ export async function createCall(targetUserId: string, projectId?: string, title
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) throw new Error('Not authenticated');
 
+    console.log('[Call] Creating room for target:', targetUserId);
     const response = await supabase.functions.invoke('call-room-create', {
       body: { targetUserId, projectId, title },
     });
 
+    console.log('[Call] Room create response:', response);
+
     if (response.error) throw new Error(response.error.message);
+    if (response.data?.error) throw new Error(response.data.error);
 
     const { room, token, wsUrl } = response.data;
+    if (!token || !wsUrl) throw new Error('서버에서 토큰/URL을 받지 못했습니다');
 
     setState({
       status: 'ringing',
@@ -181,7 +186,8 @@ async function connectToRoom(wsUrl: string, token: string): Promise<void> {
     }
   });
 
-  room.on(RoomEvent.Disconnected, () => {
+  room.on(RoomEvent.Disconnected, (reason?: any) => {
+    console.log('[Call] Disconnected, reason:', reason);
     handleCallEnd();
   });
 
@@ -212,10 +218,24 @@ async function connectToRoom(wsUrl: string, token: string): Promise<void> {
   });
 
   // Connect
-  await room.connect(wsUrl, token);
+  try {
+    console.log('[Call] Connecting to', wsUrl);
+    await room.connect(wsUrl, token);
+    console.log('[Call] Connected successfully');
+  } catch (err: any) {
+    console.error('[Call] Connection failed:', err);
+    setState({ status: 'error', error: `연결 실패: ${err.message}` });
+    return;
+  }
 
   // Enable microphone
-  await room.localParticipant.setMicrophoneEnabled(true);
+  try {
+    await room.localParticipant.setMicrophoneEnabled(true);
+    console.log('[Call] Microphone enabled');
+  } catch (err: any) {
+    console.warn('[Call] Microphone enable failed:', err);
+    // Don't fail the call, just warn
+  }
 
   currentRoom = room;
 }

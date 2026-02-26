@@ -38,7 +38,7 @@ export function ActiveCallOverlay() {
 
   // Only show during active call states
   const status = callState?.status;
-  const showOverlay = status === 'connecting' || status === 'ringing' || status === 'active' || status === 'creating' || status === 'ending';
+  const showOverlay = status === 'connecting' || status === 'ringing' || status === 'active' || status === 'creating' || status === 'ending' || status === 'error' || status === 'processing';
 
   if (!showOverlay || !callState) return null;
 
@@ -125,6 +125,38 @@ export function ActiveCallOverlay() {
         <div className="flex flex-col items-center gap-4 mb-8">
           <Loader2 className="w-10 h-10 text-white/50 animate-spin" />
           <p className="text-white/50 text-sm">통화 종료 중...</p>
+        </div>
+      )}
+
+      {/* Error */}
+      {status === 'error' && (
+        <div className="flex flex-col items-center gap-4 mb-8">
+          <div className="w-24 h-24 rounded-full bg-red-500/20 flex items-center justify-center">
+            <PhoneOff className="w-12 h-12 text-red-400" />
+          </div>
+          <p className="text-red-400 text-sm text-center max-w-xs">
+            {callState.error || '통화 연결 실패'}
+          </p>
+          <button
+            onClick={() => {
+              // Reset to idle
+              endCall();
+            }}
+            className="px-6 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-sm transition-colors"
+          >
+            닫기
+          </button>
+        </div>
+      )}
+
+      {/* Processing */}
+      {status === 'processing' && (
+        <div className="flex flex-col items-center gap-4 mb-8">
+          <Loader2 className="w-12 h-12 text-blue-400 animate-spin" />
+          <div className="text-center">
+            <p className="text-white text-lg font-medium">Brain AI 분석 중</p>
+            <p className="text-white/50 text-sm mt-1">통화 내용을 분석하고 있습니다...</p>
+          </div>
         </div>
       )}
 
