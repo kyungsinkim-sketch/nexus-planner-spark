@@ -170,7 +170,15 @@ async function connectToRoom(wsUrl: string, token: string): Promise<void> {
   room.on(RoomEvent.Connected, () => {
     setState({ status: 'active' });
     startDurationTimer();
-    startRecording(room);
+    // Delay recording start to ensure local track is published
+    setTimeout(() => startRecording(room), 1500);
+  });
+
+  room.on(RoomEvent.LocalTrackPublished, () => {
+    // Retry recording if it failed on first attempt
+    if (!mediaRecorder || mediaRecorder.state === 'inactive') {
+      startRecording(room);
+    }
   });
 
   room.on(RoomEvent.Disconnected, () => {
