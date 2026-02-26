@@ -71,6 +71,8 @@ let mediaRecorder: MediaRecorder | null = null;
 let audioChunks: Blob[] = [];
 let durationTimer: ReturnType<typeof setInterval> | null = null;
 let callStartTime: number | null = null;
+let audioOutputContext: AudioContext | null = null;
+let audioOutputGain: GainNode | null = null;
 let ringbackContext: AudioContext | null = null;
 let ringbackOscillator: OscillatorNode | null = null;
 let ringbackInterval: ReturnType<typeof setInterval> | null = null;
@@ -276,10 +278,23 @@ async function connectToRoom(wsUrl: string, token: string): Promise<void> {
   room.on(RoomEvent.TrackSubscribed, (track: RemoteTrack, pub: RemoteTrackPublication, participant: RemoteParticipant) => {
     if (track.kind === Track.Kind.Audio) {
       const element = track.attach();
-      // Default to earpiece mode (low volume)
-      element.volume = currentState.isSpeakerOn ? 1.0 : 0.15;
-      document.body.appendChild(element);
       element.dataset.livekitAudio = participant.identity;
+      document.body.appendChild(element);
+
+      // Route through Web Audio API for volume control (mobile-compatible)
+      try {
+        if (!audioOutputContext) {
+          audioOutputContext = new AudioContext();
+          audioOutputGain = audioOutputContext.createGain();
+          audioOutputGain.gain.value = currentState.isSpeakerOn ? 1.0 : 0.12;
+          audioOutputGain.connect(audioOutputContext.destination);
+        }
+        const source = audioOutputContext.createMediaElementSource(element);
+        source.connect(audioOutputGain!);
+        console.log('[Call] Audio routed through gain node, volume:', audioOutputGain!.gain.value);
+      } catch (err) {
+        console.warn('[Call] Web Audio routing failed, using direct playback:', err);
+      }
     }
   });
 
@@ -384,19 +399,18 @@ export function toggleMute(): boolean {
 
 export function toggleSpeaker(): boolean {
   const newSpeakerOn = !currentState.isSpeakerOn;
+  const targetVolume = newSpeakerOn ? 1.0 : 0.12;
 
-  // Control volume on all remote audio elements
+  // Web Audio API gain control (works on mobile)
+  if (audioOutputGain && audioOutputContext) {
+    audioOutputGain.gain.setTargetAtTime(targetVolume, audioOutputContext.currentTime, 0.05);
+    console.log('[Call] Speaker toggle:', newSpeakerOn ? 'SPEAKER' : 'EARPIECE', 'volume:', targetVolume);
+  }
+
+  // Also try direct volume as fallback
   document.querySelectorAll('[data-livekit-audio]').forEach(el => {
     const audio = el as HTMLAudioElement;
-    if (newSpeakerOn) {
-      // Speaker mode: full volume
-      audio.volume = 1.0;
-      audio.muted = false;
-    } else {
-      // Earpiece mode: low volume (simulated — true earpiece needs native API)
-      audio.volume = 0.15;
-      audio.muted = false;
-    }
+    audio.volume = targetVolume;
   });
 
   setState({ isSpeakerOn: newSpeakerOn });
@@ -423,8 +437,13 @@ export async function endCall(): Promise<void> {
     try { roomRef.disconnect(); } catch {}
   }
 
-  // Clean up audio elements
+  // Clean up audio
   document.querySelectorAll('[data-livekit-audio]').forEach(el => el.remove());
+  if (audioOutputContext) {
+    try { audioOutputContext.close(); } catch {}
+    audioOutputContext = null;
+    audioOutputGain = null;
+  }
 
   // Save room info before resetting
   const roomInfo = currentState.room;
