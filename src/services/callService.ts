@@ -71,6 +71,68 @@ let mediaRecorder: MediaRecorder | null = null;
 let audioChunks: Blob[] = [];
 let durationTimer: ReturnType<typeof setInterval> | null = null;
 let callStartTime: number | null = null;
+let ringbackContext: AudioContext | null = null;
+let ringbackOscillator: OscillatorNode | null = null;
+let ringbackInterval: ReturnType<typeof setInterval> | null = null;
+
+// ─── Ringback Tone (발신 대기음) ─────────────────────
+
+function startRingbackTone() {
+  try {
+    ringbackContext = new AudioContext();
+    const gainNode = ringbackContext.createGain();
+    gainNode.gain.value = 0;
+    gainNode.connect(ringbackContext.destination);
+
+    ringbackOscillator = ringbackContext.createOscillator();
+    ringbackOscillator.type = 'sine';
+    ringbackOscillator.frequency.value = 440; // A4 note
+    ringbackOscillator.connect(gainNode);
+    ringbackOscillator.start();
+
+    // Korean ringback pattern: 1s on, 2s off
+    let isOn = false;
+    const toggle = () => {
+      isOn = !isOn;
+      gainNode.gain.setTargetAtTime(isOn ? 0.15 : 0, ringbackContext!.currentTime, 0.02);
+    };
+    toggle(); // Start with tone on
+    ringbackInterval = setInterval(toggle, isOn ? 1000 : 2000);
+
+    // More accurate pattern: 1s on, 2s off
+    clearInterval(ringbackInterval);
+    let phase = 0;
+    ringbackInterval = setInterval(() => {
+      phase++;
+      if (phase % 3 === 1) {
+        // ON for 1 second
+        gainNode.gain.setTargetAtTime(0.15, ringbackContext!.currentTime, 0.02);
+      } else if (phase % 3 === 2) {
+        // OFF for 2 seconds
+        gainNode.gain.setTargetAtTime(0, ringbackContext!.currentTime, 0.02);
+      }
+    }, 1000);
+
+    console.log('[Call] Ringback tone started');
+  } catch (err) {
+    console.warn('[Call] Ringback tone failed:', err);
+  }
+}
+
+function stopRingbackTone() {
+  if (ringbackInterval) {
+    clearInterval(ringbackInterval);
+    ringbackInterval = null;
+  }
+  if (ringbackOscillator) {
+    ringbackOscillator.stop();
+    ringbackOscillator = null;
+  }
+  if (ringbackContext) {
+    ringbackContext.close();
+    ringbackContext = null;
+  }
+}
 
 const listeners = new Set<(state: CallState) => void>();
 let currentState: CallState = {
@@ -128,6 +190,9 @@ export async function createCall(targetUserId: string, projectId?: string, title
       token,
       wsUrl,
     });
+
+    // Start ringback tone while waiting
+    startRingbackTone();
 
     // Auto-connect caller
     await connectToRoom(wsUrl, token);
@@ -199,6 +264,8 @@ async function connectToRoom(wsUrl: string, token: string): Promise<void> {
   });
 
   room.on(RoomEvent.ParticipantConnected, (participant: RemoteParticipant) => {
+    console.log('[Call] Remote participant connected:', participant.name || participant.identity);
+    stopRingbackTone();
     setState({ remoteParticipantName: participant.name || participant.identity });
   });
 
@@ -332,6 +399,9 @@ export async function endCall(): Promise<void> {
 }
 
 async function handleCallEnd(): Promise<void> {
+  // Stop ringback tone
+  stopRingbackTone();
+
   // Stop timer
   if (durationTimer) {
     clearInterval(durationTimer);
