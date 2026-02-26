@@ -42,7 +42,7 @@ export function CallSuggestionsPanel({ roomId, onClose }: CallSuggestionsPanelPr
   useEffect(() => {
     let active = true;
     let attempts = 0;
-    const maxAttempts = 40; // 40 * 3s = 2 minutes
+    const maxAttempts = 20; // 20 * 3s = 1 minute
 
     const poll = async () => {
       try {
@@ -156,6 +156,12 @@ export function CallSuggestionsPanel({ roomId, onClose }: CallSuggestionsPanelPr
         <Loader2 className="w-12 h-12 text-blue-400 animate-spin mb-4" />
         <p className="text-white text-lg font-medium">Brain AI 분석 중</p>
         <p className="text-white/50 text-sm mt-2">통화 내용에서 일정, 할 일, 중요 기록을 추출하고 있습니다...</p>
+        <button
+          onClick={onClose}
+          className="mt-6 px-6 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white/60 text-sm transition-colors"
+        >
+          건너뛰기
+        </button>
       </div>
     );
   }

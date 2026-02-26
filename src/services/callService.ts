@@ -277,7 +277,14 @@ async function connectToRoom(wsUrl: string, token: string): Promise<void> {
 
   room.on(RoomEvent.TrackSubscribed, (track: RemoteTrack, pub: RemoteTrackPublication, participant: RemoteParticipant) => {
     if (track.kind === Track.Kind.Audio) {
-      // Route through Web Audio API for volume control
+      // Always attach audio element first (ensures playback on all platforms)
+      const element = track.attach();
+      element.dataset.livekitAudio = participant.identity;
+      element.volume = currentState.isSpeakerOn ? 1.0 : 0.15;
+      document.body.appendChild(element);
+      console.log('[Call] ✅ Audio element attached, volume:', element.volume);
+
+      // Try Web Audio API on top for finer volume control (mobile)
       try {
         if (!audioOutputContext) {
           audioOutputContext = new AudioContext();
@@ -285,23 +292,14 @@ async function connectToRoom(wsUrl: string, token: string): Promise<void> {
           audioOutputGain.gain.value = currentState.isSpeakerOn ? 1.0 : 0.12;
           audioOutputGain.connect(audioOutputContext.destination);
         }
-        // Resume context (required after user gesture on mobile)
         if (audioOutputContext.state === 'suspended') {
           audioOutputContext.resume();
         }
-
-        // Get MediaStream directly from track (not via element)
-        const mediaStream = new MediaStream([track.mediaStreamTrack]);
-        const source = audioOutputContext.createMediaStreamSource(mediaStream);
+        const source = audioOutputContext.createMediaElementSource(element);
         source.connect(audioOutputGain!);
-
-        console.log('[Call] ✅ Audio routed via MediaStream → GainNode, gain:', audioOutputGain!.gain.value);
+        console.log('[Call] ✅ Web Audio API gain connected:', audioOutputGain!.gain.value);
       } catch (err) {
-        // Fallback: attach to audio element directly
-        console.warn('[Call] Web Audio failed, using fallback:', err);
-        const element = track.attach();
-        element.dataset.livekitAudio = participant.identity;
-        document.body.appendChild(element);
+        console.warn('[Call] Web Audio API not available, using element volume:', err);
       }
     }
   });

@@ -41,8 +41,13 @@ export function ActiveCallOverlay() {
       lastRoomId.current = callState.room.id;
     }
     // When call transitions to idle and we had a room, show suggestions
+    // Skip if call was too short (<10s) — no meaningful content to analyze
     if (callState?.status === 'idle' && lastRoomId.current && !showSuggestions) {
-      setShowSuggestions(true);
+      if ((callState?.durationSeconds ?? 0) >= 10) {
+        setShowSuggestions(true);
+      } else {
+        lastRoomId.current = null;
+      }
     }
   }, [callState?.status, callState?.room?.id]);
 
