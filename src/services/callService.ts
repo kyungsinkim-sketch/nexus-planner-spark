@@ -143,7 +143,7 @@ let currentState: CallState = {
   durationSeconds: 0,
   error: null,
   isMuted: false,
-  isSpeakerOn: true,
+  isSpeakerOn: false, // Default: earpiece mode (low volume)
   remoteParticipantName: null,
 };
 
@@ -276,6 +276,8 @@ async function connectToRoom(wsUrl: string, token: string): Promise<void> {
   room.on(RoomEvent.TrackSubscribed, (track: RemoteTrack, pub: RemoteTrackPublication, participant: RemoteParticipant) => {
     if (track.kind === Track.Kind.Audio) {
       const element = track.attach();
+      // Default to earpiece mode (low volume)
+      element.volume = currentState.isSpeakerOn ? 1.0 : 0.15;
       document.body.appendChild(element);
       element.dataset.livekitAudio = participant.identity;
     }
@@ -381,75 +383,66 @@ export function toggleMute(): boolean {
 }
 
 export function toggleSpeaker(): boolean {
-  // For mobile: would switch audio output
-  // For web: toggle remote audio elements
-  const newState = !currentState.isSpeakerOn;
+  const newSpeakerOn = !currentState.isSpeakerOn;
+
+  // Control volume on all remote audio elements
   document.querySelectorAll('[data-livekit-audio]').forEach(el => {
-    (el as HTMLAudioElement).muted = !newState;
+    const audio = el as HTMLAudioElement;
+    if (newSpeakerOn) {
+      // Speaker mode: full volume
+      audio.volume = 1.0;
+      audio.muted = false;
+    } else {
+      // Earpiece mode: low volume (simulated — true earpiece needs native API)
+      audio.volume = 0.15;
+      audio.muted = false;
+    }
   });
-  setState({ isSpeakerOn: newState });
-  return newState;
+
+  setState({ isSpeakerOn: newSpeakerOn });
+  return newSpeakerOn;
 }
 
 // ─── End Call ────────────────────────────────────────
 
 export async function endCall(): Promise<void> {
-  setState({ status: 'ending' });
-  await handleCallEnd();
-}
+  console.log('[Call] endCall() called, current status:', currentState.status);
 
-async function handleCallEnd(): Promise<void> {
-  // Stop ringback tone
+  // Immediately disconnect and reset UI
   stopRingbackTone();
 
-  // Stop timer
   if (durationTimer) {
     clearInterval(durationTimer);
     durationTimer = null;
   }
 
-  // Stop recording and get blob
-  let audioBase64: string | null = null;
-
-  if (mediaRecorder && mediaRecorder.state !== 'inactive') {
-    await new Promise<void>(resolve => {
-      mediaRecorder!.onstop = () => resolve();
-      mediaRecorder!.stop();
-    });
-
-    if (audioChunks.length > 0) {
-      const blob = new Blob(audioChunks, { type: 'audio/webm' });
-      // Convert to base64
-      const buffer = await blob.arrayBuffer();
-      audioBase64 = btoa(String.fromCharCode(...new Uint8Array(buffer)));
-    }
-  }
-
-  // Disconnect from LiveKit
-  if (currentRoom) {
-    currentRoom.disconnect();
-    currentRoom = null;
+  // Disconnect from LiveKit immediately
+  const roomRef = currentRoom;
+  currentRoom = null;
+  if (roomRef) {
+    try { roomRef.disconnect(); } catch {}
   }
 
   // Clean up audio elements
   document.querySelectorAll('[data-livekit-audio]').forEach(el => el.remove());
 
-  // Send end signal + audio to backend
-  if (currentState.room) {
-    setState({ status: 'processing' });
+  // Save room info before resetting
+  const roomInfo = currentState.room;
+
+  // Stop recording (with timeout so it doesn't hang)
+  let audioBase64: string | null = null;
+  if (mediaRecorder && mediaRecorder.state !== 'inactive') {
     try {
-      await supabase.functions.invoke('call-room-end', {
-        body: {
-          roomId: currentState.room.id,
-          audioBlob: audioBase64,
-        },
-      });
+      audioBase64 = await Promise.race([
+        stopAndCollectRecording(),
+        new Promise<null>(resolve => setTimeout(() => resolve(null), 3000)), // 3s timeout
+      ]);
     } catch (err) {
-      console.error('[Call] End call API failed:', err);
+      console.warn('[Call] Recording collection failed:', err);
     }
   }
 
-  // Reset state
+  // Reset state immediately so UI closes
   mediaRecorder = null;
   audioChunks = [];
   callStartTime = null;
@@ -465,6 +458,65 @@ async function handleCallEnd(): Promise<void> {
     remoteParticipantName: null,
     error: null,
   });
+
+  console.log('[Call] UI reset to idle');
+
+  // Send end signal to backend (non-blocking, after UI reset)
+  if (roomInfo) {
+    try {
+      supabase.functions.invoke('call-room-end', {
+        body: {
+          roomId: roomInfo.id,
+          audioBlob: audioBase64,
+        },
+      }).then(() => {
+        console.log('[Call] End signal sent to backend');
+      }).catch(err => {
+        console.error('[Call] End call API failed:', err);
+      });
+    } catch {}
+  }
+}
+
+async function stopAndCollectRecording(): Promise<string | null> {
+  return new Promise((resolve) => {
+    if (!mediaRecorder || mediaRecorder.state === 'inactive') {
+      resolve(null);
+      return;
+    }
+
+    mediaRecorder.onstop = async () => {
+      try {
+        if (audioChunks.length > 0) {
+          const blob = new Blob(audioChunks, { type: 'audio/webm' });
+          // Only encode if under 5MB to avoid blocking
+          if (blob.size < 5 * 1024 * 1024) {
+            const buffer = await blob.arrayBuffer();
+            const bytes = new Uint8Array(buffer);
+            let binary = '';
+            for (let i = 0; i < bytes.length; i++) {
+              binary += String.fromCharCode(bytes[i]);
+            }
+            resolve(btoa(binary));
+          } else {
+            console.warn('[Call] Recording too large for base64:', blob.size);
+            resolve(null);
+          }
+        } else {
+          resolve(null);
+        }
+      } catch {
+        resolve(null);
+      }
+    };
+
+    mediaRecorder.stop();
+  });
+}
+
+// handleCallEnd is now only called by Disconnected event during active call
+async function handleCallEnd(): Promise<void> {
+  await endCall();
 }
 
 // ─── Duration Timer ──────────────────────────────────

@@ -163,16 +163,21 @@ export function ActiveCallOverlay() {
       {/* Controls */}
       <div className="flex items-center gap-8">
         {/* Mute */}
-        <button
-          onClick={() => toggleMute()}
-          className={`w-16 h-16 rounded-full flex items-center justify-center transition-all ${
-            callState.isMuted
-              ? 'bg-red-500/30 text-red-400 ring-2 ring-red-500/50'
-              : 'bg-white/10 text-white hover:bg-white/20'
-          }`}
-        >
-          {callState.isMuted ? <MicOff className="w-7 h-7" /> : <Mic className="w-7 h-7" />}
-        </button>
+        <div className="flex flex-col items-center gap-1">
+          <button
+            onClick={() => toggleMute()}
+            className={`w-16 h-16 rounded-full flex items-center justify-center transition-all ${
+              callState.isMuted
+                ? 'bg-red-500/30 text-red-400 ring-2 ring-red-500/50'
+                : 'bg-white/10 text-white hover:bg-white/20'
+            }`}
+          >
+            {callState.isMuted ? <MicOff className="w-7 h-7" /> : <Mic className="w-7 h-7" />}
+          </button>
+          <span className="text-[10px] text-white/50">
+            {callState.isMuted ? '음소거 중' : '음소거'}
+          </span>
+        </div>
 
         {/* End call */}
         <button
@@ -182,17 +187,22 @@ export function ActiveCallOverlay() {
           <PhoneOff className="w-8 h-8 text-white" />
         </button>
 
-        {/* Speaker */}
-        <button
-          onClick={() => toggleSpeaker()}
-          className={`w-16 h-16 rounded-full flex items-center justify-center transition-all ${
-            !callState.isSpeakerOn
-              ? 'bg-red-500/30 text-red-400 ring-2 ring-red-500/50'
-              : 'bg-white/10 text-white hover:bg-white/20'
-          }`}
-        >
-          {callState.isSpeakerOn ? <Volume2 className="w-7 h-7" /> : <VolumeX className="w-7 h-7" />}
-        </button>
+        {/* Speaker toggle */}
+        <div className="flex flex-col items-center gap-1">
+          <button
+            onClick={() => toggleSpeaker()}
+            className={`w-16 h-16 rounded-full flex items-center justify-center transition-all ${
+              callState.isSpeakerOn
+                ? 'bg-blue-500/30 text-blue-400 ring-2 ring-blue-500/50'
+                : 'bg-white/10 text-white hover:bg-white/20'
+            }`}
+          >
+            {callState.isSpeakerOn ? <Volume2 className="w-7 h-7" /> : <VolumeX className="w-7 h-7" />}
+          </button>
+          <span className="text-[10px] text-white/50">
+            {callState.isSpeakerOn ? '스피커' : '수화기'}
+          </span>
+        </div>
       </div>
 
       {/* Room info (small) */}
