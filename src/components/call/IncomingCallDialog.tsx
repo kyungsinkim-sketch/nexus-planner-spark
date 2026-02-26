@@ -74,13 +74,6 @@ export function IncomingCallDialog() {
       if (dismissedRoomIds.current.has(room.id)) return;
       if (incoming?.roomId === room.id) return;
 
-      // Skip if room is older than 60 seconds
-      const roomAge = Date.now() - new Date(room.created_at).getTime();
-      if (roomAge > 60000) {
-        dismissedRoomIds.current.add(room.id);
-        return;
-      }
-
       // Don't show if I created this room
       if (room.created_by === currentUser.id) return;
 
