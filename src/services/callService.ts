@@ -277,11 +277,7 @@ async function connectToRoom(wsUrl: string, token: string): Promise<void> {
 
   room.on(RoomEvent.TrackSubscribed, (track: RemoteTrack, pub: RemoteTrackPublication, participant: RemoteParticipant) => {
     if (track.kind === Track.Kind.Audio) {
-      const element = track.attach();
-      element.dataset.livekitAudio = participant.identity;
-      document.body.appendChild(element);
-
-      // Route through Web Audio API for volume control (mobile-compatible)
+      // Route through Web Audio API for volume control
       try {
         if (!audioOutputContext) {
           audioOutputContext = new AudioContext();
@@ -289,11 +285,23 @@ async function connectToRoom(wsUrl: string, token: string): Promise<void> {
           audioOutputGain.gain.value = currentState.isSpeakerOn ? 1.0 : 0.12;
           audioOutputGain.connect(audioOutputContext.destination);
         }
-        const source = audioOutputContext.createMediaElementSource(element);
+        // Resume context (required after user gesture on mobile)
+        if (audioOutputContext.state === 'suspended') {
+          audioOutputContext.resume();
+        }
+
+        // Get MediaStream directly from track (not via element)
+        const mediaStream = new MediaStream([track.mediaStreamTrack]);
+        const source = audioOutputContext.createMediaStreamSource(mediaStream);
         source.connect(audioOutputGain!);
-        console.log('[Call] Audio routed through gain node, volume:', audioOutputGain!.gain.value);
+
+        console.log('[Call] ✅ Audio routed via MediaStream → GainNode, gain:', audioOutputGain!.gain.value);
       } catch (err) {
-        console.warn('[Call] Web Audio routing failed, using direct playback:', err);
+        // Fallback: attach to audio element directly
+        console.warn('[Call] Web Audio failed, using fallback:', err);
+        const element = track.attach();
+        element.dataset.livekitAudio = participant.identity;
+        document.body.appendChild(element);
       }
     }
   });
@@ -399,18 +407,27 @@ export function toggleMute(): boolean {
 
 export function toggleSpeaker(): boolean {
   const newSpeakerOn = !currentState.isSpeakerOn;
-  const targetVolume = newSpeakerOn ? 1.0 : 0.12;
+  const targetVolume = newSpeakerOn ? 1.0 : 0.1;
 
-  // Web Audio API gain control (works on mobile)
+  console.log('[Call] 🔊 Speaker toggle:', newSpeakerOn ? 'SPEAKER' : 'EARPIECE', 'target gain:', targetVolume);
+
+  // Web Audio API gain control
   if (audioOutputGain && audioOutputContext) {
-    audioOutputGain.gain.setTargetAtTime(targetVolume, audioOutputContext.currentTime, 0.05);
-    console.log('[Call] Speaker toggle:', newSpeakerOn ? 'SPEAKER' : 'EARPIECE', 'volume:', targetVolume);
+    if (audioOutputContext.state === 'suspended') {
+      audioOutputContext.resume();
+    }
+    // Immediate change + smooth ramp
+    audioOutputGain.gain.cancelScheduledValues(audioOutputContext.currentTime);
+    audioOutputGain.gain.setValueAtTime(audioOutputGain.gain.value, audioOutputContext.currentTime);
+    audioOutputGain.gain.linearRampToValueAtTime(targetVolume, audioOutputContext.currentTime + 0.1);
+    console.log('[Call] GainNode updated:', audioOutputGain.gain.value, '→', targetVolume);
+  } else {
+    console.warn('[Call] No audioOutputGain available');
   }
 
-  // Also try direct volume as fallback
+  // Fallback: direct element volume
   document.querySelectorAll('[data-livekit-audio]').forEach(el => {
-    const audio = el as HTMLAudioElement;
-    audio.volume = targetVolume;
+    (el as HTMLAudioElement).volume = targetVolume;
   });
 
   setState({ isSpeakerOn: newSpeakerOn });
