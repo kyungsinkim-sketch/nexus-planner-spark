@@ -39,6 +39,8 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import type { WidgetDataContext } from '@/types/widget';
 
 // Lazy load mobile components — only loaded on mobile
+const CosmosHome = lazy(() => import('@/components/mobile/CosmosHome'));
+const ConstellationMap = lazy(() => import('@/components/mobile/ConstellationMap'));
 const MobileProjectView = lazy(() => import('@/components/mobile/MobileProjectView'));
 const MobileChatView = lazy(() => import('@/components/mobile/MobileChatView'));
 const MobileCalendarView = lazy(() => import('@/components/mobile/MobileCalendarView'));
@@ -88,7 +90,11 @@ export function TabLayout() {
               <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
             </div>
           }>
-            {mobileView === 'chat' ? (
+            {mobileView === 'home' ? (
+              <CosmosHome />
+            ) : mobileView === 'constellation' ? (
+              <ConstellationMap />
+            ) : mobileView === 'chat' ? (
               <MobileChatView />
             ) : mobileView === 'calendar' ? (
               <MobileCalendarView />
