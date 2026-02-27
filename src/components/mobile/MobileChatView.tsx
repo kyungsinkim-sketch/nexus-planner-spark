@@ -21,15 +21,22 @@ export function MobileChatView() {
   return (
     <div className="flex flex-col h-full bg-background">
       {/* Header */}
-      <div className="shrink-0 px-4 py-3 flex items-center gap-3 border-b bg-background">
+      <div
+        className="shrink-0 px-4 py-3 flex items-center gap-3"
+        style={{
+          background: 'hsla(240, 10%, 3%, 0.9)',
+          backdropFilter: 'blur(24px)',
+          borderBottom: '1px solid hsla(43, 74%, 55%, 0.08)',
+        }}
+      >
         <button
-          onClick={() => setMobileView('projects')}
-          className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-accent transition-colors"
+          onClick={() => setMobileView('home')}
+          className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/5 transition-colors"
         >
-          <ArrowLeft className="w-5 h-5" />
+          <ArrowLeft className="w-5 h-5 text-[hsl(var(--foreground))]" />
         </button>
-        <MessageSquare className="w-4 h-4 text-primary" />
-        <h1 className="text-sm font-semibold">
+        <MessageSquare className="w-4 h-4 text-[hsl(43,74%,55%)]" />
+        <h1 className="text-sm font-semibold text-[hsl(var(--foreground))]">
           {language === 'ko' ? '채팅' : 'Chat'}
         </h1>
       </div>
