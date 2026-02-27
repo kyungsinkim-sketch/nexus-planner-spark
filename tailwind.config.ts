@@ -133,6 +133,10 @@ export default {
           "0%": { transform: "translateX(-100%)" },
           "100%": { transform: "translateX(100%)" },
         },
+        "slide-in-bottom": {
+          from: { opacity: "0", transform: "translateY(100%)" },
+          to: { opacity: "1", transform: "translateY(0)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -147,6 +151,7 @@ export default {
         "pulse-soft": "pulse-soft 2s ease-in-out infinite",
         "bounce-soft": "bounce-soft 1s ease-in-out infinite",
         "shimmer": "shimmer 2s infinite",
+        "slide-in-bottom": "slide-in-bottom 0.3s ease-out",
         "enter": "fade-in 0.3s ease-out, scale-in 0.2s ease-out",
         "exit": "fade-out 0.3s ease-out, scale-out 0.2s ease-out",
       },
