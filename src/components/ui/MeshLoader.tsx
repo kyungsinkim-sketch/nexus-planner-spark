@@ -1,7 +1,7 @@
 /**
- * MeshLoader — Animated mesh/particle loading indicator.
- * Inspired by ark.works "ownership is not a feature" background.
- * Canvas-based floating particles with connecting lines.
+ * MeshLoader — Gold stars/dots loading animation.
+ * Uses the Re-Be.io loading-stars.jpg image.
+ * Each golden particle fades in and out sequentially for an elegant loading effect.
  */
 
 import { useRef, useEffect } from 'react';
@@ -11,13 +11,20 @@ interface MeshLoaderProps {
   message?: string;
 }
 
-interface Particle {
-  x: number;
-  y: number;
-  vx: number;
-  vy: number;
-  r: number;
-}
+// Approximate positions of the 10 gold dots/stars from the image (normalized 0-1)
+// Arranged roughly in a circle pattern
+const PARTICLES = [
+  { x: 0.42, y: 0.22, scale: 0.7, isStar: false },  // top-center-left
+  { x: 0.58, y: 0.20, scale: 0.65, isStar: false }, // top-center-right
+  { x: 0.30, y: 0.32, scale: 0.75, isStar: false }, // upper-left
+  { x: 0.70, y: 0.30, scale: 0.7, isStar: false },  // upper-right
+  { x: 0.22, y: 0.48, scale: 0.8, isStar: true },   // mid-left (star)
+  { x: 0.78, y: 0.46, scale: 0.75, isStar: true },  // mid-right (star)
+  { x: 0.25, y: 0.62, scale: 0.7, isStar: false },  // lower-left
+  { x: 0.75, y: 0.60, scale: 0.7, isStar: false },  // lower-right
+  { x: 0.40, y: 0.74, scale: 0.65, isStar: false }, // bottom-left
+  { x: 0.60, y: 0.72, scale: 0.8, isStar: false },  // bottom-right
+];
 
 export function MeshLoader({ size = 200, message }: MeshLoaderProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -34,58 +41,80 @@ export function MeshLoader({ size = 200, message }: MeshLoaderProps) {
     canvas.height = size * dpr;
     ctx.scale(dpr, dpr);
 
-    // Create particles
-    const count = 30;
-    const particles: Particle[] = [];
-    for (let i = 0; i < count; i++) {
-      particles.push({
-        x: Math.random() * size,
-        y: Math.random() * size,
-        vx: (Math.random() - 0.5) * 0.6,
-        vy: (Math.random() - 0.5) * 0.6,
-        r: Math.random() * 1.5 + 0.5,
-      });
+    const count = PARTICLES.length;
+    // Each particle has its own phase offset for staggered animation
+    const phases = PARTICLES.map((_, i) => (i / count) * Math.PI * 2);
+    let animId: number;
+    let startTime = performance.now();
+
+    function drawStar(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number, alpha: number) {
+      const spikes = 4;
+      const outerR = r;
+      const innerR = r * 0.4;
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      ctx.fillStyle = '#D4A843';
+      ctx.shadowColor = '#D4A843';
+      ctx.shadowBlur = r * 2;
+      ctx.beginPath();
+      for (let i = 0; i < spikes * 2; i++) {
+        const radius = i % 2 === 0 ? outerR : innerR;
+        const angle = (i * Math.PI) / spikes - Math.PI / 2;
+        const px = cx + Math.cos(angle) * radius;
+        const py = cy + Math.sin(angle) * radius;
+        if (i === 0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
+      }
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
     }
 
-    const connectionDist = size * 0.35;
-    let animId: number;
+    function drawDot(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number, alpha: number) {
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      // Gold gradient dot
+      const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+      grad.addColorStop(0, '#F0D060');
+      grad.addColorStop(0.5, '#D4A843');
+      grad.addColorStop(1, 'rgba(180, 140, 50, 0)');
+      ctx.fillStyle = grad;
+      ctx.shadowColor = '#D4A843';
+      ctx.shadowBlur = r * 1.5;
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
 
     function draw() {
       if (!ctx) return;
       ctx.clearRect(0, 0, size, size);
 
-      // Update positions
-      for (const p of particles) {
-        p.x += p.vx;
-        p.y += p.vy;
-        if (p.x < 0 || p.x > size) p.vx *= -1;
-        if (p.y < 0 || p.y > size) p.vy *= -1;
-      }
+      const elapsed = (performance.now() - startTime) / 1000;
+      // Cycle speed: each full cycle ~3 seconds
+      const speed = 1.8;
 
-      // Draw connections
-      for (let i = 0; i < particles.length; i++) {
-        for (let j = i + 1; j < particles.length; j++) {
-          const dx = particles[i].x - particles[j].x;
-          const dy = particles[i].y - particles[j].y;
-          const dist = Math.sqrt(dx * dx + dy * dy);
-          if (dist < connectionDist) {
-            const alpha = (1 - dist / connectionDist) * 0.25;
-            ctx.strokeStyle = `rgba(139, 92, 246, ${alpha})`;
-            ctx.lineWidth = 0.5;
-            ctx.beginPath();
-            ctx.moveTo(particles[i].x, particles[i].y);
-            ctx.lineTo(particles[j].x, particles[j].y);
-            ctx.stroke();
-          }
+      for (let i = 0; i < count; i++) {
+        const p = PARTICLES[i];
+        // Sine wave for fade in/out, offset by phase
+        const raw = Math.sin(elapsed * speed + phases[i]);
+        // Map from [-1,1] to [0,1], then apply easing for more dramatic appear/disappear
+        const alpha = Math.max(0, raw) ** 0.8;
+
+        if (alpha < 0.01) continue;
+
+        const cx = p.x * size;
+        const cy = p.y * size;
+        const baseR = size * 0.03 * p.scale;
+        // Slight scale pulse with alpha
+        const r = baseR * (0.7 + 0.3 * alpha);
+
+        if (p.isStar) {
+          drawStar(ctx, cx, cy, r * 1.8, alpha);
+        } else {
+          drawDot(ctx, cx, cy, r, alpha);
         }
-      }
-
-      // Draw particles
-      for (const p of particles) {
-        ctx.fillStyle = 'rgba(139, 92, 246, 0.6)';
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-        ctx.fill();
       }
 
       animId = requestAnimationFrame(draw);
@@ -100,10 +129,9 @@ export function MeshLoader({ size = 200, message }: MeshLoaderProps) {
       <canvas
         ref={canvasRef}
         style={{ width: size, height: size }}
-        className="opacity-80"
       />
       {message && (
-        <p className="text-muted-foreground text-sm animate-pulse">{message}</p>
+        <p className="text-amber-400/70 text-sm animate-pulse">{message}</p>
       )}
     </div>
   );

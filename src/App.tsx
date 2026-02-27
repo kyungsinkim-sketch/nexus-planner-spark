@@ -50,7 +50,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="min-h-screen flex items-center justify-center bg-black">
         <MeshLoader size={140} />
       </div>
     );
@@ -170,7 +170,7 @@ const App = () => {
 
   if (isInitializing && isSupabaseConfigured()) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="min-h-screen flex items-center justify-center bg-black">
         <MeshLoader size={180} message="Loading Re-Be.io..." />
       </div>
     );
@@ -183,7 +183,7 @@ const App = () => {
           <Toaster />
           <Sonner />
           <Suspense fallback={
-            <div className="min-h-screen flex items-center justify-center bg-background">
+            <div className="min-h-screen flex items-center justify-center bg-black">
               <MeshLoader size={140} />
             </div>
           }>
