@@ -132,13 +132,13 @@ export function CallStartDialog({
     setLoading(true);
 
     try {
-      // For MVP: create call with first selected user (1:1)
-      // TODO: Group call support
-      const targetId = selectedUserIds[0];
-      const targetName = selectableUsers.find(u => u.id === targetId)?.name;
-      const title = callTitle || (mediaType === 'video' ? '화상 통화' : '음성 통화');
+      // Support 1:1 and group calls
+      const targetNames = selectedUserIds.map(id => selectableUsers.find(u => u.id === id)?.name).filter(Boolean);
+      const title = callTitle || (selectedUserIds.length === 1
+        ? `${mediaType === 'video' ? '화상' : '음성'} 통화`
+        : `${mediaType === 'video' ? '화상' : '음성'} 통화 — ${targetNames.join(', ')}`);
 
-      await createCall(targetId, projectId, title, mediaType === 'video');
+      await createCall(selectedUserIds.length === 1 ? selectedUserIds[0] : selectedUserIds, projectId, title, mediaType === 'video');
       onOpenChange(false);
     } catch (err: any) {
       console.error('[CallStartDialog] Call failed:', err);

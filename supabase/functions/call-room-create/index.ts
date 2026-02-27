@@ -80,27 +80,32 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { targetUserId, projectId, title } = await req.json();
+    const { targetUserId, targetUserIds, projectId, title, isVideo } = await req.json();
 
-    if (!targetUserId) {
-      return new Response(JSON.stringify({ error: 'targetUserId required' }), {
+    // Support single targetUserId or array targetUserIds
+    const targets: string[] = targetUserIds || (targetUserId ? [targetUserId] : []);
+    if (targets.length === 0) {
+      return new Response(JSON.stringify({ error: 'targetUserId or targetUserIds required' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
     // Get caller and target user info
+    const allUserIds = [user.id, ...targets];
     const { data: users } = await supabase
       .from('users')
       .select('id, name')
-      .in('id', [user.id, targetUserId]);
+      .in('id', allUserIds);
 
     const callerName = users?.find(u => u.id === user.id)?.name || 'Unknown';
-    const targetName = users?.find(u => u.id === targetUserId)?.name || 'Unknown';
+    const targetNames = targets.map(id => users?.find(u => u.id === id)?.name || 'Unknown');
 
     // Create room
     const roomName = generateRoomName();
-    const callTitle = title || `${callerName} ↔ ${targetName}`;
+    const callTitle = title || (targets.length === 1
+      ? `${callerName} ↔ ${targetNames[0]}`
+      : `${callerName} 외 ${targets.length}명`);
 
     const { data: room, error: roomError } = await supabase
       .from('call_rooms')
@@ -111,37 +116,44 @@ Deno.serve(async (req) => {
         title: callTitle,
         recording_type: 'online_meeting',
         status: 'waiting',
+        is_video: isVideo || false,
       })
       .select()
       .single();
 
     if (roomError) throw roomError;
 
-    // Add participants
-    await supabase.from('call_participants').insert([
+    // Add participants (host + all targets)
+    const participantRows = [
       { room_id: room.id, user_id: user.id, role: 'host' },
-      { room_id: room.id, user_id: targetUserId, role: 'participant' },
-    ]);
+      ...targets.map(id => ({ room_id: room.id, user_id: id, role: 'participant' })),
+    ];
+    await supabase.from('call_participants').insert(participantRows);
 
-    // Generate tokens
+    // Generate caller token
     const callerToken = await createToken(roomName, user.id, callerName);
-    const targetToken = await createToken(roomName, targetUserId, targetName);
 
-    // Send push notification to target (non-blocking)
-    supabase.from('notifications').insert({
-      user_id: targetUserId,
-      type: 'call_invite',
-      title: `📞 ${callerName}님의 통화`,
-      message: callTitle,
-      data: {
-        roomId: room.id,
-        roomName,
-        token: targetToken,
-        wsUrl: LIVEKIT_WS_URL,
-        callerId: user.id,
-        callerName,
-      },
-    }).then(() => {});
+    // Send push notifications to all targets (non-blocking)
+    for (let i = 0; i < targets.length; i++) {
+      const targetId = targets[i];
+      const tName = targetNames[i];
+      const targetToken = await createToken(roomName, targetId, tName);
+      supabase.from('notifications').insert({
+        user_id: targetId,
+        type: 'call_invite',
+        title: `${isVideo ? '📹' : '📞'} ${callerName}님의 ${isVideo ? '화상' : '음성'} 통화`,
+        message: callTitle,
+        data: {
+          roomId: room.id,
+          roomName,
+          token: targetToken,
+          wsUrl: LIVEKIT_WS_URL,
+          callerId: user.id,
+          callerName,
+          isVideo: isVideo || false,
+        },
+      }).then(() => {});
+    }
 
     return new Response(JSON.stringify({
       room: {
@@ -149,10 +161,10 @@ Deno.serve(async (req) => {
         roomName,
         title: callTitle,
         status: 'waiting',
+        isVideo: isVideo || false,
       },
       token: callerToken,
       wsUrl: LIVEKIT_WS_URL,
-      targetToken, // For development/testing — remove in production
     }), {
       status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

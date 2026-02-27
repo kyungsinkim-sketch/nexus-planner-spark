@@ -55,8 +55,8 @@ function VideoRenderer({ track, className, mirror }: { track: any; className?: s
   );
 }
 
-// Local camera preview (picture-in-picture)
-function LocalVideoPreview({ callState }: { callState: CallState }) {
+// Local camera preview (PIP or grid mode)
+function LocalVideoPreview({ callState, isGrid }: { callState: CallState; isGrid?: boolean }) {
   const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
@@ -77,6 +77,18 @@ function LocalVideoPreview({ callState }: { callState: CallState }) {
   }, [callState.isCameraOn]);
 
   if (!callState.isCameraOn) return null;
+
+  if (isGrid) {
+    return (
+      <video
+        ref={videoRef}
+        autoPlay
+        playsInline
+        muted
+        className="w-full h-full object-cover scale-x-[-1]"
+      />
+    );
+  }
 
   return (
     <video
@@ -181,45 +193,110 @@ export function ActiveCallOverlay() {
       {/* Active call */}
       {status === 'active' && (
         <>
-          {/* Remote video (full-screen) or avatar */}
-          {callState.remoteVideoTrack ? (
-            <div className="absolute inset-0 z-0">
-              <VideoRenderer
-                track={callState.remoteVideoTrack}
-                className="w-full h-full object-cover"
-              />
-              {/* Dark gradient overlay at bottom for controls */}
-              <div className="absolute inset-x-0 bottom-0 h-48 bg-gradient-to-t from-gray-950/90 to-transparent" />
-              <div className="absolute inset-x-0 top-0 h-20 bg-gradient-to-b from-gray-950/60 to-transparent" />
-            </div>
-          ) : (
-            <div className="flex flex-col items-center gap-3 mb-6 z-10">
-              <div className="w-24 h-24 rounded-full bg-blue-500/20 flex items-center justify-center">
-                <UserIcon className="w-12 h-12 text-blue-400" />
-              </div>
-              <p className="text-white text-lg font-medium">
-                {callState.remoteParticipantName || '대기 중...'}
-              </p>
-            </div>
-          )}
+          {/* Video grid or audio-only UI */}
+          {(() => {
+            const videoParticipants = callState.remoteParticipants.filter(p => p.videoTrack);
+            const hasAnyVideo = videoParticipants.length > 0 || callState.isCameraOn;
+            const totalVideoFeeds = videoParticipants.length + (callState.isCameraOn ? 1 : 0);
 
-          {/* Local camera preview (picture-in-picture) */}
-          <LocalVideoPreview callState={callState} />
+            if (hasAnyVideo) {
+              // Video call mode — grid layout
+              const gridClass = totalVideoFeeds <= 1
+                ? 'grid-cols-1'
+                : totalVideoFeeds <= 2
+                ? 'grid-cols-1 grid-rows-2'
+                : totalVideoFeeds <= 4
+                ? 'grid-cols-2 grid-rows-2'
+                : 'grid-cols-3 grid-rows-2';
 
-          {/* Duration + name overlay (when video) */}
-          <div className={`z-10 flex flex-col items-center ${callState.remoteVideoTrack ? 'absolute top-6' : ''}`}>
-            {callState.remoteVideoTrack && (
+              return (
+                <>
+                  <div className={`absolute inset-0 z-0 grid ${gridClass} gap-1 p-1`}>
+                    {/* Remote video feeds */}
+                    {videoParticipants.map(p => (
+                      <div key={p.identity} className="relative overflow-hidden rounded-lg bg-gray-900">
+                        <VideoRenderer track={p.videoTrack!} className="w-full h-full object-cover" />
+                        <div className="absolute bottom-2 left-2 bg-black/50 px-2 py-0.5 rounded text-xs text-white">
+                          {p.name}
+                        </div>
+                      </div>
+                    ))}
+                    {/* Local video (larger in grid, not PIP) */}
+                    {callState.isCameraOn && (
+                      <div className="relative overflow-hidden rounded-lg bg-gray-900">
+                        <LocalVideoPreview callState={callState} isGrid />
+                        <div className="absolute bottom-2 left-2 bg-black/50 px-2 py-0.5 rounded text-xs text-white">나</div>
+                      </div>
+                    )}
+                    {/* Audio-only remote participants (no video) */}
+                    {callState.remoteParticipants.filter(p => !p.videoTrack).map(p => (
+                      <div key={p.identity} className="relative overflow-hidden rounded-lg bg-gray-800 flex items-center justify-center">
+                        <div className="w-16 h-16 rounded-full bg-blue-500/20 flex items-center justify-center">
+                          <UserIcon className="w-8 h-8 text-blue-400" />
+                        </div>
+                        <div className="absolute bottom-2 left-2 bg-black/50 px-2 py-0.5 rounded text-xs text-white">
+                          {p.name}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  {/* Gradient overlays */}
+                  <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-gray-950/90 to-transparent z-[1]" />
+                  <div className="absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-gray-950/60 to-transparent z-[1]" />
+
+                  {/* PIP local video when only 1 remote video (1:1 call) */}
+                  {videoParticipants.length === 1 && callState.isCameraOn && totalVideoFeeds <= 2 && (
+                    <LocalVideoPreview callState={callState} />
+                  )}
+                </>
+              );
+            }
+
+            // Audio-only mode
+            return (
+              <>
+                {callState.remoteParticipants.length <= 1 ? (
+                  <div className="flex flex-col items-center gap-3 mb-6 z-10">
+                    <div className="w-24 h-24 rounded-full bg-blue-500/20 flex items-center justify-center">
+                      <UserIcon className="w-12 h-12 text-blue-400" />
+                    </div>
+                    <p className="text-white text-lg font-medium">
+                      {callState.remoteParticipantName || '대기 중...'}
+                    </p>
+                  </div>
+                ) : (
+                  /* Multi-party audio: show avatars */
+                  <div className="flex flex-wrap items-center justify-center gap-4 mb-6 z-10">
+                    {callState.remoteParticipants.map(p => (
+                      <div key={p.identity} className="flex flex-col items-center gap-1">
+                        <div className="w-16 h-16 rounded-full bg-blue-500/20 flex items-center justify-center">
+                          <UserIcon className="w-8 h-8 text-blue-400" />
+                        </div>
+                        <span className="text-white text-xs">{p.name}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
+            );
+          })()}
+
+          {/* Duration overlay */}
+          <div className={`z-10 flex flex-col items-center ${callState.remoteParticipants.some(p => p.videoTrack) ? 'absolute top-4' : ''}`}>
+            {callState.remoteParticipants.some(p => p.videoTrack) && callState.remoteParticipants.length === 1 && (
               <p className="text-white text-sm font-medium mb-1">
                 {callState.remoteParticipantName || ''}
               </p>
             )}
-            <div className={`font-mono text-white/90 tabular-nums ${callState.remoteVideoTrack ? 'text-lg' : 'text-5xl mb-8'}`}>
+            <div className={`font-mono text-white/90 tabular-nums ${
+              callState.remoteParticipants.some(p => p.videoTrack) ? 'text-lg' : 'text-5xl mb-8'
+            }`}>
               {formatDuration(callState.durationSeconds)}
             </div>
           </div>
 
-          {/* Waveform (audio-only) */}
-          {!callState.remoteVideoTrack && (
+          {/* Waveform (audio-only, no video) */}
+          {!callState.remoteParticipants.some(p => p.videoTrack) && !callState.isCameraOn && (
             <div className="flex items-center gap-1.5 h-10 mb-12 z-10">
               {[...Array(7)].map((_, i) => (
                 <div

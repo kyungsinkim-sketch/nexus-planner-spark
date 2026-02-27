@@ -6,11 +6,11 @@
  */
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Phone, PhoneOff, User as UserIcon, Loader2 } from 'lucide-react';
+import { Phone, PhoneOff, User as UserIcon, Loader2, Video } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { isSupabaseConfigured } from '@/lib/supabase';
 import { useAppStore } from '@/stores/appStore';
-import { joinCall, getCallState } from '@/services/callService';
+import { joinCall, getCallState, toggleCamera } from '@/services/callService';
 
 interface IncomingCall {
   roomId: string;
@@ -18,6 +18,7 @@ interface IncomingCall {
   title: string;
   callerId: string;
   callerName: string;
+  isVideo: boolean;
 }
 
 export function IncomingCallDialog() {
@@ -56,7 +57,7 @@ export function IncomingCallDialog() {
       // Step 2: Find waiting/active rooms from those
       const { data: activeRooms, error: rErr } = await supabase
         .from('call_rooms')
-        .select('id, title, livekit_room_name, status, created_by, created_at')
+        .select('id, title, livekit_room_name, status, created_by, created_at, is_video')
         .in('id', roomIds)
         .in('status', ['waiting', 'active'])
         .order('created_at', { ascending: false })
@@ -84,9 +85,10 @@ export function IncomingCallDialog() {
       setIncoming({
         roomId: room.id,
         roomName: room.livekit_room_name,
-        title: room.title || '음성 통화',
+        title: room.title || (room.is_video ? '화상 통화' : '음성 통화'),
         callerId: room.created_by,
         callerName: caller?.name || '알 수 없음',
+        isVideo: room.is_video || false,
       });
 
       // Play ringtone
@@ -147,8 +149,12 @@ export function IncomingCallDialog() {
     stopRingtone();
 
     try {
-      console.log('[IncomingCall] Accepting call, joining room:', incoming.roomId);
+      console.log('[IncomingCall] Accepting call, joining room:', incoming.roomId, 'isVideo:', incoming.isVideo);
       await joinCall(incoming.roomId);
+      // Auto-enable camera for video calls
+      if (incoming.isVideo) {
+        setTimeout(() => toggleCamera(), 500);
+      }
       setIncoming(null);
     } catch (err: any) {
       console.error('[IncomingCall] Join failed:', err);
@@ -173,10 +179,17 @@ export function IncomingCallDialog() {
         {/* Caller info */}
         <div className="flex flex-col items-center gap-4 mb-8">
           <div className="relative">
-            <div className="w-20 h-20 rounded-full bg-green-500/20 flex items-center justify-center">
-              <UserIcon className="w-10 h-10 text-green-400" />
+            <div className={`w-20 h-20 rounded-full flex items-center justify-center ${
+              incoming.isVideo ? 'bg-blue-500/20' : 'bg-green-500/20'
+            }`}>
+              {incoming.isVideo
+                ? <Video className="w-10 h-10 text-blue-400" />
+                : <UserIcon className="w-10 h-10 text-green-400" />
+              }
             </div>
-            <div className="absolute inset-0 w-20 h-20 rounded-full border-2 border-green-400/30 animate-ping" />
+            <div className={`absolute inset-0 w-20 h-20 rounded-full border-2 animate-ping ${
+              incoming.isVideo ? 'border-blue-400/30' : 'border-green-400/30'
+            }`} />
           </div>
 
           <div className="text-center">
@@ -184,7 +197,9 @@ export function IncomingCallDialog() {
             <p className="text-gray-400 text-sm mt-1">{incoming.title}</p>
           </div>
 
-          <p className="text-green-400 text-sm animate-pulse">수신 통화 중...</p>
+          <p className={`text-sm animate-pulse ${incoming.isVideo ? 'text-blue-400' : 'text-green-400'}`}>
+            {incoming.isVideo ? '📹 화상 통화 수신 중...' : '📞 음성 통화 수신 중...'}
+          </p>
         </div>
 
         {/* Accept / Decline buttons */}
@@ -203,10 +218,16 @@ export function IncomingCallDialog() {
             <button
               onClick={handleAccept}
               disabled={joining}
-              className="w-16 h-16 rounded-full bg-green-600 hover:bg-green-500 flex items-center justify-center transition-colors shadow-lg shadow-green-600/30 disabled:opacity-50"
+              className={`w-16 h-16 rounded-full flex items-center justify-center transition-colors shadow-lg disabled:opacity-50 ${
+                incoming.isVideo
+                  ? 'bg-blue-600 hover:bg-blue-500 shadow-blue-600/30'
+                  : 'bg-green-600 hover:bg-green-500 shadow-green-600/30'
+              }`}
             >
               {joining ? (
                 <Loader2 className="w-7 h-7 text-white animate-spin" />
+              ) : incoming.isVideo ? (
+                <Video className="w-7 h-7 text-white" />
               ) : (
                 <Phone className="w-7 h-7 text-white" />
               )}

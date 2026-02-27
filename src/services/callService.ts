@@ -43,6 +43,7 @@ export interface CallState {
   isCameraOn: boolean;
   isVideoCall: boolean;
   remoteParticipantName: string | null;
+  remoteParticipants: Array<{ identity: string; name: string; videoTrack: RemoteTrack | null }>;
   remoteVideoTrack: RemoteTrack | null;
   localVideoTrack: any | null; // LocalTrackPublication
 }
@@ -158,6 +159,7 @@ let currentState: CallState = {
   isCameraOn: false,
   isVideoCall: false,
   remoteParticipantName: null,
+  remoteParticipants: [],
   remoteVideoTrack: null,
   localVideoTrack: null,
 };
@@ -179,16 +181,17 @@ export function getCallState(): CallState {
 
 // ─── Create Call ─────────────────────────────────────
 
-export async function createCall(targetUserId: string, projectId?: string, title?: string, isVideo?: boolean): Promise<void> {
+export async function createCall(targetUserId: string | string[], projectId?: string, title?: string, isVideo?: boolean): Promise<void> {
+  const targetUserIds = Array.isArray(targetUserId) ? targetUserId : [targetUserId];
   try {
     setState({ status: 'creating', error: null, isVideoCall: !!isVideo });
 
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) throw new Error('Not authenticated');
 
-    console.log('[Call] Creating room for target:', targetUserId);
+    console.log('[Call] Creating room for targets:', targetUserIds);
     const response = await supabase.functions.invoke('call-room-create', {
-      body: { targetUserId, projectId, title },
+      body: { targetUserIds, projectId, title, isVideo },
     });
 
     console.log('[Call] Room create response:', response);
@@ -281,17 +284,33 @@ async function connectToRoom(wsUrl: string, token: string): Promise<void> {
   room.on(RoomEvent.ParticipantConnected, (participant: RemoteParticipant) => {
     console.log('[Call] Remote participant connected:', participant.name || participant.identity);
     stopRingbackTone();
-    setState({ remoteParticipantName: participant.name || participant.identity });
+    const updated = [...currentState.remoteParticipants, {
+      identity: participant.identity,
+      name: participant.name || participant.identity,
+      videoTrack: null,
+    }];
+    setState({
+      remoteParticipantName: updated.map(p => p.name).join(', '),
+      remoteParticipants: updated,
+    });
   });
 
-  room.on(RoomEvent.ParticipantDisconnected, () => {
-    setState({ remoteParticipantName: null });
+  room.on(RoomEvent.ParticipantDisconnected, (participant: RemoteParticipant) => {
+    const updated = currentState.remoteParticipants.filter(p => p.identity !== participant.identity);
+    setState({
+      remoteParticipantName: updated.length > 0 ? updated.map(p => p.name).join(', ') : null,
+      remoteParticipants: updated,
+    });
   });
 
   room.on(RoomEvent.TrackSubscribed, (track: RemoteTrack, pub: RemoteTrackPublication, participant: RemoteParticipant) => {
     if (track.kind === Track.Kind.Video) {
-      console.log('[Call] ✅ Remote video track subscribed');
-      setState({ remoteVideoTrack: track });
+      console.log('[Call] ✅ Remote video track subscribed from', participant.identity);
+      // Update participant's video track
+      const updated = currentState.remoteParticipants.map(p =>
+        p.identity === participant.identity ? { ...p, videoTrack: track } : p
+      );
+      setState({ remoteVideoTrack: track, remoteParticipants: updated });
     }
     if (track.kind === Track.Kind.Audio) {
       // Always attach audio element first (ensures playback on all platforms)
@@ -323,7 +342,11 @@ async function connectToRoom(wsUrl: string, token: string): Promise<void> {
 
   room.on(RoomEvent.TrackUnsubscribed, (track: RemoteTrack) => {
     if (track.kind === Track.Kind.Video) {
-      setState({ remoteVideoTrack: null });
+      const updated = currentState.remoteParticipants.map(p =>
+        p.identity === participant.identity ? { ...p, videoTrack: null } : p
+      );
+      const anyVideo = updated.some(p => p.videoTrack !== null);
+      setState({ remoteVideoTrack: anyVideo ? updated.find(p => p.videoTrack)?.videoTrack || null : null, remoteParticipants: updated });
     }
     track.detach().forEach(el => el.remove());
   });
@@ -535,6 +558,7 @@ export async function endCall(): Promise<void> {
     isCameraOn: false,
     isVideoCall: false,
     remoteParticipantName: null,
+    remoteParticipants: [],
     remoteVideoTrack: null,
     localVideoTrack: null,
     error: null,
