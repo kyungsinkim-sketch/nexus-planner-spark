@@ -11,7 +11,7 @@ import type { WidgetDataContext } from '@/types/widget';
 function ProgressChartWidget({ context: _context }: { context: WidgetDataContext }) {
   const { projects } = useAppStore();
 
-  const { todos } = useAppStore();
+  const { personalTodos } = useAppStore();
 
   const data = useMemo(
     () =>
@@ -21,8 +21,8 @@ function ProgressChartWidget({ context: _context }: { context: WidgetDataContext
         .map((p) => {
           // Use explicit progress if set, otherwise calculate from todos
           let progress = p.progress || 0;
-          if (progress === 0) {
-            const projectTodos = todos.filter(t => t.projectId === p.id);
+          if (progress === 0 && personalTodos) {
+            const projectTodos = personalTodos.filter(t => t.projectId === p.id);
             if (projectTodos.length > 0) {
               const done = projectTodos.filter(t => t.completed).length;
               progress = Math.round((done / projectTodos.length) * 100);
@@ -33,7 +33,7 @@ function ProgressChartWidget({ context: _context }: { context: WidgetDataContext
             progress,
           };
         }),
-    [projects, todos],
+    [projects, personalTodos],
   );
 
   if (data.length === 0) {
