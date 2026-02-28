@@ -175,17 +175,6 @@ function EmailCard({
   };
 
   return (
-    <div
-      className="absolute left-0 right-0 transition-all duration-500 ease-out"
-      style={{
-        top: `${depth * 12}px`,
-        zIndex: 10 - depth,
-        opacity: depth === 0 ? 1 : depth === 1 ? 0.4 : 0.15,
-        transform: `scale(${1 - depth * 0.04}) translateY(0)`,
-        pointerEvents: depth === 0 ? 'auto' : 'none',
-        filter: depth > 0 ? 'blur(0.5px)' : 'none',
-      }}
-    >
       <div
         className="rounded-xl border overflow-hidden"
         style={{
@@ -260,7 +249,6 @@ function EmailCard({
           </div>
         )}
       </div>
-    </div>
   );
 }
 
@@ -377,30 +365,49 @@ export function CosmosEmail() {
             </p>
           </div>
         ) : (
-          <div className="relative" style={{ minHeight: '300px' }}>
-            {/* Render stacked cards (back to front) */}
-            {[2, 1, 0].map(depth => {
-              const idx = currentIndex + depth;
-              const email = sortedEmails[idx];
-              if (!email) return null;
-
-              return (
-                <EmailCard
-                  key={`${email.id}-${depth}`}
-                  email={email}
-                  suggestions={getSuggestions(email.id)}
-                  depth={depth}
-                  onDelete={handleDelete}
-                  onArchive={handleArchive}
-                  onNext={handleNext}
-                  onReply={() => setReplyingEmail(email)}
-                  onConfirmSuggestion={(id) => confirmEmailSuggestion?.(id)}
-                  onRejectSuggestion={(id) => rejectEmailSuggestion?.(id)}
-                  isActive={depth === 0}
-                  lang={language}
-                />
-              );
-            })}
+          <div className="relative">
+            {/* Back cards (rendered first = lower z-index) */}
+            {(() => {
+              const cards: React.ReactNode[] = [];
+              // Render back-to-front: depth 2, 1, then 0 on top
+              for (const depth of [2, 1, 0]) {
+                const idx = currentIndex + depth;
+                const email = sortedEmails[idx];
+                if (!email) continue;
+                cards.push(
+                  <div
+                    key={email.id}
+                    style={{
+                      position: depth === 0 ? 'relative' : 'absolute',
+                      top: 0,
+                      left: `${depth * 6}px`,
+                      right: `${depth * 6}px`,
+                      zIndex: 10 - depth,
+                      opacity: depth === 0 ? 1 : depth === 1 ? 0.35 : 0.12,
+                      transform: `translateY(${depth * 14}px) scale(${1 - depth * 0.03})`,
+                      transformOrigin: 'top center',
+                      pointerEvents: depth === 0 ? 'auto' as const : 'none' as const,
+                      transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+                    }}
+                  >
+                    <EmailCard
+                      email={email}
+                      suggestions={getSuggestions(email.id)}
+                      depth={depth}
+                      onDelete={handleDelete}
+                      onArchive={handleArchive}
+                      onNext={handleNext}
+                      onReply={() => setReplyingEmail(email)}
+                      onConfirmSuggestion={(id) => confirmEmailSuggestion?.(id)}
+                      onRejectSuggestion={(id) => rejectEmailSuggestion?.(id)}
+                      isActive={depth === 0}
+                      lang={language}
+                    />
+                  </div>
+                );
+              }
+              return cards;
+            })()}
           </div>
         )}
       </div>
