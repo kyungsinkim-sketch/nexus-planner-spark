@@ -1,27 +1,34 @@
 /**
  * CosmosEmail — 스택형 이메일 어시스턴트
  *
- * Vercel multi-tenant 스타일 겹쳐진 카드 UI.
+ * Vercel multi-tenant 스타일 겹쳐진 브라우저 창 UI.
  * Brain AI가 최신 이메일부터 하나씩 보여주며 정보 정리를 도와줌.
- * - 각 이메일 카드 상단에 Brain 분석 결과
- * - 삭제/보관/제안수락 액션
- * - 처리하면 다음 이메일로 넘어감
  */
 
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useAppStore } from '@/stores/appStore';
 import { useTranslation } from '@/hooks/useTranslation';
 import {
   Mail, RefreshCw, Calendar, CheckSquare, FileText, Brain,
-  Loader2, Trash2, Archive, Check, ChevronDown, ArrowRight,
+  Loader2, Trash2, Archive, Check, ArrowRight, Reply, Send, X,
 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { ko, enUS } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import type { GmailMessage, EmailBrainSuggestion } from '@/types/core';
 
-// ─── Brain suggestion inline card ───
-function BrainBar({ suggestions }: { suggestions: EmailBrainSuggestion[] }) {
+// ─── Brain suggestion inline ───
+function BrainBar({
+  suggestions,
+  onConfirm,
+  onReject,
+  lang,
+}: {
+  suggestions: EmailBrainSuggestion[];
+  onConfirm: (id: string) => void;
+  onReject: (id: string) => void;
+  lang: string;
+}) {
   if (!suggestions || suggestions.length === 0) return null;
 
   return (
@@ -30,30 +37,45 @@ function BrainBar({ suggestions }: { suggestions: EmailBrainSuggestion[] }) {
         <Brain className="w-3 h-3 text-white/30" />
         <span className="text-[10px] font-medium text-white/30 uppercase tracking-wider">Brain AI</span>
       </div>
-      {suggestions.map((s, i) => (
-        <div key={i} className="space-y-1.5">
+      {suggestions.map((s) => (
+        <div key={s.id} className="space-y-1.5">
           <p className="text-[12px] text-white/50 leading-relaxed">{s.summary}</p>
           <div className="flex flex-wrap gap-1.5">
-            {s.suggestedEvent && (
-              <button className="inline-flex items-center gap-1 text-[10px] px-2 py-1 rounded-md bg-blue-500/10 text-blue-400/80 border border-blue-500/10 active:scale-95 transition-transform">
+            {s.suggestedEvent && s.status === 'pending' && (
+              <button
+                onClick={() => onConfirm(s.id)}
+                className="inline-flex items-center gap-1 text-[10px] px-2 py-1 rounded-md bg-blue-500/10 text-blue-400/80 border border-blue-500/10 active:scale-95 transition-transform"
+              >
                 <Calendar className="w-2.5 h-2.5" />
-                <span className="truncate max-w-[140px]">{s.suggestedEvent.title}</span>
+                <span className="truncate max-w-[120px]">{s.suggestedEvent.title}</span>
                 <Check className="w-2.5 h-2.5 ml-0.5" />
               </button>
             )}
-            {s.suggestedTodo && (
-              <button className="inline-flex items-center gap-1 text-[10px] px-2 py-1 rounded-md bg-emerald-500/10 text-emerald-400/80 border border-emerald-500/10 active:scale-95 transition-transform">
+            {s.suggestedTodo && s.status === 'pending' && (
+              <button
+                onClick={() => onConfirm(s.id)}
+                className="inline-flex items-center gap-1 text-[10px] px-2 py-1 rounded-md bg-emerald-500/10 text-emerald-400/80 border border-emerald-500/10 active:scale-95 transition-transform"
+              >
                 <CheckSquare className="w-2.5 h-2.5" />
-                <span className="truncate max-w-[140px]">{s.suggestedTodo.title}</span>
+                <span className="truncate max-w-[120px]">{s.suggestedTodo.title}</span>
                 <Check className="w-2.5 h-2.5 ml-0.5" />
               </button>
             )}
-            {s.suggestedNote && (
-              <button className="inline-flex items-center gap-1 text-[10px] px-2 py-1 rounded-md bg-violet-500/10 text-violet-400/80 border border-violet-500/10 active:scale-95 transition-transform">
+            {s.suggestedNote && s.status === 'pending' && (
+              <button
+                onClick={() => onConfirm(s.id)}
+                className="inline-flex items-center gap-1 text-[10px] px-2 py-1 rounded-md bg-violet-500/10 text-violet-400/80 border border-violet-500/10 active:scale-95 transition-transform"
+              >
                 <FileText className="w-2.5 h-2.5" />
-                {language === 'ko' ? '기록 저장' : 'Save note'}
+                {lang === 'ko' ? '기록 저장' : 'Save note'}
                 <Check className="w-2.5 h-2.5 ml-0.5" />
               </button>
+            )}
+            {s.status === 'executed' && (
+              <span className="text-[10px] text-emerald-400/50">✓ {lang === 'ko' ? '완료' : 'Done'}</span>
+            )}
+            {s.status === 'rejected' && (
+              <span className="text-[10px] text-white/20">— {lang === 'ko' ? '무시됨' : 'Dismissed'}</span>
             )}
           </div>
         </div>
@@ -62,26 +84,85 @@ function BrainBar({ suggestions }: { suggestions: EmailBrainSuggestion[] }) {
   );
 }
 
-// Placeholder for i18n inside BrainBar
-const language = 'ko'; // will be overridden by component
-
-// ─── Single email card (browser window style) ───
-function EmailCard({
+// ─── Reply composer ───
+function ReplyComposer({
   email,
-  suggestions,
-  depth,
-  onDelete,
-  onArchive,
-  onNext,
-  isActive,
+  onSend,
+  onClose,
   lang,
 }: {
   email: GmailMessage;
+  onSend: (body: string) => Promise<void>;
+  onClose: () => void;
+  lang: string;
+}) {
+  const [body, setBody] = useState('');
+  const [sending, setSending] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => { textareaRef.current?.focus(); }, []);
+
+  const handleSend = async () => {
+    if (!body.trim() || sending) return;
+    setSending(true);
+    await onSend(body.trim());
+    setSending(false);
+    onClose();
+  };
+
+  const formatSender = (from: string) =>
+    from?.match(/^(.+?)(?:\s*<.*>)?$/)?.[1]?.replace(/"/g, '') || from || '';
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end" onClick={onClose}>
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+      <div
+        className="relative w-full rounded-t-2xl border-t border-white/[0.06] p-4 pb-6 animate-slide-in-bottom"
+        style={{ background: 'rgb(10, 10, 10)' }}
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between mb-3">
+          <p className="text-[12px] text-white/40">
+            {lang === 'ko' ? '답장:' : 'Reply to:'} {formatSender(email.from || '')}
+          </p>
+          <button onClick={onClose} className="w-6 h-6 rounded-full flex items-center justify-center hover:bg-white/5">
+            <X className="w-3.5 h-3.5 text-white/30" />
+          </button>
+        </div>
+        <textarea
+          ref={textareaRef}
+          value={body}
+          onChange={e => setBody(e.target.value)}
+          placeholder={lang === 'ko' ? '답장 내용...' : 'Write a reply...'}
+          className="w-full h-24 bg-white/[0.02] border border-white/[0.06] rounded-lg p-3 text-[13px] text-white/70 placeholder:text-white/15 outline-none resize-none"
+        />
+        <button
+          onClick={handleSend}
+          disabled={!body.trim() || sending}
+          className="mt-2 w-full flex items-center justify-center gap-2 py-2.5 rounded-lg text-[12px] font-medium bg-white text-black disabled:opacity-30 active:scale-[0.98] transition-transform"
+        >
+          {sending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+          {lang === 'ko' ? '보내기' : 'Send'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Single email card ───
+function EmailCard({
+  email, suggestions, depth, onDelete, onArchive, onNext, onReply,
+  onConfirmSuggestion, onRejectSuggestion, isActive, lang,
+}: {
+  email: GmailMessage;
   suggestions: EmailBrainSuggestion[];
-  depth: number; // 0 = front, 1 = behind, 2 = further back
+  depth: number;
   onDelete: () => void;
   onArchive: () => void;
   onNext: () => void;
+  onReply: () => void;
+  onConfirmSuggestion: (id: string) => void;
+  onRejectSuggestion: (id: string) => void;
   isActive: boolean;
   lang: string;
 }) {
@@ -93,31 +174,31 @@ function EmailCard({
     catch { return ''; }
   };
 
-  // Stack offset styling
-  const stackStyle: React.CSSProperties = {
-    position: depth === 0 ? 'relative' : 'absolute',
-    top: depth === 0 ? 0 : `${depth * 8}px`,
-    left: depth === 0 ? 0 : `${depth * 4}px`,
-    right: depth === 0 ? 0 : `${depth * 4}px`,
-    zIndex: 10 - depth,
-    opacity: depth === 0 ? 1 : depth === 1 ? 0.5 : 0.25,
-    transform: depth === 0 ? 'none' : `scale(${1 - depth * 0.03})`,
-    pointerEvents: depth === 0 ? 'auto' : 'none',
-    transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
-  };
-
   return (
-    <div style={stackStyle}>
+    <div
+      className="absolute left-0 right-0 transition-all duration-500 ease-out"
+      style={{
+        top: `${depth * 12}px`,
+        zIndex: 10 - depth,
+        opacity: depth === 0 ? 1 : depth === 1 ? 0.4 : 0.15,
+        transform: `scale(${1 - depth * 0.04}) translateY(0)`,
+        pointerEvents: depth === 0 ? 'auto' : 'none',
+        filter: depth > 0 ? 'blur(0.5px)' : 'none',
+      }}
+    >
       <div
-        className="rounded-xl border border-white/[0.06] overflow-hidden"
-        style={{ background: 'rgb(8, 8, 8)' }}
+        className="rounded-xl border overflow-hidden"
+        style={{
+          background: 'rgb(8, 8, 8)',
+          borderColor: depth === 0 ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.04)',
+        }}
       >
-        {/* Browser window title bar */}
+        {/* Browser title bar */}
         <div className="flex items-center gap-1.5 px-3 py-2 border-b border-white/[0.04]">
           <div className="flex gap-1">
-            <div className="w-[6px] h-[6px] rounded-full bg-white/[0.06]" />
-            <div className="w-[6px] h-[6px] rounded-full bg-white/[0.06]" />
-            <div className="w-[6px] h-[6px] rounded-full bg-white/[0.06]" />
+            <div className="w-[6px] h-[6px] rounded-full bg-red-500/40" />
+            <div className="w-[6px] h-[6px] rounded-full bg-yellow-500/40" />
+            <div className="w-[6px] h-[6px] rounded-full bg-green-500/40" />
           </div>
           <div className="flex-1 mx-2">
             <div className="bg-white/[0.03] rounded-md px-2 py-0.5 text-[9px] text-white/15 font-mono truncate text-center">
@@ -126,12 +207,16 @@ function EmailCard({
           </div>
         </div>
 
-        {/* Brain AI analysis — top of card */}
-        <BrainBar suggestions={suggestions} />
+        {/* Brain AI bar */}
+        <BrainBar
+          suggestions={suggestions}
+          onConfirm={onConfirmSuggestion}
+          onReject={onRejectSuggestion}
+          lang={lang}
+        />
 
         {/* Email content */}
         <div className="px-4 py-3 space-y-2">
-          {/* Sender + date */}
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2 min-w-0">
               <div className="w-6 h-6 rounded-full bg-white/[0.06] flex items-center justify-center shrink-0 text-[9px] font-semibold text-white/30">
@@ -141,18 +226,12 @@ function EmailCard({
                 {formatSender(email.from || '')}
               </span>
             </div>
-            <span className="text-[10px] text-white/15 font-mono shrink-0">
-              {formatDate(email.date || '')}
-            </span>
+            <span className="text-[10px] text-white/15 font-mono shrink-0">{formatDate(email.date || '')}</span>
           </div>
-
-          {/* Subject */}
           <p className="text-[14px] font-medium text-white/80 leading-snug">
             {email.subject || (lang === 'ko' ? '(제목 없음)' : '(no subject)')}
           </p>
-
-          {/* Snippet / body preview */}
-          <p className="text-[12px] text-white/30 leading-relaxed line-clamp-4">
+          <p className="text-[12px] text-white/30 leading-relaxed line-clamp-5">
             {email.snippet || email.body || ''}
           </p>
         </div>
@@ -160,25 +239,21 @@ function EmailCard({
         {/* Action bar */}
         {isActive && (
           <div className="flex items-center gap-2 px-4 py-3 border-t border-white/[0.04]">
-            <button
-              onClick={onDelete}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-medium text-red-400/70 bg-red-500/5 border border-red-500/10 active:scale-95 transition-transform"
-            >
+            <button onClick={onDelete}
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-medium text-red-400/70 bg-red-500/5 border border-red-500/10 active:scale-95 transition-transform">
               <Trash2 className="w-3 h-3" />
-              {lang === 'ko' ? '삭제' : 'Delete'}
             </button>
-            <button
-              onClick={onArchive}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-medium text-white/40 bg-white/[0.02] border border-white/[0.06] active:scale-95 transition-transform"
-            >
+            <button onClick={onArchive}
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-medium text-white/30 bg-white/[0.02] border border-white/[0.06] active:scale-95 transition-transform">
               <Archive className="w-3 h-3" />
-              {lang === 'ko' ? '보관' : 'Archive'}
+            </button>
+            <button onClick={onReply}
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-medium text-white/30 bg-white/[0.02] border border-white/[0.06] active:scale-95 transition-transform">
+              <Reply className="w-3 h-3" />
             </button>
             <div className="flex-1" />
-            <button
-              onClick={onNext}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-medium bg-white text-black active:scale-95 transition-transform"
-            >
+            <button onClick={onNext}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-medium bg-white text-black active:scale-95 transition-transform">
               {lang === 'ko' ? '다음' : 'Next'}
               <ArrowRight className="w-3 h-3" />
             </button>
@@ -189,56 +264,73 @@ function EmailCard({
   );
 }
 
-// ─── Main component ───
+// ─── Main ───
 export function CosmosEmail() {
   const {
-    gmailMessages, emailBrainSuggestions, isGmailLoading,
-    fetchGmailMessages, trashedGmailMessageIds, trashGmailMessage,
+    gmailMessages, emailSuggestions, isGmailLoading,
+    syncGmail, trashEmail, confirmEmailSuggestion, rejectEmailSuggestion,
+    replyToEmail, analyzeEmail,
   } = useAppStore();
   const { language } = useTranslation();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
+  const [replyingEmail, setReplyingEmail] = useState<GmailMessage | null>(null);
+  const [analyzing, setAnalyzing] = useState(false);
 
-  useEffect(() => { fetchGmailMessages?.(); }, []);
+  useEffect(() => { syncGmail?.(); }, []);
 
-  // Sorted newest first, excluding dismissed/trashed
+  // Auto-analyze current email if no suggestions
   const sortedEmails = useMemo(() => {
     return (gmailMessages || [])
-      .filter(e => !dismissedIds.has(e.id) && !(trashedGmailMessageIds || []).includes(e.id))
+      .filter(e => !dismissedIds.has(e.id))
       .sort((a, b) => (b.date || '').localeCompare(a.date || ''));
-  }, [gmailMessages, dismissedIds, trashedGmailMessageIds]);
+  }, [gmailMessages, dismissedIds]);
+
+  const currentEmail = sortedEmails[currentIndex];
+
+  // Trigger Brain analysis for current email
+  useEffect(() => {
+    if (!currentEmail || analyzing) return;
+    const hasSuggestions = (emailSuggestions || []).some(s => s.emailId === currentEmail.id);
+    if (!hasSuggestions && analyzeEmail) {
+      setAnalyzing(true);
+      analyzeEmail(currentEmail.id).finally(() => setAnalyzing(false));
+    }
+  }, [currentEmail?.id, emailSuggestions]);
 
   const getSuggestions = useCallback((id: string) => {
-    return (emailBrainSuggestions || []).filter(s => s.emailId === id);
-  }, [emailBrainSuggestions]);
+    return (emailSuggestions || []).filter(s => s.emailId === id);
+  }, [emailSuggestions]);
 
-  const handleDelete = useCallback(() => {
-    const email = sortedEmails[currentIndex];
-    if (!email) return;
-    trashGmailMessage?.(email.id);
-    // Auto-advance handled by sortedEmails re-filtering
-  }, [currentIndex, sortedEmails, trashGmailMessage]);
+  const handleDelete = useCallback(async () => {
+    if (!currentEmail) return;
+    await trashEmail?.(currentEmail.id);
+  }, [currentEmail, trashEmail]);
 
   const handleArchive = useCallback(() => {
-    const email = sortedEmails[currentIndex];
-    if (!email) return;
-    setDismissedIds(prev => new Set(prev).add(email.id));
-  }, [currentIndex, sortedEmails]);
+    if (!currentEmail) return;
+    setDismissedIds(prev => new Set(prev).add(currentEmail.id));
+  }, [currentEmail]);
 
   const handleNext = useCallback(() => {
-    if (currentIndex < sortedEmails.length - 1) {
-      setCurrentIndex(prev => prev + 1);
-    }
+    if (currentIndex < sortedEmails.length - 1) setCurrentIndex(prev => prev + 1);
   }, [currentIndex, sortedEmails.length]);
 
-  // Clamp index
+  const handleReply = useCallback(async (body: string) => {
+    if (!replyingEmail) return;
+    await replyToEmail?.(replyingEmail.id, body);
+  }, [replyingEmail, replyToEmail]);
+
   useEffect(() => {
     if (currentIndex >= sortedEmails.length && sortedEmails.length > 0) {
-      setCurrentIndex(sortedEmails.length - 1);
+      setCurrentIndex(Math.max(0, sortedEmails.length - 1));
     }
   }, [sortedEmails.length, currentIndex]);
 
-  const remaining = sortedEmails.length - currentIndex;
+  const remaining = Math.max(0, sortedEmails.length - currentIndex);
+
+  // Calculate stack height for container
+  const stackCount = Math.min(3, sortedEmails.length - currentIndex);
 
   return (
     <div className="relative flex flex-col h-full overflow-hidden">
@@ -251,14 +343,17 @@ export function CosmosEmail() {
           </h1>
           <p className="text-[11px] text-white/20 mt-0.5">
             {sortedEmails.length > 0
-              ? (language === 'ko'
-                ? `${remaining}개 남음`
-                : `${remaining} remaining`)
+              ? (language === 'ko' ? `${remaining}개 남음` : `${remaining} remaining`)
               : (language === 'ko' ? '모두 처리됨' : 'All done')}
+            {analyzing && (
+              <span className="ml-2 text-white/30">
+                <Loader2 className="w-3 h-3 inline animate-spin" /> {language === 'ko' ? '분석 중...' : 'Analyzing...'}
+              </span>
+            )}
           </p>
         </div>
         <button
-          onClick={() => { fetchGmailMessages?.(); setCurrentIndex(0); setDismissedIds(new Set()); }}
+          onClick={() => { syncGmail?.(true); setCurrentIndex(0); setDismissedIds(new Set()); }}
           disabled={isGmailLoading}
           className="w-8 h-8 rounded-full flex items-center justify-center border border-white/[0.06]"
         >
@@ -268,7 +363,7 @@ export function CosmosEmail() {
         </button>
       </div>
 
-      {/* Card stack area */}
+      {/* Card stack */}
       <div className="flex-1 relative px-4 pt-2 pb-4 overflow-hidden">
         {sortedEmails.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full">
@@ -282,8 +377,8 @@ export function CosmosEmail() {
             </p>
           </div>
         ) : (
-          <div className="relative" style={{ paddingTop: '16px' }}>
-            {/* Render up to 3 stacked cards */}
+          <div className="relative" style={{ minHeight: '300px' }}>
+            {/* Render stacked cards (back to front) */}
             {[2, 1, 0].map(depth => {
               const idx = currentIndex + depth;
               const email = sortedEmails[idx];
@@ -291,13 +386,16 @@ export function CosmosEmail() {
 
               return (
                 <EmailCard
-                  key={email.id}
+                  key={`${email.id}-${depth}`}
                   email={email}
                   suggestions={getSuggestions(email.id)}
                   depth={depth}
                   onDelete={handleDelete}
                   onArchive={handleArchive}
                   onNext={handleNext}
+                  onReply={() => setReplyingEmail(email)}
+                  onConfirmSuggestion={(id) => confirmEmailSuggestion?.(id)}
+                  onRejectSuggestion={(id) => rejectEmailSuggestion?.(id)}
                   isActive={depth === 0}
                   lang={language}
                 />
@@ -307,21 +405,31 @@ export function CosmosEmail() {
         )}
       </div>
 
-      {/* Progress indicator */}
+      {/* Progress */}
       {sortedEmails.length > 0 && (
         <div className="shrink-0 px-6 pb-2">
           <div className="flex items-center gap-2">
             <div className="flex-1 h-[2px] bg-white/[0.04] rounded-full overflow-hidden">
               <div
                 className="h-full bg-white/20 rounded-full transition-all duration-500"
-                style={{ width: `${((currentIndex + 1) / sortedEmails.length) * 100}%` }}
+                style={{ width: `${Math.min(100, ((currentIndex + 1) / sortedEmails.length) * 100)}%` }}
               />
             </div>
             <span className="text-[9px] text-white/15 font-mono">
-              {currentIndex + 1}/{sortedEmails.length}
+              {Math.min(currentIndex + 1, sortedEmails.length)}/{sortedEmails.length}
             </span>
           </div>
         </div>
+      )}
+
+      {/* Reply composer */}
+      {replyingEmail && (
+        <ReplyComposer
+          email={replyingEmail}
+          onSend={handleReply}
+          onClose={() => setReplyingEmail(null)}
+          lang={language}
+        />
       )}
     </div>
   );
