@@ -37,27 +37,57 @@ export function ConstellationMap() {
     const otherUsers = users.filter(u => u.id !== currentUser.id);
 
     const userStats = otherUsers.map(user => {
-      const userMessages = messages.filter(m =>
-        (m.userId === user.id || m.userId === currentUser.id) && m.roomType === 'dm'
+      // DM messages: where directChatUserId connects both users
+      const dmMessages = messages.filter(m =>
+        // Messages I sent to this user
+        (m.userId === currentUser.id && m.directChatUserId === user.id) ||
+        // Messages this user sent to me
+        (m.userId === user.id && m.directChatUserId === currentUser.id)
       );
-      const totalCount = userMessages.length;
-      const recentCount = userMessages.filter(m => {
+
+      // Also count project chat messages from this user
+      const projectMessages = messages.filter(m =>
+        m.userId === user.id && !m.directChatUserId && m.projectId
+      );
+
+      const totalCount = dmMessages.length + projectMessages.length;
+      const recentCount = [...dmMessages, ...projectMessages].filter(m => {
         try { return new Date(m.createdAt) >= weekAgo; } catch { return false; }
       }).length;
+
       return { userId: user.id, name: user.name, recentCount, totalCount };
     });
 
-    const sorted = [...userStats].sort((a, b) => b.recentCount - a.recentCount);
+    // Only show users with at least 1 message
+    const withMessages = userStats.filter(s => s.totalCount > 0);
+    // Also include users without messages but limit to avoid clutter
+    const withoutMessages = userStats.filter(s => s.totalCount === 0).slice(0, 5);
+    const combined = [...withMessages, ...withoutMessages];
+
+    const sorted = [...combined].sort((a, b) => b.recentCount - a.recentCount);
     const maxRecent = Math.max(...sorted.map(s => s.recentCount), 1);
     const maxTotal = Math.max(...sorted.map(s => s.totalCount), 1);
 
+    // Stable angle assignment using userId hash (prevents jitter on re-render)
+    const hashCode = (str: string) => {
+      let hash = 0;
+      for (let i = 0; i < str.length; i++) {
+        hash = ((hash << 5) - hash) + str.charCodeAt(i);
+        hash |= 0;
+      }
+      return hash;
+    };
+
     return sorted.map((s, i) => {
       const proximity = s.recentCount / maxRecent;
-      const distance = 0.25 + (1 - proximity) * 0.65;
+      // Users with messages: closer (0.2~0.7), without: far out (0.8~0.95)
+      const distance = s.totalCount > 0
+        ? 0.2 + (1 - proximity) * 0.5
+        : 0.8 + (hashCode(s.userId) % 15) / 100;
       const sizeNorm = s.totalCount / maxTotal;
-      const size = 2.5 + sizeNorm * 5;
+      const size = s.totalCount > 0 ? 2.5 + sizeNorm * 5 : 1.5;
       const baseAngle = (i / sorted.length) * Math.PI * 2;
-      const jitter = (Math.random() - 0.5) * 0.3;
+      const jitter = (hashCode(s.userId) % 100) / 300; // stable jitter
       return { ...s, angle: baseAngle + jitter, distance, size } as StarData;
     });
   }, [currentUser, users, messages]);
