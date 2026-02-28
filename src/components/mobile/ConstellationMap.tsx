@@ -1,10 +1,8 @@
 /**
- * ConstellationMap — 별자리 관계맵
+ * ConstellationMap — 별자리 관계맵 (Vercel-minimal + gold stars)
  *
- * 다른 유저들이 별로 표현됨.
- * - 최근 대화 횟수가 많을수록 가까이 (중심 = 나)
- * - 별 크기 = 누적 대화량
- * - 클릭하면 채팅 팝업으로 이동
+ * 별 = 금색(유일한 컬러 포인트), UI 텍스트 = 흑백
+ * 대화 빈도 기반 거리, 누적 대화량 기반 크기
  */
 
 import { useMemo, useRef, useEffect, useState, useCallback } from 'react';
@@ -16,12 +14,11 @@ import { subDays } from 'date-fns';
 interface StarData {
   userId: string;
   name: string;
-  recentCount: number;  // recent 7-day messages
-  totalCount: number;   // all-time messages
+  recentCount: number;
+  totalCount: number;
   angle: number;
-  distance: number;     // 0=center, 1=edge
-  size: number;         // star radius
-  avatar?: string;
+  distance: number;
+  size: number;
 }
 
 export function ConstellationMap() {
@@ -34,69 +31,39 @@ export function ConstellationMap() {
   const [tappedStar, setTappedStar] = useState<StarData | null>(null);
   const starsRef = useRef<StarData[]>([]);
 
-  // Calculate star positions based on message frequency
   const stars = useMemo(() => {
     if (!currentUser) return [];
-
-    const now = new Date();
-    const weekAgo = subDays(now, 7);
-
-    // Other users (excluding self)
+    const weekAgo = subDays(new Date(), 7);
     const otherUsers = users.filter(u => u.id !== currentUser.id);
 
-    // Count messages per user
     const userStats = otherUsers.map(user => {
-      // DM messages between current user and this user
       const userMessages = messages.filter(m =>
-        (m.userId === user.id || m.userId === currentUser.id) &&
-        (m.roomType === 'dm')
+        (m.userId === user.id || m.userId === currentUser.id) && m.roomType === 'dm'
       );
-
-      // Count messages involving this user
-      const totalCount = userMessages.filter(m =>
-        m.userId === user.id || (m.roomType === 'dm')
-      ).length;
-
+      const totalCount = userMessages.length;
       const recentCount = userMessages.filter(m => {
-        try {
-          return new Date(m.createdAt) >= weekAgo;
-        } catch { return false; }
+        try { return new Date(m.createdAt) >= weekAgo; } catch { return false; }
       }).length;
-
       return { userId: user.id, name: user.name, recentCount, totalCount };
     });
 
-    // Sort by recent count desc for angle distribution
     const sorted = [...userStats].sort((a, b) => b.recentCount - a.recentCount);
-
     const maxRecent = Math.max(...sorted.map(s => s.recentCount), 1);
     const maxTotal = Math.max(...sorted.map(s => s.totalCount), 1);
 
     return sorted.map((s, i) => {
-      // Distance: more recent messages = closer to center
-      const proximity = s.recentCount / maxRecent; // 0~1, 1 = most messages
-      const distance = 0.25 + (1 - proximity) * 0.65; // 0.25~0.9
-
-      // Size: based on total message count
+      const proximity = s.recentCount / maxRecent;
+      const distance = 0.25 + (1 - proximity) * 0.65;
       const sizeNorm = s.totalCount / maxTotal;
-      const size = 3 + sizeNorm * 6; // 3~9px radius
-
-      // Angle: distribute evenly with some jitter
+      const size = 2.5 + sizeNorm * 5;
       const baseAngle = (i / sorted.length) * Math.PI * 2;
       const jitter = (Math.random() - 0.5) * 0.3;
-
-      return {
-        ...s,
-        angle: baseAngle + jitter,
-        distance,
-        size,
-      } as StarData;
+      return { ...s, angle: baseAngle + jitter, distance, size } as StarData;
     });
   }, [currentUser, users, messages]);
 
   starsRef.current = stars;
 
-  // Measure container
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
@@ -108,11 +75,9 @@ export function ConstellationMap() {
     return () => obs.disconnect();
   }, []);
 
-  // Draw the constellation
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas || dimensions.w === 0) return;
-
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
@@ -131,43 +96,42 @@ export function ConstellationMap() {
     function draw() {
       if (!ctx) return;
       ctx.clearRect(0, 0, dimensions.w, dimensions.h);
-      t += 0.005;
+      t += 0.004;
 
-      // Draw subtle orbit rings
-      for (let ring = 0.25; ring <= 0.9; ring += 0.2) {
+      // Subtle orbit rings
+      for (let ring = 0.3; ring <= 0.9; ring += 0.25) {
         ctx.beginPath();
         ctx.arc(cx, cy, ring * maxR, 0, Math.PI * 2);
-        ctx.strokeStyle = 'rgba(212, 168, 67, 0.04)';
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.03)';
         ctx.lineWidth = 0.5;
         ctx.stroke();
       }
 
-      // Draw center star (me)
-      const centerGlow = 0.6 + 0.4 * Math.sin(t * 2);
-      ctx.globalAlpha = centerGlow;
+      // Center — me
+      const glow = 0.6 + 0.4 * Math.sin(t * 2);
+      ctx.globalAlpha = glow;
       ctx.fillStyle = '#D4A843';
       ctx.shadowColor = '#D4A843';
-      ctx.shadowBlur = 20;
+      ctx.shadowBlur = 15;
       ctx.beginPath();
-      ctx.arc(cx, cy, 6, 0, Math.PI * 2);
+      ctx.arc(cx, cy, 5, 0, Math.PI * 2);
       ctx.fill();
       ctx.shadowBlur = 0;
       ctx.globalAlpha = 1;
 
-      // "나" label
-      ctx.fillStyle = 'rgba(212, 168, 67, 0.7)';
-      ctx.font = '10px "Plus Jakarta Sans", sans-serif';
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+      ctx.font = '500 10px "Plus Jakarta Sans", sans-serif';
       ctx.textAlign = 'center';
       ctx.fillText(language === 'ko' ? '나' : 'Me', cx, cy + 18);
 
-      // Draw connection lines + stars
+      // Stars
       const currentStars = starsRef.current;
       for (const star of currentStars) {
-        const sx = cx + Math.cos(star.angle + t * 0.1) * star.distance * maxR;
-        const sy = cy + Math.sin(star.angle + t * 0.1) * star.distance * maxR;
+        const sx = cx + Math.cos(star.angle + t * 0.08) * star.distance * maxR;
+        const sy = cy + Math.sin(star.angle + t * 0.08) * star.distance * maxR;
 
-        // Connection line to center
-        const lineAlpha = Math.max(0.02, (1 - star.distance) * 0.12);
+        // Connection line
+        const lineAlpha = Math.max(0.01, (1 - star.distance) * 0.08);
         ctx.strokeStyle = `rgba(212, 168, 67, ${lineAlpha})`;
         ctx.lineWidth = 0.5;
         ctx.beginPath();
@@ -175,8 +139,8 @@ export function ConstellationMap() {
         ctx.lineTo(sx, sy);
         ctx.stroke();
 
-        // Star glow
-        const flicker = 0.5 + 0.5 * Math.sin(t * 3 + star.angle);
+        // Star dot
+        const flicker = 0.4 + 0.6 * Math.sin(t * 3 + star.angle);
         ctx.globalAlpha = 0.3 + 0.7 * flicker;
         ctx.fillStyle = '#D4A843';
         ctx.shadowColor = '#D4A843';
@@ -187,41 +151,35 @@ export function ConstellationMap() {
         ctx.shadowBlur = 0;
         ctx.globalAlpha = 1;
 
-        // Name label
-        ctx.fillStyle = 'rgba(212, 168, 67, 0.6)';
-        ctx.font = '10px "Plus Jakarta Sans", sans-serif';
+        // Name
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
+        ctx.font = '500 9px "Plus Jakarta Sans", sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText(star.name, sx, sy + star.size + 14);
+        ctx.fillText(star.name, sx, sy + star.size + 13);
       }
 
       animId = requestAnimationFrame(draw);
     }
-
     draw();
     return () => cancelAnimationFrame(animId);
   }, [dimensions, stars, language]);
 
-  // Handle tap on stars
   const handleTap = useCallback((e: React.TouchEvent | React.MouseEvent) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-
     const rect = canvas.getBoundingClientRect();
     const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
     const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
     const tapX = clientX - rect.left;
     const tapY = clientY - rect.top;
-
     const cx = dimensions.w / 2;
     const cy = dimensions.h / 2;
     const maxR = Math.min(cx, cy) * 0.85;
-    const t = 0; // approximate current time (close enough for tap detection)
 
     for (const star of starsRef.current) {
       const sx = cx + Math.cos(star.angle) * star.distance * maxR;
       const sy = cy + Math.sin(star.angle) * star.distance * maxR;
       const dist = Math.sqrt((tapX - sx) ** 2 + (tapY - sy) ** 2);
-
       if (dist < Math.max(star.size + 12, 24)) {
         setTappedStar(star);
         return;
@@ -230,27 +188,20 @@ export function ConstellationMap() {
     setTappedStar(null);
   }, [dimensions]);
 
-  const handleChatWith = (userId: string) => {
-    // TODO: open DM with this user
-    setMobileView('chat');
-    setTappedStar(null);
-  };
-
   return (
     <div ref={containerRef} className="relative flex flex-col h-full overflow-hidden">
       {/* Header */}
-      <div className="absolute top-0 left-0 right-0 z-20 p-5 pt-12">
-        <h1 className="text-lg font-bold text-[hsl(var(--foreground))]">
-          {language === 'ko' ? '나의 별자리' : 'My Constellation'}
+      <div className="absolute top-0 left-0 right-0 z-20 px-6 pt-14">
+        <h1 className="text-lg font-bold text-white tracking-tight">
+          {language === 'ko' ? '관계' : 'People'}
         </h1>
-        <p className="text-[11px] text-[hsl(var(--muted-foreground))] mt-0.5">
+        <p className="text-[11px] text-white/25 mt-0.5">
           {language === 'ko'
-            ? '가까운 별일수록 최근 많이 대화한 사람'
-            : 'Closer stars = more recent conversations'}
+            ? '가까울수록 최근 대화가 많은 사람'
+            : 'Closer = more recent conversations'}
         </p>
       </div>
 
-      {/* Canvas */}
       <canvas
         ref={canvasRef}
         className="flex-1"
@@ -259,44 +210,33 @@ export function ConstellationMap() {
         onTouchStart={handleTap}
       />
 
-      {/* Tapped star popup */}
+      {/* Tap popup */}
       {tappedStar && (
         <div className="absolute bottom-24 left-4 right-4 z-30 animate-fade-in">
           <div
-            className="rounded-2xl p-4 backdrop-blur-xl border"
+            className="rounded-xl p-4 border"
             style={{
-              background: 'hsla(var(--glass-bg))',
-              borderColor: 'hsla(43, 74%, 55%, 0.15)',
-              boxShadow: 'var(--glass-shadow)',
+              background: 'rgb(10, 10, 10)',
+              borderColor: 'rgba(255, 255, 255, 0.06)',
             }}
           >
             <div className="flex items-center gap-3">
-              <div
-                className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold"
-                style={{
-                  background: 'linear-gradient(135deg, hsl(var(--primary)), hsla(43, 85%, 70%, 0.8))',
-                  color: 'hsl(var(--primary-foreground))',
-                }}
-              >
+              <div className="w-9 h-9 rounded-full bg-white text-black flex items-center justify-center text-sm font-semibold">
                 {tappedStar.name.charAt(0)}
               </div>
               <div className="flex-1">
-                <p className="text-sm font-semibold text-[hsl(var(--foreground))]">{tappedStar.name}</p>
-                <p className="text-[11px] text-[hsl(var(--muted-foreground))]">
+                <p className="text-[13px] font-semibold text-white">{tappedStar.name}</p>
+                <p className="text-[11px] text-white/30">
                   {language === 'ko'
-                    ? `최근 7일 대화 ${tappedStar.recentCount}회`
+                    ? `최근 7일 ${tappedStar.recentCount}회 대화`
                     : `${tappedStar.recentCount} messages (7d)`}
                 </p>
               </div>
               <button
-                onClick={() => handleChatWith(tappedStar!.userId)}
-                className="px-4 py-2 rounded-full text-xs font-medium"
-                style={{
-                  background: 'hsl(var(--primary))',
-                  color: 'hsl(var(--primary-foreground))',
-                }}
+                onClick={() => { setMobileView('chat'); setTappedStar(null); }}
+                className="px-4 py-1.5 rounded-full text-[11px] font-medium bg-white text-black"
               >
-                {language === 'ko' ? '대화하기' : 'Chat'}
+                {language === 'ko' ? '채팅' : 'Chat'}
               </button>
             </div>
           </div>

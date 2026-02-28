@@ -140,45 +140,45 @@
     --glass-inner-glow: inset 0 1px 0 0 rgba(255, 255, 255, 0.06);
   }
 
-  /* ═══ Cosmos Theme — Mobile-only golden universe ═══ */
+  /* ═══ Cosmos Theme — Mobile-only Vercel-inspired minimal ═══ */
   @media (max-width: 767px) {
     .dark {
-      --background: 240 10% 3%;
-      --foreground: 45 20% 90%;
+      --background: 0 0% 0%;
+      --foreground: 0 0% 93%;
 
-      --card: 240 10% 6%;
-      --card-foreground: 45 20% 90%;
+      --card: 0 0% 4%;
+      --card-foreground: 0 0% 93%;
 
-      --popover: 240 10% 6%;
-      --popover-foreground: 45 20% 90%;
+      --popover: 0 0% 4%;
+      --popover-foreground: 0 0% 93%;
 
-      /* Primary — Gold */
-      --primary: 43 74% 55%;
-      --primary-foreground: 240 10% 4%;
+      /* Primary — Pure white (Vercel style) */
+      --primary: 0 0% 100%;
+      --primary-foreground: 0 0% 0%;
 
-      --secondary: 240 10% 10%;
-      --secondary-foreground: 45 20% 85%;
+      --secondary: 0 0% 8%;
+      --secondary-foreground: 0 0% 80%;
 
-      --muted: 240 10% 12%;
-      --muted-foreground: 45 10% 55%;
+      --muted: 0 0% 10%;
+      --muted-foreground: 0 0% 45%;
 
-      --accent: 43 50% 20%;
-      --accent-foreground: 45 60% 90%;
+      --accent: 0 0% 10%;
+      --accent-foreground: 0 0% 93%;
 
-      --border: 240 10% 14%;
-      --input: 240 10% 14%;
-      --ring: 43 74% 55%;
+      --border: 0 0% 12%;
+      --input: 0 0% 12%;
+      --ring: 0 0% 100%;
 
-      /* Glass — cosmic gold tint */
-      --glass-bg: 240 10% 8% / 0.65;
-      --glass-bg-hover: 240 10% 10% / 0.8;
-      --glass-border: 43 74% 55% / 0.12;
-      --glass-border-subtle: 43 74% 55% / 0.06;
-      --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4), 0 0 20px rgba(180, 140, 50, 0.05);
-      --glass-shadow-hover: 0 12px 40px 0 rgba(0, 0, 0, 0.5), 0 0 30px rgba(180, 140, 50, 0.08);
-      --glass-inner-glow: inset 0 1px 0 0 rgba(212, 168, 67, 0.08);
+      /* Glass — monochrome, ultra-subtle */
+      --glass-bg: 0 0% 6% / 0.7;
+      --glass-bg-hover: 0 0% 8% / 0.8;
+      --glass-border: 0 0% 100% / 0.06;
+      --glass-border-subtle: 0 0% 100% / 0.03;
+      --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
+      --glass-shadow-hover: 0 12px 40px 0 rgba(0, 0, 0, 0.5);
+      --glass-inner-glow: inset 0 1px 0 0 rgba(255, 255, 255, 0.04);
 
-      /* Cosmos-specific tokens */
+      /* Gold accent — sparingly used */
       --cosmos-gold: 43 74% 55%;
       --cosmos-gold-dim: 43 50% 35%;
       --cosmos-gold-bright: 43 85% 70%;
