@@ -87,6 +87,7 @@ export function CosmosHome() {
         messageContent: msg,
         userId,
         chatMembers: [],
+        language,
       });
       setBrainResponse(result.llmResponse?.replyMessage || (language === 'ko' ? '처리 완료' : 'Done'));
     } catch (err: unknown) {

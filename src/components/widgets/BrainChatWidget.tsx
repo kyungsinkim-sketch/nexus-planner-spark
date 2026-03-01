@@ -38,7 +38,7 @@ function BrainChatWidget({ context }: { context: WidgetDataContext }) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const processingRef = useRef(false); // Ref-based guard to prevent concurrent submissions
   const { currentUser, users, projects, loadEvents, loadTodos, addTodo } = useAppStore();
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
 
   const [isListening, setIsListening] = useState(false);
   const recognitionRef = useRef<any>(null);
@@ -142,6 +142,7 @@ function BrainChatWidget({ context }: { context: WidgetDataContext }) {
         userId: currentUser.id,
         chatMembers,
         projectTitle: project?.title,
+        language,
       });
 
       // Auto-execute all pending actions from widget (skip manual confirm)

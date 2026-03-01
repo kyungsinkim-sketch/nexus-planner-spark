@@ -74,7 +74,7 @@ interface ChatPanelProps {
 }
 
 export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
   const isMobile = useIsMobile();
   const {
     projects, users, currentUser, messages, chatRooms,
@@ -485,6 +485,7 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
           directChatUserId: BRAIN_AI_USER_ID,
           userId: currentUser.id,
           chatMembers,
+          language,
         });
 
         // Auto-execute all pending actions (same as regular Brain processing)
@@ -679,6 +680,7 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
           userId: currentUser.id,
           chatMembers,
           projectTitle: brainProjectTitle,
+          language,
         });
 
         // Auto-execute all pending actions (same as BrainChatWidget)

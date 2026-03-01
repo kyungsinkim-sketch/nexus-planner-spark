@@ -323,7 +323,10 @@ Analyze the following emails and return suggestions as a JSON array:
 ${emailsContext}`;
 
   // Build full system prompt with context + feedback
-  const systemPrompt = SYSTEM_PROMPT_BASE + buildContextPrompt(context) + buildFeedbackPrompt(feedback);
+  const langSection = language === 'en'
+    ? '\n\n## Language\nYou MUST write all summary, suggestedNote, and suggestedReplyDraft fields in English.'
+    : '';
+  const systemPrompt = SYSTEM_PROMPT_BASE + langSection + buildContextPrompt(context) + buildFeedbackPrompt(feedback);
 
   const requestBody = JSON.stringify({
     model: MODEL,
@@ -399,7 +402,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { userId, messages, context, feedback } = await req.json();
+    const { userId, messages, context, feedback, language } = await req.json();
 
     if (!userId || !messages?.length) {
       return new Response(

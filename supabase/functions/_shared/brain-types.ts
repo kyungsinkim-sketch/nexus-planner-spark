@@ -80,6 +80,7 @@ export interface ProcessRequest {
   userId: string;
   chatMembers: { id: string; name: string }[];
   projectTitle?: string;
+  language?: string; // 'ko' | 'en' — UI language for AI response
 }
 
 export interface ExecuteRequest {

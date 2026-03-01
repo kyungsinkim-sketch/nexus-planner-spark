@@ -26,6 +26,7 @@ interface BrainProcessRequest {
   userId: string;
   chatMembers: ChatMember[];
   projectTitle?: string;
+  language?: string; // 'ko' | 'en'
 }
 
 interface BrainProcessResponse {

@@ -21,10 +21,18 @@ function buildSystemPrompt(
   projectId?: string,
   projectTitle?: string,
   weatherContext?: string,
+  language?: string,
 ): string {
   const memberList = chatMembers.map((m) => `- ${m.name} (id: ${m.id})`).join('\n');
+  const isEnglish = language === 'en';
+  const langInstruction = isEnglish
+    ? 'You MUST reply in English. All replyMessage text must be in English.'
+    : 'You MUST reply in Korean (한국어). All replyMessage text must be in Korean.';
 
-  return `You are "Re-Be Brain", an AI assistant in a Korean project management chat. Analyze messages and extract structured actions.
+  return `You are "Re-Be Brain", an AI assistant in a project management chat. Analyze messages and extract structured actions.
+
+## Language
+${langInstruction}
 
 ## Actions
 1. **create_todo** — Task assignment (부탁, 해줘, ~까지). System auto-creates calendar event per assignee, so do NOT also create_event.
@@ -39,7 +47,7 @@ ${memberList}
 ${projectId ? `\n## Project: ${projectId}${projectTitle ? ` (${projectTitle})` : ''}` : ''}
 
 ## Rules
-- Reply in user's language. ENTIRE response = single JSON object, no markdown fences.
+- ENTIRE response = single JSON object, no markdown fences.
 - hasAction=true with actions[] for actionable requests; hasAction=false with helpful reply otherwise.
 - Assignee: strip honorifics (님/씨/선배), partial match ("민규"→"박민규").
 - Dates: relative to today. Times: Korean (오후 3시=15:00). Default event=1hr, todo priority=NORMAL.
@@ -84,6 +92,7 @@ export async function analyzeMessage(
     request.projectId,
     request.projectTitle,
     weatherContext,
+    request.language,
   );
 
   // Trim conversation history to save input tokens (rate limit is 10k/min)
