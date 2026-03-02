@@ -372,6 +372,29 @@ Deno.serve(async (req) => {
 
     console.log(`[voice-call-ingest] Ingested ${insertedIds.length}/${knowledgeItems.length} items`);
 
+    // Auto-trigger decision thread linking for decision items (non-blocking)
+    const decisionItemIds = insertedIds.filter((_, i) => 
+      knowledgeItems[i]?.knowledge_type === 'decision_pattern' || knowledgeItems[i]?.decision_context
+    );
+    if (decisionItemIds.length > 0) {
+      const threadLinkUrl = `${supabaseUrl}/functions/v1/decision-thread-link`;
+      for (const itemId of decisionItemIds) {
+        try {
+          await fetch(threadLinkUrl, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${supabaseKey}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ userId, knowledgeItemId: itemId }),
+          });
+          console.log(`[voice-call-ingest] Decision thread link triggered for ${itemId}`);
+        } catch (linkErr) {
+          console.warn('[voice-call-ingest] Thread link failed (non-blocking):', (linkErr as Error).message);
+        }
+      }
+    }
+
     return new Response(
       JSON.stringify({
         ingested: insertedIds.length,
