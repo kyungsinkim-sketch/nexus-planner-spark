@@ -218,6 +218,7 @@ interface AppState {
   // Message Actions
   addMessage: (message: ChatMessage) => void;
   deleteMessage: (messageId: string) => Promise<void>;
+  clearChatMessages: (roomId?: string, directChatUserId?: string) => Promise<number>;
   sendProjectMessage: (projectId: string, content: string, attachmentId?: string) => Promise<void>;
   sendDirectMessage: (toUserId: string, content: string, attachmentId?: string) => Promise<void>;
 
@@ -1245,6 +1246,27 @@ export const useAppStore = create<AppState>()(
         set((state) => ({
           messages: state.messages.filter((m) => m.id !== messageId),
         }));
+      },
+
+      clearChatMessages: async (roomId?, directChatUserId?) => {
+        if (isSupabaseConfigured()) {
+          const { clearChatMessages: clearSvc } = await import('@/services/chatService');
+          await clearSvc(roomId, directChatUserId);
+        }
+        set((state) => ({
+          messages: state.messages.filter((m) => {
+            if (roomId) return m.roomId !== roomId;
+            if (directChatUserId) {
+              const uid = state.currentUser?.id;
+              return !(
+                (m.userId === uid && m.directChatUserId === directChatUserId) ||
+                (m.userId === directChatUserId && m.directChatUserId === uid)
+              );
+            }
+            return true;
+          }),
+        }));
+        return 0;
       },
 
       sendProjectMessage: async (projectId, content, attachmentId?) => {

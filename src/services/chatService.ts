@@ -578,6 +578,45 @@ export const deleteMessage = async (messageId: string): Promise<void> => {
     }
 };
 
+/**
+ * Delete all messages in a specific chat room or DM conversation.
+ */
+export const clearChatMessages = async (roomId?: string, directChatUserId?: string): Promise<number> => {
+    if (!isSupabaseConfigured()) throw new Error('Supabase not configured');
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Not authenticated');
+
+    let query = supabase.from('chat_messages').delete();
+
+    if (roomId) {
+        query = query.eq('room_id', roomId);
+    } else if (directChatUserId) {
+        // DM: delete messages between current user and target user
+        query = query.or(
+            `and(user_id.eq.${user.id},direct_chat_user_id.eq.${directChatUserId}),and(user_id.eq.${directChatUserId},direct_chat_user_id.eq.${user.id})`
+        );
+    } else {
+        throw new Error('Must specify roomId or directChatUserId');
+    }
+
+    const { error, count } = await query.select('*', { count: 'exact', head: true });
+    
+    // Actually delete
+    let deleteQuery = supabase.from('chat_messages').delete();
+    if (roomId) {
+        deleteQuery = deleteQuery.eq('room_id', roomId);
+    } else if (directChatUserId) {
+        deleteQuery = deleteQuery.or(
+            `and(user_id.eq.${user.id},direct_chat_user_id.eq.${directChatUserId}),and(user_id.eq.${directChatUserId},direct_chat_user_id.eq.${user.id})`
+        );
+    }
+    const { error: delError } = await deleteQuery;
+    if (delError) throw new Error(handleSupabaseError(delError));
+
+    return count || 0;
+};
+
 // Get recent conversations for a user
 export const getRecentConversations = async (userId: string): Promise<{
     projectChats: { projectId: string; lastMessage: ChatMessage }[];

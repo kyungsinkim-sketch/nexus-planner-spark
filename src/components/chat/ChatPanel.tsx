@@ -44,6 +44,7 @@ import {
   X,
   Phone,
   Video,
+  Trash2,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { useTranslation } from '@/hooks/useTranslation';
@@ -338,11 +339,8 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
     const chatId = selectedChat ? `${selectedChat.type}-${selectedChat.id}-${selectedChat.roomId || ''}` : null;
     const isRoomEntry = chatId !== prevChatIdRef.current;
     prevChatIdRef.current = chatId;
-    // Room entry → instant scroll (no animation delay);
-    // On mobile always use instant scroll to avoid "scroll lag" feeling
-    const useInstant = isRoomEntry || isMobile;
-    // Small delay to ensure DOM has rendered the messages
-    requestAnimationFrame(() => scrollToBottom(useInstant));
+    // Always use instant scroll — smooth scroll is distracting
+    requestAnimationFrame(() => scrollToBottom(true));
   }, [chatMessages, selectedChat, isMobile]);
 
   // Consume pending chat navigation from notification click
@@ -1679,6 +1677,33 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
                 </Button>
               </div>
             )}
+
+            {/* Clear chat button */}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="w-8 h-8 text-muted-foreground hover:text-destructive shrink-0"
+              onClick={async () => {
+                if (!selectedChat) return;
+                const confirmed = window.confirm(t('clearChatConfirm'));
+                if (!confirmed) return;
+                try {
+                  const { clearChatMessages } = useAppStore.getState();
+                  if (selectedChat.type === 'direct') {
+                    await clearChatMessages(undefined, selectedChat.id);
+                  } else if (selectedChat.roomId) {
+                    await clearChatMessages(selectedChat.roomId);
+                  }
+                  toast.success(t('chatCleared'));
+                } catch (e) {
+                  console.error('Failed to clear chat:', e);
+                  toast.error(t('chatClearFailed'));
+                }
+              }}
+              title={t('clearChat')}
+            >
+              <Trash2 className="w-4 h-4" />
+            </Button>
           </div>
 
           {/* Pinned Announcement Banner */}
