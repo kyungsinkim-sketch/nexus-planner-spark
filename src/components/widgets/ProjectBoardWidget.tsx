@@ -16,7 +16,7 @@ import type { WidgetDataContext } from '@/types/widget';
 import type { User, BoardGroup, BoardTask, BoardTaskStatus, Project } from '@/types/core';
 import { cn } from '@/lib/utils';
 import { LayoutGrid, GanttChart, ChevronDown, ChevronRight, Plus, Trash2, X, Check, Search, Clock, MoreHorizontal } from 'lucide-react';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -48,6 +48,7 @@ function OwnerAvatar({ user, size = 7 }: { user?: User; size?: number }) {
       <Tooltip>
         <TooltipTrigger asChild>
           <Avatar className="text-[10px] cursor-default" style={{ width: size * 4, height: size * 4 }}>
+            {user.avatar && <AvatarImage src={user.avatar} alt={user.name} />}
             <AvatarFallback className="bg-primary/10 text-primary font-medium">
               {user.name.slice(-2)}
             </AvatarFallback>
@@ -797,21 +798,28 @@ function GanttChartView({
                     {/* Top row: avatars + title */}
                     <div className="flex items-center gap-2">
                       {/* Avatar stack */}
-                      <div className="flex -space-x-1.5 flex-shrink-0">
+                      <div className="flex -space-x-2 flex-shrink-0">
                         {owners.slice(0, 3).map((user, idx) => (
-                          <Avatar
-                            key={user.id}
-                            className="text-[8px] border-2 border-card"
-                            style={{ width: 24, height: 24, zIndex: 3 - idx }}
-                          >
-                            <AvatarFallback className="bg-primary/15 text-primary font-medium text-[8px]">
-                              {user.name.slice(-2)}
-                            </AvatarFallback>
-                          </Avatar>
+                          <TooltipProvider key={user.id} delayDuration={200}>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Avatar
+                                  className="border-2 border-card ring-1 ring-border/30"
+                                  style={{ width: 28, height: 28, zIndex: 3 - idx }}
+                                >
+                                  {user.avatar && <AvatarImage src={user.avatar} alt={user.name} className="object-cover" />}
+                                  <AvatarFallback className="bg-primary/15 text-primary font-bold text-[9px]">
+                                    {user.name.slice(-2)}
+                                  </AvatarFallback>
+                                </Avatar>
+                              </TooltipTrigger>
+                              <TooltipContent side="top" className="text-xs">{user.name}</TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
                         ))}
                         {owners.length > 3 && (
-                          <Avatar className="text-[8px] border-2 border-card" style={{ width: 24, height: 24 }}>
-                            <AvatarFallback className="bg-muted text-muted-foreground text-[8px]">
+                          <Avatar className="border-2 border-card" style={{ width: 28, height: 28 }}>
+                            <AvatarFallback className="bg-muted text-muted-foreground text-[9px] font-medium">
                               +{owners.length - 3}
                             </AvatarFallback>
                           </Avatar>
