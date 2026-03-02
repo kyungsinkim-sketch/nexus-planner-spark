@@ -715,9 +715,9 @@ export const useAppStore = create<AppState>()(
           const { boardGroups } = get();
           if (!boardGroups.some(g => g.projectId === projectId)) {
             const defaultGroups: BoardGroup[] = [
-              { id: `bg-${projectId}-1`, projectId, title: '기획', color: '#0073EA', orderNo: 0, createdAt: new Date().toISOString() },
-              { id: `bg-${projectId}-2`, projectId, title: '디자인', color: '#E44258', orderNo: 1, createdAt: new Date().toISOString() },
-              { id: `bg-${projectId}-3`, projectId, title: '제작', color: '#FDAB3D', orderNo: 2, createdAt: new Date().toISOString() },
+              { id: `bg-${projectId}-1`, projectId, title: '기획', color: '#D4A843', orderNo: 0, createdAt: new Date().toISOString() },
+              { id: `bg-${projectId}-2`, projectId, title: '디자인', color: '#E8368F', orderNo: 1, createdAt: new Date().toISOString() },
+              { id: `bg-${projectId}-3`, projectId, title: '제작', color: '#2B4EC7', orderNo: 2, createdAt: new Date().toISOString() },
             ];
             set((state) => ({
               boardGroups: [...state.boardGroups, ...defaultGroups],
@@ -747,7 +747,7 @@ export const useAppStore = create<AppState>()(
             id: `bg-${Date.now()}`,
             projectId,
             title,
-            color: color || '#0073EA',
+            color: color || '#D4A843',
             orderNo: get().boardGroups.filter(g => g.projectId === projectId).length,
             createdAt: new Date().toISOString(),
           };
@@ -757,7 +757,7 @@ export const useAppStore = create<AppState>()(
 
         try {
           const orderNo = get().boardGroups.filter(g => g.projectId === projectId).length;
-          const group = await boardService.createBoardGroup(projectId, title, color || '#0073EA', orderNo);
+          const group = await boardService.createBoardGroup(projectId, title, color || '#D4A843', orderNo);
           set((state) => ({ boardGroups: [...state.boardGroups, group] }));
         } catch (error) {
           console.error('Failed to add board group:', error);

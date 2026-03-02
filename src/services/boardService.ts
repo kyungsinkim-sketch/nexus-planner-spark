@@ -60,7 +60,7 @@ export async function getBoardGroups(projectId: string): Promise<BoardGroup[]> {
 export async function createBoardGroup(
   projectId: string,
   title: string,
-  color: string = '#0073EA',
+  color: string = '#D4A843',
   orderNo: number = 0,
 ): Promise<BoardGroup> {
   if (!isSupabaseConfigured()) throw new Error('Supabase not configured');

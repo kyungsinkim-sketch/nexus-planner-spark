@@ -60,7 +60,7 @@ function ProgressChartWidget({ context: _context }: { context: WidgetDataContext
             }}
             formatter={(value: number) => [`${value}%`, 'Progress']}
           />
-          <Bar dataKey="progress" fill="hsl(234 89% 65%)" radius={[4, 4, 0, 0]} />
+          <Bar dataKey="progress" fill="#D4A843" radius={[4, 4, 0, 0]} />
         </BarChart>
       </ResponsiveContainer>
     </div>

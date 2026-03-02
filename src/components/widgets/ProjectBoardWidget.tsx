@@ -1132,7 +1132,8 @@ function TimelineView({
 function AddGroupInline({ onAdd }: { onAdd: (title: string, color: string) => void }) {
   const [title, setTitle] = useState('');
   const [show, setShow] = useState(false);
-  const colors = ['#0073EA', '#E44258', '#FDAB3D', '#00C875', '#A25DDC', '#FF642E', '#579BFC'];
+  // Bojagi (색동 보자기) palette — Korean traditional colors
+  const colors = ['#D4A843', '#2B4EC7', '#E8368F', '#1DA06A', '#7B2D8E', '#F0A830', '#F4C4D0'];
   const [color, setColor] = useState(colors[0]);
 
   if (!show) {

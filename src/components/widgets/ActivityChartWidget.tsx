@@ -64,12 +64,12 @@ function ActivityChartWidget({ context }: { context: WidgetDataContext }) {
           <AreaChart data={data} margin={{ top: 4, right: 4, left: -20, bottom: 4 }}>
             <defs>
               <linearGradient id="gradEvents" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#818cf8" stopOpacity={0.3} />
-                <stop offset="100%" stopColor="#818cf8" stopOpacity={0.02} />
+                <stop offset="0%" stopColor="#D4A843" stopOpacity={0.3} />
+                <stop offset="100%" stopColor="#D4A843" stopOpacity={0.02} />
               </linearGradient>
               <linearGradient id="gradMessages" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#34d399" stopOpacity={0.3} />
-                <stop offset="100%" stopColor="#34d399" stopOpacity={0.02} />
+                <stop offset="0%" stopColor="#2B4EC7" stopOpacity={0.3} />
+                <stop offset="100%" stopColor="#2B4EC7" stopOpacity={0.02} />
               </linearGradient>
             </defs>
             <XAxis dataKey="label" tick={{ fontSize: 10, fill: 'rgba(255,255,255,0.4)' }} axisLine={false} tickLine={false} />
@@ -83,8 +83,8 @@ function ActivityChartWidget({ context }: { context: WidgetDataContext }) {
                 fontSize: '12px',
               }}
             />
-            <Area type="monotone" dataKey="events" stroke="#818cf8" strokeWidth={2} fill="url(#gradEvents)" dot={false} />
-            <Area type="monotone" dataKey="messages" stroke="#34d399" strokeWidth={2} fill="url(#gradMessages)" dot={false} />
+            <Area type="monotone" dataKey="events" stroke="#D4A843" strokeWidth={2} fill="url(#gradEvents)" dot={false} />
+            <Area type="monotone" dataKey="messages" stroke="#2B4EC7" strokeWidth={2} fill="url(#gradMessages)" dot={false} />
           </AreaChart>
         </ResponsiveContainer>
       </div>

@@ -55,6 +55,19 @@
     --status-active: 142 76% 36%;
     --status-completed: 220 9% 46%;
 
+    /* ── Bojagi Brand Palette ──
+     * Inspired by Korean 색동 보자기 (Saekdong Bojagi).
+     * Gold is the key color; the rest are secondary accents
+     * used for data visualization, group distinction, and charts.
+     */
+    --bojagi-gold: 43 74% 55%;           /* #D4A843 — key color */
+    --bojagi-blue: 225 65% 48%;          /* #2B4EC7 — royal blue */
+    --bojagi-pink: 335 78% 56%;          /* #E8368F — hot pink */
+    --bojagi-green: 155 68% 38%;         /* #1DA06A — emerald */
+    --bojagi-purple: 289 52% 37%;        /* #7B2D8E — purple */
+    --bojagi-amber: 36 87% 58%;          /* #F0A830 — warm amber */
+    --bojagi-rose: 345 72% 86%;          /* #F4C4D0 — light rose */
+
     --border: 220 13% 91%;
     --input: 220 13% 91%;
     --ring: 234 89% 60%;
@@ -129,6 +142,15 @@
     --sidebar-border: 222 47% 12%;
     --sidebar-ring: 234 89% 60%;
     --sidebar-muted: 220 9% 50%;
+
+    /* ── Bojagi Brand Palette (dark — slightly brighter for contrast) ── */
+    --bojagi-gold: 43 80% 60%;
+    --bojagi-blue: 225 72% 58%;
+    --bojagi-pink: 335 82% 62%;
+    --bojagi-green: 155 72% 45%;
+    --bojagi-purple: 289 58% 48%;
+    --bojagi-amber: 36 90% 62%;
+    --bojagi-rose: 345 72% 80%;
 
     /* Liquid Glass (dark) — enhanced */
     --glass-bg: 222 47% 10% / 0.6;
