@@ -77,20 +77,20 @@ function WeatherWidget({ context: _context }: { context: WidgetDataContext }) {
 
   return (
     <>
-      <div className="h-full flex flex-col widget-dark-card p-3">
+      <div className="h-full flex flex-col widget-dark-card p-2 sm:p-3 overflow-hidden">
         {/* 7-day forecast row */}
-        <div className="grid grid-cols-7 gap-0.5 flex-1 items-center">
+        <div className="grid grid-cols-7 gap-0.5 flex-1 items-center min-h-0">
           {days.map((day) => {
             const Icon = CONDITION_ICONS[day.condition];
             const isToday = day.dayOffset === 0;
             return (
-              <div key={day.dayOffset} className="text-center">
-                <p className={`text-sm font-medium ${isToday ? 'text-white' : 'text-white/50'}`}>
+              <div key={day.dayOffset} className="text-center min-w-0 overflow-hidden">
+                <p className={`text-[10px] sm:text-sm font-medium truncate ${isToday ? 'text-white' : 'text-white/50'}`}>
                   {day.dayName}
                 </p>
-                <Icon className={`w-6 h-6 mx-auto my-1 ${CONDITION_COLORS[day.condition]}`} />
-                <p className="text-base font-semibold text-white">{day.high}°</p>
-                <p className="text-sm text-white/40">{day.low}°</p>
+                <Icon className={`w-4 h-4 sm:w-6 sm:h-6 mx-auto my-0.5 sm:my-1 ${CONDITION_COLORS[day.condition]}`} />
+                <p className="text-xs sm:text-base font-semibold text-white">{day.high}°</p>
+                <p className="text-[10px] sm:text-sm text-white/40">{day.low}°</p>
               </div>
             );
           })}

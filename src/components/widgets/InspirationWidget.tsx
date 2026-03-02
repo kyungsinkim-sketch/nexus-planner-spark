@@ -50,17 +50,17 @@ function InspirationWidget({ context: _context }: { context: WidgetDataContext }
   }
 
   return (
-    <div className="h-full flex flex-col items-center justify-center px-6 py-3 relative group widget-dark-card rounded-[var(--widget-radius)]">
+    <div className="h-full flex flex-col items-center justify-center px-3 sm:px-6 py-2 sm:py-3 relative group widget-dark-card rounded-[var(--widget-radius)] overflow-hidden">
       {/* Quote icon */}
-      <Quote className="w-5 h-5 text-white/20 mb-2 shrink-0" />
+      <Quote className="w-4 h-4 sm:w-5 sm:h-5 text-white/20 mb-1 sm:mb-2 shrink-0" />
 
       {/* Quote text */}
-      <p className="text-sm text-center text-white/85 italic leading-relaxed max-w-[90%]">
+      <p className="text-xs sm:text-sm text-center text-white/85 italic leading-snug sm:leading-relaxed max-w-[95%] line-clamp-4 sm:line-clamp-6">
         &ldquo;{quote.text}&rdquo;
       </p>
 
       {/* Author */}
-      <p className="text-xs text-white/50 mt-2 shrink-0">
+      <p className="text-[10px] sm:text-xs text-white/50 mt-1 sm:mt-2 shrink-0 truncate max-w-[90%]">
         — {quote.author}
       </p>
 

@@ -397,6 +397,27 @@
     background: hsl(222 47% 8%);
     border-radius: var(--widget-radius);
     color: white;
+    overflow: hidden;
+  }
+
+  /* Widget content auto-fit: scale down when container is small */
+  .react-grid-item[style*="height"] .widget-dark-card,
+  .react-grid-item[style*="height"] .glass-widget {
+    overflow: hidden;
+  }
+  /* Small widget containers: tighter padding + smaller text */
+  .react-grid-item {
+    container-type: size;
+  }
+  @container (max-height: 140px) {
+    .widget-dark-card { padding: 4px !important; }
+    .widget-dark-card p { font-size: 10px !important; line-height: 1.2 !important; }
+    .widget-dark-card svg { width: 14px !important; height: 14px !important; }
+  }
+  @container (max-height: 100px) {
+    .widget-dark-card { padding: 2px !important; }
+    .widget-dark-card p { font-size: 9px !important; }
+    .widget-dark-card svg { width: 12px !important; height: 12px !important; }
   }
   /* Weather gradient overlay */
   .weather-gradient-bg {
