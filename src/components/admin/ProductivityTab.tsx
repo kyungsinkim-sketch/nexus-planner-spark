@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useAppStore } from '@/stores/appStore';
 import { useTranslation } from '@/hooks/useTranslation';
 import { Card } from '@/components/ui/card';
@@ -6,57 +6,113 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Star, Filter, TrendingUp, DollarSign, Users, BarChart3 } from 'lucide-react';
+import { Star, Filter, TrendingUp, Users, Loader2 } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
 import {
   calculateProjectProductivity,
   formatAmount,
   type ProjectProductivityResult,
 } from '@/utils/productivityCalculation';
 
-// Mock project financial data (in real app, this comes from the database)
-const mockProjectFinancials = [
-  { projectId: 'p1', totalRevenue: 250450000, productionCost: 150000000, participants: [
-    { userId: 'u1', userName: '김경신', annualSalary: 60000000 },
-    { userId: 'u2', userName: '장요한', annualSalary: 48000000 },
-    { userId: 'u3', userName: '박민규', annualSalary: 42000000 },
-  ]},
-  { projectId: 'p2', totalRevenue: 130000000, productionCost: 70000000, participants: [
-    { userId: 'u1', userName: '김경신', annualSalary: 60000000 },
-    { userId: 'u2', userName: '장요한', annualSalary: 48000000 },
-  ]},
-  { projectId: 'p7', totalRevenue: 200000000, productionCost: 120000000, participants: [
-    { userId: 'u3', userName: '박민규', annualSalary: 42000000 },
-    { userId: 'u2', userName: '장요한', annualSalary: 48000000 },
-    { userId: 'u4', userName: '백송희', annualSalary: 36000000 },
-  ]},
-  { projectId: 'p10', totalRevenue: 100000000, productionCost: 55000000, participants: [
-    { userId: 'u3', userName: '박민규', annualSalary: 42000000 },
-    { userId: 'u5', userName: '홍원준', annualSalary: 30000000 },
-  ]},
-];
+interface ProjectFinancialData {
+  projectId: string;
+  title: string;
+  client: string;
+  totalRevenue: number;
+  productionCost: number;
+  teamMemberIds: string[];
+  participants: { userId: string; userName: string; annualSalary: number }[];
+}
 
 export function ProductivityTab() {
   const { projects, users, peerFeedback, getUserById, getProjectById } = useAppStore();
   const { t } = useTranslation();
   const [selectedProject, setSelectedProject] = useState<string>('all');
   const [viewMode, setViewMode] = useState<'contribution' | 'feedback'>('contribution');
+  const [financialData, setFinancialData] = useState<ProjectFinancialData[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Fetch real financial data from DB
+  useEffect(() => {
+    async function fetchFinancials() {
+      try {
+        // Get project financials
+        const { data: pf } = await supabase
+          .from('project_financials')
+          .select('project_id, contract_amount, expenses, net_revenue')
+          .gt('contract_amount', 0);
+
+        if (!pf) { setLoading(false); return; }
+
+        // Get salary grades for default wage
+        const { data: salaryGrades } = await supabase
+          .from('nexus_salary_grades')
+          .select('category, annual_salary');
+
+        const defaultSalary = 48000000; // fallback
+        const categoryMap = new Map<string, number>();
+        if (salaryGrades) {
+          for (const sg of salaryGrades) {
+            if (!categoryMap.has(sg.category)) {
+              categoryMap.set(sg.category, Number(sg.annual_salary));
+            }
+          }
+        }
+
+        const results: ProjectFinancialData[] = [];
+        for (const fin of pf) {
+          const project = projects.find(p => p.id === fin.project_id);
+          if (!project) continue;
+
+          const memberIds = (project as any).teamMemberIds || [];
+          const participants = memberIds.map((uid: string) => {
+            const user = users.find(u => u.id === uid);
+            return {
+              userId: uid,
+              userName: user?.name || 'Unknown',
+              annualSalary: defaultSalary,
+            };
+          });
+
+          // If no members assigned, skip
+          if (participants.length === 0) continue;
+
+          results.push({
+            projectId: fin.project_id,
+            title: project.title,
+            client: project.client,
+            totalRevenue: Number(fin.contract_amount),
+            productionCost: Number(fin.expenses) || 0,
+            teamMemberIds: memberIds,
+            participants,
+          });
+        }
+
+        setFinancialData(results);
+      } catch (e) {
+        console.error('Failed to fetch financials:', e);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchFinancials();
+  }, [projects, users]);
 
   const completedProjects = projects.filter(p => p.status === 'COMPLETED');
 
-  // Calculate productivity results
+  // Calculate productivity results from real data
   const productivityResults = useMemo(() => {
-    return mockProjectFinancials.map(pf => {
-      const project = projects.find(p => p.id === pf.projectId);
-      return calculateProjectProductivity(
-        project?.title || '',
+    return financialData.map(pf =>
+      calculateProjectProductivity(
+        pf.title,
         pf.projectId,
-        project?.client || '',
+        pf.client,
         pf.totalRevenue,
         pf.productionCost,
         pf.participants,
-      );
-    });
-  }, [projects]);
+      ),
+    );
+  }, [financialData]);
 
   // Filter by selected project
   const filteredResults = selectedProject === 'all'
@@ -118,6 +174,14 @@ export function ProductivityTab() {
       ))}
     </div>
   );
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

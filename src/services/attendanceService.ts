@@ -389,3 +389,91 @@ export async function getTeamTodayAttendance(): Promise<AttendanceRecord[]> {
     if (error) throw handleSupabaseError(error);
     return data as AttendanceRecord[];
 }
+
+/**
+ * Get team monthly attendance stats (Admin only)
+ */
+export interface TeamMonthlyStats {
+  userId: string;
+  name: string;
+  department: string;
+  workDays: number;
+  totalMinutes: number;
+  avgMinutesPerDay: number;
+  overtimeMinutes: number;
+  remoteDays: number;
+  overseasDays: number;
+  filmingDays: number;
+  officeDays: number;
+  lateCount: number;
+  records: AttendanceRecord[];
+}
+
+export async function getTeamMonthlyStats(year: number, month: number): Promise<TeamMonthlyStats[]> {
+  if (!isSupabaseConfigured()) return [];
+
+  const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
+  const endDate = new Date(year, month, 0).toISOString().split('T')[0];
+
+  const { data, error } = await withSupabaseRetry(
+    () => supabase
+      .from('nexus_attendance')
+      .select(`*, profiles:user_id (id, name, department)`)
+      .gte('work_date', startDate)
+      .lte('work_date', endDate)
+      .order('check_in_at', { ascending: true }),
+    { label: 'getTeamMonthlyStats' },
+  );
+
+  if (error) throw handleSupabaseError(error);
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const records = data as any[];
+  const userMap = new Map<string, TeamMonthlyStats>();
+  const STANDARD_DAY_MINUTES = 480;
+
+  for (const r of records) {
+    const uid = r.user_id;
+    const profile = r.profiles || { id: uid, name: 'Unknown', department: null };
+
+    if (!userMap.has(uid)) {
+      userMap.set(uid, {
+        userId: uid, name: profile.name, department: profile.department || '',
+        workDays: 0, totalMinutes: 0, avgMinutesPerDay: 0, overtimeMinutes: 0,
+        remoteDays: 0, overseasDays: 0, filmingDays: 0, officeDays: 0,
+        lateCount: 0, records: [],
+      });
+    }
+
+    const stat = userMap.get(uid)!;
+    stat.records.push(r);
+
+    if (r.status === 'completed' || r.working_minutes) {
+      stat.workDays += 1;
+      stat.totalMinutes += r.working_minutes || 0;
+      if ((r.working_minutes || 0) > STANDARD_DAY_MINUTES) {
+        stat.overtimeMinutes += (r.working_minutes || 0) - STANDARD_DAY_MINUTES;
+      }
+    }
+
+    switch (r.check_in_type) {
+      case 'remote': stat.remoteDays += 1; break;
+      case 'overseas': stat.overseasDays += 1; break;
+      case 'filming': stat.filmingDays += 1; break;
+      case 'office': stat.officeDays += 1; break;
+    }
+
+    if (r.check_in_at) {
+      const t = new Date(r.check_in_at);
+      const kstH = (t.getUTCHours() + 9) % 24;
+      const kstM = t.getUTCMinutes();
+      if (kstH > 9 || (kstH === 9 && kstM > 30)) stat.lateCount += 1;
+    }
+  }
+
+  for (const stat of userMap.values()) {
+    stat.avgMinutesPerDay = stat.workDays > 0 ? Math.round(stat.totalMinutes / stat.workDays) : 0;
+  }
+
+  return Array.from(userMap.values()).sort((a, b) => b.totalMinutes - a.totalMinutes);
+}
