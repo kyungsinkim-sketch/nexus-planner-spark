@@ -62,7 +62,8 @@ For each email, extract:
 4. **Suggested Event** — If the email requests a meeting or schedule, extract event details (title, startAt, endAt, location, type, attendeeIds)
 5. **Suggested Todo** — If there's an action item or request, extract todo details (title, assigneeIds, dueDate, priority, projectId)
 6. **Suggested Note** — If the email contains decision-relevant info (e.g., comparing locations, pricing options), extract as a note
-7. **Reply Draft** — Generate a concise, professional Korean reply draft
+7. **Decision Context** — If the email involves a decision (choosing between options, confirming/rejecting a proposal, changing plans), extract the structured decision context
+8. **Reply Draft** — Generate a concise, professional Korean reply draft
 
 ## Response Format
 Return a JSON array of suggestions. Each suggestion:
@@ -75,6 +76,7 @@ Return a JSON array of suggestions. Each suggestion:
   "suggestedEvent": { "title": "", "startAt": "ISO", "endAt": "ISO", "location": "", "locationUrl": "", "type": "MEETING|TASK|DEADLINE|DELIVERY", "attendeeIds": ["user-id-1"], "projectId": "proj-id" } | null,
   "suggestedTodo": { "title": "", "assigneeIds": ["user-id-1"], "assigneeNames": ["홍길동"], "dueDate": "ISO", "priority": "LOW|NORMAL|HIGH", "projectId": "proj-id" } | null,
   "suggestedNote": "중요 기록 내용" | null,
+  "decisionContext": { "content": "결정 내용", "alternatives": ["대안들"], "chosen": "선택된 옵션", "reasoning": "이유", "category": "scope_change|timeline_change|budget_change|quality_tradeoff|client_negotiation|creative_direction|other" } | null,
   "suggestedReplyDraft": "답장 초안",
   "confidence": 0.0-1.0
 }

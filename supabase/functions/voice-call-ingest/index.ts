@@ -79,6 +79,7 @@ interface KnowledgeItem {
   scope_layer: string;
   confidence: number;
   dialectic_tag: string | null;
+  decision_context?: Record<string, unknown> | null;
 }
 
 // ─── Knowledge Extraction ────────────────────────────
@@ -98,7 +99,7 @@ function extractKnowledgeItems(
   if (analysis.decisions?.length) {
     for (const d of analysis.decisions) {
       items.push({
-        content: `[미팅 결정] ${d.content}\n- 결정자: ${d.decidedBy || '미확인'}\n- 미팅: ${recordingTitle}\n- 일시: ${dateStr}\n- 참석자: ${speakerList}`,
+        content: `[미팅 결정] ${d.content}\n- 결정자: ${d.decidedBy || '미확인'}${d.reasoning ? `\n- 이유: ${d.reasoning}` : ''}${d.alternatives?.length ? `\n- 고려 대안: ${d.alternatives.join(', ')}` : ''}\n- 미팅: ${recordingTitle}\n- 일시: ${dateStr}\n- 참석자: ${speakerList}`,
         summary: `미팅 결정: ${d.content.slice(0, 80)}`,
         knowledge_type: 'decision_pattern',
         source_type: 'voice_recording',
@@ -109,6 +110,15 @@ function extractKnowledgeItems(
         scope_layer: 'operations',
         confidence: d.confidence || 0.85,
         dialectic_tag: 'opportunity',
+        decision_context: {
+          chosen: d.content,
+          alternatives: d.alternatives || [],
+          reasoning: d.reasoning || null,
+          participants: speakers,
+          decided_by: d.decidedBy || null,
+          category: d.category || 'other',
+          decided_at: recordingDate,
+        },
       });
     }
   }
@@ -329,6 +339,7 @@ Deno.serve(async (req) => {
           embedding_v2: JSON.stringify(embeddings[i]),
           embedding_model: 'voyage-3-lite',
           is_active: true,
+          ...(item.decision_context ? { decision_context: item.decision_context } : {}),
         })
         .select('id')
         .single();

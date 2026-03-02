@@ -60,7 +60,15 @@ ${projectTitle ? `## Project: ${projectTitle}` : ''}
 ## Response Format (JSON only, no markdown fences)
 {
   "decisions": [
-    { "text": "description in Korean", "confidence": 0.0-1.0, "relatedUserIds": ["uuid"], "priority": "low|medium|high" }
+    {
+      "text": "description in Korean",
+      "confidence": 0.0-1.0,
+      "relatedUserIds": ["uuid"],
+      "priority": "low|medium|high",
+      "alternatives": ["discussed alternatives if any"],
+      "reasoning": "why this was decided (context from conversation)",
+      "category": "scope_change|timeline_change|budget_change|quality_tradeoff|resource_allocation|client_negotiation|creative_direction|risk_mitigation|other"
+    }
   ],
   "actionItems": [
     { "text": "description in Korean", "confidence": 0.0-1.0, "relatedUserIds": ["uuid"], "priority": "low|medium|high" }

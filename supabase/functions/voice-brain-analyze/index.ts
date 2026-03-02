@@ -88,7 +88,14 @@ Return a single JSON object:
 {
   "summary": "회의 요약 (한국어)",
   "decisions": [
-    { "content": "결정 내용", "decidedBy": "화자 이름", "confidence": 0.0-1.0 }
+    {
+      "content": "결정 내용",
+      "decidedBy": "화자 이름",
+      "confidence": 0.0-1.0,
+      "alternatives": ["고려했던 다른 옵션들 (대화에서 언급된 경우)"],
+      "reasoning": "이 결정을 한 이유/맥락 (대화에서 파악 가능한 경우)",
+      "category": "scope_change|timeline_change|budget_change|quality_tradeoff|resource_allocation|client_negotiation|creative_direction|risk_mitigation|team_conflict|vendor_selection|process_change|other"
+    }
   ],
   "suggestedEvents": [
     { "title": "", "startAt": "ISO", "endAt": "ISO", "location": "", "type": "MEETING|TASK|DEADLINE|DELIVERY", "attendeeIds": [], "projectId": "" }
@@ -112,6 +119,8 @@ Return a single JSON object:
 - Use KST timezone (+09:00) for all timestamps
 - For event duration, default to 1 hour unless specified
 - Prioritize decisions and action items — those are most valuable
+- For decisions: capture WHY it was decided (reasoning), WHAT alternatives were discussed, and categorize the decision type
+- Even informal decisions ("그냥 이걸로 하자", "그럼 A안으로 가죠") count as decisions — extract the context around them
 - If the transcript is too short or uninformative, return minimal results${contextSection}`;
 }
 
