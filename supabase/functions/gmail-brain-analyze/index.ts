@@ -300,6 +300,7 @@ async function analyzeEmails(
   anthropicKey: string,
   context?: BrainContext,
   feedback?: FeedbackEntry[],
+  language?: string,
 ): Promise<unknown[]> {
   const emailsContext = messages
     .map(
@@ -421,7 +422,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    const rawSuggestions = await analyzeEmails(messages, anthropicKey, context as BrainContext, feedback as FeedbackEntry[]);
+    const rawSuggestions = await analyzeEmails(messages, anthropicKey, context as BrainContext, feedback as FeedbackEntry[], language);
 
     // Add IDs and normalize
     const suggestions = rawSuggestions.map((s: Record<string, unknown>, i: number) => ({
