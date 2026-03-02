@@ -24,7 +24,7 @@ import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { toast } from 'sonner';
 import { format, differenceInDays, addDays, startOfWeek, parseISO } from 'date-fns';
 
-type ViewMode = 'table' | 'gantt' | 'timeline';
+type ViewMode = 'table' | 'gantt';
 
 // ── Status config ──────────────────────────────────────────
 
@@ -281,7 +281,8 @@ function MultiOwnerSelector({
         ) : (
           <div className="flex -space-x-2">
             {selectedUsers.slice(0, 3).map(u => (
-              <Avatar key={u.id} className="w-6 h-6 text-[8px] border-2 border-background">
+              <Avatar key={u.id} className="w-7 h-7 text-[8px] border-2 border-background">
+                {u.avatar && <AvatarImage src={u.avatar} alt={u.name} className="object-cover" />}
                 <AvatarFallback className="bg-primary/10 text-primary font-medium">
                   {u.name.slice(-2)}
                 </AvatarFallback>
@@ -379,7 +380,7 @@ function MainTableView({
     <ScrollArea className="w-full h-full">
       <div className="min-w-[700px]">
         {/* Column header */}
-        <div className="grid grid-cols-[minmax(200px,2fr)_80px_80px_80px_80px_110px_36px] gap-1 px-3 py-2 text-xs font-medium text-muted-foreground border-b border-border sticky top-0 bg-background z-10">
+        <div className="grid grid-cols-[minmax(200px,2fr)_90px_120px_90px_90px_120px_36px] gap-1 px-3 py-2 text-xs font-medium text-muted-foreground border-b border-border sticky top-0 bg-background z-10">
           <span>{t('taskName')}</span>
           <span className="text-center">{t('taskStatus')}</span>
           <span className="text-center">{t('owner')}</span>
@@ -417,7 +418,7 @@ function MainTableView({
                 return (
                   <div
                     key={task.id}
-                    className="grid grid-cols-[minmax(200px,2fr)_80px_80px_80px_80px_110px_36px] gap-1 px-3 py-1.5 items-center border-l-[3px] hover:bg-muted/30 transition-colors group/row"
+                    className="grid grid-cols-[minmax(200px,2fr)_90px_120px_90px_90px_120px_36px] gap-1 px-3 py-1.5 items-center border-l-[3px] hover:bg-muted/30 transition-colors group/row"
                     style={{ borderLeftColor: group.color }}
                   >
                     {/* Title - editable */}
@@ -499,7 +500,7 @@ function MainTableView({
 
               {/* Add item row */}
               {!isCollapsed && (
-                <div className="grid grid-cols-[minmax(200px,2fr)_80px_80px_80px_80px_110px_36px] gap-1 px-3 py-1.5 border-l-[3px] border-transparent bg-muted/20 text-xs text-muted-foreground">
+                <div className="grid grid-cols-[minmax(200px,2fr)_90px_120px_90px_90px_120px_36px] gap-1 px-3 py-1.5 border-l-[3px] border-transparent bg-muted/20 text-xs text-muted-foreground">
                   <button
                     onClick={() => onAddTask(group.id)}
                     className="pl-5 flex items-center gap-1 cursor-pointer hover:text-primary transition-colors text-left"
@@ -848,12 +849,14 @@ function GanttChartView({
                       </span>
                     </div>
 
-                    {/* Bottom row: status + duration */}
+                    {/* Bottom row: group + status + duration */}
                     <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
                       <span
-                        className="inline-block w-1.5 h-1.5 rounded-full flex-shrink-0"
-                        style={{ backgroundColor: STATUS_CONFIG[task.status]?.bg ? undefined : groupColor }}
-                      />
+                        className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium"
+                        style={{ backgroundColor: groupColor + '20', color: groupColor }}
+                      >
+                        {groups.find(g => g.id === task.boardGroupId)?.title || ''}
+                      </span>
                       <span className="truncate">
                         {statusLabel(task.status)} · {durationDays}{t('ganttDays') || '일'}
                       </span>
@@ -894,7 +897,7 @@ function GanttChartView({
                 style={{ zIndex: 5 }}
               >
                 <Clock className="w-3 h-3" />
-                {tasks.filter(tk => !tk.startDate || !tk.endDate).length}개 일정 미설정
+                {tasks.filter(tk => !tk.startDate || !tk.endDate).length} {t('tasksNoDateSet') || '일정 미설정'}
               </div>
             )}
           </div>
@@ -1132,7 +1135,7 @@ function TimelineView({
 
                 {groupTasks.filter(t => !t.startDate || !t.endDate).length > 0 && (
                   <div className="px-3 py-2 text-[10px] text-muted-foreground/60">
-                    + {groupTasks.filter(t => !t.startDate || !t.endDate).length} 날짜 미지정
+                    + {groupTasks.filter(t => !t.startDate || !t.endDate).length} {t('tasksNoDateSet') || 'no date set'}
                   </div>
                 )}
               </div>
@@ -1147,7 +1150,7 @@ function TimelineView({
 
 // ── Add Group Dialog ──────────────────────────────────────
 
-function AddGroupInline({ onAdd }: { onAdd: (title: string, color: string) => void }) {
+function AddGroupInline({ onAdd, t }: { onAdd: (title: string, color: string) => void; t?: (k: string) => string }) {
   const [title, setTitle] = useState('');
   const [show, setShow] = useState(false);
   // Bojagi (색동 보자기) palette — Korean traditional colors
@@ -1161,7 +1164,7 @@ function AddGroupInline({ onAdd }: { onAdd: (title: string, color: string) => vo
         className="flex items-center gap-1.5 px-3 py-2 text-xs text-muted-foreground hover:text-primary transition-colors"
       >
         <Plus className="w-3.5 h-3.5" />
-        <span>그룹 추가</span>
+        <span>{t?.('addGroup') || '그룹 추가'}</span>
       </button>
     );
   }
@@ -1327,15 +1330,7 @@ export default function ProjectBoardWidget({ context }: { context: WidgetDataCon
           <GanttChart className="w-3.5 h-3.5" />
           {t('ganttChart')}
         </Button>
-        <Button
-          variant={viewMode === 'timeline' ? 'secondary' : 'ghost'}
-          size="sm"
-          className="h-7 text-xs gap-1.5"
-          onClick={() => setViewMode('timeline')}
-        >
-          <Clock className="w-3.5 h-3.5" />
-          {t('timeline') || '타임라인'}
-        </Button>
+
       </div>
 
       {/* Content */}
@@ -1359,20 +1354,12 @@ export default function ProjectBoardWidget({ context }: { context: WidgetDataCon
             t={t}
             onUpdateTask={handleUpdateTask}
           />
-        ) : (
-          <TimelineView
-            groups={projectGroups}
-            tasks={projectTasks}
-            users={projectUsers}
-            t={t}
-            onUpdateTask={handleUpdateTask}
-          />
-        )}
+        )
       </div>
 
       {/* Add group button */}
       <div className="shrink-0 border-t border-border">
-        <AddGroupInline onAdd={handleAddGroup} />
+        <AddGroupInline onAdd={handleAddGroup} t={t} />
       </div>
 
       {/* New task inline input (floating) */}
