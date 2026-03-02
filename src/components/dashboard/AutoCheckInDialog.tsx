@@ -66,7 +66,7 @@ export function AutoCheckInDialog() {
       setShowAutoCheckInDialog(false);
     } catch (err) {
       console.error('[AutoCheckIn] Check-in failed:', err);
-      toast.error('출근 처리에 실패했습니다');
+      toast.error(t('checkInFailed'));
     } finally {
       setLoading(null);
     }

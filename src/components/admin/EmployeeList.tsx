@@ -204,11 +204,11 @@ export function EmployeeList() {
   const handleResetPassword = async () => {
     if (!passwordTarget) return;
     if (newPasswordValue.length < 6) {
-      toast.error('비밀번호는 최소 6자 이상이어야 합니다');
+      toast.error(t('passwordMinSix'));
       return;
     }
     if (newPasswordValue !== confirmPasswordValue) {
-      toast.error('비밀번호가 일치하지 않습니다');
+      toast.error(t('passwordMismatch'));
       return;
     }
 
@@ -231,7 +231,7 @@ export function EmployeeList() {
 
   const handleAddEmployee = () => {
     if (!newEmpData.name || !newEmpData.join_date) {
-      toast.error('이름과 입사일은 필수입니다');
+      toast.error(t('nameAndJoinDateRequired'));
       return;
     }
     const newId = `emp-${Date.now()}`;

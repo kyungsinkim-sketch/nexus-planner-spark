@@ -95,7 +95,7 @@ const TranscriptTimeline = memo(function TranscriptTimeline({
     return (
       <div className="text-center py-4 text-xs text-muted-foreground">
         <FileText className="w-5 h-5 mx-auto mb-1 opacity-50" />
-        트랜스크립트가 없습니다
+        {t('noTranscript')}
       </div>
     );
   }

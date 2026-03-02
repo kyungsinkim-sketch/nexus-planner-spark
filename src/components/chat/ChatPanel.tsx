@@ -169,7 +169,7 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
 
     // Add Brain AI + AI persona virtual users at the top
     const aiUsers: typeof users = [
-      { id: BRAIN_AI_USER_ID, name: 'Brain AI', role: 'ADMIN' as const, department: '업무 자동화 AI 어시스턴트' },
+      { id: BRAIN_AI_USER_ID, name: 'Brain AI', role: 'ADMIN' as const, department: '' },
       { id: PERSONA_PABLO_USER_ID, name: 'Pablo AI', role: 'ADMIN' as const, department: 'CEO AI Advisor' },
       { id: PERSONA_CD_USER_ID, name: 'CD AI', role: 'MANAGER' as const, department: 'Creative Director AI' },
       { id: PERSONA_PD_USER_ID, name: 'PD AI', role: 'MANAGER' as const, department: 'Producer AI' },
@@ -442,7 +442,7 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
       }
     } catch (sendError) {
       console.error('Failed to send message:', sendError);
-      toast.error('메시지 전송에 실패했습니다. 다시 시도해주세요.');
+      toast.error(t('messageSendFailed'));
       return; // Don't clear the input on failure
     }
 
@@ -926,7 +926,7 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
             : dataType === 'update_event'
               ? 'Event updated successfully!'
               : dataType === 'board_task'
-                ? '보드 태스크가 생성되었습니다!'
+                ? t('boardTaskCreated')
                 : 'Action completed!';
       toast.success(actionLabel);
 

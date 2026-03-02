@@ -297,7 +297,7 @@ function EmailItem({
             <button
               onClick={(e) => { e.stopPropagation(); onTrash(emailId); }}
               className="flex items-center gap-1 text-[10px] px-2 py-1 rounded-md bg-red-500/10 hover:bg-red-500/20 text-red-600 dark:text-red-400 transition-colors ml-auto"
-              title="이메일 삭제"
+              title={t('deleteEmail')}
             >
               <Trash2 className="w-3 h-3" /> 삭제
             </button>

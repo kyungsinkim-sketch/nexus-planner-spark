@@ -56,7 +56,7 @@ function BrainChatWidget({ context }: { context: WidgetDataContext }) {
 
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SpeechRecognition) {
-      toast.error('이 브라우저에서 음성 인식을 지원하지 않습니다');
+      toast.error(t('voiceNotSupported'));
       return;
     }
 
@@ -83,7 +83,7 @@ function BrainChatWidget({ context }: { context: WidgetDataContext }) {
       setIsListening(false);
       recognitionRef.current = null;
       if (event.error === 'not-allowed') {
-        toast.error('마이크 권한이 필요합니다');
+        toast.error(t('micPermissionRequired'));
       }
     };
 
@@ -391,7 +391,7 @@ function BrainChatWidget({ context }: { context: WidgetDataContext }) {
                 ? 'bg-red-500 text-white animate-pulse'
                 : 'bg-muted hover:bg-muted/80 text-muted-foreground'
             }`}
-            title={isListening ? '음성 인식 중지' : '음성으로 명령'}
+            title={isListening ? t('voiceListening') : t('voiceCommand')}
           >
             {isListening ? <MicOff className="w-3 h-3" /> : <Mic className="w-3 h-3" />}
           </button>

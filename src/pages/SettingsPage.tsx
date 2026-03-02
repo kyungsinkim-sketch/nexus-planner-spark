@@ -109,11 +109,11 @@ export function SettingsPage() {
     if (!file || !currentUser) return;
 
     if (!file.type.startsWith('image/')) {
-      toast.error('이미지 파일만 업로드 가능합니다');
+      toast.error(t('profileImageOnly'));
       return;
     }
     if (file.size > 5 * 1024 * 1024) {
-      toast.error('파일 크기는 5MB 이하여야 합니다');
+      toast.error(t('fileSizeLimit'));
       return;
     }
 
@@ -134,7 +134,7 @@ export function SettingsPage() {
         const avatarUrl = `${publicUrl}?t=${Date.now()}`;
         await authService.updateUserProfile(currentUser.id, { avatar: avatarUrl });
         setCurrentUser({ ...currentUser, avatar: avatarUrl });
-        toast.success('프로필 사진이 업데이트되었습니다');
+        toast.success(t('profilePhotoUpdated'));
       } else {
         const objectUrl = URL.createObjectURL(file);
         setCurrentUser({ ...currentUser, avatar: objectUrl });
@@ -142,7 +142,7 @@ export function SettingsPage() {
       }
     } catch (error) {
       console.error('Avatar upload failed:', error);
-      toast.error('사진 업로드에 실패했습니다');
+      toast.error(t('photoUploadFailed'));
     } finally {
       setIsUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
@@ -153,7 +153,7 @@ export function SettingsPage() {
   const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault();
     if (newPassword !== confirmPassword) {
-      toast.error('비밀번호가 일치하지 않습니다');
+      toast.error(t('passwordMismatch'));
       return;
     }
     if (newPassword.length < 6) {

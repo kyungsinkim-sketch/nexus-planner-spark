@@ -227,11 +227,11 @@ export function AdminSettingsTab() {
     const handleResetPassword = async () => {
         if (!passwordTarget) return;
         if (newPasswordValue.length < 6) {
-            toast.error('비밀번호는 최소 6자 이상이어야 합니다');
+            toast.error(t('passwordMinSix'));
             return;
         }
         if (newPasswordValue !== confirmPasswordValue) {
-            toast.error('비밀번호가 일치하지 않습니다');
+            toast.error(t('passwordMismatch'));
             return;
         }
         setIsResettingPassword(true);

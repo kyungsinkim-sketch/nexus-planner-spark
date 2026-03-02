@@ -75,7 +75,7 @@ class WidgetErrorBoundary extends React.Component<
             className="flex items-center gap-1 text-[10px] px-2 py-1 rounded bg-muted hover:bg-muted/80 transition-colors"
           >
             <RotateCcw className="w-3 h-3" />
-            다시 시도
+            {t('retry')}
           </button>
         </div>
       );

@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { ThumbsUp, ThumbsDown } from 'lucide-react';
 import { submitRAGFeedback } from '@/services/ragService';
 import { useAppStore } from '@/stores/appStore';
+import { useTranslation } from '@/hooks/useTranslation';
 
 interface RAGFeedbackButtonProps {
   queryLogId: string;
@@ -18,6 +19,7 @@ export function RAGFeedbackButton({ queryLogId, className }: RAGFeedbackButtonPr
   const [feedback, setFeedback] = useState<boolean | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const currentUser = useAppStore((s) => s.currentUser);
+  const { t } = useTranslation();
 
   if (!queryLogId || !currentUser) return null;
 
@@ -44,7 +46,7 @@ export function RAGFeedbackButton({ queryLogId, className }: RAGFeedbackButtonPr
         className={`h-6 w-6 p-0 ${feedback === true ? 'text-emerald-600 bg-emerald-50' : 'text-muted-foreground hover:text-emerald-600'}`}
         onClick={() => handleFeedback(true)}
         disabled={feedback !== null || isSubmitting}
-        title="도움이 됐어요"
+        title={t('helpful')}
       >
         <ThumbsUp className="h-3.5 w-3.5" />
       </Button>
@@ -54,13 +56,13 @@ export function RAGFeedbackButton({ queryLogId, className }: RAGFeedbackButtonPr
         className={`h-6 w-6 p-0 ${feedback === false ? 'text-red-600 bg-red-50' : 'text-muted-foreground hover:text-red-600'}`}
         onClick={() => handleFeedback(false)}
         disabled={feedback !== null || isSubmitting}
-        title="도움이 안 됐어요"
+        title={t('notHelpful')}
       >
         <ThumbsDown className="h-3.5 w-3.5" />
       </Button>
       {feedback !== null && (
         <span className="text-xs text-muted-foreground ml-1">
-          {feedback ? '감사합니다!' : '개선할게요'}
+          {feedback ? t('thankYou') : t('willImprove')}
         </span>
       )}
     </div>

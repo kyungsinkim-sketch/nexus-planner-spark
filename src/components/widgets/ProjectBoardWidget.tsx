@@ -305,7 +305,7 @@ function MultiOwnerSelector({
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="이름 검색..."
+                placeholder={t('searchName')}
                 className="w-full h-6 text-xs border border-border rounded bg-background pl-6 pr-2"
                 autoFocus
               />
@@ -1184,7 +1184,7 @@ function AddGroupInline({ onAdd, t }: { onAdd: (title: string, color: string) =>
       <Input
         value={title}
         onChange={(e) => setTitle(e.target.value)}
-        placeholder="그룹 이름"
+        placeholder={t('groupName')}
         className="h-7 text-xs flex-1"
         autoFocus
         onKeyDown={(e) => {
