@@ -28,17 +28,15 @@ import { toast } from 'sonner';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import { useTranslation } from '@/hooks/useTranslation';
 
+// Bojagi (색동 보자기) brand palette + neutrals
 const KEY_COLORS = [
-  { value: '#3b82f6', label: 'Blue' },
-  { value: '#10b981', label: 'Emerald' },
-  { value: '#8b5cf6', label: 'Violet' },
-  { value: '#f59e0b', label: 'Amber' },
-  { value: '#ef4444', label: 'Red' },
-  { value: '#ec4899', label: 'Pink' },
-  { value: '#06b6d4', label: 'Cyan' },
-  { value: '#84cc16', label: 'Lime' },
-  { value: '#f97316', label: 'Orange' },
-  { value: '#6366f1', label: 'Indigo' },
+  { value: '#D4A843', label: 'Gold' },
+  { value: '#2B4EC7', label: 'Blue' },
+  { value: '#E8368F', label: 'Pink' },
+  { value: '#1DA06A', label: 'Green' },
+  { value: '#7B2D8E', label: 'Purple' },
+  { value: '#F0A830', label: 'Amber' },
+  { value: '#F4C4D0', label: 'Rose' },
   { value: '#ffffff', label: 'White' },
   { value: '#d1d5db', label: 'Light Grey' },
   { value: '#6b7280', label: 'Dark Grey' },
@@ -68,7 +66,7 @@ export function NewProjectModal({ open, onOpenChange }: NewProjectModalProps) {
     pmId: '',
     teamMemberIds: [] as string[],
     thumbnail: '' as string,
-    keyColor: '#3b82f6',
+    keyColor: '#D4A843',
   });
 
   const selectedPM = users.find(u => u.id === formData.pmId);
@@ -127,7 +125,7 @@ export function NewProjectModal({ open, onOpenChange }: NewProjectModalProps) {
         pmId: '',
         teamMemberIds: [],
         thumbnail: '',
-        keyColor: '#3b82f6',
+        keyColor: '#D4A843',
       });
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : t('projectCreateFailed');
