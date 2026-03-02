@@ -1346,7 +1346,7 @@ export default function ProjectBoardWidget({ context }: { context: WidgetDataCon
             onDeleteTask={handleDeleteTask}
             onAddTask={handleAddTask}
           />
-        ) : viewMode === 'gantt' ? (
+        ) : (
           <GanttChartView
             groups={projectGroups}
             tasks={projectTasks}
@@ -1354,7 +1354,7 @@ export default function ProjectBoardWidget({ context }: { context: WidgetDataCon
             t={t}
             onUpdateTask={handleUpdateTask}
           />
-        )
+        )}
       </div>
 
       {/* Add group button */}
