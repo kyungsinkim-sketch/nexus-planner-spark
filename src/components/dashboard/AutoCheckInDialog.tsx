@@ -106,13 +106,15 @@ export function AutoCheckInDialog() {
             const label = language === 'ko' ? option.labelKo : option.labelEn;
             const isLoading = loading === option.type;
             const isHighlighted = isDesktop && index === 0; // Highlight "사무실 출근" on desktop
+            // GPS가 사무실 범위 밖인데 office 선택하려는 경우 비활성화 (데스크탑은 허용)
+            const isOfficeBlocked = option.type === 'office' && !isDesktop && autoCheckInPosition != null;
 
             return (
               <Button
                 key={option.type}
                 variant={isHighlighted ? 'default' : 'outline'}
-                className={`justify-start gap-3 h-12 text-left ${isHighlighted ? 'ring-2 ring-primary' : ''}`}
-                disabled={loading !== null}
+                className={`justify-start gap-3 h-12 text-left ${isHighlighted ? 'ring-2 ring-primary' : ''} ${isOfficeBlocked ? 'opacity-40' : ''}`}
+                disabled={loading !== null || isOfficeBlocked}
                 onClick={() => handleSelect(option)}
               >
                 <div className={`w-8 h-8 rounded-lg ${option.color} flex items-center justify-center`}>
@@ -122,6 +124,11 @@ export function AutoCheckInDialog() {
                 {isHighlighted && (
                   <span className="text-xs opacity-70">
                     {language === 'ko' ? '추천' : 'Recommended'}
+                  </span>
+                )}
+                {isOfficeBlocked && (
+                  <span className="text-xs text-destructive">
+                    {language === 'ko' ? 'GPS 범위 밖' : 'Out of range'}
                   </span>
                 )}
                 {isLoading && (
