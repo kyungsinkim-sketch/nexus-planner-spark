@@ -112,6 +112,23 @@ function StatusBadge({
   );
 }
 
+/**
+ * Calculate time-based progress (%) from startDate to dueDate/endDate.
+ * Returns 0 before start, 100 after due, linear interpolation in between.
+ * If task status is 'done', always returns 100.
+ */
+function calcTimeProgress(task: { startDate?: string; endDate?: string; dueDate?: string; status?: string; progress?: number }): number {
+  if (task.status === 'done') return 100;
+  const start = task.startDate ? parseISO(task.startDate) : null;
+  const end = task.dueDate ? parseISO(task.dueDate) : (task.endDate ? parseISO(task.endDate) : null);
+  if (!start || !end) return task.progress ?? 0; // fallback to manual if no dates
+  const now = new Date();
+  const totalMs = end.getTime() - start.getTime();
+  if (totalMs <= 0) return now >= end ? 100 : 0;
+  const elapsedMs = now.getTime() - start.getTime();
+  return Math.max(0, Math.min(100, Math.round((elapsedMs / totalMs) * 100)));
+}
+
 function ProgressBar({ value, onChange }: { value: number; onChange?: (v: number) => void }) {
   const [editing, setEditing] = useState(false);
   const [editVal, setEditVal] = useState(String(value));
@@ -152,7 +169,13 @@ function ProgressBar({ value, onChange }: { value: number; onChange?: (v: number
       onClick={() => { if (onChange) { setEditVal(String(value)); setEditing(true); } }}
     >
       <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden border border-border">
-        <div className="h-full bg-emerald-600 rounded-full transition-all" style={{ width: `${value}%` }} />
+        <div
+          className={cn(
+            'h-full rounded-full transition-all',
+            value >= 100 ? 'bg-emerald-500' : value >= 80 ? 'bg-amber-500' : 'bg-primary',
+          )}
+          style={{ width: `${Math.min(value, 100)}%` }}
+        />
       </div>
       <span className="text-[11px] text-muted-foreground w-8 text-right">{value}%</span>
     </div>
@@ -454,15 +477,10 @@ function MainTableView({
                       />
                     </div>
 
-                    {/* Progress - editable */}
+                    {/* Progress - auto-calculated from date range */}
                     <div className="flex justify-center">
                       <ProgressBar
-                        value={task.progress}
-                        onChange={(v) => {
-                          const updates: Record<string, unknown> = { progress: v };
-                          if (v === 100) updates.status = 'done';
-                          onUpdateTask(task.id, updates);
-                        }}
+                        value={calcTimeProgress(task)}
                       />
                     </div>
 
@@ -493,7 +511,7 @@ function MainTableView({
                   <span />
                   <span />
                   <div className="flex justify-center">
-                    <ProgressBar value={groupTotal > 0 ? Math.round((groupDone / groupTotal) * 100) : 0} />
+                    <ProgressBar value={groupTotal > 0 ? Math.round(groupTasks.reduce((sum, tk) => sum + calcTimeProgress(tk), 0) / groupTotal) : 0} />
                   </div>
                   <span />
                 </div>
