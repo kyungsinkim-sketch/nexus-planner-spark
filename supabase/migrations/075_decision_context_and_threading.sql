@@ -111,15 +111,25 @@ COMMENT ON COLUMN profiles.ark_did IS 'DID identifier for Ark.ID / Ark.Cards / R
 -- Add new source_type for decision threads
 ALTER TABLE knowledge_items DROP CONSTRAINT IF EXISTS knowledge_items_source_type_check;
 ALTER TABLE knowledge_items ADD CONSTRAINT knowledge_items_source_type_check CHECK (source_type IN (
+    -- 기존 (052)
     'chat_digest',
     'brain_action',
     'peer_review',
     'decision_log',
     'meeting_note',
     'manual',
-    'voice_call',
-    'email_analysis',
-    'decision_thread'   -- NEW: auto-generated from decision thread analysis
+    -- 기존 (053)
+    'notion_page',
+    'gmail',
+    'voice_recording',
+    -- 기존 (057)
+    'flow_chat_log',
+    -- 기존 (072)
+    'ceo_pattern_seed',
+    'phone_call',
+    'desktop_capture',
+    -- 신규 (075)
+    'decision_thread'   -- auto-generated from decision thread analysis
 ));
 
 -- ─── 5. Indexes ─────────────────────────────────────────────

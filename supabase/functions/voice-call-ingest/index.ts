@@ -30,6 +30,9 @@ interface Decision {
   content: string;
   decidedBy?: string;
   confidence?: number;
+  alternatives?: string[];
+  reasoning?: string;
+  category?: string;
 }
 
 interface KeyQuote {
