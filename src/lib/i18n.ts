@@ -1316,6 +1316,7 @@ export const translations = {
     // Project Board Widget
     mainTable: '메인 테이블',
     ganttChart: '간트 차트',
+    ganttDays: '일',
     taskName: '아이템',
     taskStatus: '상태',
     statusDone: '완료',
@@ -2668,6 +2669,7 @@ export const translations = {
     // Project Board Widget
     mainTable: 'Main Table',
     ganttChart: 'Gantt Chart',
+    ganttDays: 'd',
     taskName: 'Item',
     taskStatus: 'Status',
     statusDone: 'Done',

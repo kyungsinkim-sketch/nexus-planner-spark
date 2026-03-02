@@ -506,7 +506,37 @@ function MainTableView({
   );
 }
 
-// ── Gantt Chart View with drag-and-drop ────────────────────
+// ── Gantt Chart View — Card-based Timeline ────────────────────
+// Reference: staggered card layout with group-color accent bars,
+// avatar stacks, day-by-day header, today highlight.
+
+const DAY_WIDTH = 80; // px per day column
+const CARD_HEIGHT = 72; // card height in px
+const CARD_GAP = 12; // vertical gap between cards
+const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+/** Assign Y-lanes to cards so overlapping date ranges don't collide vertically. */
+function assignLanes(items: { id: string; startDay: number; endDay: number }[]): Map<string, number> {
+  const sorted = [...items].sort((a, b) => a.startDay - b.startDay || a.endDay - b.endDay);
+  const laneEnds: number[] = []; // track where each lane's last card ends
+  const result = new Map<string, number>();
+  for (const item of sorted) {
+    let placed = false;
+    for (let lane = 0; lane < laneEnds.length; lane++) {
+      if (item.startDay > laneEnds[lane]) {
+        laneEnds[lane] = item.endDay;
+        result.set(item.id, lane);
+        placed = true;
+        break;
+      }
+    }
+    if (!placed) {
+      result.set(item.id, laneEnds.length);
+      laneEnds.push(item.endDay);
+    }
+  }
+  return result;
+}
 
 function GanttChartView({
   groups,
@@ -531,10 +561,6 @@ function GanttChartView({
     origEnd: string;
   } | null>(null);
 
-  const getGroupTasks = useCallback((groupId: string) => {
-    return tasks.filter(t => t.boardGroupId === groupId).sort((a, b) => a.orderNo - b.orderNo);
-  }, [tasks]);
-
   // Build group color map
   const groupColorMap = useMemo(() => {
     const map = new Map<string, string>();
@@ -542,41 +568,60 @@ function GanttChartView({
     return map;
   }, [groups]);
 
-  // Calculate date range from all tasks
+  // Calculate date range
   const allDates = useMemo(() => {
-    return tasks.flatMap(t => [t.startDate, t.endDate].filter(Boolean)) as string[];
+    return tasks.flatMap(tk => [tk.startDate, tk.endDate].filter(Boolean)) as string[];
   }, [tasks]);
 
-  const minDate = allDates.length ? parseISO(allDates.sort()[0]) : new Date();
-  const maxDate = allDates.length ? parseISO(allDates.sort().reverse()[0]) : addDays(new Date(), 30);
+  const minDate = allDates.length ? parseISO([...allDates].sort()[0]) : new Date();
+  const maxDate = allDates.length ? parseISO([...allDates].sort().reverse()[0]) : addDays(new Date(), 30);
 
   const rangeStart = startOfWeek(addDays(minDate, -3), { weekStartsOn: 1 });
   const totalDays = Math.max(14, differenceInDays(addDays(maxDate, 10), rangeStart));
-  const weeks: Date[] = [];
-  for (let d = 0; d < totalDays; d += 7) {
-    weeks.push(addDays(rangeStart, d));
-  }
 
-  // Track last applied delta to detect no-change on mouseUp
+  // Build day columns
+  const days = useMemo(() => {
+    return Array.from({ length: totalDays }, (_, i) => addDays(rangeStart, i));
+  }, [rangeStart, totalDays]);
+
+  const today = new Date();
+  const todayStr = format(today, 'yyyy-MM-dd');
+
+  // All tasks with date ranges, flattened with lane assignment
+  const tasksWithDates = useMemo(() => {
+    return tasks
+      .filter(tk => tk.startDate && tk.endDate)
+      .map(tk => {
+        const startDay = differenceInDays(parseISO(tk.startDate!), rangeStart);
+        const endDay = differenceInDays(parseISO(tk.endDate!), rangeStart);
+        return { ...tk, startDay, endDay };
+      });
+  }, [tasks, rangeStart]);
+
+  const laneMap = useMemo(() => assignLanes(
+    tasksWithDates.map(tk => ({ id: tk.id, startDay: tk.startDay, endDay: tk.endDay }))
+  ), [tasksWithDates]);
+
+  const maxLane = useMemo(() => {
+    let m = 0;
+    laneMap.forEach(v => { if (v > m) m = v; });
+    return m;
+  }, [laneMap]);
+
+  const contentHeight = (maxLane + 1) * (CARD_HEIGHT + CARD_GAP) + CARD_GAP;
+
+  // Track last applied delta
   const lastDeltaRef = useRef(0);
 
-  // Drag handler — updates task dates for visual feedback on every move
   const handleMouseMove = useCallback((e: MouseEvent) => {
-    if (!dragging || !containerRef.current) return;
-    const container = containerRef.current;
-    const rect = container.getBoundingClientRect();
-    const containerWidth = rect.width;
+    if (!dragging) return;
     const dx = e.clientX - dragging.startX;
-    const daysDelta = Math.round((dx / containerWidth) * totalDays);
-    if (daysDelta === lastDeltaRef.current) return; // skip redundant updates
+    const daysDelta = Math.round(dx / DAY_WIDTH);
+    if (daysDelta === lastDeltaRef.current) return;
     lastDeltaRef.current = daysDelta;
 
     if (daysDelta === 0) {
-      // Snap back to original during drag
-      onUpdateTask(dragging.taskId, {
-        startDate: dragging.origStart,
-        endDate: dragging.origEnd,
-      });
+      onUpdateTask(dragging.taskId, { startDate: dragging.origStart, endDate: dragging.origEnd });
       return;
     }
 
@@ -584,11 +629,9 @@ function GanttChartView({
     const origEnd = parseISO(dragging.origEnd);
 
     if (dragging.mode === 'move') {
-      const newStart = addDays(origStart, daysDelta);
-      const newEnd = addDays(origEnd, daysDelta);
       onUpdateTask(dragging.taskId, {
-        startDate: format(newStart, 'yyyy-MM-dd'),
-        endDate: format(newEnd, 'yyyy-MM-dd'),
+        startDate: format(addDays(origStart, daysDelta), 'yyyy-MM-dd'),
+        endDate: format(addDays(origEnd, daysDelta), 'yyyy-MM-dd'),
       });
     } else if (dragging.mode === 'resize-left') {
       const newStart = addDays(origStart, daysDelta);
@@ -601,15 +644,11 @@ function GanttChartView({
         onUpdateTask(dragging.taskId, { endDate: format(newEnd, 'yyyy-MM-dd') });
       }
     }
-  }, [dragging, totalDays, onUpdateTask]);
+  }, [dragging, onUpdateTask]);
 
   const handleMouseUp = useCallback(() => {
     if (dragging && lastDeltaRef.current === 0) {
-      // No actual change — ensure original dates are restored (safety rollback)
-      onUpdateTask(dragging.taskId, {
-        startDate: dragging.origStart,
-        endDate: dragging.origEnd,
-      });
+      onUpdateTask(dragging.taskId, { startDate: dragging.origStart, endDate: dragging.origEnd });
     }
     lastDeltaRef.current = 0;
     setDragging(null);
@@ -629,149 +668,209 @@ function GanttChartView({
     setDragging({ taskId, mode, startX, origStart, origEnd });
   };
 
+  // Scroll to today on mount
+  const scrollRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const todayOffset = differenceInDays(today, rangeStart);
+    if (scrollRef.current && todayOffset > 3) {
+      scrollRef.current.scrollLeft = (todayOffset - 3) * DAY_WIDTH;
+    }
+  }, []);
+
+  const statusLabel = (status: string) => {
+    const cfg = STATUS_CONFIG[status as BoardTaskStatus];
+    return cfg ? t(cfg.labelKey) : status;
+  };
+
   return (
     <ScrollArea className="w-full h-full">
-      <div className="min-w-[900px]">
-        <div className="flex">
-          {/* Left side: task list */}
-          <div className="w-[220px] flex-shrink-0 border-r border-border">
-            <div className="h-8 border-b border-border px-3 flex items-center text-xs font-medium text-muted-foreground">
-              {t('taskName')}
-            </div>
-            {groups.map(group => {
-              const groupTasks = getGroupTasks(group.id);
+      <div ref={scrollRef} className="overflow-x-auto">
+        <div style={{ width: totalDays * DAY_WIDTH, minWidth: '100%' }}>
+          {/* ── Day header row ── */}
+          <div className="flex h-10 border-b border-border/40 sticky top-0 z-20 bg-background/95 backdrop-blur-sm">
+            {days.map((day, i) => {
+              const dayStr = format(day, 'yyyy-MM-dd');
+              const isToday = dayStr === todayStr;
+              const isWeekend = day.getDay() === 0 || day.getDay() === 6;
               return (
-                <div key={group.id}>
-                  <div className="flex items-center gap-2 px-3 py-1.5 bg-muted/30">
-                    <span className="w-2 h-2 rounded-full" style={{ backgroundColor: group.color }} />
-                    <span className="text-xs font-semibold" style={{ color: group.color }}>{group.title}</span>
-                  </div>
-                  {groupTasks.map(task => (
-                    <div key={task.id} className="flex items-center gap-2 px-3 py-1 border-l-[3px]" style={{ borderLeftColor: group.color }}>
-                      <OwnerAvatar user={userMap.get(task.ownerId)} />
-                      <span className="text-xs truncate flex-1">{task.title}</span>
-                    </div>
-                  ))}
+                <div
+                  key={i}
+                  className={cn(
+                    'flex-shrink-0 flex flex-col items-center justify-center text-[11px] border-r border-border/20',
+                    isWeekend && 'text-muted-foreground/50',
+                    !isWeekend && !isToday && 'text-muted-foreground',
+                  )}
+                  style={{ width: DAY_WIDTH }}
+                >
+                  <span className="text-[10px]">{DAY_NAMES[day.getDay()]}</span>
+                  {isToday ? (
+                    <span className="w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold">
+                      {format(day, 'd')}
+                    </span>
+                  ) : (
+                    <span className={cn('text-xs font-medium', isWeekend && 'opacity-50')}>
+                      {format(day, 'd')}
+                    </span>
+                  )}
                 </div>
               );
             })}
           </div>
 
-          {/* Right side: timeline */}
-          <div className="flex-1 overflow-hidden" ref={containerRef}>
-            {/* Week headers */}
-            <div className="flex h-8 border-b border-border">
-              {weeks.map((w, i) => (
-                <div key={i} className="flex-shrink-0 text-[10px] text-muted-foreground flex items-center justify-center border-r border-border/50" style={{ width: `${(7 / totalDays) * 100}%`, minWidth: 60 }}>
-                  {format(w, 'M/d')}
+          {/* ── Timeline body ── */}
+          <div className="relative" style={{ height: contentHeight }}>
+            {/* Vertical grid lines + weekend shading */}
+            {days.map((day, i) => {
+              const isWeekend = day.getDay() === 0 || day.getDay() === 6;
+              const dayStr = format(day, 'yyyy-MM-dd');
+              const isToday = dayStr === todayStr;
+              return (
+                <div
+                  key={i}
+                  className="absolute top-0 bottom-0"
+                  style={{ left: i * DAY_WIDTH, width: DAY_WIDTH }}
+                >
+                  {isWeekend && (
+                    <div className="absolute inset-0 bg-muted/10" />
+                  )}
+                  {isToday && (
+                    <div className="absolute inset-y-0 left-1/2 -translate-x-px w-[2px] bg-primary/50 z-[5]" />
+                  )}
+                  <div className="absolute right-0 top-0 bottom-0 w-px bg-border/15" />
                 </div>
-              ))}
-            </div>
+              );
+            })}
 
-            {/* Bars with today line */}
-            <div className="relative">
-              {/* Today vertical dashed line */}
-              {(() => {
-                const todayOffset = differenceInDays(new Date(), rangeStart);
-                if (todayOffset >= 0 && todayOffset <= totalDays) {
-                  const todayPct = (todayOffset / totalDays) * 100;
-                  return (
-                    <div
-                      className="absolute top-0 bottom-0 z-10 pointer-events-none"
-                      style={{ left: `${todayPct}%` }}
-                    >
-                      <div className="w-px h-full border-l-2 border-dashed border-primary/60" />
+            {/* ── Task cards ── */}
+            {tasksWithDates.map(task => {
+              const lane = laneMap.get(task.id) ?? 0;
+              const groupColor = groupColorMap.get(task.boardGroupId) ?? '#6366f1';
+              const leftPx = task.startDay * DAY_WIDTH;
+              const widthPx = Math.max((task.endDay - task.startDay + 1) * DAY_WIDTH, DAY_WIDTH);
+              const topPx = CARD_GAP + lane * (CARD_HEIGHT + CARD_GAP);
+
+              const ownerIds = task.reviewerIds?.length
+                ? [task.ownerId, ...task.reviewerIds]
+                : [task.ownerId];
+              const owners = ownerIds.map(id => userMap.get(id)).filter(Boolean) as User[];
+              const durationDays = task.endDay - task.startDay + 1;
+
+              return (
+                <div
+                  key={task.id}
+                  className={cn(
+                    'absolute rounded-lg border border-border/40 bg-card/90 backdrop-blur-sm',
+                    'shadow-sm hover:shadow-md hover:border-border/70 transition-all duration-150',
+                    'flex items-stretch overflow-hidden group/card',
+                  )}
+                  style={{
+                    left: leftPx,
+                    width: widthPx,
+                    top: topPx,
+                    height: CARD_HEIGHT,
+                    cursor: dragging?.taskId === task.id ? 'grabbing' : 'grab',
+                    zIndex: dragging?.taskId === task.id ? 30 : 10,
+                  }}
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    startDrag(task.id, 'move', e.clientX, task.startDate!, task.endDate!);
+                  }}
+                >
+                  {/* Left resize handle */}
+                  <div
+                    className="absolute left-0 top-0 w-2 h-full cursor-col-resize z-20 opacity-0 group-hover/card:opacity-100 hover:bg-primary/10 transition-opacity"
+                    onMouseDown={(e) => {
+                      e.stopPropagation();
+                      e.preventDefault();
+                      startDrag(task.id, 'resize-left', e.clientX, task.startDate!, task.endDate!);
+                    }}
+                  />
+
+                  {/* Group color accent bar */}
+                  <div
+                    className="w-1 flex-shrink-0 rounded-l-lg"
+                    style={{ backgroundColor: groupColor }}
+                  />
+
+                  {/* Card content */}
+                  <div className="flex-1 min-w-0 px-3 py-2 flex flex-col justify-center gap-1">
+                    {/* Top row: avatars + title */}
+                    <div className="flex items-center gap-2">
+                      {/* Avatar stack */}
+                      <div className="flex -space-x-1.5 flex-shrink-0">
+                        {owners.slice(0, 3).map((user, idx) => (
+                          <Avatar
+                            key={user.id}
+                            className="text-[8px] border-2 border-card"
+                            style={{ width: 24, height: 24, zIndex: 3 - idx }}
+                          >
+                            <AvatarFallback className="bg-primary/15 text-primary font-medium text-[8px]">
+                              {user.name.slice(-2)}
+                            </AvatarFallback>
+                          </Avatar>
+                        ))}
+                        {owners.length > 3 && (
+                          <Avatar className="text-[8px] border-2 border-card" style={{ width: 24, height: 24 }}>
+                            <AvatarFallback className="bg-muted text-muted-foreground text-[8px]">
+                              +{owners.length - 3}
+                            </AvatarFallback>
+                          </Avatar>
+                        )}
+                      </div>
+                      <span className="text-sm font-semibold truncate text-foreground">
+                        {task.title}
+                      </span>
                     </div>
-                  );
-                }
-                return null;
-              })()}
-              {groups.map(group => {
-                const groupTasks = getGroupTasks(group.id);
-                const groupColor = group.color;
-                return (
-                  <div key={group.id}>
-                    <div className="h-[30px] bg-muted/30" />
-                    {groupTasks.map(task => {
-                      const hasDateRange = task.startDate && task.endDate;
-                      let leftPct = 0;
-                      let widthPct = 0;
-                      let durationDays = 0;
-                      if (hasDateRange) {
-                        const start = parseISO(task.startDate!);
-                        const end = parseISO(task.endDate!);
-                        const leftDays = Math.max(0, differenceInDays(start, rangeStart));
-                        durationDays = Math.max(1, differenceInDays(end, start) + 1);
-                        leftPct = (leftDays / totalDays) * 100;
-                        widthPct = (durationDays / totalDays) * 100;
-                      }
 
-                      return (
-                        <div key={task.id} className="h-[30px] relative">
-                          {/* Grid lines */}
-                          <div className="absolute inset-0 flex">
-                            {weeks.map((_, i) => (
-                              <div key={i} className="flex-shrink-0 border-r border-border/20" style={{ width: `${(7 / totalDays) * 100}%`, minWidth: 60 }} />
-                            ))}
-                          </div>
-                          {/* Bar — colored by group with tooltip */}
-                          {hasDateRange && (
-                            <TooltipProvider delayDuration={200}>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <div
-                                    className="absolute top-1 h-5 rounded-full flex items-center group/bar"
-                                    style={{
-                                      left: `${leftPct}%`,
-                                      width: `${Math.min(widthPct, 100 - leftPct)}%`,
-                                      backgroundColor: groupColor,
-                                      opacity: 0.8,
-                                      cursor: dragging ? 'grabbing' : 'grab',
-                                      minWidth: 12,
-                                    }}
-                                    onMouseDown={(e) => {
-                                      e.preventDefault();
-                                      startDrag(task.id, 'move', e.clientX, task.startDate!, task.endDate!);
-                                    }}
-                                  >
-                                    {/* Left resize handle */}
-                                    <div
-                                      className="absolute left-0 top-0 w-2 h-full cursor-col-resize rounded-l-full opacity-0 group-hover/bar:opacity-100 hover:bg-black/20 transition-opacity"
-                                      onMouseDown={(e) => {
-                                        e.stopPropagation();
-                                        e.preventDefault();
-                                        startDrag(task.id, 'resize-left', e.clientX, task.startDate!, task.endDate!);
-                                      }}
-                                    />
-                                    {/* Task title on bar */}
-                                    <span className="text-[9px] text-white font-medium truncate px-2 select-none">
-                                      {task.title}
-                                    </span>
-                                    {/* Right resize handle */}
-                                    <div
-                                      className="absolute right-0 top-0 w-2 h-full cursor-col-resize rounded-r-full opacity-0 group-hover/bar:opacity-100 hover:bg-black/20 transition-opacity"
-                                      onMouseDown={(e) => {
-                                        e.stopPropagation();
-                                        e.preventDefault();
-                                        startDrag(task.id, 'resize-right', e.clientX, task.startDate!, task.endDate!);
-                                      }}
-                                    />
-                                  </div>
-                                </TooltipTrigger>
-                                <TooltipContent side="top" className="text-xs">
-                                  <div className="font-medium">{task.title}</div>
-                                  <div className="text-muted-foreground">{task.startDate} → {task.endDate} ({durationDays}일)</div>
-                                </TooltipContent>
-                              </Tooltip>
-                            </TooltipProvider>
-                          )}
-                        </div>
-                      );
-                    })}
+                    {/* Bottom row: status + duration */}
+                    <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                      <span
+                        className="inline-block w-1.5 h-1.5 rounded-full flex-shrink-0"
+                        style={{ backgroundColor: STATUS_CONFIG[task.status]?.bg ? undefined : groupColor }}
+                      />
+                      <span className="truncate">
+                        {statusLabel(task.status)} · {durationDays}{t('ganttDays') || '일'}
+                      </span>
+                    </div>
                   </div>
-                );
-              })}
-            </div>
+
+                  {/* Three-dot menu */}
+                  <div className="flex items-center pr-2 flex-shrink-0 opacity-0 group-hover/card:opacity-100 transition-opacity">
+                    <button
+                      className="p-1 rounded hover:bg-muted/50 text-muted-foreground"
+                      onMouseDown={(e) => e.stopPropagation()}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        // TODO: task context menu
+                      }}
+                    >
+                      <MoreHorizontal className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  {/* Right resize handle */}
+                  <div
+                    className="absolute right-0 top-0 w-2 h-full cursor-col-resize z-20 opacity-0 group-hover/card:opacity-100 hover:bg-primary/10 transition-opacity"
+                    onMouseDown={(e) => {
+                      e.stopPropagation();
+                      e.preventDefault();
+                      startDrag(task.id, 'resize-right', e.clientX, task.startDate!, task.endDate!);
+                    }}
+                  />
+                </div>
+              );
+            })}
+
+            {/* Tasks without dates — empty state */}
+            {tasks.filter(tk => !tk.startDate || !tk.endDate).length > 0 && (
+              <div
+                className="absolute bottom-2 left-4 text-xs text-muted-foreground/60 flex items-center gap-1"
+                style={{ zIndex: 5 }}
+              >
+                <Clock className="w-3 h-3" />
+                {tasks.filter(tk => !tk.startDate || !tk.endDate).length}개 일정 미설정
+              </div>
+            )}
           </div>
         </div>
       </div>
