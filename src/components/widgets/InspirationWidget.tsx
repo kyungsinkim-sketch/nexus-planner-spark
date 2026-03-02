@@ -3,14 +3,29 @@
  * Quotes are managed by admin in Settings > Inspiration Quotes.
  */
 
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { useAppStore } from '@/stores/appStore';
 import { ChevronLeft, ChevronRight, Quote } from 'lucide-react';
 import type { WidgetDataContext } from '@/types/widget';
 
+function useContainerSize(ref: React.RefObject<HTMLDivElement | null>) {
+  const [size, setSize] = useState({ w: 300, h: 200 });
+  useEffect(() => {
+    if (!ref.current) return;
+    const ro = new ResizeObserver(([entry]) => {
+      if (entry) setSize({ w: entry.contentRect.width, h: entry.contentRect.height });
+    });
+    ro.observe(ref.current);
+    return () => ro.disconnect();
+  }, [ref]);
+  return size;
+}
+
 function InspirationWidget({ context: _context }: { context: WidgetDataContext }) {
   const { inspirationQuotes } = useAppStore();
   const [currentIndex, setCurrentIndex] = useState(0);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const { h } = useContainerSize(containerRef);
 
   // Pick a random starting index on mount
   useEffect(() => {
@@ -50,17 +65,29 @@ function InspirationWidget({ context: _context }: { context: WidgetDataContext }
   }
 
   return (
-    <div className="h-full flex flex-col items-center justify-center px-3 sm:px-6 py-2 sm:py-3 relative group widget-dark-card rounded-[var(--widget-radius)] overflow-hidden">
+    <div ref={containerRef} className="h-full flex flex-col items-center justify-center px-3 py-2 relative group widget-dark-card rounded-[var(--widget-radius)] overflow-hidden">
       {/* Quote icon */}
-      <Quote className="w-4 h-4 sm:w-5 sm:h-5 text-white/20 mb-1 sm:mb-2 shrink-0" />
+      {h > 80 && <Quote style={{ width: h < 140 ? 14 : 20, height: h < 140 ? 14 : 20 }} className="text-white/20 mb-1 shrink-0" />}
 
       {/* Quote text */}
-      <p className="text-xs sm:text-sm text-center text-white/85 italic leading-snug sm:leading-relaxed max-w-[95%] line-clamp-4 sm:line-clamp-6">
+      <p
+        className="text-center text-white/85 italic max-w-[95%] overflow-hidden"
+        style={{
+          fontSize: h < 100 ? 10 : h < 140 ? 11 : 14,
+          lineHeight: h < 100 ? '1.2' : '1.5',
+          display: '-webkit-box',
+          WebkitLineClamp: h < 100 ? 2 : h < 140 ? 3 : 6,
+          WebkitBoxOrient: 'vertical',
+        }}
+      >
         &ldquo;{quote.text}&rdquo;
       </p>
 
       {/* Author */}
-      <p className="text-[10px] sm:text-xs text-white/50 mt-1 sm:mt-2 shrink-0 truncate max-w-[90%]">
+      <p
+        className="text-white/50 shrink-0 truncate max-w-[90%]"
+        style={{ fontSize: h < 120 ? 9 : 12, marginTop: h < 120 ? 2 : 8 }}
+      >
         — {quote.author}
       </p>
 

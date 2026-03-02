@@ -3,7 +3,7 @@
  * Dark card design with gradient background (inspired by Apple widgets).
  */
 
-import { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useAppStore } from '@/stores/appStore';
 import { useTranslation } from '@/hooks/useTranslation';
 import { Input } from '@/components/ui/input';
@@ -19,9 +19,24 @@ import { Button } from '@/components/ui/button';
 import type { WidgetDataContext } from '@/types/widget';
 import { WEATHER_CITIES, CONDITION_ICONS, CONDITION_COLORS, CONDITION_LABELS_KO, CONDITION_LABELS_EN, generateForecast } from './weatherUtils';
 
+function useContainerSize(ref: React.RefObject<HTMLDivElement | null>) {
+  const [size, setSize] = useState({ w: 300, h: 200 });
+  useEffect(() => {
+    if (!ref.current) return;
+    const ro = new ResizeObserver(([entry]) => {
+      if (entry) setSize({ w: entry.contentRect.width, h: entry.contentRect.height });
+    });
+    ro.observe(ref.current);
+    return () => ro.disconnect();
+  }, [ref]);
+  return size;
+}
+
 function WeatherWidget({ context: _context }: { context: WidgetDataContext }) {
   const { t, language } = useTranslation();
   const { widgetSettings, updateWidgetSettings, weatherSettingsOpen, setWeatherSettingsOpen } = useAppStore();
+  const containerRef = useRef<HTMLDivElement>(null);
+  const { w, h } = useContainerSize(containerRef);
 
   const selectedCityKey = useMemo(() => {
     const stored = widgetSettings?.weather?.city;
@@ -77,20 +92,29 @@ function WeatherWidget({ context: _context }: { context: WidgetDataContext }) {
 
   return (
     <>
-      <div className="h-full flex flex-col widget-dark-card p-2 sm:p-3 overflow-hidden">
+      <div ref={containerRef} className="h-full flex flex-col widget-dark-card overflow-hidden" style={{ padding: h < 120 ? 4 : h < 160 ? 8 : 12 }}>
         {/* 7-day forecast row */}
         <div className="grid grid-cols-7 gap-0.5 flex-1 items-center min-h-0">
           {days.map((day) => {
             const Icon = CONDITION_ICONS[day.condition];
             const isToday = day.dayOffset === 0;
+            const iconSize = h < 100 ? 12 : h < 140 ? 16 : 24;
+            const fontSize = h < 100 ? 9 : h < 140 ? 10 : 14;
+            const tempSize = h < 100 ? 10 : h < 140 ? 12 : 16;
             return (
               <div key={day.dayOffset} className="text-center min-w-0 overflow-hidden">
-                <p className={`text-[10px] sm:text-sm font-medium truncate ${isToday ? 'text-white' : 'text-white/50'}`}>
+                <p
+                  className={`font-medium truncate ${isToday ? 'text-white' : 'text-white/50'}`}
+                  style={{ fontSize }}
+                >
                   {day.dayName}
                 </p>
-                <Icon className={`w-4 h-4 sm:w-6 sm:h-6 mx-auto my-0.5 sm:my-1 ${CONDITION_COLORS[day.condition]}`} />
-                <p className="text-xs sm:text-base font-semibold text-white">{day.high}°</p>
-                <p className="text-[10px] sm:text-sm text-white/40">{day.low}°</p>
+                <Icon
+                  className={`mx-auto ${CONDITION_COLORS[day.condition]}`}
+                  style={{ width: iconSize, height: iconSize, marginTop: h < 140 ? 1 : 4, marginBottom: h < 140 ? 1 : 4 }}
+                />
+                <p className="font-semibold text-white" style={{ fontSize: tempSize }}>{day.high}°</p>
+                <p className="text-white/40" style={{ fontSize: Math.max(9, fontSize - 1) }}>{day.low}°</p>
               </div>
             );
           })}
