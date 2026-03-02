@@ -108,8 +108,27 @@ export function AttendanceWidget() {
         fetchAttendance();
     }, []);
 
-    // Check if selected type requires GPS
-    const requiresGps = ATTENDANCE_TYPES.find(t => t.id === selectedType)?.requires_gps ?? false;
+    // Office GPS validation constants
+    const OFFICE_LAT = 37.51439957906593;
+    const OFFICE_LNG = 127.02599429742935;
+    const OFFICE_RADIUS_METERS = 200;
+
+    const haversineDistance = (lat1: number, lng1: number, lat2: number, lng2: number): number => {
+        const R = 6371000;
+        const toRad = (deg: number) => (deg * Math.PI) / 180;
+        const dLat = toRad(lat2 - lat1);
+        const dLng = toRad(lng2 - lng1);
+        const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+        return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    };
+
+    // Check if selected type requires GPS (office also needs GPS for validation)
+    const requiresGps = selectedType === 'office' || (ATTENDANCE_TYPES.find(t => t.id === selectedType)?.requires_gps ?? false);
+
+    // Is user within office range?
+    const isNearOffice = position
+        ? haversineDistance(position.latitude, position.longitude, OFFICE_LAT, OFFICE_LNG) <= OFFICE_RADIUS_METERS
+        : null; // null = not yet determined
 
     // Get GPS position
     const handleGetLocation = useCallback(async () => {
@@ -126,17 +145,25 @@ export function AttendanceWidget() {
         }
     }, []);
 
-    // Auto-fetch GPS when type changes to one that requires it
+    // Always fetch GPS when dialog opens (for office validation)
     useEffect(() => {
-        if (showCheckInDialog && requiresGps && !position) {
+        if (showCheckInDialog && !position) {
             handleGetLocation();
         }
-    }, [showCheckInDialog, requiresGps, position, handleGetLocation]);
+    }, [showCheckInDialog, position, handleGetLocation]);
 
     // Handle check-in
     const handleCheckIn = async () => {
         if (requiresGps && !position) {
             toast.error(t('gpsLocationRequired'));
+            return;
+        }
+
+        // Block office check-in when outside office radius
+        if (selectedType === 'office' && position && !isNearOffice) {
+            toast.error(language === 'ko'
+                ? '현재 위치가 사무실 범위(200m) 밖입니다. 다른 출근 유형을 선택해주세요.'
+                : 'You are outside the office radius (200m). Please select a different work type.');
             return;
         }
 
@@ -392,6 +419,18 @@ export function AttendanceWidget() {
                                             <p className="text-xs text-muted-foreground">
                                                 {t('gpsAccuracy')}: ±{Math.round(position.accuracy)}m
                                             </p>
+                                            {selectedType === 'office' && isNearOffice === false && (
+                                                <p className="text-xs text-destructive font-medium flex items-center gap-1 mt-1">
+                                                    <AlertCircle className="w-3 h-3" />
+                                                    {language === 'ko' ? '사무실 범위(200m) 밖입니다' : 'Outside office radius (200m)'}
+                                                </p>
+                                            )}
+                                            {selectedType === 'office' && isNearOffice === true && (
+                                                <p className="text-xs text-emerald-600 font-medium flex items-center gap-1 mt-1">
+                                                    <CheckCircle2 className="w-3 h-3" />
+                                                    {language === 'ko' ? '사무실 범위 내' : 'Within office radius'}
+                                                </p>
+                                            )}
                                         </div>
                                     ) : (
                                         <div className="flex items-center justify-between">
@@ -426,7 +465,7 @@ export function AttendanceWidget() {
                         </Button>
                         <Button
                             onClick={handleCheckIn}
-                            disabled={actionLoading || (requiresGps && !position)}
+                            disabled={actionLoading || (requiresGps && !position) || (selectedType === 'office' && isNearOffice === false)}
                             className="gap-2"
                         >
                             {actionLoading ? (
