@@ -400,7 +400,11 @@ export const useAppStore = create<AppState>()(
       companyNotifications: [],
       scoreSettings: { financialWeight: 70, peerWeight: 30 },
       userWorkStatus: 'NOT_AT_WORK',
-      language: 'ko',
+      language: (() => {
+        // Detect browser language for first-time visitors
+        const browserLang = navigator.language?.slice(0, 2) || 'ko';
+        return browserLang === 'ko' ? 'ko' : 'en';
+      })(),
       theme: 'light',
       brainIntelligenceEnabled: false,
       widgetSettings: {},
