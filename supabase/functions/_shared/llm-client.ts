@@ -5,7 +5,7 @@ import type { LLMResponse, ProcessRequest } from './brain-types.ts';
 
 const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
 const MODEL = 'claude-haiku-4-5-20251001';
-const MAX_TOKENS = 512; // Reduced — most responses are well under 300 tokens
+const MAX_TOKENS = 2048; // Must accommodate large attendeeIds arrays (10+ UUIDs)
 const MAX_RETRIES = 3;
 const BASE_RETRY_DELAY_MS = 15_000; // 15s base — rate limit is per minute, so wait longer
 const MAX_HISTORY_MESSAGES = 3; // Limit to 3 recent messages for context
@@ -244,7 +244,32 @@ function extractJSON(raw: string): LLMResponse {
     }
   }
 
-  // 4. Fallback — couldn't extract JSON, use raw text as reply
+  // 4. Try to salvage truncated JSON — extract replyMessage and partial actions
+  const replyMatch = text.match(/"replyMessage"\s*:\s*"((?:[^"\\]|\\.)*)"/);
+  const hasActionMatch = text.match(/"hasAction"\s*:\s*(true|false)/);
+  if (replyMatch) {
+    console.warn('Recovered replyMessage from truncated JSON:', replyMatch[1].substring(0, 80));
+    // Try to extract actions array even if truncated
+    const actionsMatch = text.match(/"actions"\s*:\s*\[([\s\S]*)/);
+    let actions: LLMResponse['actions'] = [];
+    if (actionsMatch) {
+      // Try progressively shorter substrings to find valid JSON array
+      const actionsStr = actionsMatch[1];
+      for (let i = actionsStr.length; i > 0; i--) {
+        try {
+          actions = JSON.parse('[' + actionsStr.substring(0, i));
+          break;
+        } catch { /* continue */ }
+      }
+    }
+    return {
+      hasAction: hasActionMatch ? hasActionMatch[1] === 'true' : actions.length > 0,
+      replyMessage: replyMatch[1].replace(/\\n/g, '\n').replace(/\\"/g, '"'),
+      actions,
+    };
+  }
+
+  // 5. Complete fallback — couldn't extract anything useful
   console.error('Failed to extract JSON from LLM response:', text.substring(0, 200));
   return {
     hasAction: false,
