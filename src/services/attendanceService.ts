@@ -193,11 +193,11 @@ export async function getTodayAttendance(): Promise<AttendanceRecord | null> {
             .select('*')
             .eq('user_id', user.id)
             .eq('work_date', today)
-            .single(),
+            .maybeSingle(),
         { label: 'getTodayAttendance' },
     );
 
-    if (error && error.code !== 'PGRST116') { // PGRST116 = no rows
+    if (error) {
         throw handleSupabaseError(error);
     }
 
