@@ -62,6 +62,27 @@
       padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
     }
   </style>
+  <!-- Prevent browser extensions from crashing React (removeChild error) -->
+  <script>
+    if (typeof Node === 'function' && Node.prototype) {
+      const origRemoveChild = Node.prototype.removeChild;
+      Node.prototype.removeChild = function(child) {
+        if (child.parentNode !== this) {
+          console.warn('[DOM] removeChild: node is not a child — skipped (likely browser extension)');
+          return child;
+        }
+        return origRemoveChild.call(this, child);
+      };
+      const origInsertBefore = Node.prototype.insertBefore;
+      Node.prototype.insertBefore = function(newNode, refNode) {
+        if (refNode && refNode.parentNode !== this) {
+          console.warn('[DOM] insertBefore: refNode is not a child — skipped (likely browser extension)');
+          return newNode;
+        }
+        return origInsertBefore.call(this, newNode, refNode);
+      };
+    }
+  </script>
 </head>
 
 <body>
