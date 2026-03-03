@@ -254,21 +254,6 @@ export async function checkOut(payload: CheckOutPayload): Promise<AttendanceReco
     const today = new Date().toISOString().split('T')[0];
     const now = new Date().toISOString();
 
-    // Calculate working minutes from check-in
-    const { data: existing } = await supabase
-        .from('nexus_attendance')
-        .select('check_in_at')
-        .eq('user_id', user.id)
-        .eq('work_date', today)
-        .single();
-
-    let workingMinutes: number | null = null;
-    if (existing?.check_in_at) {
-        const checkInMs = new Date(existing.check_in_at).getTime();
-        const nowMs = new Date(now).getTime();
-        workingMinutes = Math.max(0, Math.round((nowMs - checkInMs) / 60000));
-    }
-
     const { data, error } = await supabase
         .from('nexus_attendance')
         .update({
@@ -277,7 +262,6 @@ export async function checkOut(payload: CheckOutPayload): Promise<AttendanceReco
             check_out_longitude: payload.longitude,
             check_out_address: payload.address,
             check_out_note: payload.note,
-            working_minutes: workingMinutes,
             status: 'completed',
         })
         .eq('user_id', user.id)
