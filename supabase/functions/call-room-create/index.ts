@@ -94,7 +94,7 @@ Deno.serve(async (req) => {
     // Get caller and target user info
     const allUserIds = [user.id, ...targets];
     const { data: users } = await supabase
-      .from('users')
+      .from('profiles')
       .select('id, name')
       .in('id', allUserIds);
 

@@ -98,7 +98,7 @@ Deno.serve(async (req) => {
 
     // Get user name
     const { data: userData } = await supabase
-      .from('users')
+      .from('profiles')
       .select('name')
       .eq('id', user.id)
       .single();
