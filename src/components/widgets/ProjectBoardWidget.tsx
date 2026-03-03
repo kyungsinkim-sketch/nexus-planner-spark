@@ -373,7 +373,7 @@ function MainTableView({
   const toggleGroup = (id: string) => setCollapsed(prev => ({ ...prev, [id]: !prev[id] }));
 
   const getGroupTasks = useCallback((groupId: string) => {
-    return tasks.filter(t => t.boardGroupId === groupId).sort((a, b) => a.orderNo - b.orderNo);
+    return tasks.filter(tk => tk.boardGroupId === groupId).sort((a, b) => a.orderNo - b.orderNo);
   }, [tasks]);
 
   return (
@@ -393,7 +393,7 @@ function MainTableView({
         {groups.map(group => {
           const groupTasks = getGroupTasks(group.id);
           const isCollapsed = collapsed[group.id];
-          const groupDone = groupTasks.filter(t => t.status === 'done').length;
+          const groupDone = groupTasks.filter(tk => tk.status === 'done').length;
           const groupTotal = groupTasks.length;
 
           return (
@@ -947,7 +947,7 @@ function TimelineView({
 
   // Group tasks by swim lane (group)
   const getGroupTasks = useCallback((groupId: string) => {
-    return tasks.filter(t => t.boardGroupId === groupId).sort((a, b) => a.orderNo - b.orderNo);
+    return tasks.filter(tk => tk.boardGroupId === groupId).sort((a, b) => a.orderNo - b.orderNo);
   }, [tasks]);
 
   // 3-dot menu state
@@ -1133,9 +1133,9 @@ function TimelineView({
                   );
                 })}
 
-                {groupTasks.filter(t => !t.startDate || !t.endDate).length > 0 && (
+                {groupTasks.filter(tk => !tk.startDate || !tk.endDate).length > 0 && (
                   <div className="px-3 py-2 text-[10px] text-muted-foreground/60">
-                    + {groupTasks.filter(t => !t.startDate || !t.endDate).length} {t('tasksNoDateSet') || 'no date set'}
+                    + {groupTasks.filter(tk => !tk.startDate || !tk.endDate).length} {t('tasksNoDateSet') || 'no date set'}
                   </div>
                 )}
               </div>
@@ -1245,7 +1245,7 @@ export default function ProjectBoardWidget({ context }: { context: WidgetDataCon
   );
 
   const projectTasks = useMemo(
-    () => boardTasks.filter(t => t.projectId === projectId),
+    () => boardTasks.filter(tk => tk.projectId === projectId),
     [boardTasks, projectId],
   );
 
