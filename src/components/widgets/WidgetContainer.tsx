@@ -69,13 +69,13 @@ class WidgetErrorBoundary extends React.Component<
       return (
         <div className="flex flex-col items-center justify-center h-full gap-2 p-4 text-muted-foreground/60">
           <AlertTriangle className="w-5 h-5 text-amber-500/70" />
-          <p className="text-xs text-center">위젯 오류가 발생했습니다</p>
+          <p className="text-xs text-center">Widget error</p>
           <button
             onClick={() => this.setState({ hasError: false, error: null })}
             className="flex items-center gap-1 text-[10px] px-2 py-1 rounded bg-muted hover:bg-muted/80 transition-colors"
           >
             <RotateCcw className="w-3 h-3" />
-            {t('retry')}
+            Retry
           </button>
         </div>
       );
