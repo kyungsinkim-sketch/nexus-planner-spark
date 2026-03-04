@@ -47,30 +47,38 @@ function playTone(frequency: number, duration: number, startTime: number, ctx: A
 
 /**
  * Play a notification sound.
- * @param type - "message" for chat messages, "alert" for important notifications
+ * @param type - "message" for chat, "email" for new emails, "alert" for important notifications
  */
-export function playNotificationSound(type: 'message' | 'alert' = 'message') {
+export function playNotificationSound(type: 'message' | 'email' | 'alert' = 'message') {
   try {
     const ctx = getAudioContext();
     if (!ctx) return; // No user interaction yet — skip silently
     const gain = ctx.createGain();
     gain.connect(ctx.destination);
-    gain.gain.setValueAtTime(0.15, ctx.currentTime);
+    gain.gain.setValueAtTime(0.12, ctx.currentTime);
 
     if (type === 'message') {
-      // Pleasant double-beep (like iMessage)
+      // Pleasant double-beep (like iMessage) — bright, short
       playTone(880, 0.08, ctx.currentTime, ctx, gain);
       playTone(1175, 0.08, ctx.currentTime + 0.1, ctx, gain);
       // Fade out
-      gain.gain.setValueAtTime(0.15, ctx.currentTime + 0.18);
+      gain.gain.setValueAtTime(0.12, ctx.currentTime + 0.18);
       gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
+    } else if (type === 'email') {
+      // Soft descending chime — warm, distinct from chat
+      playTone(1047, 0.1, ctx.currentTime, ctx, gain);        // C6
+      playTone(784, 0.1, ctx.currentTime + 0.12, ctx, gain);  // G5
+      playTone(523, 0.15, ctx.currentTime + 0.24, ctx, gain); // C5
+      // Fade out
+      gain.gain.setValueAtTime(0.12, ctx.currentTime + 0.39);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.55);
     } else {
-      // Triple-tone alert (ascending)
+      // Triple-tone alert (ascending) — urgent
       playTone(660, 0.1, ctx.currentTime, ctx, gain);
       playTone(880, 0.1, ctx.currentTime + 0.12, ctx, gain);
       playTone(1100, 0.12, ctx.currentTime + 0.24, ctx, gain);
       // Fade out
-      gain.gain.setValueAtTime(0.15, ctx.currentTime + 0.36);
+      gain.gain.setValueAtTime(0.12, ctx.currentTime + 0.36);
       gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
     }
   } catch (e) {

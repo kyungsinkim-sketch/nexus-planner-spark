@@ -447,6 +447,15 @@ export function SettingsPage() {
                       variant="outline"
                       size="sm"
                       className="gap-1.5"
+                      onClick={() => playNotificationSound('email')}
+                    >
+                      <Mail className="w-3.5 h-3.5" />
+                      이메일 소리 테스트
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-1.5"
                       onClick={() => playNotificationSound('alert')}
                     >
                       <Bell className="w-3.5 h-3.5" />

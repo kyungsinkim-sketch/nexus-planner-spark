@@ -2004,9 +2004,9 @@ export const useAppStore = create<AppState>()(
             gmailSyncing: false,
           });
 
-          // Notification sound for new suggestions
+          // Notification sound for new email suggestions
           if (newSuggestions.length > 0 && state.notificationSoundEnabled) {
-            playNotificationSound('alert');
+            playNotificationSound('email');
           }
         } catch (err) {
           console.error('[Gmail] Sync error:', err);
