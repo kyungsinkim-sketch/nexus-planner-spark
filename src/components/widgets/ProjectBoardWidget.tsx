@@ -236,6 +236,7 @@ function MultiOwnerSelector({
   users: User[];
   onSelect: (userIds: string[]) => void;
 }) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
   const dropdownRef = useRef<HTMLDivElement>(null);

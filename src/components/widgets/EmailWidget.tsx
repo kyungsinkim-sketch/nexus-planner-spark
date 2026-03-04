@@ -214,6 +214,7 @@ function EmailItem({
   onDirectReply: (emailId: string) => void;
   onMarkAsRead: (emailId: string) => void;
 }) {
+  const { t } = useTranslation();
   const { gmailMessages } = useAppStore();
   const [isExpanded, setIsExpanded] = useState(false);
   const email = gmailMessages.find(m => m.id === emailId);
