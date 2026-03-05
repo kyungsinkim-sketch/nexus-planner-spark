@@ -185,7 +185,6 @@ Deno.serve(async (req) => {
         const { data: ragResults } = await supabase.rpc('search_knowledge_v3', {
           query_embedding: JSON.stringify(queryEmbedding),
           query_dims: queryDims,
-          query_dims: queryDims,
           search_scope: 'all',
           search_user_id: userId,
           search_project_id: projectId || null,

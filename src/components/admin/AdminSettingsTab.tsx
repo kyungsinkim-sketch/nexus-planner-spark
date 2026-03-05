@@ -446,7 +446,7 @@ export function AdminSettingsTab() {
                                         <TableCell>
                                             <span className="text-xs text-muted-foreground flex items-center gap-1">
                                                 <Mail className="w-3 h-3" />
-                                                {(user as unknown as { email?: string }).email || `${user.name.toLowerCase().replace(/\s+/g, '.')}@paulus.pro`}
+                                                {(user as unknown as { email?: string }).email || user.name}
                                             </span>
                                         </TableCell>
                                         <TableCell>{user.department || 'N/A'}</TableCell>

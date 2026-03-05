@@ -242,7 +242,7 @@ export function EmployeeList() {
       id: newId,
       employee_no: newNo,
       name: newEmpData.name,
-      email: newEmpData.email || `${newEmpData.name.toLowerCase().replace(/\s+/g, '.')}@paulus.pro`,
+      email: newEmpData.email || `${newEmpData.name.toLowerCase().replace(/\s+/g, '.')}@${currentUser?.email?.split('@')[1] || 'company.com'}`,
       status: newEmpData.status,
       join_date: newEmpData.join_date,
       department: newEmpData.department || 'Production',
@@ -383,7 +383,7 @@ export function EmployeeList() {
                           value={emp.email || ''}
                           onChange={(e) => handleUpdate(emp.id, 'email', e.target.value)}
                           className="h-8 w-[160px]"
-                          placeholder="email@paulus.pro"
+                          placeholder="email@company.com"
                         />
                       </TableCell>
                       <TableCell>
@@ -597,7 +597,7 @@ export function EmployeeList() {
             <div className="space-y-1.5">
               <Label>이메일</Label>
               <Input
-                placeholder="gildong.hong@paulus.pro"
+                placeholder="gildong.hong@company.com"
                 value={newEmpData.email}
                 onChange={(e) => setNewEmpData(prev => ({ ...prev, email: e.target.value }))}
               />

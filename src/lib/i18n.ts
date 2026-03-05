@@ -347,7 +347,7 @@ export const translations = {
     diligence: '근태',
 
     // Organization Chart
-    paulusOrgChart: 'PAULUS CO., LTD 조직도',
+    paulusOrgChart: '조직도',
     ceo: '대표이사',
 
     // Employee Directory
@@ -356,7 +356,7 @@ export const translations = {
     hireDate: '입사일',
 
     // Salary Table
-    paulusSalaryTable: '2025 파울러스 연봉규정표',
+    paulusSalaryTable: '연봉규정표',
     grade: '등급',
     classLevel: '호봉',
     annualSalary: '연봉',
@@ -1779,7 +1779,7 @@ export const translations = {
     diligence: 'Diligence',
 
     // Organization Chart
-    paulusOrgChart: 'PAULUS CO., LTD Organization Chart',
+    paulusOrgChart: 'Organization Chart',
     ceo: 'CEO',
 
     // Employee Directory
@@ -1788,7 +1788,7 @@ export const translations = {
     hireDate: 'Hire Date',
 
     // Salary Table
-    paulusSalaryTable: '2025 Paulus Salary Table',
+    paulusSalaryTable: 'Salary Table',
     grade: 'Grade',
     classLevel: 'Class',
     annualSalary: 'Annual Salary',

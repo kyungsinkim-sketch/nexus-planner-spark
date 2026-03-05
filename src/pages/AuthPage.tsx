@@ -104,7 +104,7 @@ export function AuthPage() {
                   <Input
                     id="email"
                     type="email"
-                    placeholder="name@paulus.pro"
+                    placeholder="name@company.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     disabled={isLoading}
@@ -145,7 +145,7 @@ export function AuthPage() {
                 <Input
                   id="signup-email"
                   type="email"
-                  placeholder="name@paulus.pro"
+                  placeholder="name@company.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   disabled={isLoading}

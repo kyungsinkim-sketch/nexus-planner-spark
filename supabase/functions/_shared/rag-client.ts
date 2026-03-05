@@ -85,6 +85,8 @@ export interface RAGSearchResult {
   confidence: number;
   relevance_score: number;
   role_tag: string | null;
+  dialectic_tag: string | null;
+  scope_layer: string | null;
   similarity: number;
 }
 
@@ -524,11 +526,17 @@ export function buildRAGContext(
   for (const item of items) {
     // Use full content for rich context, fall back to summary only if content is too long
     const body = item.content || item.summary || '';
-    const line = `### [${item.knowledge_type}] (신뢰도: ${(item.confidence * 100).toFixed(0)}%)\n${body}\n\n`;
+    const tags = [
+      item.knowledge_type,
+      item.dialectic_tag && `⚡${item.dialectic_tag}`,
+      item.scope_layer && `📋${item.scope_layer}`,
+      item.role_tag && `👤${item.role_tag}`,
+    ].filter(Boolean).join(' | ');
+    const line = `### [${tags}] (신뢰도: ${(item.confidence * 100).toFixed(0)}%)\n${body}\n\n`;
 
     if (currentLength + line.length > maxChars) {
       // Try truncated version
-      const truncated = `### [${item.knowledge_type}] (신뢰도: ${(item.confidence * 100).toFixed(0)}%)\n${body.slice(0, maxChars - currentLength - 50)}\n\n`;
+      const truncated = `### [${tags}] (신뢰도: ${(item.confidence * 100).toFixed(0)}%)\n${body.slice(0, maxChars - currentLength - 50)}\n\n`;
       if (currentLength + truncated.length <= maxChars) {
         context += truncated;
       }
