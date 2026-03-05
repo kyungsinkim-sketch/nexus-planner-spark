@@ -206,7 +206,7 @@ interface AppState {
   dismissAllNotifications: (ids: string[]) => void;
 
   // Project Actions
-  addProject: (project: Partial<Project>) => Promise<void>;
+  addProject: (project: Partial<Project>) => Promise<Project | void>;
   updateProject: (projectId: string, updates: Partial<Project>) => Promise<void>;
   deleteProject: (projectId: string) => Promise<void>;
 
@@ -970,6 +970,7 @@ export const useAppStore = create<AppState>()(
           try {
             const newProject = await projectService.createProject(project);
             set((state) => ({ projects: [...state.projects, newProject] }));
+            return newProject;
           } catch (error) {
             console.error('Failed to create project:', error);
             throw error;
@@ -986,6 +987,7 @@ export const useAppStore = create<AppState>()(
             ...project,
           };
           set((state) => ({ projects: [...state.projects, newProject] }));
+          return newProject;
         }
       },
 

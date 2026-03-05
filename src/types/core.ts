@@ -18,6 +18,25 @@ export interface User {
   companyDomain?: string; // e.g. 'paulus.pro' — extracted from email
 }
 
+// Creative role for project team members
+export interface CreativeRole {
+  id: string;
+  name: string;
+  category: 'Production' | 'Creative' | 'Post-Production' | 'Strategy' | 'Management';
+  sortOrder: number;
+  isActive: boolean;
+}
+
+// Project team member with role assignment
+export interface ProjectTeamMember {
+  id: string;
+  projectId: string;
+  userId: string;
+  creativeRoleId?: string;
+  creativeRole?: CreativeRole;
+  addedAt: string;
+}
+
 // Extract domain from email address
 export function extractEmailDomain(email: string): string {
   const parts = email.split('@');

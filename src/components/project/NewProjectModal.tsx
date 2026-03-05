@@ -1,6 +1,6 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { useAppStore } from '@/stores/appStore';
-import { Currency, User } from '@/types/core';
+import { Currency, User, CreativeRole } from '@/types/core';
 import {
   Dialog,
   DialogContent,
@@ -27,6 +27,11 @@ import { Upload, X, Image, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import { useTranslation } from '@/hooks/useTranslation';
+import {
+  getCreativeRoles,
+  addProjectTeamMember,
+  groupRolesByCategory,
+} from '@/services/creativeRoleService';
 
 // Bojagi (색동 보자기) brand palette + neutrals
 const KEY_COLORS = [
@@ -69,6 +74,22 @@ export function NewProjectModal({ open, onOpenChange }: NewProjectModalProps) {
     keyColor: '#D4A843',
   });
 
+  // ─── Creative Roles ───
+  const [creativeRoles, setCreativeRoles] = useState<CreativeRole[]>([]);
+  const [memberRoles, setMemberRoles] = useState<Record<string, string | null>>({});
+
+  useEffect(() => {
+    if (open) {
+      getCreativeRoles().then(setCreativeRoles).catch(() => {});
+    }
+  }, [open]);
+
+  const handleMemberRoleChange = useCallback((userId: string, roleId: string | null) => {
+    setMemberRoles(prev => ({ ...prev, [userId]: roleId }));
+  }, []);
+
+  const groupedRoles = groupRolesByCategory(creativeRoles);
+
   const selectedPM = users.find(u => u.id === formData.pmId);
   const selectedTeamMembers = users.filter(u => formData.teamMemberIds.includes(u.id));
 
@@ -109,9 +130,27 @@ export function NewProjectModal({ open, onOpenChange }: NewProjectModalProps) {
         keyColor: formData.keyColor,
       };
 
-      await addProject(newProject);
+      const created = await addProject(newProject);
+
+      // Save team member roles to project_team_members table
+      if (created?.id) {
+        for (const memberId of finalTeamMemberIds) {
+          try {
+            await addProjectTeamMember(
+              created.id,
+              memberId,
+              memberRoles[memberId] || undefined,
+              currentUser?.id,
+            );
+          } catch (err) {
+            console.error('Failed to save member role:', err);
+          }
+        }
+      }
+
       toast.success(t('projectCreated'));
       onOpenChange(false);
+      setMemberRoles({});
       setFormData({
         title: '',
         client: '',
@@ -410,6 +449,43 @@ export function NewProjectModal({ open, onOpenChange }: NewProjectModalProps) {
               placeholder="Type a name to add team member..."
               multiple
             />
+
+            {/* Role assignment per member */}
+            {selectedTeamMembers.length > 0 && creativeRoles.length > 0 && (
+              <div className="space-y-1.5 mt-2">
+                <Label className="text-xs text-muted-foreground">Job Title / Role</Label>
+                {selectedTeamMembers.map((member) => (
+                  <div key={member.id} className="flex items-center gap-2">
+                    <span className="text-xs font-medium w-24 truncate">{member.name}</span>
+                    <Select
+                      value={memberRoles[member.id] || '_none'}
+                      onValueChange={(val) => handleMemberRoleChange(member.id, val === '_none' ? null : val)}
+                    >
+                      <SelectTrigger className="h-7 text-xs flex-1">
+                        <SelectValue placeholder="Select role..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="_none">
+                          <span className="text-muted-foreground">No role assigned</span>
+                        </SelectItem>
+                        {Object.entries(groupedRoles).map(([category, roles]) => (
+                          <div key={category}>
+                            <div className="px-2 py-1 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+                              {category}
+                            </div>
+                            {roles.map((role) => (
+                              <SelectItem key={role.id} value={role.id}>
+                                {role.name}
+                              </SelectItem>
+                            ))}
+                          </div>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           <DialogFooter>

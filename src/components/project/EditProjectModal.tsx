@@ -1,6 +1,6 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { useAppStore } from '@/stores/appStore';
-import { Currency, User, Project } from '@/types/core';
+import { Currency, User, Project, CreativeRole } from '@/types/core';
 import {
   Dialog,
   DialogContent,
@@ -26,6 +26,12 @@ import { X, Image, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import { useTranslation } from '@/hooks/useTranslation';
+import {
+  getCreativeRoles,
+  getProjectTeamMembers,
+  updateProjectMemberRole,
+  groupRolesByCategory,
+} from '@/services/creativeRoleService';
 
 interface EditProjectModalProps {
   open: boolean;
@@ -89,6 +95,33 @@ export function EditProjectModal({ open, onOpenChange, project }: EditProjectMod
       });
     }
   }, [open, project]);
+
+  // ─── Creative Roles for team members ───
+  const [creativeRoles, setCreativeRoles] = useState<CreativeRole[]>([]);
+  const [memberRoles, setMemberRoles] = useState<Record<string, string | null>>({});
+
+  useEffect(() => {
+    if (open) {
+      getCreativeRoles().then(setCreativeRoles).catch(() => {});
+      getProjectTeamMembers(project.id).then((members) => {
+        const roleMap: Record<string, string | null> = {};
+        for (const m of members) {
+          roleMap[m.userId] = m.creativeRoleId || null;
+        }
+        setMemberRoles(roleMap);
+      }).catch(() => {});
+    }
+  }, [open, project.id]);
+
+  const handleMemberRoleChange = useCallback((userId: string, roleId: string | null) => {
+    setMemberRoles(prev => ({ ...prev, [userId]: roleId }));
+    // Persist immediately
+    updateProjectMemberRole(project.id, userId, roleId).catch((err) =>
+      console.error('Failed to update member role:', err)
+    );
+  }, [project.id]);
+
+  const groupedRoles = groupRolesByCategory(creativeRoles);
 
   const selectedPM = users.find(u => u.id === formData.pmId);
   const selectedTeamMembers = users.filter(u => formData.teamMemberIds.includes(u.id));
@@ -411,6 +444,43 @@ export function EditProjectModal({ open, onOpenChange, project }: EditProjectMod
               placeholder="Type a name to add team member..."
               multiple
             />
+
+            {/* Role assignment per member */}
+            {selectedTeamMembers.length > 0 && creativeRoles.length > 0 && (
+              <div className="space-y-1.5 mt-2">
+                <Label className="text-xs text-muted-foreground">Job Title / Role</Label>
+                {selectedTeamMembers.map((member) => (
+                  <div key={member.id} className="flex items-center gap-2">
+                    <span className="text-xs font-medium w-24 truncate">{member.name}</span>
+                    <Select
+                      value={memberRoles[member.id] || '_none'}
+                      onValueChange={(val) => handleMemberRoleChange(member.id, val === '_none' ? null : val)}
+                    >
+                      <SelectTrigger className="h-7 text-xs flex-1">
+                        <SelectValue placeholder="Select role..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="_none">
+                          <span className="text-muted-foreground">No role assigned</span>
+                        </SelectItem>
+                        {Object.entries(groupedRoles).map(([category, roles]) => (
+                          <div key={category}>
+                            <div className="px-2 py-1 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+                              {category}
+                            </div>
+                            {roles.map((role) => (
+                              <SelectItem key={role.id} value={role.id}>
+                                {role.name}
+                              </SelectItem>
+                            ))}
+                          </div>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           <DialogFooter>
