@@ -15,6 +15,7 @@
  */
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { authenticateOrFallback } from '../_shared/auth.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -261,7 +262,9 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { userId, recordingId, analysis, transcript } = await req.json();
+    const { userId: bodyUserId, recordingId, analysis, transcript } = await req.json();
+    const { userId: jwtUserId } = await authenticateOrFallback(req);
+    const userId = jwtUserId || bodyUserId;
 
     if (!userId || !recordingId || !analysis) {
       return new Response(

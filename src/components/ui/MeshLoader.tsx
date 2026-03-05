@@ -45,7 +45,7 @@ export function MeshLoader({ size = 200, message }: MeshLoaderProps) {
     // Each particle has its own phase offset for staggered animation
     const phases = PARTICLES.map((_, i) => (i / count) * Math.PI * 2);
     let animId: number;
-    let startTime = performance.now();
+    const startTime = performance.now();
 
     function drawStar(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number, alpha: number) {
       const spikes = 4;

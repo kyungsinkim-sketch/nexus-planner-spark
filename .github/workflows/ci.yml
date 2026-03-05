@@ -1,0 +1,27 @@
+name: CI — Lint & Type Check
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint-and-typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: ESLint (errors only — warnings tracked separately)
+        run: npx eslint src/ --ext .ts,.tsx --quiet
+
+      - name: TypeScript type check
+        run: npx tsc --noEmit

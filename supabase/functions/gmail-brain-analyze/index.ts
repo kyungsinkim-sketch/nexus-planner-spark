@@ -14,6 +14,8 @@
  * Response: { suggestions: EmailBrainSuggestion[] }
  */
 
+import { authenticateOrFallback } from '../_shared/auth.ts';
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -405,7 +407,9 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { userId, messages, context, feedback, language } = await req.json();
+    const { userId: bodyUserId, messages, context, feedback, language } = await req.json();
+    const { userId: jwtUserId } = await authenticateOrFallback(req);
+    const userId = jwtUserId || bodyUserId;
 
     if (!userId || !messages?.length) {
       return new Response(

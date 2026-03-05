@@ -515,13 +515,13 @@ export async function endCall(): Promise<void> {
   const roomRef = currentRoom;
   currentRoom = null;
   if (roomRef) {
-    try { roomRef.disconnect(); } catch {}
+    try { roomRef.disconnect(); } catch { /* ignore */ }
   }
 
   // Clean up audio
   document.querySelectorAll('[data-livekit-audio]').forEach(el => el.remove());
   if (audioOutputContext) {
-    try { audioOutputContext.close(); } catch {}
+    try { audioOutputContext.close(); } catch { /* ignore */ }
     audioOutputContext = null;
     audioOutputGain = null;
   }
@@ -579,7 +579,7 @@ export async function endCall(): Promise<void> {
       }).catch(err => {
         console.error('[Call] End call API failed:', err);
       });
-    } catch {}
+    } catch { /* ignore */ }
   }
 }
 

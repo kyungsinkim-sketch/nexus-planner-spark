@@ -10,6 +10,7 @@
 
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 import type { ExecuteRequest } from '../_shared/brain-types.ts';
+import { authenticateOrFallback } from '../_shared/auth.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -24,7 +25,9 @@ Deno.serve(async (req) => {
 
   try {
     const body: ExecuteRequest = await req.json();
-    const { actionId, userId } = body;
+    const { userId: jwtUserId } = await authenticateOrFallback(req);
+    const userId = jwtUserId || body.userId;
+    const { actionId } = body;
 
     if (!actionId || !userId) {
       return new Response(

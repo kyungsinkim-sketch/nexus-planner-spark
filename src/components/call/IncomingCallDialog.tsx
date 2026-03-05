@@ -100,7 +100,7 @@ export function IncomingCallDialog() {
         audioRef.current.play().catch(() => {
           console.log('[IncomingCall] Ringtone play blocked (user interaction needed)');
         });
-      } catch {}
+      } catch { /* ignore */ }
 
     } catch (err) {
       console.error('[IncomingCall] Check failed:', err);

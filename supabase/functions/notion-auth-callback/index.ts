@@ -18,6 +18,7 @@
 
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 import { exchangeCodeForToken } from '../_shared/notion-client.ts';
+import { authenticateOrFallback } from '../_shared/auth.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -30,7 +31,9 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { code, redirectUri, userId } = await req.json();
+    const { code, redirectUri, userId: bodyUserId } = await req.json();
+    const { userId: jwtUserId } = await authenticateOrFallback(req);
+    const userId = jwtUserId || bodyUserId;
 
     if (!code || !redirectUri || !userId) {
       return new Response(

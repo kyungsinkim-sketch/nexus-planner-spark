@@ -44,7 +44,7 @@ export interface NotificationReadEvent {
 
 let _channel: RealtimeChannel | null = null;
 let _userId: string | null = null;
-let _syncing = false;
+const _syncing = false;
 
 /**
  * Flag to suppress sync-back when processing a remote read event.

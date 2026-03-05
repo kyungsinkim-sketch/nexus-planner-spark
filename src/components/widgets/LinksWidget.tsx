@@ -22,7 +22,7 @@ function LinksWidget({ context }: { context: WidgetDataContext }) {
   const projectId = context.projectId || '';
 
   const links = useMemo(() => {
-    const urlRegex = /https?:\/\/[^\s<>"{}|\\^`\[\]]+/gi;
+    const urlRegex = /https?:\/\/[^\s<>"{}|\\^`[\]]+/gi;
     const results: ExtractedLink[] = [];
     const seenUrls = new Set<string>();
 

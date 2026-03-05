@@ -819,7 +819,7 @@ function parseTimeExpression(text: string): {
   let hour: number | null = null;
   let minute = 0;
   let endHour: number | null = null;
-  let endMinute = 0;
+  const endMinute = 0;
 
   // "오후 N시 M분" or "오전 N시 M분"
   const fullTimeMatch = text.match(/(오전|오후|AM|PM|am|pm)?\s*(\d{1,2})\s*시\s*(?:(\d{1,2})\s*분)?/);

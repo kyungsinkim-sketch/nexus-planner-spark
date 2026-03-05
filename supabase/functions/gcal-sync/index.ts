@@ -23,6 +23,7 @@ import {
   type GoogleTokenRow,
   type GoogleEvent,
 } from '../_shared/gcal-client.ts';
+import { authenticateOrFallback } from '../_shared/auth.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -35,7 +36,9 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { userId } = await req.json();
+    const { userId: bodyUserId } = await req.json();
+    const { userId: jwtUserId } = await authenticateOrFallback(req);
+    const userId = jwtUserId || bodyUserId;
 
     if (!userId) {
       return new Response(

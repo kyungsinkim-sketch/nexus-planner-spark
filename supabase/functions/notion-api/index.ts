@@ -42,6 +42,7 @@ import {
   type NotionTokenRow,
   type NotionRichText,
 } from '../_shared/notion-client.ts';
+import { authenticateOrFallback } from '../_shared/auth.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -66,7 +67,9 @@ Deno.serve(async (req) => {
 
   try {
     const body = await req.json();
-    const { userId, action } = body;
+    const { userId: jwtUserId } = await authenticateOrFallback(req);
+    const userId = jwtUserId || body.userId;
+    const { action } = body;
 
     if (!userId || !action) {
       return errorResponse('Missing required fields: userId, action');

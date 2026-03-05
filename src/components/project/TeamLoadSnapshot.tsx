@@ -17,10 +17,10 @@ export function TeamLoadSnapshot({ project }: TeamLoadSnapshotProps) {
   const { getUserById, messages, files, events, personalTodos } = useAppStore();
 
   const teamMemberIds = project.teamMemberIds || [];
-  if (teamMemberIds.length === 0) return null;
 
   // Calculate real data per user for THIS project only
   const loadData = useMemo(() => {
+    if (teamMemberIds.length === 0) return [];
     const inputs = teamMemberIds.map(userId => {
       // Chat messages in this project
       const chatMessages = messages.filter(
@@ -46,6 +46,8 @@ export function TeamLoadSnapshot({ project }: TeamLoadSnapshotProps) {
   }, [teamMemberIds, project.id, messages, files, events, personalTodos]);
 
   const maxScore = Math.max(...loadData.map(d => d.loadScore), 1);
+
+  if (teamMemberIds.length === 0) return null;
 
   return (
     <Card className="p-6 shadow-card">

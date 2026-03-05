@@ -14,6 +14,7 @@
  */
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { authenticateOrFallback } from '../_shared/auth.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -139,7 +140,9 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { userId, knowledgeItemId, projectId } = await req.json();
+    const { userId: bodyUserId, knowledgeItemId, projectId } = await req.json();
+    const { userId: jwtUserId } = await authenticateOrFallback(req);
+    const userId = jwtUserId || bodyUserId;
 
     if (!userId || !knowledgeItemId) {
       return jsonResponse({ error: 'Missing userId or knowledgeItemId' }, 400);

@@ -16,6 +16,7 @@
 
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 import * as jose from 'https://deno.land/x/jose@v5.2.0/index.ts';
+import { authenticateOrFallback } from '../_shared/auth.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -139,6 +140,7 @@ Deno.serve(async (req) => {
       notificationType,
       payload,
     } = await req.json();
+    const { userId: _jwtUserId } = await authenticateOrFallback(req);
 
     if (!recipientUserId || !title) {
       return new Response(

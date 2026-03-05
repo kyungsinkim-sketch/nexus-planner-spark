@@ -24,6 +24,7 @@ import {
   readAllSheets,
   type SheetData,
 } from '../_shared/sheets-client.ts';
+import { authenticateOrFallback } from '../_shared/auth.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -534,13 +535,15 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { userId, projectId, spreadsheetId: inputSpreadsheetId, spreadsheetUrl, direction = 'pull' } = await req.json() as {
+    const { userId: bodyUserId, projectId, spreadsheetId: inputSpreadsheetId, spreadsheetUrl, direction = 'pull' } = await req.json() as {
       userId: string;
       projectId: string;
       spreadsheetId?: string;
       spreadsheetUrl?: string;
       direction?: 'pull' | 'push' | 'both' | 'link';
     };
+    const { userId: jwtUserId } = await authenticateOrFallback(req);
+    const userId = jwtUserId || bodyUserId;
 
     if (!userId || !projectId) {
       return new Response(

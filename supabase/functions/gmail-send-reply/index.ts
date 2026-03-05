@@ -10,6 +10,7 @@
 
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 import { ensureValidToken, type GoogleTokenRow } from '../_shared/gcal-client.ts';
+import { authenticateOrFallback } from '../_shared/auth.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -64,7 +65,9 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { userId, threadId, messageId, body, to, subject } = await req.json();
+    const { userId: bodyUserId, threadId, messageId, body, to, subject } = await req.json();
+    const { userId: jwtUserId } = await authenticateOrFallback(req);
+    const userId = jwtUserId || bodyUserId;
 
     if (!userId || !threadId || !body || !to) {
       return new Response(
