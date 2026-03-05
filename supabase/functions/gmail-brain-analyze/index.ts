@@ -99,7 +99,7 @@ IMPORTANT: If ANY meeting/schedule pattern is detected, ALWAYS generate a sugges
 - Always respond in valid JSON array format
 - Summary MUST be in Korean
 - Reply draft MUST be in Korean, professional tone
-- For date validation: use the current year and calculate actual day-of-week
+- For date validation: ALWAYS use the Day-of-Week Reference table provided in the user message. NEVER calculate day-of-week yourself — LLMs are bad at calendar math
 - If email is purely informational with no actions, set intent to "info_share" and only provide summary + reply draft
 - For location comparisons (e.g., "장소 A vs B"), always create a suggestedNote
 - Event type mapping: 회의/미팅→MEETING, 촬영/작업→TASK, 마감/납품→DEADLINE, 배송→DELIVERY
@@ -321,7 +321,22 @@ ${m.body.slice(0, 1500)}
     .join('\n\n');
 
   const today = new Date();
-  const userMessage = `Today is ${today.toISOString().split('T')[0]} (${['일', '월', '화', '수', '목', '금', '토'][today.getDay()]}요일).
+  const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
+
+  // Pre-compute day-of-week calendar for ±30 days so the LLM doesn't hallucinate
+  const calendarLines: string[] = [];
+  for (let offset = 0; offset <= 30; offset++) {
+    const d = new Date(today);
+    d.setDate(d.getDate() + offset);
+    const mm = d.getMonth() + 1;
+    const dd = d.getDate();
+    calendarLines.push(`${mm}/${dd}(${dayNames[d.getDay()]})`);
+  }
+
+  const userMessage = `Today is ${today.toISOString().split('T')[0]} (${dayNames[today.getDay()]}요일).
+
+## Day-of-Week Reference (use this, do NOT calculate yourself)
+${calendarLines.join(', ')}
 
 Analyze the following emails and return suggestions as a JSON array:
 
