@@ -101,11 +101,18 @@ function FilesWidget({ context }: { context: WidgetDataContext }) {
   useEffect(() => {
     if (!isSupabaseConfigured()) return;
 
+    // Build set of file_group IDs belonging to current project for filtering
+    const currentProjectId = context.type === 'project' ? context.projectId : undefined;
+
     const unsub = subscribeToFileItems(
       // onInsert — another user uploaded a file
       (newFile) => {
         useAppStore.setState((state) => {
           if (state.files.some((f) => f.id === newFile.id)) return state;
+
+          // Only add to store if the file belongs to a group in the current project,
+          // or if we can't determine (we'll filter in the view).
+          // Always add — but the allFiles filter below will handle visibility.
           return { files: [...state.files, newFile] };
         });
       },
@@ -169,32 +176,35 @@ function FilesWidget({ context }: { context: WidgetDataContext }) {
 
   const allFiles = useMemo(() => {
     const isProjectContext = context.type === 'project' && context.projectId;
+
+    if (!isProjectContext) {
+      // No project filter → show all files (global view)
+      return files
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+        .slice(0, 20);
+    }
+
+    // Strict project scoping: only show files that belong to THIS project
     const projectGroupIds = new Set(
-      isProjectContext
-        ? fileGroups.filter((g) => g.projectId === context.projectId).map((g) => g.id)
-        : fileGroups.map((g) => g.id),
+      fileGroups.filter((g) => g.projectId === context.projectId).map((g) => g.id),
     );
 
     // Build a set of file IDs that belong to the current project's chat messages
-    // This prevents DM files from leaking into project file widgets
+    // This prevents files from other project chats leaking into this project's widget
     const projectChatFileIds = new Set(
-      isProjectContext
-        ? messages
-            .filter((m) => m.projectId === context.projectId && m.messageType === 'file' && m.attachmentId)
-            .map((m) => m.attachmentId!)
-        : [],
+      messages
+        .filter((m) => m.projectId === context.projectId && m.messageType === 'file' && m.attachmentId)
+        .map((m) => m.attachmentId!),
     );
 
     return files
       .filter((f) => {
-        // Files in this project's file groups
-        if (f.fileGroupId && projectGroupIds.has(f.fileGroupId)) return true;
-        // Chat-uploaded files: only show if they belong to this project's messages
-        if (!f.fileGroupId && f.source === 'CHAT') {
-          if (!isProjectContext) return true; // No project filter → show all
-          return projectChatFileIds.has(f.id);
+        // 1. Files explicitly in this project's file groups
+        if (f.fileGroupId) {
+          return projectGroupIds.has(f.fileGroupId);
         }
-        return false;
+        // 2. Files without a group: only show if referenced by this project's chat messages
+        return projectChatFileIds.has(f.id);
       })
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
       .slice(0, 20);
