@@ -469,12 +469,12 @@ function MainTableView({
                       />
                     </div>
 
-                    {/* Due date - editable */}
+                    {/* Due date - editable (syncs endDate for Gantt) */}
                     <div className="text-center text-xs text-muted-foreground">
                       <EditableCell
-                        value={task.dueDate || ''}
+                        value={task.dueDate || task.endDate || ''}
                         type="date"
-                        onSave={(v) => onUpdateTask(task.id, { dueDate: v || null })}
+                        onSave={(v) => onUpdateTask(task.id, { dueDate: v || null, endDate: v || null })}
                         className="text-xs"
                       />
                     </div>
@@ -591,7 +591,7 @@ function GanttChartView({
 
   // Calculate date range
   const allDates = useMemo(() => {
-    return tasks.flatMap(tk => [tk.startDate, tk.endDate].filter(Boolean)) as string[];
+    return tasks.flatMap(tk => [tk.startDate, tk.endDate, tk.dueDate].filter(Boolean)) as string[];
   }, [tasks]);
 
   const minDate = allDates.length ? parseISO([...allDates].sort()[0]) : new Date();
@@ -611,11 +611,12 @@ function GanttChartView({
   // All tasks with date ranges, flattened with lane assignment
   const tasksWithDates = useMemo(() => {
     return tasks
-      .filter(tk => tk.startDate && tk.endDate)
+      .filter(tk => tk.startDate && (tk.endDate || tk.dueDate))
       .map(tk => {
+        const effectiveEnd = tk.endDate || tk.dueDate!;
         const startDay = differenceInDays(parseISO(tk.startDate!), rangeStart);
-        const endDay = differenceInDays(parseISO(tk.endDate!), rangeStart);
-        return { ...tk, startDay, endDay };
+        const endDay = differenceInDays(parseISO(effectiveEnd), rangeStart);
+        return { ...tk, startDay, endDay, endDate: effectiveEnd };
       });
   }, [tasks, rangeStart]);
 
@@ -650,9 +651,11 @@ function GanttChartView({
     const origEnd = parseISO(dragging.origEnd);
 
     if (dragging.mode === 'move') {
+      const newEndStr = format(addDays(origEnd, daysDelta), 'yyyy-MM-dd');
       onUpdateTask(dragging.taskId, {
         startDate: format(addDays(origStart, daysDelta), 'yyyy-MM-dd'),
-        endDate: format(addDays(origEnd, daysDelta), 'yyyy-MM-dd'),
+        endDate: newEndStr,
+        dueDate: newEndStr,
       });
     } else if (dragging.mode === 'resize-left') {
       const newStart = addDays(origStart, daysDelta);
@@ -662,7 +665,8 @@ function GanttChartView({
     } else if (dragging.mode === 'resize-right') {
       const newEnd = addDays(origEnd, daysDelta);
       if (differenceInDays(newEnd, origStart) >= 0) {
-        onUpdateTask(dragging.taskId, { endDate: format(newEnd, 'yyyy-MM-dd') });
+        const newEndStr = format(newEnd, 'yyyy-MM-dd');
+        onUpdateTask(dragging.taskId, { endDate: newEndStr, dueDate: newEndStr });
       }
     }
   }, [dragging, onUpdateTask]);
@@ -892,13 +896,13 @@ function GanttChartView({
             })}
 
             {/* Tasks without dates — empty state */}
-            {tasks.filter(tk => !tk.startDate || !tk.endDate).length > 0 && (
+            {tasks.filter(tk => !tk.startDate || !(tk.endDate || tk.dueDate)).length > 0 && (
               <div
                 className="absolute bottom-2 left-4 text-xs text-muted-foreground/60 flex items-center gap-1"
                 style={{ zIndex: 5 }}
               >
                 <Clock className="w-3 h-3" />
-                {tasks.filter(tk => !tk.startDate || !tk.endDate).length} {t('tasksNoDateSet') || '일정 미설정'}
+                {tasks.filter(tk => !tk.startDate || !(tk.endDate || tk.dueDate)).length} {t('tasksNoDateSet') || '일정 미설정'}
               </div>
             )}
           </div>
@@ -1134,9 +1138,9 @@ function TimelineView({
                   );
                 })}
 
-                {groupTasks.filter(tk => !tk.startDate || !tk.endDate).length > 0 && (
+                {groupTasks.filter(tk => !tk.startDate || !(tk.endDate || tk.dueDate)).length > 0 && (
                   <div className="px-3 py-2 text-[10px] text-muted-foreground/60">
-                    + {groupTasks.filter(tk => !tk.startDate || !tk.endDate).length} {t('tasksNoDateSet') || 'no date set'}
+                    + {groupTasks.filter(tk => !tk.startDate || !(tk.endDate || tk.dueDate)).length} {t('tasksNoDateSet') || 'no date set'}
                   </div>
                 )}
               </div>
