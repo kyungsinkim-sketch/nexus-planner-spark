@@ -23,6 +23,7 @@ import { toast } from 'sonner';
 import { useTranslation } from '@/hooks/useTranslation';
 import { useAdminEmployees } from '@/hooks/useAdmin';
 import { AdminEmployee } from '@/types/admin';
+import { useCreativeRoles } from '@/hooks/useCreativeRoles';
 
 interface OrgMember {
   id: string;
@@ -50,6 +51,7 @@ const teams: Record<string, string[]> = {
 export function OrganizationChart() {
   const { t } = useTranslation();
   const { employees, isLoading, addEmployee, updateEmployee, deleteEmployee } = useAdminEmployees();
+  const { grouped: groupedRoles } = useCreativeRoles();
 
   const [members, setMembers] = useState<OrgMember[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -224,11 +226,26 @@ export function OrganizationChart() {
             </div>
             <div className="space-y-2">
               <label className="text-xs font-medium">Position</label>
-              <Input
-                placeholder="e.g. Director"
+              <Select
                 value={tempMember.position || ''}
-                onChange={e => setTempMember({ ...tempMember, position: e.target.value })}
-              />
+                onValueChange={v => setTempMember({ ...tempMember, position: v })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="직책 선택" />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(groupedRoles).map(([category, roles]) => (
+                    <React.Fragment key={category}>
+                      <SelectItem value={`__label_${category}`} disabled className="text-xs font-bold text-muted-foreground">
+                        ── {category} ──
+                      </SelectItem>
+                      {roles.map(role => (
+                        <SelectItem key={role.id} value={role.name}>{role.name}</SelectItem>
+                      ))}
+                    </React.Fragment>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2">
               <label className="text-xs font-medium">Title/Level</label>
@@ -354,11 +371,26 @@ export function OrganizationChart() {
                                   />
                                 </TableCell>
                                 <TableCell>
-                                  <Input
+                                  <Select
                                     value={member.position}
-                                    onChange={(e) => setMembers(prev => prev.map(m => m.id === member.id ? { ...m, position: e.target.value } : m))}
-                                    className="h-8"
-                                  />
+                                    onValueChange={(v) => setMembers(prev => prev.map(m => m.id === member.id ? { ...m, position: v } : m))}
+                                  >
+                                    <SelectTrigger className="h-8 w-[160px]">
+                                      <SelectValue placeholder="직책 선택" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {Object.entries(groupedRoles).map(([category, roles]) => (
+                                        <React.Fragment key={category}>
+                                          <SelectItem value={`__label_${category}`} disabled className="text-xs font-bold text-muted-foreground">
+                                            ── {category} ──
+                                          </SelectItem>
+                                          {roles.map(role => (
+                                            <SelectItem key={role.id} value={role.name}>{role.name}</SelectItem>
+                                          ))}
+                                        </React.Fragment>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
                                 </TableCell>
                                 <TableCell>
                                   <Input

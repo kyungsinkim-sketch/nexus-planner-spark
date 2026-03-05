@@ -21,6 +21,7 @@ import { useAdminEmployees } from '@/hooks/useAdmin';
 import { AdminEmployee } from '@/types/admin';
 import { useAppStore } from '@/stores/appStore';
 import { isSupabaseConfigured, supabase } from '@/lib/supabase';
+import { useCreativeRoles } from '@/hooks/useCreativeRoles';
 
 interface Employee extends AdminEmployee {
   monthsWorked: string;
@@ -51,6 +52,7 @@ export function EmployeeList() {
   const { employees: dbEmployees, updateEmployee, deleteEmployee, addEmployee, isLoading } = useAdminEmployees();
   const { currentUser } = useAppStore();
   const isAdmin = currentUser?.role === 'ADMIN';
+  const { roles: creativeRoles, grouped: groupedRoles } = useCreativeRoles();
 
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -392,11 +394,26 @@ export function EmployeeList() {
                         />
                       </TableCell>
                       <TableCell>
-                        <Input
+                        <Select
                           value={emp.position}
-                          onChange={(e) => handleUpdate(emp.id, 'position', e.target.value)}
-                          className="h-8 w-[100px]"
-                        />
+                          onValueChange={(v) => handleUpdate(emp.id, 'position', v)}
+                        >
+                          <SelectTrigger className="h-8 w-[160px]">
+                            <SelectValue placeholder="직책 선택" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {Object.entries(groupedRoles).map(([category, roles]) => (
+                              <React.Fragment key={category}>
+                                <SelectItem value={`__label_${category}`} disabled className="text-xs font-bold text-muted-foreground">
+                                  ── {category} ──
+                                </SelectItem>
+                                {roles.map(role => (
+                                  <SelectItem key={role.id} value={role.name}>{role.name}</SelectItem>
+                                ))}
+                              </React.Fragment>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </TableCell>
                       <TableCell>
                         <Input
@@ -604,11 +621,26 @@ export function EmployeeList() {
             </div>
             <div className="space-y-1.5">
               <Label>직책</Label>
-              <Input
-                placeholder="Assistant Director"
+              <Select
                 value={newEmpData.position}
-                onChange={(e) => setNewEmpData(prev => ({ ...prev, position: e.target.value }))}
-              />
+                onValueChange={(v) => setNewEmpData(prev => ({ ...prev, position: v }))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="직책 선택" />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(groupedRoles).map(([category, roles]) => (
+                    <React.Fragment key={category}>
+                      <SelectItem value={`__label_${category}`} disabled className="text-xs font-bold text-muted-foreground">
+                        ── {category} ──
+                      </SelectItem>
+                      {roles.map(role => (
+                        <SelectItem key={role.id} value={role.name}>{role.name}</SelectItem>
+                      ))}
+                    </React.Fragment>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-1.5">
               <Label>등급</Label>
