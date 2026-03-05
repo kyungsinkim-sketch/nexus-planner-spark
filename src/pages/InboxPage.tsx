@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Bell,
   CheckCircle2,
@@ -27,6 +27,7 @@ import { cn } from '@/lib/utils';
 import { Link } from 'react-router-dom';
 import { useTranslation } from '@/hooks/useTranslation';
 import * as notificationService from '@/services/notificationService';
+import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 
 type NotificationType = 'task' | 'message' | 'file' | 'deadline' | 'mention' | 'feedback';
 
@@ -87,11 +88,7 @@ export default function InboxPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('all');
 
-  useEffect(() => {
-    loadNotifications();
-  }, []);
-
-  const loadNotifications = async () => {
+  const loadNotifications = useCallback(async () => {
     try {
       setIsLoading(true);
       const data = await notificationService.getNotifications();
@@ -101,7 +98,28 @@ export default function InboxPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    loadNotifications();
+  }, [loadNotifications]);
+
+  // Realtime: auto-refresh when new notifications arrive
+  useEffect(() => {
+    if (!isSupabaseConfigured()) return;
+    const channel = supabase
+      .channel('inbox_notifications')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'notifications' },
+        () => {
+          // Reload full list to get joined fields (project title, sender name)
+          loadNotifications();
+        },
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [loadNotifications]);
 
   const unreadCount = notifications.filter(n => !n.isRead).length;
 
