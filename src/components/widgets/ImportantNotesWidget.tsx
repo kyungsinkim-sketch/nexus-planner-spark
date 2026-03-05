@@ -2,15 +2,16 @@
  * ImportantNotesWidget — Displays important notes for a project.
  *
  * Notes are auto-extracted from chat when keywords like '중요한', '기억해주세요'
- * are detected. Text-only items with no dates — persist through project lifetime.
- * Users can also manually add notes via the + button in the widget title bar.
+ * are detected. Users can also manually add notes via the + button.
+ * Supports title + content separation. Shift+Enter for newline in content.
  */
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { useAppStore } from '@/stores/appStore';
 import { useTranslation } from '@/hooks/useTranslation';
-import { StickyNote, X, MessageSquare } from 'lucide-react';
+import { StickyNote, X, MessageSquare, ChevronDown, ChevronUp } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import type { WidgetDataContext } from '@/types/widget';
@@ -22,7 +23,10 @@ function ImportantNotesWidget({ context }: { context: WidgetDataContext }) {
     currentUser, getUserById,
     importantNoteAddOpen, setImportantNoteAddOpen,
   } = useAppStore();
-  const [newNote, setNewNote] = useState('');
+  const [newTitle, setNewTitle] = useState('');
+  const [newContent, setNewContent] = useState('');
+  const [expandedNoteId, setExpandedNoteId] = useState<string | null>(null);
+  const contentRef = useRef<HTMLTextAreaElement>(null);
 
   const projectId = context.projectId || '';
 
@@ -32,59 +36,91 @@ function ImportantNotesWidget({ context }: { context: WidgetDataContext }) {
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   }, [importantNotes, projectId]);
 
-  // Listen for title-bar + button click
   useEffect(() => {
     if (importantNoteAddOpen) {
-      // Focus will be handled by autoFocus on the input
+      // Focus will be handled by autoFocus on title input
     }
   }, [importantNoteAddOpen]);
 
   const handleAdd = () => {
-    if (!newNote.trim() || !currentUser || !projectId) return;
+    const title = newTitle.trim();
+    const content = newContent.trim();
+    if ((!title && !content) || !currentUser || !projectId) return;
     addImportantNote({
       projectId,
-      content: newNote.trim(),
+      title: title || undefined,
+      content: content || title, // fallback: if only title, use as content
       createdBy: currentUser.id,
     });
-    setNewNote('');
+    setNewTitle('');
+    setNewContent('');
     setImportantNoteAddOpen(false);
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
+  const handleTitleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      contentRef.current?.focus();
+    }
+    if (e.key === 'Escape') {
+      setImportantNoteAddOpen(false);
+      setNewTitle('');
+      setNewContent('');
+    }
+  };
+
+  const handleContentKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleAdd();
     }
     if (e.key === 'Escape') {
       setImportantNoteAddOpen(false);
-      setNewNote('');
+      setNewTitle('');
+      setNewContent('');
     }
   };
 
   return (
     <div className="h-full flex flex-col p-3 gap-2">
-      {/* Input area (triggered by title bar + button) */}
+      {/* Input area */}
       {importantNoteAddOpen && (
-        <div className="flex gap-1.5 shrink-0">
+        <div className="flex flex-col gap-1.5 shrink-0">
           <Input
-            value={newNote}
-            onChange={(e) => setNewNote(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder={t('importantNotePlaceholder')}
-            className="h-7 text-xs flex-1"
+            value={newTitle}
+            onChange={(e) => setNewTitle(e.target.value)}
+            onKeyDown={handleTitleKeyDown}
+            placeholder={t('noteTitle') || '제목'}
+            className="h-7 text-xs font-medium"
             autoFocus
           />
-          <Button size="sm" className="h-7 px-2" onClick={handleAdd} disabled={!newNote.trim()}>
-            {t('add')}
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-7 px-1.5"
-            onClick={() => { setImportantNoteAddOpen(false); setNewNote(''); }}
-          >
-            <X className="w-3 h-3" />
-          </Button>
+          <Textarea
+            ref={contentRef}
+            value={newContent}
+            onChange={(e) => setNewContent(e.target.value)}
+            onKeyDown={handleContentKeyDown}
+            placeholder={t('noteContentPlaceholder') || '내용 (Shift+Enter로 줄바꿈)'}
+            className="text-xs min-h-[48px] max-h-[120px] resize-none"
+            rows={2}
+          />
+          <div className="flex gap-1.5 justify-end">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 px-2 text-xs"
+              onClick={() => { setImportantNoteAddOpen(false); setNewTitle(''); setNewContent(''); }}
+            >
+              {t('cancel') || '취소'}
+            </Button>
+            <Button
+              size="sm"
+              className="h-6 px-2 text-xs"
+              onClick={handleAdd}
+              disabled={!newTitle.trim() && !newContent.trim()}
+            >
+              {t('add')}
+            </Button>
+          </div>
         </div>
       )}
 
@@ -100,39 +136,60 @@ function ImportantNotesWidget({ context }: { context: WidgetDataContext }) {
           <div className="space-y-1.5">
             {notes.map((note) => {
               const creator = getUserById(note.createdBy);
+              const isExpanded = expandedNoteId === note.id;
+              const hasTitle = !!note.title;
+              const contentLines = note.content?.split('\n') || [];
+              const isLong = contentLines.length > 2 || note.content.length > 100;
+
               return (
                 <div
                   key={note.id}
-                  className="group relative flex gap-2 p-2 rounded-lg bg-amber-500/5 border border-amber-500/15 hover:border-amber-500/30 transition-colors"
+                  className="group relative flex flex-col p-2 rounded-lg bg-amber-500/5 border border-amber-500/15 hover:border-amber-500/30 transition-colors cursor-pointer"
+                  onClick={() => isLong && setExpandedNoteId(isExpanded ? null : note.id)}
                 >
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs text-foreground leading-relaxed break-words">{note.content}</p>
-                    <div className="flex items-center gap-2 mt-1">
-                      <span className="text-[10px] text-muted-foreground">
-                        {creator?.name || note.createdBy}
-                      </span>
-                      <span className="text-[10px] text-muted-foreground/50">·</span>
-                      <span className="text-[10px] text-muted-foreground">
-                        {new Date(note.createdAt).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })}
-                      </span>
-                      {note.sourceMessageId && (
-                        <>
-                          <span className="text-[10px] text-muted-foreground/50">·</span>
-                          <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
-                            <MessageSquare className="w-2.5 h-2.5" />
-                            {t('fromChat')}
-                          </span>
-                        </>
+                  <div className="flex items-start gap-2">
+                    <div className="flex-1 min-w-0">
+                      {hasTitle && (
+                        <p className="text-xs font-semibold text-foreground leading-snug mb-0.5">{note.title}</p>
                       )}
+                      <p className={`text-xs text-foreground/80 leading-relaxed break-words whitespace-pre-wrap ${
+                        !isExpanded && isLong ? 'line-clamp-2' : ''
+                      }`}>
+                        {note.content}
+                      </p>
+                      {isLong && (
+                        <button className="text-[10px] text-amber-600/70 hover:text-amber-600 mt-0.5 flex items-center gap-0.5">
+                          {isExpanded ? <ChevronUp className="w-2.5 h-2.5" /> : <ChevronDown className="w-2.5 h-2.5" />}
+                          {isExpanded ? (t('collapse') || '접기') : (t('expand') || '더보기')}
+                        </button>
+                      )}
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="text-[10px] text-muted-foreground">
+                          {creator?.name || note.createdBy}
+                        </span>
+                        <span className="text-[10px] text-muted-foreground/50">·</span>
+                        <span className="text-[10px] text-muted-foreground">
+                          {new Date(note.createdAt).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })}
+                        </span>
+                        {note.sourceMessageId && (
+                          <>
+                            <span className="text-[10px] text-muted-foreground/50">·</span>
+                            <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
+                              <MessageSquare className="w-2.5 h-2.5" />
+                              {t('fromChat')}
+                            </span>
+                          </>
+                        )}
+                      </div>
                     </div>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); removeImportantNote(note.id); }}
+                      className="p-0.5 rounded opacity-0 group-hover:opacity-100 hover:bg-destructive/20 transition-all shrink-0 self-start"
+                      title={t('removeNote')}
+                    >
+                      <X className="w-3 h-3 text-muted-foreground" />
+                    </button>
                   </div>
-                  <button
-                    onClick={() => removeImportantNote(note.id)}
-                    className="p-0.5 rounded opacity-0 group-hover:opacity-100 hover:bg-destructive/20 transition-all shrink-0 self-start"
-                    title={t('removeNote')}
-                  >
-                    <X className="w-3 h-3 text-muted-foreground" />
-                  </button>
                 </div>
               );
             })}

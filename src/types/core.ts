@@ -133,6 +133,7 @@ export interface CompanyNotification {
 export interface ImportantNote {
   id: string;
   projectId: string;
+  title?: string;
   content: string;
   sourceMessageId?: string;   // chat message that triggered it
   createdBy: string;          // userId who sent the message

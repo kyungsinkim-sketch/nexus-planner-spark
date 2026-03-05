@@ -10,6 +10,7 @@ import type { ImportantNote } from '@/types/core';
 interface NoteRow {
   id: string;
   project_id: string;
+  title: string | null;
   content: string;
   source_message_id: string | null;
   created_by: string;
@@ -19,6 +20,7 @@ interface NoteRow {
 const transformNote = (row: NoteRow): ImportantNote => ({
   id: row.id,
   projectId: row.project_id,
+  title: row.title || undefined,
   content: row.content,
   sourceMessageId: row.source_message_id || undefined,
   createdBy: row.created_by,
@@ -52,6 +54,7 @@ export async function createNote(note: Omit<ImportantNote, 'id' | 'createdAt'>):
     .from('important_notes')
     .insert({
       project_id: note.projectId,
+      title: note.title || null,
       content: note.content,
       source_message_id: note.sourceMessageId || null,
       created_by: note.createdBy,
