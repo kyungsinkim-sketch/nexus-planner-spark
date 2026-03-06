@@ -330,6 +330,26 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
     }
   };
 
+  // Load reactions for visible messages
+  useEffect(() => {
+    if (chatMessages.length === 0) return;
+    const messageIds = chatMessages.map(m => m.id);
+    import('@/services/chatReactionService').then(({ getReactionsForMessages }) => {
+      getReactionsForMessages(messageIds).then((reactionsMap) => {
+        const { messages: storeMessages } = useAppStore.getState();
+        const updated = storeMessages.map(m => {
+          if (reactionsMap[m.id]) {
+            return { ...m, reactions: reactionsMap[m.id] };
+          }
+          return m;
+        });
+        if (Object.keys(reactionsMap).length > 0) {
+          useAppStore.setState({ messages: updated });
+        }
+      }).catch(() => {});
+    });
+  }, [selectedChat?.id, selectedChat?.roomId]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Track previous chat ID to detect room entry vs. new message
   const prevChatIdRef = useRef<string | null>(null);
 
@@ -1117,6 +1137,40 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
     });
   };
 
+  const handleReactionToggle = async (messageId: string, emoji: string) => {
+    if (!currentUser) return;
+    try {
+      const { toggleReaction } = await import('@/services/chatReactionService');
+      const result = await toggleReaction(messageId, currentUser.id, emoji);
+      // Update local state
+      const { messages } = useAppStore.getState();
+      const updated = messages.map(m => {
+        if (m.id !== messageId) return m;
+        const reactions = [...(m.reactions || [])];
+        const existing = reactions.find(r => r.emoji === emoji);
+        if (result === 'added') {
+          if (existing) {
+            existing.userIds = [...existing.userIds, currentUser.id];
+          } else {
+            reactions.push({ emoji, userIds: [currentUser.id] });
+          }
+        } else {
+          if (existing) {
+            existing.userIds = existing.userIds.filter(id => id !== currentUser.id);
+            if (existing.userIds.length === 0) {
+              const idx = reactions.indexOf(existing);
+              reactions.splice(idx, 1);
+            }
+          }
+        }
+        return { ...m, reactions };
+      });
+      useAppStore.setState({ messages: updated });
+    } catch (err) {
+      console.error('[Reaction] toggle failed:', err);
+    }
+  };
+
   const handleDeleteMessage = async (messageId: string) => {
     try {
       const { deleteMessage } = useAppStore.getState();
@@ -1797,6 +1851,7 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
                                   }}
                                   onConfirmBrainAction={handleConfirmBrainAction}
                                   onRejectBrainAction={handleRejectBrainAction}
+                                  onReactionToggle={handleReactionToggle}
                                 />
                               </div>
                             </div>

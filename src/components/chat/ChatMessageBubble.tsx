@@ -20,15 +20,17 @@ import {
   X,
   Trash2,
   Pin,
+  SmilePlus,
 } from 'lucide-react';
 import { useAppStore } from '@/stores/appStore';
 import { useTranslation } from '@/hooks/useTranslation';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import * as fileService from '@/services/fileService';
-import type { ChatMessage, FileItem } from '@/types/core';
+import type { ChatMessage, ChatReaction, FileItem } from '@/types/core';
 import { BRAIN_BOT_USER_ID } from '@/types/core';
 import { BrainActionBubble } from './BrainActionBubble';
 import { PersonaResponseBubble } from './PersonaResponseBubble';
+import { toggleReaction } from '@/services/chatReactionService';
 
 /**
  * Renders message content with @mention highlights.
@@ -70,6 +72,8 @@ function renderContentWithMentions(content: string, isCurrentUser: boolean) {
   return parts.length > 0 ? parts : content;
 }
 
+const QUICK_EMOJIS = ['👍', '❤️', '😂', '🔥', '👀', '✅'];
+
 interface ChatMessageBubbleProps {
   message: ChatMessage;
   isCurrentUser: boolean;
@@ -79,9 +83,10 @@ interface ChatMessageBubbleProps {
   onPin?: (messageId: string) => void;
   onConfirmBrainAction?: (actionId: string) => void;
   onRejectBrainAction?: (actionId: string) => void;
+  onReactionToggle?: (messageId: string, emoji: string) => void;
 }
 
-export function ChatMessageBubble({ message, isCurrentUser, onVoteDecision, onAcceptSchedule, onDelete, onPin, onConfirmBrainAction, onRejectBrainAction }: ChatMessageBubbleProps) {
+export function ChatMessageBubble({ message, isCurrentUser, onVoteDecision, onAcceptSchedule, onDelete, onPin, onConfirmBrainAction, onRejectBrainAction, onReactionToggle }: ChatMessageBubbleProps) {
   const { messageType } = message;
   const { currentUser, messages: allMessages } = useAppStore();
 
@@ -111,6 +116,8 @@ export function ChatMessageBubble({ message, isCurrentUser, onVoteDecision, onAc
         onDelete={onDelete}
         onPin={onPin}
         messageId={message.id}
+        reactions={message.reactions}
+        onReactionToggle={onReactionToggle}
       >
         <PersonaResponseBubble message={message} />
       </AiMessageWrapper>
@@ -125,6 +132,8 @@ export function ChatMessageBubble({ message, isCurrentUser, onVoteDecision, onAc
         onDelete={onDelete}
         onPin={onPin}
         messageId={message.id}
+        reactions={message.reactions}
+        onReactionToggle={onReactionToggle}
       >
         <BrainActionBubble
           message={message}
@@ -137,7 +146,7 @@ export function ChatMessageBubble({ message, isCurrentUser, onVoteDecision, onAc
 
   if (messageType === 'location' && message.locationData) {
     return (
-      <MessageWrapper isCurrentUser={isCurrentUser} onDelete={onDelete} onPin={onPin} messageId={message.id}>
+      <MessageWrapper isCurrentUser={isCurrentUser} onDelete={onDelete} onPin={onPin} messageId={message.id} reactions={message.reactions} onReactionToggle={onReactionToggle}>
         <LocationBubble data={message.locationData} isCurrentUser={isCurrentUser} />
       </MessageWrapper>
     );
@@ -145,7 +154,7 @@ export function ChatMessageBubble({ message, isCurrentUser, onVoteDecision, onAc
 
   if (messageType === 'schedule' && message.scheduleData) {
     return (
-      <MessageWrapper isCurrentUser={isCurrentUser} onDelete={onDelete} onPin={onPin} messageId={message.id}>
+      <MessageWrapper isCurrentUser={isCurrentUser} onDelete={onDelete} onPin={onPin} messageId={message.id} reactions={message.reactions} onReactionToggle={onReactionToggle}>
         <ScheduleBubble
           data={message.scheduleData}
           isCurrentUser={isCurrentUser}
@@ -157,7 +166,7 @@ export function ChatMessageBubble({ message, isCurrentUser, onVoteDecision, onAc
 
   if (messageType === 'decision' && message.decisionData) {
     return (
-      <MessageWrapper isCurrentUser={isCurrentUser} onDelete={onDelete} onPin={onPin} messageId={message.id}>
+      <MessageWrapper isCurrentUser={isCurrentUser} onDelete={onDelete} onPin={onPin} messageId={message.id} reactions={message.reactions} onReactionToggle={onReactionToggle}>
         <DecisionBubble
           data={message.decisionData}
           messageId={message.id}
@@ -170,7 +179,7 @@ export function ChatMessageBubble({ message, isCurrentUser, onVoteDecision, onAc
 
   if (messageType === 'file') {
     return (
-      <MessageWrapper isCurrentUser={isCurrentUser} onDelete={onDelete} onPin={onPin} messageId={message.id}>
+      <MessageWrapper isCurrentUser={isCurrentUser} onDelete={onDelete} onPin={onPin} messageId={message.id} reactions={message.reactions} onReactionToggle={onReactionToggle}>
         <FileBubble message={message} isCurrentUser={isCurrentUser} />
       </MessageWrapper>
     );
@@ -178,7 +187,7 @@ export function ChatMessageBubble({ message, isCurrentUser, onVoteDecision, onAc
 
   // Default text message
   return (
-    <MessageWrapper isCurrentUser={isCurrentUser} onDelete={onDelete} onPin={onPin} messageId={message.id}>
+    <MessageWrapper isCurrentUser={isCurrentUser} onDelete={onDelete} onPin={onPin} messageId={message.id} reactions={message.reactions} onReactionToggle={onReactionToggle}>
       <div
         className={`w-fit rounded-2xl px-4 py-2 text-sm max-w-full whitespace-pre-wrap ${
           isCurrentUser
@@ -193,77 +202,147 @@ export function ChatMessageBubble({ message, isCurrentUser, onVoteDecision, onAc
   );
 }
 
-// Wrapper that adds hover pin (left) and delete (right) buttons
-function MessageWrapper({ children, isCurrentUser, onDelete, onPin, messageId }: {
-  children: React.ReactNode;
-  isCurrentUser: boolean;
-  onDelete?: (messageId: string) => void;
-  onPin?: (messageId: string) => void;
+// Reaction display bar
+function ReactionBar({ reactions, messageId, onToggle }: {
+  reactions?: ChatReaction[];
   messageId: string;
+  onToggle?: (messageId: string, emoji: string) => void;
 }) {
-  const hasActions = isCurrentUser && (onDelete || onPin);
-  if (!hasActions) return <div className="max-w-full overflow-hidden">{children}</div>;
+  const { currentUser } = useAppStore();
+  if (!reactions || reactions.length === 0) return null;
 
   return (
-    <div className="group/msg relative w-fit max-w-full overflow-visible">
-      {children}
-      {/* Pin button — left side */}
-      {onPin && (
-        <button
-          onClick={() => onPin(messageId)}
-          className="absolute -top-2 -left-2 w-6 h-6 rounded-full bg-amber-500 text-white flex items-center justify-center opacity-0 group-hover/msg:opacity-100 transition-opacity shadow-sm hover:bg-amber-600 z-10"
-          title="Pin message"
-        >
-          <Pin className="w-3 h-3" />
-        </button>
-      )}
-      {/* Delete button — right side */}
-      {onDelete && (
-        <button
-          onClick={() => onDelete(messageId)}
-          className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover/msg:opacity-100 transition-opacity shadow-sm hover:bg-destructive/90 z-10"
-          title="Delete message"
-        >
-          <Trash2 className="w-3 h-3" />
-        </button>
+    <div className="flex flex-wrap gap-1 mt-1">
+      {reactions.map((r) => {
+        const isMine = currentUser ? r.userIds.includes(currentUser.id) : false;
+        return (
+          <button
+            key={r.emoji}
+            onClick={() => onToggle?.(messageId, r.emoji)}
+            className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-xs border transition-colors ${
+              isMine
+                ? 'bg-primary/15 border-primary/40 text-primary'
+                : 'bg-muted/50 border-border hover:bg-muted'
+            }`}
+          >
+            <span>{r.emoji}</span>
+            <span className="text-[10px]">{r.userIds.length}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+// Quick emoji picker (appears on hover)
+function EmojiPicker({ messageId, onToggle }: {
+  messageId: string;
+  onToggle?: (messageId: string, emoji: string) => void;
+}) {
+  const [showPicker, setShowPicker] = useState(false);
+  if (!onToggle) return null;
+
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setShowPicker(!showPicker)}
+        className="p-0.5 rounded opacity-0 group-hover/msg:opacity-100 hover:bg-muted transition-all"
+        title="Add reaction"
+      >
+        <SmilePlus className="w-3.5 h-3.5 text-muted-foreground" />
+      </button>
+      {showPicker && (
+        <div className="absolute bottom-6 left-0 z-20 flex gap-0.5 p-1 rounded-lg bg-popover border shadow-md">
+          {QUICK_EMOJIS.map((emoji) => (
+            <button
+              key={emoji}
+              onClick={() => { onToggle(messageId, emoji); setShowPicker(false); }}
+              className="w-7 h-7 flex items-center justify-center rounded hover:bg-muted transition-colors text-sm"
+            >
+              {emoji}
+            </button>
+          ))}
+        </div>
       )}
     </div>
   );
 }
 
+// Wrapper that adds hover pin (left) and delete (right) buttons
+function MessageWrapper({ children, isCurrentUser, onDelete, onPin, messageId, reactions, onReactionToggle }: {
+  children: React.ReactNode;
+  isCurrentUser: boolean;
+  onDelete?: (messageId: string) => void;
+  onPin?: (messageId: string) => void;
+  messageId: string;
+  reactions?: ChatReaction[];
+  onReactionToggle?: (messageId: string, emoji: string) => void;
+}) {
+  return (
+    <div className="group/msg relative w-fit max-w-full overflow-visible">
+      {children}
+      <ReactionBar reactions={reactions} messageId={messageId} onToggle={onReactionToggle} />
+      {/* Action buttons row */}
+      <div className="absolute -top-2 right-0 flex gap-0.5 opacity-0 group-hover/msg:opacity-100 transition-opacity z-10">
+        <EmojiPicker messageId={messageId} onToggle={onReactionToggle} />
+        {isCurrentUser && onPin && (
+          <button
+            onClick={() => onPin(messageId)}
+            className="p-0.5 rounded hover:bg-amber-500/20 transition-all"
+            title="Pin message"
+          >
+            <Pin className="w-3.5 h-3.5 text-muted-foreground" />
+          </button>
+        )}
+        {isCurrentUser && onDelete && (
+          <button
+            onClick={() => onDelete(messageId)}
+            className="p-0.5 rounded hover:bg-destructive/20 transition-all"
+            title="Delete message"
+          >
+            <Trash2 className="w-3.5 h-3.5 text-muted-foreground" />
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // Wrapper for AI messages (persona + brain) that adds delete/pin buttons for the caller
-function AiMessageWrapper({ children, canManage, onDelete, onPin, messageId }: {
+function AiMessageWrapper({ children, canManage, onDelete, onPin, messageId, reactions, onReactionToggle }: {
   children: React.ReactNode;
   canManage: boolean;
   onDelete?: (messageId: string) => void;
   onPin?: (messageId: string) => void;
   messageId: string;
+  reactions?: ChatReaction[];
+  onReactionToggle?: (messageId: string, emoji: string) => void;
 }) {
-  if (!canManage) return <div className="max-w-full overflow-hidden">{children}</div>;
-
   return (
-    <div className="group/ai-msg relative max-w-full overflow-visible">
+    <div className="group/msg relative max-w-full overflow-visible">
       {children}
-      {/* Pin button — left side */}
-      {onPin && (
-        <button
-          onClick={() => onPin(messageId)}
-          className="absolute -top-2 -left-2 w-6 h-6 rounded-full bg-amber-500 text-white flex items-center justify-center opacity-0 group-hover/ai-msg:opacity-100 transition-opacity shadow-sm hover:bg-amber-600 z-10"
-          title="Pin message"
-        >
-          <Pin className="w-3 h-3" />
-        </button>
-      )}
-      {/* Delete button — right side */}
-      {onDelete && (
-        <button
-          onClick={() => onDelete(messageId)}
-          className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover/ai-msg:opacity-100 transition-opacity shadow-sm hover:bg-destructive/90 z-10"
-          title="Delete message"
-        >
-          <Trash2 className="w-3 h-3" />
-        </button>
-      )}
+      <ReactionBar reactions={reactions} messageId={messageId} onToggle={onReactionToggle} />
+      <div className="absolute -top-2 right-0 flex gap-0.5 opacity-0 group-hover/msg:opacity-100 transition-opacity z-10">
+        <EmojiPicker messageId={messageId} onToggle={onReactionToggle} />
+        {canManage && onPin && (
+          <button
+            onClick={() => onPin(messageId)}
+            className="p-0.5 rounded hover:bg-amber-500/20 transition-all"
+            title="Pin message"
+          >
+            <Pin className="w-3.5 h-3.5 text-muted-foreground" />
+          </button>
+        )}
+        {canManage && onDelete && (
+          <button
+            onClick={() => onDelete(messageId)}
+            className="p-0.5 rounded hover:bg-destructive/20 transition-all"
+            title="Delete message"
+          >
+            <Trash2 className="w-3.5 h-3.5 text-muted-foreground" />
+          </button>
+        )}
+      </div>
     </div>
   );
 }

@@ -447,6 +447,11 @@ export interface ChatRoomMember {
   joinedAt: string;
 }
 
+export interface ChatReaction {
+  emoji: string;
+  userIds: string[];
+}
+
 export interface ChatMessage {
   id: string;
   projectId: string;
@@ -462,6 +467,7 @@ export interface ChatMessage {
   decisionData?: DecisionShare;
   brainActionData?: BrainAction; // Brain AI extracted action
   personaResponseData?: PersonaResponseData; // AI persona response (@pablo)
+  reactions?: ChatReaction[]; // Emoji reactions
 }
 
 export interface FileGroup {
