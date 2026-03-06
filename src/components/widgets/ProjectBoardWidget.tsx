@@ -694,7 +694,7 @@ function GanttChartView({
   // Scroll to today on mount
   const scrollRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    const todayOffset = differenceInDays(today, rangeStart);
+    const todayOffset = differenceInDays(new Date(), rangeStart);
     if (scrollRef.current && todayOffset > 3) {
       scrollRef.current.scrollLeft = (todayOffset - 3) * DAY_WIDTH;
     }
