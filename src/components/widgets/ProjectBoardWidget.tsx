@@ -589,24 +589,22 @@ function GanttChartView({
     return map;
   }, [groups]);
 
-  // Calculate date range
-  const allDates = useMemo(() => {
-    return tasks.flatMap(tk => [tk.startDate, tk.endDate, tk.dueDate].filter(Boolean)) as string[];
+  // Calculate date range (fully memoized to prevent re-render loops)
+  const { rangeStart, totalDays, days, todayStr } = useMemo(() => {
+    const allDates = tasks.flatMap(tk => [tk.startDate, tk.endDate, tk.dueDate].filter(Boolean)) as string[];
+    const now = new Date();
+    const minD = allDates.length ? parseISO([...allDates].sort()[0]) : now;
+    const maxD = allDates.length ? parseISO([...allDates].sort().reverse()[0]) : addDays(now, 30);
+    const rs = startOfWeek(addDays(minD, -3), { weekStartsOn: 1 });
+    const td = Math.max(14, Math.min(365, differenceInDays(addDays(maxD, 10), rs)));
+    const dayArr = Array.from({ length: td }, (_, i) => addDays(rs, i));
+    return {
+      rangeStart: rs,
+      totalDays: td,
+      days: dayArr,
+      todayStr: format(now, 'yyyy-MM-dd'),
+    };
   }, [tasks]);
-
-  const minDate = allDates.length ? parseISO([...allDates].sort()[0]) : new Date();
-  const maxDate = allDates.length ? parseISO([...allDates].sort().reverse()[0]) : addDays(new Date(), 30);
-
-  const rangeStart = startOfWeek(addDays(minDate, -3), { weekStartsOn: 1 });
-  const totalDays = Math.max(14, differenceInDays(addDays(maxDate, 10), rangeStart));
-
-  // Build day columns
-  const days = useMemo(() => {
-    return Array.from({ length: totalDays }, (_, i) => addDays(rangeStart, i));
-  }, [rangeStart, totalDays]);
-
-  const today = new Date();
-  const todayStr = format(today, 'yyyy-MM-dd');
 
   // All tasks with date ranges, flattened with lane assignment
   const tasksWithDates = useMemo(() => {
