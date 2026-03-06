@@ -31,6 +31,10 @@ import { BRAIN_BOT_USER_ID } from '@/types/core';
 import { BrainActionBubble } from './BrainActionBubble';
 import { PersonaResponseBubble } from './PersonaResponseBubble';
 import { toggleReaction } from '@/services/chatReactionService';
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
+} from '@/components/ui/dialog';
+import { Separator } from '@/components/ui/separator';
 
 /**
  * Renders message content with @mention highlights.
@@ -611,37 +615,66 @@ function FileBubble({ message, isCurrentUser }: { message: ChatMessage; isCurren
         </div>
       </div>
 
-      {/* Full-screen preview modal */}
-      {showPreview && downloadUrl && (
-        <div
-          className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4"
-          onClick={() => setShowPreview(false)}
-        >
-          <Button
-            variant="ghost"
-            size="icon"
-            className="absolute top-4 right-4 text-white hover:bg-white/20 z-10"
-            onClick={() => setShowPreview(false)}
-          >
-            <X className="w-6 h-6" />
-          </Button>
-          <div
-            className="max-w-[90vw] max-h-[90vh] overflow-auto"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {isImage && (
-              <img src={downloadUrl} alt={fileName} className="max-w-full max-h-[85vh] object-contain rounded-lg" />
-            )}
-            {isPdf && (
-              <iframe
-                src={downloadUrl}
-                className="w-[80vw] h-[85vh] rounded-lg bg-white"
-                title={`Preview: ${fileName}`}
-              />
+      {/* File Preview Dialog — same style as FilesWidget */}
+      <Dialog open={showPreview} onOpenChange={setShowPreview}>
+        <DialogContent className="sm:max-w-[90vw] w-[90vw] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-sm">
+              {getFileIcon()}
+              {fileName}
+            </DialogTitle>
+            <DialogDescription className="sr-only">{fileName}</DialogDescription>
+          </DialogHeader>
+
+          {/* Preview area */}
+          <div className="bg-muted rounded-lg flex items-center justify-center min-h-[120px] overflow-hidden">
+            {isImage && downloadUrl ? (
+              <img src={downloadUrl} alt={fileName} className="max-w-full max-h-[55vh] object-contain mx-auto" loading="lazy" />
+            ) : isPdf && downloadUrl ? (
+              <div className="w-full h-[60vh]">
+                <iframe src={`${downloadUrl}#toolbar=0`} className="w-full h-full border-0" title={fileName} />
+              </div>
+            ) : (
+              <div className="text-center space-y-2 p-6">
+                {getFileIcon()}
+                <p className="text-xs text-muted-foreground">{fileExt.toUpperCase()} file</p>
+              </div>
             )}
           </div>
-        </div>
-      )}
+
+          {/* File metadata */}
+          <div className="space-y-1 text-xs text-muted-foreground">
+            <div className="flex justify-between">
+              <span>Type</span>
+              <span className="font-medium text-foreground">{fileExt.toUpperCase()}</span>
+            </div>
+            {fileSize && (
+              <div className="flex justify-between">
+                <span>Size</span>
+                <span className="font-medium text-foreground">{fileSize}</span>
+              </div>
+            )}
+            {fileItem?.createdAt && (
+              <div className="flex justify-between">
+                <span>Uploaded</span>
+                <span className="font-medium text-foreground">
+                  {new Date(fileItem.createdAt).toLocaleDateString()}
+                </span>
+              </div>
+            )}
+          </div>
+
+          <Separator />
+
+          {/* Download button */}
+          {downloadUrl && (
+            <Button variant="outline" className="w-full gap-2" onClick={handleDownload}>
+              <Download className="w-4 h-4" />
+              Download
+            </Button>
+          )}
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
