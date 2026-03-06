@@ -10,7 +10,7 @@
  * Frameless mode — no WidgetContainer header.
  */
 
-import { useEffect, useCallback, useState } from 'react';
+import { useEffect, useCallback, useState, useMemo } from 'react';
 import { useAppStore } from '@/stores/appStore';
 import { useTranslation } from '@/hooks/useTranslation';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -422,8 +422,21 @@ function EmailWidget({ context: _context }: { context: WidgetDataContext }) {
     setReviewSuggestionId(suggestionId);
   }, []);
 
+  // Deduplicate by threadId — keep only latest message per thread
+  const dedupedEmails = useMemo(() => {
+    const threadMap = new Map<string, typeof gmailMessages[0]>();
+    // gmailMessages is sorted newest-first, so first occurrence wins
+    for (const email of gmailMessages) {
+      const key = email.threadId || email.id;
+      if (!threadMap.has(key)) {
+        threadMap.set(key, email);
+      }
+    }
+    return Array.from(threadMap.values());
+  }, [gmailMessages]);
+
   // Group suggestions by email
-  const emailsWithSuggestions = gmailMessages.map(email => ({
+  const emailsWithSuggestions = dedupedEmails.map(email => ({
     emailId: email.id,
     suggestions: emailSuggestions.filter(s => s.emailId === email.id && s.status !== 'rejected'),
   }));
@@ -461,9 +474,9 @@ function EmailWidget({ context: _context }: { context: WidgetDataContext }) {
         <div className="flex items-center gap-1.5">
           <Mail className={`text-primary ${isMobile ? 'w-4 h-4' : 'w-3.5 h-3.5'}`} />
           <span className={`font-medium ${isMobile ? 'text-sm' : 'text-xs'}`}>Gmail</span>
-          {gmailMessages.filter(m => m.isUnread).length > 0 && (
+          {dedupedEmails.filter(m => m.isUnread).length > 0 && (
             <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-primary/15 text-primary font-medium">
-              {gmailMessages.filter(m => m.isUnread).length}
+              {dedupedEmails.filter(m => m.isUnread).length}
             </span>
           )}
         </div>
@@ -493,7 +506,7 @@ function EmailWidget({ context: _context }: { context: WidgetDataContext }) {
 
       {/* Email list */}
       <div className="flex-1 min-h-0 overflow-auto">
-        {gmailMessages.length === 0 ? (
+        {dedupedEmails.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-muted-foreground/60 text-sm gap-1">
             <Mail className="w-5 h-5" />
             <span>{t('noNewEmails')}</span>
