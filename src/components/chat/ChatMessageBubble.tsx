@@ -202,31 +202,57 @@ export function ChatMessageBubble({ message, isCurrentUser, onVoteDecision, onAc
   );
 }
 
-// Reaction display bar
+// Reaction display bar with user avatars + liquid glass style
 function ReactionBar({ reactions, messageId, onToggle }: {
   reactions?: ChatReaction[];
   messageId: string;
   onToggle?: (messageId: string, emoji: string) => void;
 }) {
-  const { currentUser } = useAppStore();
+  const { currentUser, getUserById } = useAppStore();
   if (!reactions || reactions.length === 0) return null;
 
   return (
-    <div className="flex flex-wrap gap-1 mt-1">
+    <div className="flex flex-wrap gap-1.5 mt-1.5">
       {reactions.map((r) => {
         const isMine = currentUser ? r.userIds.includes(currentUser.id) : false;
+        const reactUsers = r.userIds.map(id => getUserById(id)).filter(Boolean);
         return (
           <button
             key={r.emoji}
             onClick={() => onToggle?.(messageId, r.emoji)}
-            className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-xs border transition-colors ${
+            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs transition-all ${
               isMine
-                ? 'bg-primary/15 border-primary/40 text-primary'
-                : 'bg-muted/50 border-border hover:bg-muted'
+                ? 'bg-white/10 dark:bg-white/5 backdrop-blur-xl border border-white/30 dark:border-white/10 shadow-[0_2px_8px_rgba(255,255,255,0.08),inset_0_1px_1px_rgba(255,255,255,0.15)]'
+                : 'bg-white/5 dark:bg-white/[0.03] backdrop-blur-md border border-white/15 dark:border-white/5 hover:bg-white/10 dark:hover:bg-white/5'
             }`}
           >
-            <span>{r.emoji}</span>
-            <span className="text-[10px]">{r.userIds.length}</span>
+            <span className="text-sm">{r.emoji}</span>
+            <div className="flex -space-x-1.5">
+              {reactUsers.slice(0, 3).map((user) => (
+                user?.avatar ? (
+                  <img
+                    key={user.id}
+                    src={user.avatar}
+                    alt={user.name}
+                    title={user.name}
+                    className="w-4 h-4 rounded-full border border-background object-cover"
+                  />
+                ) : (
+                  <div
+                    key={user?.id}
+                    title={user?.name}
+                    className="w-4 h-4 rounded-full border border-background bg-muted flex items-center justify-center text-[8px] font-medium"
+                  >
+                    {user?.name?.charAt(0)?.toUpperCase()}
+                  </div>
+                )
+              ))}
+              {reactUsers.length > 3 && (
+                <div className="w-4 h-4 rounded-full border border-background bg-muted flex items-center justify-center text-[7px] font-medium">
+                  +{reactUsers.length - 3}
+                </div>
+              )}
+            </div>
           </button>
         );
       })}
@@ -252,12 +278,12 @@ function EmojiPicker({ messageId, onToggle }: {
         <SmilePlus className="w-3.5 h-3.5 text-muted-foreground" />
       </button>
       {showPicker && (
-        <div className="absolute bottom-7 left-0 z-20 flex gap-0.5 p-1 rounded-lg bg-popover border shadow-md">
+        <div className="absolute bottom-7 left-0 z-20 flex gap-1 p-1.5 rounded-xl bg-popover/95 backdrop-blur-md border shadow-lg">
           {QUICK_EMOJIS.map((emoji) => (
             <button
               key={emoji}
               onClick={() => { onToggle(messageId, emoji); setShowPicker(false); }}
-              className="w-7 h-7 flex items-center justify-center rounded hover:bg-muted transition-colors text-sm"
+              className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-muted transition-colors text-base"
             >
               {emoji}
             </button>
