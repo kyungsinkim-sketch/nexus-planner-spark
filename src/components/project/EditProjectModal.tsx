@@ -29,7 +29,9 @@ import { useTranslation } from '@/hooks/useTranslation';
 import {
   getCreativeRoles,
   getProjectTeamMembers,
+  addProjectTeamMember,
   updateProjectMemberRole,
+  removeProjectTeamMember,
   groupRolesByCategory,
 } from '@/services/creativeRoleService';
 
@@ -156,6 +158,35 @@ export function EditProjectModal({ open, onOpenChange, project }: EditProjectMod
         thumbnail: formData.thumbnail,
         keyColor: formData.keyColor,
       });
+
+      // Sync project_team_members table with roles
+      if (isSupabaseConfigured()) {
+        const existingMembers = await getProjectTeamMembers(project.id);
+        const existingIds = new Set(existingMembers.map(m => m.userId));
+        const newIds = new Set(finalTeamMemberIds);
+
+        // Add new members (with role if set)
+        for (const uid of finalTeamMemberIds) {
+          if (!existingIds.has(uid)) {
+            await addProjectTeamMember(project.id, uid, memberRoles[uid] || undefined);
+          }
+        }
+        // Remove members no longer in list
+        for (const m of existingMembers) {
+          if (!newIds.has(m.userId)) {
+            await removeProjectTeamMember(project.id, m.userId);
+          }
+        }
+        // Update roles for existing members that changed
+        for (const uid of finalTeamMemberIds) {
+          if (existingIds.has(uid) && memberRoles[uid] !== undefined) {
+            const existing = existingMembers.find(m => m.userId === uid);
+            if (existing && existing.creativeRoleId !== memberRoles[uid]) {
+              await updateProjectMemberRole(project.id, uid, memberRoles[uid]);
+            }
+          }
+        }
+      }
 
       toast.success('Project updated successfully');
       onOpenChange(false);
