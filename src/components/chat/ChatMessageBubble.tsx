@@ -252,7 +252,7 @@ function EmojiPicker({ messageId, onToggle }: {
         <SmilePlus className="w-3.5 h-3.5 text-muted-foreground" />
       </button>
       {showPicker && (
-        <div className="absolute bottom-6 left-0 z-20 flex gap-0.5 p-1 rounded-lg bg-popover border shadow-md">
+        <div className="absolute bottom-7 left-0 z-20 flex gap-0.5 p-1 rounded-lg bg-popover border shadow-md">
           {QUICK_EMOJIS.map((emoji) => (
             <button
               key={emoji}
@@ -283,7 +283,7 @@ function MessageWrapper({ children, isCurrentUser, onDelete, onPin, messageId, r
       {children}
       <ReactionBar reactions={reactions} messageId={messageId} onToggle={onReactionToggle} />
       {/* Action buttons row */}
-      <div className="absolute -top-2 right-0 flex gap-0.5 opacity-0 group-hover/msg:opacity-100 transition-opacity z-10">
+      <div className="absolute -bottom-3 left-0 flex gap-0.5 opacity-0 group-hover/msg:opacity-100 transition-opacity z-10 bg-popover/90 backdrop-blur-sm rounded-full px-1 py-0.5 border shadow-sm">
         <EmojiPicker messageId={messageId} onToggle={onReactionToggle} />
         {isCurrentUser && onPin && (
           <button
@@ -322,7 +322,7 @@ function AiMessageWrapper({ children, canManage, onDelete, onPin, messageId, rea
     <div className="group/msg relative max-w-full overflow-visible">
       {children}
       <ReactionBar reactions={reactions} messageId={messageId} onToggle={onReactionToggle} />
-      <div className="absolute -top-2 right-0 flex gap-0.5 opacity-0 group-hover/msg:opacity-100 transition-opacity z-10">
+      <div className="absolute -bottom-3 left-0 flex gap-0.5 opacity-0 group-hover/msg:opacity-100 transition-opacity z-10 bg-popover/90 backdrop-blur-sm rounded-full px-1 py-0.5 border shadow-sm">
         <EmojiPicker messageId={messageId} onToggle={onReactionToggle} />
         {canManage && onPin && (
           <button
