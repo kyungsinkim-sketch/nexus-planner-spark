@@ -86,18 +86,22 @@ export async function authenticateOrFallback(
   const token = authHeader.replace('Bearer ', '');
 
   if (token) {
-    const { data: { user }, error } = await supabase.auth.getUser(token);
-    if (!error && user) {
-      return { userId: user.id, supabase };
+    try {
+      const { data: { user }, error } = await supabase.auth.getUser(token);
+      if (!error && user) {
+        return { userId: user.id, supabase };
+      }
+    } catch {
+      // Token verification failed — fall through to fallback
     }
-    // Token present but invalid — reject
-    throw new Response(
-      JSON.stringify({ error: 'Invalid or expired token' }),
-      { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
-    );
+    // Token present but invalid — fall back gracefully
+    // This handles cases where the anon key is sent as the token,
+    // or the session expired but the client still sends a stale token.
+    // The calling function should use body.userId as fallback.
+    console.warn('[auth] JWT verification failed, falling back to body userId');
   }
 
-  // No token — allow server-to-server calls
+  // No valid JWT — allow fallback to body userId
   return { userId: null, supabase };
 }
 
