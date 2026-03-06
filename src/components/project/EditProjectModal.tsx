@@ -22,7 +22,7 @@ import {
 } from '@/components/ui/select';
 import { CurrencyInput } from '@/components/ui/currency-input';
 import { UserSearchInput } from '@/components/ui/user-search-input';
-import { X, Image, Loader2 } from 'lucide-react';
+import { X, Image, Loader2, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import { useTranslation } from '@/hooks/useTranslation';
@@ -58,7 +58,8 @@ const KEY_COLORS = [
 
 export function EditProjectModal({ open, onOpenChange, project }: EditProjectModalProps) {
   const { t } = useTranslation();
-  const { users, updateProject } = useAppStore();
+  const { users, updateProject, deleteProject } = useAppStore();
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [formData, setFormData] = useState({
     title: project.title,
@@ -174,11 +175,24 @@ export function EditProjectModal({ open, onOpenChange, project }: EditProjectMod
     setFormData(prev => ({ ...prev, pmId: '' }));
   };
 
-  const handleSelectTeamMember = (user: User) => {
+  const handleSelectTeamMember = async (user: User) => {
     setFormData(prev => ({
       ...prev,
       teamMemberIds: [...prev.teamMemberIds, user.id],
     }));
+    // Load user's default creative role from profile
+    if (isSupabaseConfigured() && !memberRoles[user.id]) {
+      try {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('default_creative_role_id')
+          .eq('id', user.id)
+          .maybeSingle();
+        if (profile?.default_creative_role_id) {
+          setMemberRoles(prev => ({ ...prev, [user.id]: profile.default_creative_role_id }));
+        }
+      } catch { /* ignore */ }
+    }
   };
 
   const handleRemoveTeamMember = (userId: string) => {
@@ -479,6 +493,53 @@ export function EditProjectModal({ open, onOpenChange, project }: EditProjectMod
                     </Select>
                   </div>
                 ))}
+              </div>
+            )}
+          </div>
+
+          {/* Delete Project */}
+          <div className="border-t border-destructive/20 pt-4 mt-4">
+            {!showDeleteConfirm ? (
+              <Button
+                type="button"
+                variant="ghost"
+                className="text-destructive hover:text-destructive hover:bg-destructive/10 w-full"
+                onClick={() => setShowDeleteConfirm(true)}
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                {t('deleteProject') || '프로젝트 삭제'}
+              </Button>
+            ) : (
+              <div className="space-y-2 p-3 rounded-lg bg-destructive/10 border border-destructive/30">
+                <p className="text-sm text-destructive font-medium">
+                  {t('deleteProjectConfirm') || '정말 이 프로젝트를 삭제하시겠습니까?'}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {t('deleteProjectWarning') || '모든 태스크, 채팅, 파일이 함께 삭제됩니다. 이 작업은 되돌릴 수 없습니다.'}
+                </p>
+                <div className="flex gap-2 justify-end">
+                  <Button type="button" variant="outline" size="sm" onClick={() => setShowDeleteConfirm(false)}>
+                    {t('cancel') || '취소'}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    size="sm"
+                    onClick={async () => {
+                      try {
+                        await deleteProject(project.id);
+                        toast.success(t('projectDeleted') || '프로젝트가 삭제되었습니다');
+                        onOpenChange(false);
+                      } catch (err) {
+                        console.error('Failed to delete project:', err);
+                        toast.error(t('projectDeleteFailed') || '프로젝트 삭제에 실패했습니다');
+                      }
+                    }}
+                  >
+                    <Trash2 className="w-3 h-3 mr-1" />
+                    {t('confirmDelete') || '삭제'}
+                  </Button>
+                </div>
               </div>
             )}
           </div>
