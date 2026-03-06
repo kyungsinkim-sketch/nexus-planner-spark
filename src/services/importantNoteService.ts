@@ -70,6 +70,28 @@ export async function createNote(note: Omit<ImportantNote, 'id' | 'createdAt'>):
   return transformNote(data);
 }
 
+export async function updateNote(noteId: string, updates: { title?: string; content?: string }): Promise<ImportantNote | null> {
+  if (!isSupabaseConfigured()) return null;
+
+  const payload: Record<string, unknown> = {};
+  if (updates.title !== undefined) payload.title = updates.title || null;
+  if (updates.content !== undefined) payload.content = updates.content;
+
+  const { data, error } = await supabase
+    .from('important_notes')
+    .update(payload)
+    .eq('id', noteId)
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Failed to update important note:', handleSupabaseError(error));
+    return null;
+  }
+
+  return transformNote(data);
+}
+
 export async function deleteNote(noteId: string): Promise<boolean> {
   if (!isSupabaseConfigured()) return false;
 

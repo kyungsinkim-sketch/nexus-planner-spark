@@ -1725,6 +1725,24 @@ export const useAppStore = create<AppState>()(
         }
       },
 
+      updateImportantNote: async (noteId: string, updates: { title?: string; content?: string }) => {
+        if (isSupabaseConfigured()) {
+          const { updateNote } = await import('@/services/importantNoteService');
+          const updated = await updateNote(noteId, updates);
+          if (updated) {
+            set((state) => ({
+              importantNotes: state.importantNotes.map((n) => n.id === noteId ? updated : n),
+            }));
+          }
+        } else {
+          set((state) => ({
+            importantNotes: state.importantNotes.map((n) =>
+              n.id === noteId ? { ...n, ...updates } : n
+            ),
+          }));
+        }
+      },
+
       removeImportantNote: async (noteId) => {
         if (isSupabaseConfigured()) {
           const { deleteNote } = await import('@/services/importantNoteService');

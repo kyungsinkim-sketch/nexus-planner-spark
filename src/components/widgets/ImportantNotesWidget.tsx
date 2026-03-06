@@ -9,7 +9,7 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { useAppStore } from '@/stores/appStore';
 import { useTranslation } from '@/hooks/useTranslation';
-import { StickyNote, X, MessageSquare, ChevronDown, ChevronUp } from 'lucide-react';
+import { StickyNote, X, MessageSquare, ChevronDown, ChevronUp, Pencil, Check } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
@@ -19,14 +19,18 @@ import type { WidgetDataContext } from '@/types/widget';
 function ImportantNotesWidget({ context }: { context: WidgetDataContext }) {
   const { t } = useTranslation();
   const {
-    importantNotes, addImportantNote, removeImportantNote,
+    importantNotes, addImportantNote, removeImportantNote, updateImportantNote,
     currentUser, getUserById,
     importantNoteAddOpen, setImportantNoteAddOpen,
   } = useAppStore();
   const [newTitle, setNewTitle] = useState('');
   const [newContent, setNewContent] = useState('');
   const [expandedNoteId, setExpandedNoteId] = useState<string | null>(null);
+  const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
+  const [editTitle, setEditTitle] = useState('');
+  const [editContent, setEditContent] = useState('');
   const contentRef = useRef<HTMLTextAreaElement>(null);
+  const editContentRef = useRef<HTMLTextAreaElement>(null);
 
   const projectId = context.projectId || '';
 
@@ -55,6 +59,42 @@ function ImportantNotesWidget({ context }: { context: WidgetDataContext }) {
     setNewTitle('');
     setNewContent('');
     setImportantNoteAddOpen(false);
+  };
+
+  const startEditing = (note: typeof notes[0]) => {
+    setEditingNoteId(note.id);
+    setEditTitle(note.title || '');
+    setEditContent(note.content || '');
+    setExpandedNoteId(note.id);
+    setTimeout(() => editContentRef.current?.focus(), 50);
+  };
+
+  const saveEdit = () => {
+    if (!editingNoteId) return;
+    const title = editTitle.trim();
+    const content = editContent.trim();
+    if (!title && !content) return;
+    updateImportantNote(editingNoteId, {
+      title: title || undefined,
+      content: content || title,
+    });
+    setEditingNoteId(null);
+    setEditTitle('');
+    setEditContent('');
+  };
+
+  const cancelEdit = () => {
+    setEditingNoteId(null);
+    setEditTitle('');
+    setEditContent('');
+  };
+
+  const handleEditContentKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      saveEdit();
+    }
+    if (e.key === 'Escape') cancelEdit();
   };
 
   const handleTitleKeyDown = (e: React.KeyboardEvent) => {
@@ -137,15 +177,50 @@ function ImportantNotesWidget({ context }: { context: WidgetDataContext }) {
             {notes.map((note) => {
               const creator = getUserById(note.createdBy);
               const isExpanded = expandedNoteId === note.id;
+              const isEditing = editingNoteId === note.id;
               const hasTitle = !!note.title;
               const contentLines = note.content?.split('\n') || [];
               const isLong = contentLines.length > 2 || note.content.length > 100;
+
+              if (isEditing) {
+                return (
+                  <div key={note.id} className="flex flex-col gap-1.5 p-2 rounded-lg bg-amber-500/10 border border-amber-500/30">
+                    <Input
+                      value={editTitle}
+                      onChange={(e) => setEditTitle(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); editContentRef.current?.focus(); } if (e.key === 'Escape') cancelEdit(); }}
+                      placeholder={t('noteTitle') || '제목'}
+                      className="h-7 text-xs font-medium"
+                      autoFocus
+                    />
+                    <Textarea
+                      ref={editContentRef}
+                      value={editContent}
+                      onChange={(e) => setEditContent(e.target.value)}
+                      onKeyDown={handleEditContentKeyDown}
+                      placeholder={t('noteContentPlaceholder') || '내용 (Shift+Enter로 줄바꿈)'}
+                      className="text-xs min-h-[48px] max-h-[120px] resize-none"
+                      rows={3}
+                    />
+                    <div className="flex gap-1.5 justify-end">
+                      <Button variant="ghost" size="sm" className="h-6 px-2 text-xs" onClick={cancelEdit}>
+                        {t('cancel') || '취소'}
+                      </Button>
+                      <Button size="sm" className="h-6 px-2 text-xs" onClick={saveEdit} disabled={!editTitle.trim() && !editContent.trim()}>
+                        <Check className="w-3 h-3 mr-1" />
+                        {t('save') || '저장'}
+                      </Button>
+                    </div>
+                  </div>
+                );
+              }
 
               return (
                 <div
                   key={note.id}
                   className="group relative flex flex-col p-2 rounded-lg bg-amber-500/5 border border-amber-500/15 hover:border-amber-500/30 transition-colors cursor-pointer"
                   onClick={() => isLong && setExpandedNoteId(isExpanded ? null : note.id)}
+                  onDoubleClick={(e) => { e.stopPropagation(); startEditing(note); }}
                 >
                   <div className="flex items-start gap-2">
                     <div className="flex-1 min-w-0">
@@ -182,13 +257,22 @@ function ImportantNotesWidget({ context }: { context: WidgetDataContext }) {
                         )}
                       </div>
                     </div>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); removeImportantNote(note.id); }}
-                      className="p-0.5 rounded opacity-0 group-hover:opacity-100 hover:bg-destructive/20 transition-all shrink-0 self-start"
-                      title={t('removeNote')}
-                    >
-                      <X className="w-3 h-3 text-muted-foreground" />
-                    </button>
+                    <div className="flex gap-0.5 shrink-0 self-start">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); startEditing(note); }}
+                        className="p-0.5 rounded opacity-0 group-hover:opacity-100 hover:bg-amber-500/20 transition-all"
+                        title={t('editNote') || '수정'}
+                      >
+                        <Pencil className="w-3 h-3 text-muted-foreground" />
+                      </button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); removeImportantNote(note.id); }}
+                        className="p-0.5 rounded opacity-0 group-hover:opacity-100 hover:bg-destructive/20 transition-all"
+                        title={t('removeNote')}
+                      >
+                        <X className="w-3 h-3 text-muted-foreground" />
+                      </button>
+                    </div>
                   </div>
                 </div>
               );
