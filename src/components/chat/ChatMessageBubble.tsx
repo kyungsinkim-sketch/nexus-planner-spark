@@ -206,7 +206,7 @@ export function ChatMessageBubble({ message, isCurrentUser, onVoteDecision, onAc
 
   return (
     <MessageWrapper isCurrentUser={isCurrentUser} onDelete={onDelete} onPin={onPin} onUnpin={onUnpin} onEdit={onEdit} onReply={onReply} messageId={message.id} content={message.content} reactions={message.reactions} onReactionToggle={onReactionToggle}>
-      <div className={`w-fit max-w-full ${isCurrentUser ? 'ml-auto' : ''}`}>
+      <div className="w-fit max-w-full">
         {/* Reply quote block */}
         {replyMsg && (
           <ReplyQuote message={replyMsg} isCurrentUser={isCurrentUser} />
@@ -250,7 +250,7 @@ function ReactionBar({ reactions, messageId, onToggle }: {
                 : 'bg-gray-50 dark:bg-zinc-800/50 border-gray-200 dark:border-zinc-700 hover:bg-gray-100 dark:hover:bg-zinc-700 text-muted-foreground'
             }`}
           >
-            <span className="text-base leading-none">{r.emoji}</span>
+            <span className="text-base leading-none" style={{ fontFamily: '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif' }}>{r.emoji}</span>
             <div className="flex -space-x-1">
               {reactUsers.slice(0, 3).map((user) => (
                 user?.avatar ? (
@@ -498,7 +498,7 @@ function MessageWrapper({ children, isCurrentUser, onDelete, onEdit, onPin, onUn
   onReactionToggle?: (messageId: string, emoji: string) => void;
 }) {
   return (
-    <div className="group/msg relative w-fit max-w-full overflow-visible">
+    <div className={`group/msg relative max-w-[85%] overflow-visible ${isCurrentUser ? 'ml-auto' : ''}`}>
       {children}
       <ReactionBar reactions={reactions} messageId={messageId} onToggle={onReactionToggle} />
       <HoverActionBar
