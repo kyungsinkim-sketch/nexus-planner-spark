@@ -429,7 +429,7 @@ function HoverActionBar({ messageId, content, canEdit, canDelete, canPin, isCurr
               e.stopPropagation();
               if (!showMenu && moreRef.current) {
                 const r = moreRef.current.getBoundingClientRect();
-                setMenuPos({ top: r.bottom + 4, left: Math.max(8, r.right - 160) });
+                setMenuPos({ top: r.bottom + 2, left: r.right - 140 });
               }
               setShowMenu(!showMenu); setShowEmoji(false);
             }}
