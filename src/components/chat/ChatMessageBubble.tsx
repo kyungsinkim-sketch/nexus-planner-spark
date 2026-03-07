@@ -384,16 +384,17 @@ function HoverActionBar({ messageId, content, canEdit, canDelete, canPin, isCurr
 
   return (
     <>
-      {/* Floating action bar — bottom-right of bubble, dropdowns open downward */}
-      <div className={`absolute -bottom-4 right-0 flex items-center rounded-lg shadow-md z-20 transition-opacity bg-white dark:bg-zinc-800 border border-black/10 dark:border-white/10 ${
-        showMenu || showEmoji ? 'opacity-100' : 'opacity-0 group-hover/msg:opacity-100'}`}
+      {/* Floating action bar — for own messages: bottom-right; for others: right side vertically centered */}
+      <div className={`absolute flex items-center rounded-lg shadow-md z-20 transition-opacity bg-white dark:bg-zinc-800 border border-black/10 dark:border-white/10 ${
+        isCurrentUser ? '-bottom-4 right-0' : 'top-1/2 -translate-y-1/2 -right-1 translate-x-full'
+      } ${showMenu || showEmoji ? 'opacity-100' : 'opacity-0 group-hover/msg:opacity-100'}`}
       >
         {/* Emoji */}
         <button ref={emojiRef} onClick={(e) => {
             e.stopPropagation();
             if (!showEmoji && emojiRef.current) {
               const r = emojiRef.current.getBoundingClientRect();
-              setEmojiPos({ top: r.bottom + 4, left: Math.max(8, r.right - 280) });
+              setEmojiPos({ top: r.bottom + 2, left: Math.max(8, r.left) });
             }
             setShowEmoji(!showEmoji); setShowMenu(false);
           }}
