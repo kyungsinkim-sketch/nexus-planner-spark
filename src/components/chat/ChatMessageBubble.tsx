@@ -379,10 +379,12 @@ function HoverActionBar({ messageId, content, canEdit, canDelete, canPin, isCurr
 
   return (
     <>
-      {/* Floating action bar — positioned to stay within widget bounds */}
-      <div className={`absolute top-0 flex items-center bg-popover/95 backdrop-blur-sm rounded-lg border border-border/40 shadow-md z-10 transition-opacity ${
-        isCurrentUser ? 'left-0' : 'right-0'
-      } ${showMenu || showEmoji ? 'opacity-100' : 'opacity-0 group-hover/msg:opacity-100'}`}>
+      {/* Floating action bar — above the message bubble */}
+      <div className={`absolute -top-8 flex items-center rounded-lg border border-border/50 shadow-md z-20 transition-opacity ${
+        isCurrentUser ? 'right-0' : 'left-0'
+      } ${showMenu || showEmoji ? 'opacity-100' : 'opacity-0 group-hover/msg:opacity-100'}`}
+        style={{ backgroundColor: 'hsl(var(--background))' }}
+      >
         {/* Emoji */}
         <div className="relative">
           <button onClick={(e) => { e.stopPropagation(); setShowEmoji(!showEmoji); setShowMenu(false); }}
@@ -390,9 +392,10 @@ function HoverActionBar({ messageId, content, canEdit, canDelete, canPin, isCurr
             <SmilePlus className="w-3.5 h-3.5 text-muted-foreground" />
           </button>
           {showEmoji && (
-            <div className={`absolute top-8 flex items-center gap-1 bg-popover border border-border/40 rounded-lg shadow-lg px-2 py-1.5 z-30 ${
-              isCurrentUser ? 'left-0' : 'right-0'
-            }`} onClick={e => e.stopPropagation()}>
+            <div className={`absolute top-full mt-1 flex items-center gap-1 rounded-lg shadow-xl border border-border/50 px-2 py-1.5 z-50 ${
+              isCurrentUser ? 'right-0' : 'left-0'
+            }`} style={{ backgroundColor: 'hsl(var(--background))' }}
+              onClick={e => e.stopPropagation()}>
               {QUICK_EMOJIS.map(emoji => (
                 <button key={emoji} onClick={() => { onReactionToggle?.(messageId, emoji); setShowEmoji(false); }}
                   className="w-7 h-7 flex items-center justify-center rounded-md hover:bg-muted/60 transition-colors text-base">{emoji}</button>
@@ -417,9 +420,10 @@ function HoverActionBar({ messageId, content, canEdit, canDelete, canPin, isCurr
               <MoreHorizontal className="w-3.5 h-3.5 text-muted-foreground" />
             </button>
             {showMenu && (
-              <div className={`absolute top-8 bg-popover border border-border/40 rounded-lg shadow-lg py-1 z-30 min-w-[140px] whitespace-nowrap ${
-                isCurrentUser ? 'left-0' : 'right-0'
-              }`} onClick={e => e.stopPropagation()}>
+              <div className={`absolute top-full mt-1 rounded-lg shadow-xl border border-border/50 py-1 z-50 min-w-[140px] whitespace-nowrap ${
+                isCurrentUser ? 'right-0' : 'left-0'
+              }`} style={{ backgroundColor: 'hsl(var(--background))' }}
+                onClick={e => e.stopPropagation()}>
                 {canEdit && onEdit && (
                   <button onClick={startEdit}
                     className="w-full flex items-center gap-2.5 px-3 py-2 text-xs hover:bg-muted/60 transition-colors">
