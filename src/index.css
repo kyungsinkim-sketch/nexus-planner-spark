@@ -610,27 +610,27 @@
   background: #0e1629 !important;
 }
 
-/* Project accent color — applied via --project-accent CSS variable */
-/* Exclude the FAB popup from accent bleeding — only widget grid items get accent */
+/* Project accent color — applied via --project-accent CSS variable.
+   Keep the same liquid-glass border as dashboard; accent only tints titlebar subtly. */
 [style*="--project-accent"] .react-grid-item .glass-widget {
-  border-color: var(--project-accent, hsl(var(--glass-border)));
-  border-width: 1.5px;
+  border-color: hsl(var(--glass-border));
+  border-width: 1px;
 }
 [style*="--project-accent"] .react-grid-item .widget-titlebar {
-  background: color-mix(in srgb, var(--project-accent) 15%, hsl(var(--glass-border)));
+  background: color-mix(in srgb, var(--project-accent) 8%, hsl(0 0% 100% / 0.15));
 }
 [style*="--project-accent"] .react-grid-item .chat-widget-handle {
-  background: color-mix(in srgb, var(--project-accent) 15%, hsl(var(--glass-border)));
+  background: color-mix(in srgb, var(--project-accent) 8%, hsl(0 0% 100% / 0.15));
 }
 [style*="--project-accent"] .widget-item-active .glass-widget {
-  box-shadow: 0 8px 32px rgba(0,0,0,0.18), 0 0 0 2px var(--project-accent) !important;
-  border-color: var(--project-accent) !important;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.18), 0 0 0 2px hsl(var(--primary) / 0.35) !important;
+  border-color: hsl(var(--primary) / 0.35) !important;
 }
 .dark [style*="--project-accent"] .react-grid-item .widget-titlebar {
-  background: color-mix(in srgb, var(--project-accent) 10%, hsl(222 47% 11%));
+  background: color-mix(in srgb, var(--project-accent) 6%, hsl(0 0% 100% / 0.04));
 }
 .dark [style*="--project-accent"] .react-grid-item .chat-widget-handle {
-  background: color-mix(in srgb, var(--project-accent) 10%, hsl(222 47% 11%));
+  background: color-mix(in srgb, var(--project-accent) 6%, hsl(0 0% 100% / 0.04));
 }
 
 /* Project accent — override buttons/icons only inside grid items */
