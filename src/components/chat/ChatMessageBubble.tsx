@@ -246,11 +246,11 @@ function ReactionBar({ reactions, messageId, onToggle }: {
             onClick={() => onToggle?.(messageId, r.emoji)}
             className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs transition-all border ${
               isMine
-                ? 'bg-primary/15 border-primary/30 text-primary'
-                : 'bg-muted/50 border-border/30 hover:bg-muted text-muted-foreground'
+                ? 'bg-gray-100 dark:bg-zinc-700/50 border-primary/30 text-primary'
+                : 'bg-gray-50 dark:bg-zinc-800/50 border-gray-200 dark:border-zinc-700 hover:bg-gray-100 dark:hover:bg-zinc-700 text-muted-foreground'
             }`}
           >
-            <span className="text-sm leading-none">{r.emoji}</span>
+            <span className="text-base leading-none">{r.emoji}</span>
             <div className="flex -space-x-1">
               {reactUsers.slice(0, 3).map((user) => (
                 user?.avatar ? (
@@ -429,12 +429,12 @@ function HoverActionBar({ messageId, content, canEdit, canDelete, canPin, isCurr
       {showEmoji && emojiPos && createPortal(
         <>
           <div className="fixed inset-0 z-[9998]" onClick={() => setShowEmoji(false)} />
-          <div className="fixed z-[9999] flex items-center gap-1 rounded-xl px-2.5 py-2 bg-white dark:bg-zinc-800 border border-black/10 dark:border-white/10 shadow-[0_4px_24px_rgba(0,0,0,0.15)]"
+          <div className="fixed z-[9999] flex items-center gap-0.5 rounded-lg px-1.5 py-1 bg-white dark:bg-zinc-800 border border-black/10 dark:border-white/10 shadow-[0_4px_24px_rgba(0,0,0,0.15)]"
             style={{ top: emojiPos.top, left: emojiPos.left }}
             onClick={e => e.stopPropagation()}>
             {QUICK_EMOJIS.map(emoji => (
               <button key={emoji} onClick={() => { onReactionToggle?.(messageId, emoji); setShowEmoji(false); }}
-                className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors text-lg">{emoji}</button>
+                className="w-5 h-5 flex items-center justify-center rounded hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors text-xs">{emoji}</button>
             ))}
           </div>
         </>,
@@ -445,33 +445,33 @@ function HoverActionBar({ messageId, content, canEdit, canDelete, canPin, isCurr
       {showMenu && menuPos && createPortal(
         <>
           <div className="fixed inset-0 z-[9998]" onClick={() => setShowMenu(false)} />
-          <div className="fixed z-[9999] rounded-xl py-1.5 min-w-[150px] whitespace-nowrap bg-white dark:bg-zinc-800 border border-black/10 dark:border-white/10 shadow-[0_4px_24px_rgba(0,0,0,0.15)]"
+          <div className="fixed z-[9999] rounded-lg py-0.5 min-w-[100px] whitespace-nowrap bg-white dark:bg-zinc-800 border border-black/10 dark:border-white/10 shadow-[0_4px_24px_rgba(0,0,0,0.15)]"
             style={{ top: menuPos.top, left: menuPos.left }}
             onClick={e => e.stopPropagation()}>
             {canEdit && onEdit && (
               <button onClick={startEdit}
-                className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors">
-                <Pencil className="w-4 h-4 shrink-0 text-gray-500 dark:text-gray-400" /> 수정
+                className="w-full flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors">
+                <Pencil className="w-3 h-3 shrink-0 text-gray-500 dark:text-gray-400" /> 수정
               </button>
             )}
             {canPin && onPin && (
               <button onClick={() => { onPin(messageId); setShowMenu(false); }}
-                className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors">
-                <Pin className="w-4 h-4 shrink-0 text-gray-500 dark:text-gray-400" /> 고정
+                className="w-full flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors">
+                <Pin className="w-3 h-3 shrink-0 text-gray-500 dark:text-gray-400" /> 고정
               </button>
             )}
             {canPin && onUnpin && (
               <button onClick={() => { onUnpin(messageId); setShowMenu(false); }}
-                className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors">
-                <PinOff className="w-4 h-4 shrink-0 text-gray-500 dark:text-gray-400" /> 고정 해제
+                className="w-full flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors">
+                <PinOff className="w-3 h-3 shrink-0 text-gray-500 dark:text-gray-400" /> 고정 해제
               </button>
             )}
             {canDelete && onDelete && (
               <>
                 <div className="border-t border-gray-100 dark:border-zinc-700 my-1" />
                 <button onClick={() => { onDelete(messageId); setShowMenu(false); }}
-                  className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors">
-                  <Trash2 className="w-4 h-4 shrink-0" /> 삭제
+                  className="w-full flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors">
+                  <Trash2 className="w-3 h-3 shrink-0" /> 삭제
                 </button>
               </>
             )}
