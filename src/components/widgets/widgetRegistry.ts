@@ -35,6 +35,7 @@ import {
   LayoutGrid,
   Link2,
   Phone,
+  Hash,
 } from 'lucide-react';
 import type { WidgetDefinition, WidgetType, WidgetDataContext } from '@/types/widget';
 
@@ -67,6 +68,7 @@ export const WIDGET_COMPONENTS: Record<WidgetType, ComponentType<{ context: Widg
   notion:         lazy(() => import('./NotionWidget')),
   projectBoard:   lazy(() => import('./ProjectBoardWidget')),
   projectLinks:   lazy(() => import('./LinksWidget')),
+  slack:          lazy(() => import('./SlackWidget')),
   // call widget removed — call UI is in ActiveCallOverlay
 };
 
@@ -288,6 +290,14 @@ export const WIDGET_DEFINITIONS: Record<WidgetType, WidgetDefinition> = {
     defaultSize: { w: 3, h: 3 },
     minSize: { w: 2, h: 2 },
     contexts: ['project'],
+  },
+  slack: {
+    type: 'slack',
+    titleKey: 'slack',
+    icon: Hash,
+    defaultSize: { w: 3, h: 4 },
+    minSize: { w: 3, h: 3 },
+    contexts: ['dashboard', 'project'],
   },
   // call widget removed — call UI is in ActiveCallOverlay
 };

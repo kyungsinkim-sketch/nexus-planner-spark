@@ -36,6 +36,7 @@ export type WidgetType =
   | 'notion'
   | 'projectBoard'
   | 'projectLinks'
+  | 'slack'
 ;
 
 // Widget context — determines which data scope a widget uses
