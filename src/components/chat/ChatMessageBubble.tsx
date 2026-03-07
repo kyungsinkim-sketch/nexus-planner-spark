@@ -380,9 +380,8 @@ function HoverActionBar({ messageId, content, canEdit, canDelete, canPin, isCurr
   return (
     <>
       {/* Floating action bar — bottom-right of bubble, dropdowns open downward */}
-      <div className={`absolute -bottom-4 flex items-center rounded-lg shadow-md z-20 transition-opacity bg-white dark:bg-zinc-800 border border-black/10 dark:border-white/10 ${
-        isCurrentUser ? 'left-0' : 'right-0'
-      } ${showMenu || showEmoji ? 'opacity-100' : 'opacity-0 group-hover/msg:opacity-100'}`}
+      <div className={`absolute -bottom-4 right-0 flex items-center rounded-lg shadow-md z-20 transition-opacity bg-white dark:bg-zinc-800 border border-black/10 dark:border-white/10 ${
+        showMenu || showEmoji ? 'opacity-100' : 'opacity-0 group-hover/msg:opacity-100'}`}
       >
         {/* Emoji */}
         <div className="relative">
@@ -394,7 +393,7 @@ function HoverActionBar({ messageId, content, canEdit, canDelete, canPin, isCurr
             <>
               <div className="fixed inset-0 z-[99]" onClick={() => setShowEmoji(false)} />
               <div className={`absolute top-full mt-1 flex items-center gap-1 rounded-xl px-2.5 py-2 z-[100] ${
-                isCurrentUser ? 'left-0' : 'right-0'
+                'right-0'
               }`} className="bg-white dark:bg-zinc-800 border border-black/10 dark:border-white/10 shadow-[0_4px_24px_rgba(0,0,0,0.15)]"
                 onClick={e => e.stopPropagation()}>
                 {QUICK_EMOJIS.map(emoji => (
@@ -426,7 +425,7 @@ function HoverActionBar({ messageId, content, canEdit, canDelete, canPin, isCurr
                 {/* Backdrop to catch clicks */}
                 <div className="fixed inset-0 z-[99]" onClick={() => setShowMenu(false)} />
                 <div className={`absolute top-full mt-1 rounded-xl py-1.5 z-[100] min-w-[140px] whitespace-nowrap ${
-                  isCurrentUser ? 'left-0' : 'right-0'
+                  'right-0'
                 }`} className="bg-white dark:bg-zinc-800 border border-black/10 dark:border-white/10 shadow-[0_4px_24px_rgba(0,0,0,0.15)]"
                   onClick={e => e.stopPropagation()}>
                   {canEdit && onEdit && (
