@@ -144,18 +144,23 @@ function SlackWidget({ context }: { context: WidgetDataContext }) {
     loadMessages(channel);
   }, [loadMessages]);
 
+  const sendingRef = useRef(false);
+
   const handleSend = useCallback(async () => {
-    if (!userId || !selectedChannel || !messageText.trim()) return;
+    if (!userId || !selectedChannel || !messageText.trim() || sendingRef.current) return;
+    sendingRef.current = true;
     setSending(true);
+    const text = messageText.trim();
+    setMessageText('');
     try {
-      await sendSlackMessage(userId, selectedChannel.id, messageText.trim());
-      setMessageText('');
-      // Reload messages after sending
+      await sendSlackMessage(userId, selectedChannel.id, text);
       await loadMessages(selectedChannel);
     } catch (e) {
       console.error('[SlackWidget] Failed to send:', e);
+      setMessageText(text); // Restore on failure
     } finally {
       setSending(false);
+      sendingRef.current = false;
     }
   }, [userId, selectedChannel, messageText, loadMessages]);
 
