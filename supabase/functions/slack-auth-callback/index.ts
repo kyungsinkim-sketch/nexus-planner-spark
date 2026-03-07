@@ -72,7 +72,6 @@ Deno.serve(async (req) => {
     // 2. Extract token data
     const {
       access_token,        // Bot token (xoxb-...)
-      token_type,
       scope,
       bot_user_id,
       team,                // { id, name }
@@ -112,7 +111,6 @@ Deno.serve(async (req) => {
         authed_user_id: authed_user?.id || null,
         incoming_webhook_url: incoming_webhook?.url || null,
         incoming_webhook_channel: incoming_webhook?.channel || null,
-        token_type: token_type || 'bot',
         sync_status: 'CONNECTED',
         last_sync_at: new Date().toISOString(),
       }, {
