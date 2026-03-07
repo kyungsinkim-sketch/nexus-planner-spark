@@ -1813,6 +1813,7 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
                         return (
                           <div
                             key={message.id}
+                            data-message-id={message.id}
                             className={`flex gap-2 min-w-0 ${isCurrentUser ? 'flex-row-reverse' : ''}`}
                           >
                             {showAvatar ? (

@@ -276,15 +276,28 @@ function ReactionBar({ reactions, messageId, onToggle }: {
   );
 }
 
-// Reply quote block — shows the quoted message above a reply
+// Reply quote block — shows the quoted message above a reply; click scrolls to original
 function ReplyQuote({ message: replyMsg, isCurrentUser }: { message: ChatMessage; isCurrentUser: boolean }) {
   const { getUserById } = useAppStore();
   const sender = getUserById(replyMsg.userId);
+
+  const scrollToOriginal = () => {
+    const el = document.querySelector(`[data-message-id="${replyMsg.id}"]`);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      el.classList.add('ring-2', 'ring-primary/50', 'rounded-xl');
+      setTimeout(() => el.classList.remove('ring-2', 'ring-primary/50', 'rounded-xl'), 1500);
+    }
+  };
+
   return (
-    <div className={`flex items-start gap-1.5 mb-0.5 px-3 py-1.5 rounded-t-xl text-[11px] ${
-      isCurrentUser ? 'bg-primary/20 text-primary-foreground/70' : 'bg-muted/80 text-muted-foreground'
-    }`}>
-      <div className="w-0.5 min-h-[16px] bg-primary/50 rounded-full shrink-0 mt-0.5" />
+    <div
+      onClick={scrollToOriginal}
+      className={`flex items-start gap-1.5 mb-0.5 px-3 py-1.5 rounded-t-xl text-[11px] cursor-pointer hover:opacity-80 transition-opacity ${
+        isCurrentUser ? 'bg-primary/40 text-primary-foreground' : 'bg-muted text-foreground/70'
+      }`}
+    >
+      <div className="w-0.5 min-h-[16px] bg-primary/70 rounded-full shrink-0 mt-0.5" />
       <div className="min-w-0">
         <span className="font-semibold text-[10px]">{sender?.name || '알 수 없음'}</span>
         <p className="truncate max-w-[200px]">{replyMsg.content}</p>
