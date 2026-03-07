@@ -12,6 +12,16 @@
 
 import { isTauriApp, invokeTauri } from '@/lib/platform';
 
+// ─── Helpers ────────────────────────────────────────────
+
+/** Scroll a widget into view by its data-widget-id attribute */
+function scrollWidgetIntoView(widgetId: string) {
+  const el = document.querySelector(`[data-widget-id="${widgetId}"]`);
+  if (el) {
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+}
+
 // ─── Notification Permission ────────────────────────────
 
 let _permissionGranted = false;
@@ -185,6 +195,8 @@ function handleNotificationNavigation(extra: Record<string, string>): void {
           : sourceMsg.userId;
         store.setPendingChatNavigation({ type: 'direct', id: otherUserId });
         store.setChatPanelCollapsed(false);
+        // Scroll chat widget into view after navigation settles
+        setTimeout(() => scrollWidgetIntoView('chat'), 300);
       } else if (sourceMsg?.roomId || sourceMsg?.projectId || projectId) {
         // Project chat → open project tab + navigate to room
         const pid = sourceMsg?.projectId || projectId;
@@ -206,6 +218,8 @@ function handleNotificationNavigation(extra: Record<string, string>): void {
             roomId: sourceMsg?.roomId || roomId || undefined,
           });
           store.setChatPanelCollapsed(false);
+          // Scroll chat widget into view after navigation settles
+          setTimeout(() => scrollWidgetIntoView('chat'), 300);
         }
       }
     } else if (projectId) {

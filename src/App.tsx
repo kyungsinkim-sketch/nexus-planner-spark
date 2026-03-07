@@ -33,7 +33,7 @@ const queryClient = new QueryClient();
 
 // Protected Route Component
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, isLoading } = useAppStore();
+  const { isAuthenticated, isLoading, currentUser } = useAppStore();
 
   // Global chat notification popups (bottom-left toast)
   useChatNotifications();
@@ -47,6 +47,16 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
   // Periodic user list refresh for stale work status detection (every 10 min)
   useUserStatusRefresh();
+
+  // Central realtime notifications for calendar, todos, important notes
+  useEffect(() => {
+    if (!currentUser?.id) return;
+    let cleanup: (() => void) | undefined;
+    import('@/services/realtimeNotificationService').then(({ startRealtimeNotifications }) => {
+      cleanup = startRealtimeNotifications(currentUser.id);
+    }).catch(() => {});
+    return () => { cleanup?.(); };
+  }, [currentUser?.id]);
 
   if (isLoading) {
     return (

@@ -10,6 +10,7 @@
 
 import { useMemo, useCallback } from 'react';
 import { useAppStore } from '@/stores/appStore';
+import { useWidgetStore } from '@/stores/widgetStore';
 import { useTranslation } from '@/hooks/useTranslation';
 import { Bell, Calendar, Check, Megaphone, Brain, MessageSquare, ListTodo } from 'lucide-react';
 import type { WidgetDataContext } from '@/types/widget';
@@ -38,6 +39,8 @@ function NotificationsWidget({ context }: { context: WidgetDataContext }) {
       type: 'event' | 'company' | 'brain' | 'chat' | 'todo';
       senderName?: string;
       projectId?: string;
+      roomId?: string;
+      directUserId?: string;
     }[] = [];
 
     // App notifications (chat, todo, brain) — filtered by project if in project context
@@ -65,6 +68,8 @@ function NotificationsWidget({ context }: { context: WidgetDataContext }) {
           time: new Date(n.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
           type: n.type as 'event' | 'company' | 'brain' | 'chat' | 'todo',
           projectId: n.projectId,
+          roomId: n.roomId,
+          directUserId: n.directUserId,
         });
       });
 
@@ -159,6 +164,48 @@ function NotificationsWidget({ context }: { context: WidgetDataContext }) {
 
   const handleClick = useCallback((n: typeof notifications[0]) => {
     dismissNotification(n.id);
+
+    // Navigate based on notification type
+    const store = useAppStore.getState();
+    const widgetStore = useWidgetStore.getState();
+
+    if (n.type === 'chat' && n.projectId) {
+      // Open project tab + navigate to chat
+      const project = store.projects.find(p => p.id === n.projectId);
+      if (project) {
+        if (!widgetStore.openTabs.find(t => t.projectId === n.projectId)) {
+          widgetStore.openProjectTab(project.id, project.title, project.keyColor);
+        }
+        const tab = widgetStore.openTabs.find(t => t.projectId === n.projectId);
+        if (tab) widgetStore.setActiveTab(tab.id);
+        store.setPendingChatNavigation({ type: 'project', id: n.projectId, roomId: n.roomId });
+        store.setChatPanelCollapsed(false);
+      }
+    } else if (n.type === 'chat' && n.directUserId) {
+      // DM navigation
+      store.setPendingChatNavigation({ type: 'direct', id: n.directUserId });
+      store.setChatPanelCollapsed(false);
+      // Go to dashboard for DMs
+      widgetStore.setActiveTab('dashboard');
+    } else if (n.projectId) {
+      // Non-chat with project → open project tab
+      const project = store.projects.find(p => p.id === n.projectId);
+      if (project) {
+        if (!widgetStore.openTabs.find(t => t.projectId === n.projectId)) {
+          widgetStore.openProjectTab(project.id, project.title, project.keyColor);
+        }
+        const tab = widgetStore.openTabs.find(t => t.projectId === n.projectId);
+        if (tab) widgetStore.setActiveTab(tab.id);
+      }
+    }
+
+    // Scroll to chat widget after navigation settles
+    if (n.type === 'chat') {
+      setTimeout(() => {
+        const el = document.querySelector('[data-widget-id="chat"]');
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 300);
+    }
   }, [dismissNotification]);
 
   if (notifications.length === 0) {

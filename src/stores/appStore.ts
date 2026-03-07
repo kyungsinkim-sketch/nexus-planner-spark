@@ -1222,6 +1222,7 @@ export const useAppStore = create<AppState>()(
             message: preview,
             projectId: message.projectId || undefined,
             roomId: message.roomId || undefined,
+            directUserId: message.directChatUserId || undefined,
             sourceId: message.id,
           });
 

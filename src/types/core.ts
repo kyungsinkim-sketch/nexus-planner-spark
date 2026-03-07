@@ -64,6 +64,7 @@ export interface AppNotification {
   message: string;
   projectId?: string;
   roomId?: string;
+  directUserId?: string; // for DM notifications — the other user's id
   sourceId?: string; // reference to the original item
   createdAt: string;
   read: boolean;
