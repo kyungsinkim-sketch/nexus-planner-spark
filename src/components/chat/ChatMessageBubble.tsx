@@ -380,10 +380,9 @@ function HoverActionBar({ messageId, content, canEdit, canDelete, canPin, isCurr
   return (
     <>
       {/* Floating action bar — bottom-right of bubble, dropdowns open downward */}
-      <div className={`absolute -bottom-4 flex items-center rounded-lg border border-border/50 shadow-md z-20 transition-opacity ${
+      <div className={`absolute -bottom-4 flex items-center rounded-lg shadow-md z-20 transition-opacity bg-white dark:bg-zinc-800 border border-black/10 dark:border-white/10 ${
         isCurrentUser ? 'left-0' : 'right-0'
       } ${showMenu || showEmoji ? 'opacity-100' : 'opacity-0 group-hover/msg:opacity-100'}`}
-        style={{ backgroundColor: 'hsl(var(--background))' }}
       >
         {/* Emoji */}
         <div className="relative">
@@ -392,15 +391,18 @@ function HoverActionBar({ messageId, content, canEdit, canDelete, canPin, isCurr
             <SmilePlus className="w-3.5 h-3.5 text-muted-foreground" />
           </button>
           {showEmoji && (
-            <div className={`absolute top-full mt-1 flex items-center gap-1 rounded-lg shadow-xl border border-border/50 px-2 py-1.5 z-50 ${
-              isCurrentUser ? 'left-0' : 'right-0'
-            }`} style={{ backgroundColor: 'hsl(var(--background))' }}
-              onClick={e => e.stopPropagation()}>
-              {QUICK_EMOJIS.map(emoji => (
-                <button key={emoji} onClick={() => { onReactionToggle?.(messageId, emoji); setShowEmoji(false); }}
-                  className="w-7 h-7 flex items-center justify-center rounded-md hover:bg-muted/60 transition-colors text-base">{emoji}</button>
-              ))}
-            </div>
+            <>
+              <div className="fixed inset-0 z-[99]" onClick={() => setShowEmoji(false)} />
+              <div className={`absolute top-full mt-1 flex items-center gap-1 rounded-xl px-2.5 py-2 z-[100] ${
+                isCurrentUser ? 'left-0' : 'right-0'
+              }`} className="bg-white dark:bg-zinc-800 border border-black/10 dark:border-white/10 shadow-[0_4px_24px_rgba(0,0,0,0.15)]"
+                onClick={e => e.stopPropagation()}>
+                {QUICK_EMOJIS.map(emoji => (
+                  <button key={emoji} onClick={() => { onReactionToggle?.(messageId, emoji); setShowEmoji(false); }}
+                    className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors text-lg">{emoji}</button>
+                ))}
+              </div>
+            </>
           )}
         </div>
 
@@ -420,38 +422,42 @@ function HoverActionBar({ messageId, content, canEdit, canDelete, canPin, isCurr
               <MoreHorizontal className="w-3.5 h-3.5 text-muted-foreground" />
             </button>
             {showMenu && (
-              <div className={`absolute top-full mt-1 rounded-lg shadow-xl border border-border/50 py-1 z-50 min-w-[140px] whitespace-nowrap ${
-                isCurrentUser ? 'left-0' : 'right-0'
-              }`} style={{ backgroundColor: 'hsl(var(--background))' }}
-                onClick={e => e.stopPropagation()}>
-                {canEdit && onEdit && (
-                  <button onClick={startEdit}
-                    className="w-full flex items-center gap-2.5 px-3 py-2 text-xs hover:bg-muted/60 transition-colors">
-                    <Pencil className="w-3.5 h-3.5 shrink-0" /> 수정
-                  </button>
-                )}
-                {canPin && onPin && (
-                  <button onClick={() => { onPin(messageId); setShowMenu(false); }}
-                    className="w-full flex items-center gap-2.5 px-3 py-2 text-xs hover:bg-muted/60 transition-colors">
-                    <Pin className="w-3.5 h-3.5 shrink-0" /> 고정
-                  </button>
-                )}
-                {canPin && onUnpin && (
-                  <button onClick={() => { onUnpin(messageId); setShowMenu(false); }}
-                    className="w-full flex items-center gap-2.5 px-3 py-2 text-xs hover:bg-muted/60 transition-colors">
-                    <PinOff className="w-3.5 h-3.5 shrink-0" /> 고정 해제
-                  </button>
-                )}
-                {canDelete && onDelete && (
-                  <>
-                    <div className="border-t border-border/20 my-1" />
-                    <button onClick={() => { onDelete(messageId); setShowMenu(false); }}
-                      className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-red-400 hover:bg-red-500/10 transition-colors">
-                      <Trash2 className="w-3.5 h-3.5 shrink-0" /> 삭제
+              <>
+                {/* Backdrop to catch clicks */}
+                <div className="fixed inset-0 z-[99]" onClick={() => setShowMenu(false)} />
+                <div className={`absolute top-full mt-1 rounded-xl py-1.5 z-[100] min-w-[140px] whitespace-nowrap ${
+                  isCurrentUser ? 'left-0' : 'right-0'
+                }`} className="bg-white dark:bg-zinc-800 border border-black/10 dark:border-white/10 shadow-[0_4px_24px_rgba(0,0,0,0.15)]"
+                  onClick={e => e.stopPropagation()}>
+                  {canEdit && onEdit && (
+                    <button onClick={startEdit}
+                      className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors">
+                      <Pencil className="w-4 h-4 shrink-0 text-gray-500 dark:text-gray-400" /> 수정
                     </button>
-                  </>
-                )}
-              </div>
+                  )}
+                  {canPin && onPin && (
+                    <button onClick={() => { onPin(messageId); setShowMenu(false); }}
+                      className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors">
+                      <Pin className="w-4 h-4 shrink-0 text-gray-500 dark:text-gray-400" /> 고정
+                    </button>
+                  )}
+                  {canPin && onUnpin && (
+                    <button onClick={() => { onUnpin(messageId); setShowMenu(false); }}
+                      className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors">
+                      <PinOff className="w-4 h-4 shrink-0 text-gray-500 dark:text-gray-400" /> 고정 해제
+                    </button>
+                  )}
+                  {canDelete && onDelete && (
+                    <>
+                      <div className="border-t border-gray-100 dark:border-zinc-700 my-1" />
+                      <button onClick={() => { onDelete(messageId); setShowMenu(false); }}
+                        className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors">
+                        <Trash2 className="w-4 h-4 shrink-0" /> 삭제
+                      </button>
+                    </>
+                  )}
+                </div>
+              </>
             )}
           </div>
         )}
