@@ -540,11 +540,10 @@ export default function NotionWidget({ context }: { context: WidgetDataContext }
 
   const loadSyncedPages = useCallback(async () => {
     if (!userId) return;
-    console.log('[Notion] loadSyncedPages for', userId, 'project:', projectId);
-    const pages = await getSyncedPages(userId, projectId);
-    console.log('[Notion] Got pages:', pages.length, pages.slice(0, 2).map(p => p.title));
+    // Always load ALL pages (no project filter) — we separate linked/unlinked in the UI
+    const pages = await getSyncedPages(userId);
     setSyncedPages(pages);
-  }, [userId, projectId]);
+  }, [userId]);
 
   // ─── Connect ──────────────────────────────────────
   const handleConnect = useCallback(async () => {
@@ -579,14 +578,10 @@ export default function NotionWidget({ context }: { context: WidgetDataContext }
   const handleSync = useCallback(async () => {
     if (!userId || syncing) return;
     setSyncing(true);
-    console.log('[Notion] Starting sync for', userId);
-    const syncResult = await syncNotionPages(userId);
-    console.log('[Notion] Sync result:', syncResult);
-    const pages = await getSyncedPages(userId, projectId);
-    console.log('[Notion] Loaded pages:', pages.length);
-    setSyncedPages(pages);
+    await syncNotionPages(userId);
+    await loadSyncedPages();
     setSyncing(false);
-  }, [userId, syncing, projectId]);
+  }, [userId, syncing, loadSyncedPages]);
 
   // ─── View page ────────────────────────────────────
   const openPage = useCallback(async (
