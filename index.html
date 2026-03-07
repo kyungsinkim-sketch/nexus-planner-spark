@@ -89,6 +89,40 @@
   <div id="root"></div>
   <script type="module" src="/src/main.tsx"></script>
 
+  <!-- Auto-recover from stale SW cache: if dynamic import fails, nuke SW + caches and reload -->
+  <script>
+    window.addEventListener('error', function(e) {
+      if (e.message && e.message.includes('Failed to fetch dynamically imported module')) {
+        console.warn('[App] Stale chunk detected, clearing SW and caches...');
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.getRegistrations().then(function(regs) {
+            regs.forEach(function(r) { r.unregister(); });
+          });
+        }
+        caches.keys().then(function(names) {
+          return Promise.all(names.map(function(n) { return caches.delete(n); }));
+        }).then(function() {
+          window.location.reload();
+        });
+      }
+    });
+    window.addEventListener('unhandledrejection', function(e) {
+      if (e.reason && String(e.reason).includes('Failed to fetch dynamically imported module')) {
+        console.warn('[App] Stale chunk (promise), clearing SW and caches...');
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.getRegistrations().then(function(regs) {
+            regs.forEach(function(r) { r.unregister(); });
+          });
+        }
+        caches.keys().then(function(names) {
+          return Promise.all(names.map(function(n) { return caches.delete(n); }));
+        }).then(function() {
+          window.location.reload();
+        });
+      }
+    });
+  </script>
+
   <!-- Register Service Worker -->
   <script>
     if ('serviceWorker' in navigator) {
