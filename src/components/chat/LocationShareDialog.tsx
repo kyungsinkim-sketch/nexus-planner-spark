@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogFooter,
@@ -71,6 +72,7 @@ export function LocationShareDialog({ open, onOpenChange, onSubmit }: LocationSh
             <MapPin className="w-5 h-5 text-blue-500" />
             {t('shareLocation')}
           </DialogTitle>
+          <DialogDescription className="sr-only">Share location</DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
           <div className="space-y-2">

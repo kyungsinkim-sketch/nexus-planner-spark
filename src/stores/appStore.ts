@@ -1018,6 +1018,7 @@ export const useAppStore = create<AppState>()(
         if (isSupabaseConfigured()) {
           try {
             await projectService.deleteProject(projectId);
+            useWidgetStore.getState().closeProjectTab(projectId);
             set((state) => ({
               projects: state.projects.filter((p) => p.id !== projectId),
             }));

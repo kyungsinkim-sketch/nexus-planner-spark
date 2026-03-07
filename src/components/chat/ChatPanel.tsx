@@ -23,6 +23,7 @@ import { Separator } from '@/components/ui/separator';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogFooter,
@@ -1982,6 +1983,7 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle>{t('createNewChatRoom')}</DialogTitle>
+            <DialogDescription className="sr-only">{t('createNewChatRoom')}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">

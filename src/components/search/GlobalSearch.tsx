@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import {
     Dialog,
     DialogContent,
+    DialogDescription,
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
@@ -147,6 +148,8 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="max-w-2xl p-0">
+                <DialogTitle className="sr-only">Global Search</DialogTitle>
+                <DialogDescription className="sr-only">Search projects, events, messages</DialogDescription>
                 <DialogHeader className="px-6 pt-6 pb-4">
                     <div className="flex items-center gap-3">
                         <Search className="w-5 h-5 text-muted-foreground" />

@@ -15,6 +15,7 @@ import { toast } from 'sonner';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
@@ -88,6 +89,7 @@ export function AutoCheckInDialog() {
             )}
             {language === 'ko' ? '출근 유형 선택' : 'Select Work Type'}
           </DialogTitle>
+          <DialogDescription className="sr-only">Auto check-in settings</DialogDescription>
         </DialogHeader>
 
         <p className="text-sm text-muted-foreground mb-4">

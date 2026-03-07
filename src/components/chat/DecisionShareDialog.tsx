@@ -2,6 +2,7 @@ import { useState } from 'react';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogFooter,
@@ -75,6 +76,7 @@ export function DecisionShareDialog({ open, onOpenChange, onSubmit }: DecisionSh
             <ListChecks className="w-5 h-5 text-violet-500" />
             {t('requestDecision')}
           </DialogTitle>
+          <DialogDescription className="sr-only">Share decision</DialogDescription>
         </DialogHeader>
         <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-1">
           <div className="space-y-2">

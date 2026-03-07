@@ -12,6 +12,7 @@ import { useState, useMemo, useCallback, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogFooter,
@@ -193,6 +194,7 @@ export function CallStartDialog({
             {mediaType === 'video' ? <Video className="w-5 h-5" /> : <Phone className="w-5 h-5" />}
             {mediaType === 'video' ? '화상 통화' : '음성 통화'}
           </DialogTitle>
+          <DialogDescription className="sr-only">Start a call</DialogDescription>
         </DialogHeader>
 
         {/* Step 1: Choose mode */}

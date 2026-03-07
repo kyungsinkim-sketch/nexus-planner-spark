@@ -3,7 +3,7 @@ import { useAppStore } from '@/stores/appStore';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Briefcase, Calendar, ExternalLink, FolderKanban } from 'lucide-react';
 import { format } from 'date-fns';
 import { PortfolioItem } from '@/types/core';
@@ -70,6 +70,7 @@ export function PortfolioSection() {
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>{selectedItem?.projectTitle}</DialogTitle>
+            <DialogDescription className="sr-only">Portfolio details</DialogDescription>
           </DialogHeader>
           
           {selectedItem && (
