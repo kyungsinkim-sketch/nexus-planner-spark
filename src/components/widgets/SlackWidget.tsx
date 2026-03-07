@@ -60,10 +60,16 @@ function SlackWidget({ context }: { context: WidgetDataContext }) {
     checkStatus();
   }, [userId]);
 
-  // ─── Handle OAuth callback ───
+  // ─── Handle OAuth callback (deduplicate code usage) ───
+  const processedCodeRef = useRef<string | null>(null);
+
   useEffect(() => {
     const handleMessage = async (event: MessageEvent) => {
       if (event.data?.type === 'slack-oauth-callback' && event.data?.code) {
+        // Prevent duplicate exchange (StrictMode / multiple listeners)
+        if (processedCodeRef.current === event.data.code) return;
+        processedCodeRef.current = event.data.code;
+
         setLoading(true);
         setError(null);
         try {
@@ -164,20 +170,31 @@ function SlackWidget({ context }: { context: WidgetDataContext }) {
     const popup = window.open(authUrl, 'slack-oauth', 'width=600,height=700');
 
     // Listen for the popup to redirect back
+    let codeSent = false;
     const interval = setInterval(() => {
       try {
         if (popup?.closed) {
           clearInterval(interval);
           return;
         }
+        if (codeSent) return;
         const popupUrl = popup?.location?.href;
         if (popupUrl?.includes('/integrations/slack/callback')) {
           const url = new URL(popupUrl);
           const code = url.searchParams.get('code');
-          if (code) {
+          const slackError = url.searchParams.get('error');
+          if (slackError) {
+            codeSent = true;
             popup?.close();
             clearInterval(interval);
-            window.postMessage({ type: 'slack-oauth-callback', code }, '*');
+            setError(`Slack: ${slackError}`);
+            return;
+          }
+          if (code) {
+            codeSent = true;
+            popup?.close();
+            clearInterval(interval);
+            window.postMessage({ type: 'slack-oauth-callback', code }, window.location.origin);
           }
         }
       } catch {

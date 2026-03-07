@@ -27,6 +27,7 @@ const DepositStatusPage = lazy(() => import("./pages/DepositStatusPage"));
 const BudgetPage = lazy(() => import("./pages/BudgetPage"));
 const SmartCallPage = lazy(() => import("./pages/SmartCallPage"));
 const NotFound = lazy(() => import("./pages/NotFound"));
+const OAuthCallbackPage = lazy(() => import("./pages/OAuthCallbackPage"));
 const AuthPage = lazy(() => import("./pages/AuthPage").then(m => ({ default: m.AuthPage })));
 
 const queryClient = new QueryClient();
@@ -223,6 +224,8 @@ const App = () => {
                   <Route path="/projects/:projectId/deposits" element={<DepositStatusPage />} />
                   <Route path="/projects/:projectId/budget" element={<BudgetRoute><BudgetPage /></BudgetRoute>} />
                   <Route path="/smart-call" element={<SmartCallPage />} />
+                  {/* OAuth callback routes — popup reads URL params, these just show a brief loading state */}
+                  <Route path="/integrations/slack/callback" element={<OAuthCallbackPage provider="slack" />} />
 
                   {/* Legacy routes redirect to root (now widget-based) */}
                   <Route path="/calendar" element={<Navigate to="/" replace />} />
