@@ -429,7 +429,7 @@ function HoverActionBar({ messageId, content, canEdit, canDelete, canPin, isCurr
               e.stopPropagation();
               if (!showMenu && moreRef.current) {
                 const r = moreRef.current.getBoundingClientRect();
-                setMenuPos({ top: r.bottom + 2, left: r.right - 140 });
+                setMenuPos({ top: r.bottom + 2, left: r.right });
               }
               setShowMenu(!showMenu); setShowEmoji(false);
             }}
@@ -460,7 +460,7 @@ function HoverActionBar({ messageId, content, canEdit, canDelete, canPin, isCurr
         <>
           <div className="fixed inset-0 z-[9998]" onClick={() => setShowMenu(false)} />
           <div className="fixed z-[9999] rounded-lg py-0.5 min-w-[100px] whitespace-nowrap bg-white dark:bg-zinc-800 border border-black/10 dark:border-white/10 shadow-[0_4px_24px_rgba(0,0,0,0.15)]"
-            style={{ top: menuPos.top, left: menuPos.left }}
+            style={{ top: menuPos.top, left: menuPos.left, transform: 'translateX(-100%)' }}
             onClick={e => e.stopPropagation()}>
             {canEdit && onEdit && (
               <button onClick={startEdit}
