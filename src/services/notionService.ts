@@ -25,10 +25,10 @@ export function isNotionConfigured(): boolean {
 }
 
 /**
- * Get the OAuth redirect URI
+ * Get the OAuth redirect URI (popup callback page)
  */
 function getRedirectUri(): string {
-  return `${window.location.origin}/settings`;
+  return `${window.location.origin}/integrations/notion/callback`;
 }
 
 // ─── Types ──────────────────────────────────────────
@@ -127,14 +127,9 @@ async function notionApiCall<T>(
 // ─── OAuth Flow ─────────────────────────────────────
 
 /**
- * Generate the Notion OAuth consent URL and redirect the user.
- * Notion uses a simpler OAuth flow with public integration.
+ * Generate the Notion OAuth consent URL.
  */
-export function startNotionOAuth(userId: string): void {
-  if (!NOTION_CLIENT_ID) {
-    throw new Error('Notion not configured. Set VITE_NOTION_CLIENT_ID in .env');
-  }
-
+function getNotionOAuthUrl(userId: string): string {
   const params = new URLSearchParams({
     client_id: NOTION_CLIENT_ID,
     redirect_uri: getRedirectUri(),
@@ -142,8 +137,78 @@ export function startNotionOAuth(userId: string): void {
     owner: 'user',
     state: userId,
   });
+  return `https://api.notion.com/v1/oauth/authorize?${params}`;
+}
 
-  window.location.href = `https://api.notion.com/v1/oauth/authorize?${params}`;
+/**
+ * Start Notion OAuth via popup (like Slack).
+ * Opens consent screen in popup, polls for redirect code, exchanges token.
+ */
+export async function startNotionOAuthPopup(
+  userId: string,
+): Promise<{ success: boolean; workspaceName?: string; email?: string; error?: string }> {
+  if (!NOTION_CLIENT_ID) {
+    return { success: false, error: 'Notion not configured. Set VITE_NOTION_CLIENT_ID in .env' };
+  }
+
+  const url = getNotionOAuthUrl(userId);
+  const w = 600, h = 700;
+  const left = window.screenX + (window.innerWidth - w) / 2;
+  const top = window.screenY + (window.innerHeight - h) / 2;
+  const popup = window.open(url, 'notion-oauth', `width=${w},height=${h},left=${left},top=${top}`);
+
+  if (!popup) {
+    return { success: false, error: 'Popup blocked. Please allow popups.' };
+  }
+
+  // Poll for redirect
+  return new Promise((resolve) => {
+    let resolved = false;
+    const interval = setInterval(async () => {
+      try {
+        if (popup.closed) {
+          clearInterval(interval);
+          if (!resolved) resolve({ success: false, error: 'Popup closed' });
+          return;
+        }
+        const popupUrl = popup.location.href;
+        if (popupUrl.includes('/integrations/notion/callback')) {
+          const params = new URL(popupUrl).searchParams;
+          const code = params.get('code');
+          popup.close();
+          clearInterval(interval);
+          resolved = true;
+
+          if (!code) {
+            resolve({ success: false, error: params.get('error') || 'No code received' });
+            return;
+          }
+
+          const result = await handleNotionOAuthCallback(code, userId);
+          resolve(result);
+        }
+      } catch {
+        // Cross-origin — keep polling
+      }
+    }, 500);
+
+    // Timeout after 5 minutes
+    setTimeout(() => {
+      clearInterval(interval);
+      if (!resolved) {
+        try { popup.close(); } catch {}
+        resolve({ success: false, error: 'OAuth timed out' });
+      }
+    }, 300000);
+  });
+}
+
+/** @deprecated Use startNotionOAuthPopup instead */
+export function startNotionOAuth(userId: string): void {
+  if (!NOTION_CLIENT_ID) {
+    throw new Error('Notion not configured. Set VITE_NOTION_CLIENT_ID in .env');
+  }
+  window.location.href = getNotionOAuthUrl(userId);
 }
 
 /**

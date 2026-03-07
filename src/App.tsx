@@ -226,6 +226,7 @@ const App = () => {
                   <Route path="/smart-call" element={<SmartCallPage />} />
                   {/* OAuth callback routes — popup reads URL params, these just show a brief loading state */}
                   <Route path="/integrations/slack/callback" element={<OAuthCallbackPage provider="slack" />} />
+                  <Route path="/integrations/notion/callback" element={<OAuthCallbackPage provider="notion" />} />
 
                   {/* Legacy routes redirect to root (now widget-based) */}
                   <Route path="/calendar" element={<Navigate to="/" replace />} />
