@@ -258,24 +258,12 @@ Deno.serve(async (req) => {
           .eq('user_id', userId);
 
         try {
-          // Search for recently edited pages
-          const results = await searchNotion(token, '', undefined, undefined, 50);
+          // Search for recently edited pages (lightweight — no block caching to avoid timeout)
+          const results = await searchNotion(token, '', undefined, undefined, 30);
 
           let syncedCount = 0;
           for (const item of results.results) {
             const record = notionPageToDbRecord(item, userId);
-
-            // Try to cache content for pages (not databases)
-            if (item.object === 'page') {
-              try {
-                const blocks = await getAllBlocks(token, item.id, 1);
-                const plainText = blocksToPlainText(blocks);
-                record.cached_content = { blocks, plainText };
-                record.cached_at = new Date().toISOString();
-              } catch (e) {
-                console.warn(`Failed to cache content for ${item.id}:`, e);
-              }
-            }
 
             const { error: upsertErr } = await supabase
               .from('notion_synced_pages')
