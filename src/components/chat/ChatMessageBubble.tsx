@@ -330,12 +330,13 @@ function EmojiPicker({ messageId, onToggle }: {
  * Slack-style hover action bar — appears top-right on hover.
  * Shows: emoji picker, reply, more menu (edit/pin/unpin/delete).
  */
-function HoverActionBar({ messageId, content, canEdit, canDelete, canPin, onReactionToggle, onEdit, onDelete, onPin, onUnpin, onReply }: {
+function HoverActionBar({ messageId, content, canEdit, canDelete, canPin, isCurrentUser, onReactionToggle, onEdit, onDelete, onPin, onUnpin, onReply }: {
   messageId: string;
   content?: string;
   canEdit: boolean;
   canDelete: boolean;
   canPin: boolean;
+  isCurrentUser?: boolean;
   onReactionToggle?: (messageId: string, emoji: string) => void;
   onEdit?: (messageId: string, content: string) => void;
   onDelete?: (messageId: string) => void;
@@ -378,22 +379,23 @@ function HoverActionBar({ messageId, content, canEdit, canDelete, canPin, onReac
 
   return (
     <>
-      {/* Floating action bar — top right */}
-      <div className={`absolute top-0 right-0 flex items-center bg-popover/95 backdrop-blur-sm rounded-lg border border-border/40 shadow-md z-10 transition-opacity ${
-        showMenu || showEmoji ? 'opacity-100' : 'opacity-0 group-hover/msg:opacity-100'
-      }`}>
+      {/* Floating action bar — positioned to stay within widget bounds */}
+      <div className={`absolute top-0 flex items-center bg-popover/95 backdrop-blur-sm rounded-lg border border-border/40 shadow-md z-10 transition-opacity ${
+        isCurrentUser ? 'left-0' : 'right-0'
+      } ${showMenu || showEmoji ? 'opacity-100' : 'opacity-0 group-hover/msg:opacity-100'}`}>
         {/* Emoji */}
         <div className="relative">
           <button onClick={(e) => { e.stopPropagation(); setShowEmoji(!showEmoji); setShowMenu(false); }}
-            className="p-1.5 rounded-l-lg hover:bg-muted/80 transition-colors" title="리액션">
+            className="p-1.5 rounded-l-lg hover:bg-muted/60 transition-colors" title="리액션">
             <SmilePlus className="w-3.5 h-3.5 text-muted-foreground" />
           </button>
           {showEmoji && (
-            <div className="absolute top-8 right-0 flex items-center gap-1 bg-popover border border-border/40 rounded-lg shadow-lg px-2 py-1.5 z-30"
-              onClick={e => e.stopPropagation()}>
+            <div className={`absolute top-8 flex items-center gap-1 bg-popover border border-border/40 rounded-lg shadow-lg px-2 py-1.5 z-30 ${
+              isCurrentUser ? 'left-0' : 'right-0'
+            }`} onClick={e => e.stopPropagation()}>
               {QUICK_EMOJIS.map(emoji => (
                 <button key={emoji} onClick={() => { onReactionToggle?.(messageId, emoji); setShowEmoji(false); }}
-                  className="w-7 h-7 flex items-center justify-center rounded-md hover:bg-muted transition-colors text-base">{emoji}</button>
+                  className="w-7 h-7 flex items-center justify-center rounded-md hover:bg-muted/60 transition-colors text-base">{emoji}</button>
               ))}
             </div>
           )}
@@ -401,7 +403,8 @@ function HoverActionBar({ messageId, content, canEdit, canDelete, canPin, onReac
 
         {/* Reply */}
         {onReply && (
-          <button onClick={() => onReply(messageId)} className="p-1.5 hover:bg-muted/80 transition-colors" title="답글">
+          <button onClick={() => { onReply(messageId); setShowEmoji(false); setShowMenu(false); }}
+            className="p-1.5 hover:bg-muted/60 transition-colors" title="답글">
             <MessageCircle className="w-3.5 h-3.5 text-muted-foreground" />
           </button>
         )}
@@ -410,27 +413,28 @@ function HoverActionBar({ messageId, content, canEdit, canDelete, canPin, onReac
         {(canEdit || canDelete || canPin) && (
           <div className="relative">
             <button onClick={(e) => { e.stopPropagation(); setShowMenu(!showMenu); setShowEmoji(false); }}
-              className="p-1.5 rounded-r-lg hover:bg-muted/80 transition-colors" title="더보기">
+              className="p-1.5 rounded-r-lg hover:bg-muted/60 transition-colors" title="더보기">
               <MoreHorizontal className="w-3.5 h-3.5 text-muted-foreground" />
             </button>
             {showMenu && (
-              <div className="absolute top-8 right-0 bg-popover border border-border/40 rounded-lg shadow-lg py-1 z-30 min-w-[140px] whitespace-nowrap"
-                onClick={e => e.stopPropagation()}>
+              <div className={`absolute top-8 bg-popover border border-border/40 rounded-lg shadow-lg py-1 z-30 min-w-[140px] whitespace-nowrap ${
+                isCurrentUser ? 'left-0' : 'right-0'
+              }`} onClick={e => e.stopPropagation()}>
                 {canEdit && onEdit && (
                   <button onClick={startEdit}
-                    className="w-full flex items-center gap-2.5 px-3 py-2 text-xs hover:bg-muted/80 transition-colors">
+                    className="w-full flex items-center gap-2.5 px-3 py-2 text-xs hover:bg-muted/60 transition-colors">
                     <Pencil className="w-3.5 h-3.5 shrink-0" /> 수정
                   </button>
                 )}
                 {canPin && onPin && (
                   <button onClick={() => { onPin(messageId); setShowMenu(false); }}
-                    className="w-full flex items-center gap-2.5 px-3 py-2 text-xs hover:bg-muted/80 transition-colors">
+                    className="w-full flex items-center gap-2.5 px-3 py-2 text-xs hover:bg-muted/60 transition-colors">
                     <Pin className="w-3.5 h-3.5 shrink-0" /> 고정
                   </button>
                 )}
                 {canPin && onUnpin && (
                   <button onClick={() => { onUnpin(messageId); setShowMenu(false); }}
-                    className="w-full flex items-center gap-2.5 px-3 py-2 text-xs hover:bg-muted/80 transition-colors">
+                    className="w-full flex items-center gap-2.5 px-3 py-2 text-xs hover:bg-muted/60 transition-colors">
                     <PinOff className="w-3.5 h-3.5 shrink-0" /> 고정 해제
                   </button>
                 )}
@@ -476,6 +480,7 @@ function MessageWrapper({ children, isCurrentUser, onDelete, onEdit, onPin, onUn
         canEdit={isCurrentUser}
         canDelete={isCurrentUser}
         canPin={isCurrentUser}
+        isCurrentUser={isCurrentUser}
         onReactionToggle={onReactionToggle}
         onEdit={onEdit}
         onDelete={onDelete}
@@ -508,6 +513,7 @@ function AiMessageWrapper({ children, canManage, onDelete, onPin, onUnpin, onRep
         canEdit={false}
         canDelete={canManage}
         canPin={canManage}
+        isCurrentUser={false}
         onReactionToggle={onReactionToggle}
         onDelete={onDelete}
         onPin={onPin}
