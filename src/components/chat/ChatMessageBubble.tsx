@@ -217,7 +217,7 @@ export function ChatMessageBubble({ message, isCurrentUser, onVoteDecision, onAc
   );
 }
 
-// Reaction display bar with user avatars + liquid glass style
+// Reaction display bar with consistent styling
 function ReactionBar({ reactions, messageId, onToggle }: {
   reactions?: ChatReaction[];
   messageId: string;
@@ -227,7 +227,7 @@ function ReactionBar({ reactions, messageId, onToggle }: {
   if (!reactions || reactions.length === 0) return null;
 
   return (
-    <div className="flex flex-wrap gap-1.5 mt-1.5">
+    <div className="flex flex-wrap gap-1 mt-1.5">
       {reactions.map((r) => {
         const isMine = currentUser ? r.userIds.includes(currentUser.id) : false;
         const reactUsers = r.userIds.map(id => getUserById(id)).filter(Boolean);
@@ -235,35 +235,27 @@ function ReactionBar({ reactions, messageId, onToggle }: {
           <button
             key={r.emoji}
             onClick={() => onToggle?.(messageId, r.emoji)}
-            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs transition-all ${
+            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs transition-all border ${
               isMine
-                ? 'bg-white/10 dark:bg-white/5 backdrop-blur-xl border border-white/30 dark:border-white/10 shadow-[0_2px_8px_rgba(255,255,255,0.08),inset_0_1px_1px_rgba(255,255,255,0.15)]'
-                : 'bg-white/5 dark:bg-white/[0.03] backdrop-blur-md border border-white/15 dark:border-white/5 hover:bg-white/10 dark:hover:bg-white/5'
+                ? 'bg-primary/15 border-primary/30 text-primary'
+                : 'bg-muted/50 border-border/30 hover:bg-muted text-muted-foreground'
             }`}
           >
-            <span className="text-sm">{r.emoji}</span>
-            <div className="flex -space-x-1.5">
+            <span className="text-sm leading-none">{r.emoji}</span>
+            <div className="flex -space-x-1">
               {reactUsers.slice(0, 3).map((user) => (
                 user?.avatar ? (
-                  <img
-                    key={user.id}
-                    src={user.avatar}
-                    alt={user.name}
-                    title={user.name}
-                    className="w-4 h-4 rounded-full border border-background object-cover"
-                  />
+                  <img key={user.id} src={user.avatar} alt={user.name} title={user.name}
+                    className="w-3.5 h-3.5 rounded-full border border-background object-cover" />
                 ) : (
-                  <div
-                    key={user?.id}
-                    title={user?.name}
-                    className="w-4 h-4 rounded-full border border-background bg-muted flex items-center justify-center text-[8px] font-medium"
-                  >
+                  <div key={user?.id} title={user?.name}
+                    className="w-3.5 h-3.5 rounded-full border border-background bg-muted flex items-center justify-center text-[7px] font-medium">
                     {user?.name?.charAt(0)?.toUpperCase()}
                   </div>
                 )
               ))}
               {reactUsers.length > 3 && (
-                <div className="w-4 h-4 rounded-full border border-background bg-muted flex items-center justify-center text-[7px] font-medium">
+                <div className="w-3.5 h-3.5 rounded-full border border-background bg-muted flex items-center justify-center text-[6px]">
                   +{reactUsers.length - 3}
                 </div>
               )}
@@ -361,20 +353,22 @@ function HoverActionBar({ messageId, content, canEdit, canDelete, canPin, onReac
 
   return (
     <>
-      {/* Floating action bar — top right, inside bounds */}
-      <div className="absolute top-0 right-0 flex items-center gap-0.5 opacity-0 group-hover/msg:opacity-100 transition-opacity z-10 bg-popover/95 backdrop-blur-sm rounded-md px-0.5 py-0.5 border shadow-sm">
+      {/* Floating action bar — top right */}
+      <div className={`absolute top-0 right-0 flex items-center bg-popover/95 backdrop-blur-sm rounded-lg border border-border/40 shadow-md z-10 transition-opacity ${
+        showMenu || showEmoji ? 'opacity-100' : 'opacity-0 group-hover/msg:opacity-100'
+      }`}>
         {/* Emoji */}
         <div className="relative">
           <button onClick={(e) => { e.stopPropagation(); setShowEmoji(!showEmoji); setShowMenu(false); }}
-            className="p-1 rounded hover:bg-muted transition-colors" title="리액션">
+            className="p-1.5 rounded-l-lg hover:bg-muted/80 transition-colors" title="리액션">
             <SmilePlus className="w-3.5 h-3.5 text-muted-foreground" />
           </button>
           {showEmoji && (
-            <div className="absolute top-7 right-0 flex items-center gap-0.5 bg-popover border border-border/40 rounded-lg shadow-lg px-1.5 py-1 z-20"
+            <div className="absolute top-8 right-0 flex items-center gap-1 bg-popover border border-border/40 rounded-lg shadow-lg px-2 py-1.5 z-30"
               onClick={e => e.stopPropagation()}>
               {QUICK_EMOJIS.map(emoji => (
                 <button key={emoji} onClick={() => { onReactionToggle?.(messageId, emoji); setShowEmoji(false); }}
-                  className="text-base hover:scale-125 transition-transform px-0.5">{emoji}</button>
+                  className="w-7 h-7 flex items-center justify-center rounded-md hover:bg-muted transition-colors text-base">{emoji}</button>
               ))}
             </div>
           )}
@@ -382,7 +376,7 @@ function HoverActionBar({ messageId, content, canEdit, canDelete, canPin, onReac
 
         {/* Reply */}
         {onReply && (
-          <button onClick={() => onReply(messageId)} className="p-1 rounded hover:bg-muted transition-colors" title="답글">
+          <button onClick={() => onReply(messageId)} className="p-1.5 hover:bg-muted/80 transition-colors" title="답글">
             <MessageCircle className="w-3.5 h-3.5 text-muted-foreground" />
           </button>
         )}
@@ -391,36 +385,36 @@ function HoverActionBar({ messageId, content, canEdit, canDelete, canPin, onReac
         {(canEdit || canDelete || canPin) && (
           <div className="relative">
             <button onClick={(e) => { e.stopPropagation(); setShowMenu(!showMenu); setShowEmoji(false); }}
-              className="p-1 rounded hover:bg-muted transition-colors" title="더보기">
+              className="p-1.5 rounded-r-lg hover:bg-muted/80 transition-colors" title="더보기">
               <MoreHorizontal className="w-3.5 h-3.5 text-muted-foreground" />
             </button>
             {showMenu && (
-              <div className="absolute top-7 right-0 bg-popover border border-border/40 rounded-lg shadow-lg py-1 z-20 min-w-[110px]"
+              <div className="absolute top-8 right-0 bg-popover border border-border/40 rounded-lg shadow-lg py-1 z-30 min-w-[140px] whitespace-nowrap"
                 onClick={e => e.stopPropagation()}>
                 {canEdit && onEdit && (
                   <button onClick={startEdit}
-                    className="w-full flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-muted transition-colors">
-                    <Pencil className="w-3 h-3" /> 수정
+                    className="w-full flex items-center gap-2.5 px-3 py-2 text-xs hover:bg-muted/80 transition-colors">
+                    <Pencil className="w-3.5 h-3.5 shrink-0" /> 수정
                   </button>
                 )}
                 {canPin && onPin && (
                   <button onClick={() => { onPin(messageId); setShowMenu(false); }}
-                    className="w-full flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-muted transition-colors">
-                    <Pin className="w-3 h-3" /> 고정
+                    className="w-full flex items-center gap-2.5 px-3 py-2 text-xs hover:bg-muted/80 transition-colors">
+                    <Pin className="w-3.5 h-3.5 shrink-0" /> 고정
                   </button>
                 )}
                 {canPin && onUnpin && (
                   <button onClick={() => { onUnpin(messageId); setShowMenu(false); }}
-                    className="w-full flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-muted transition-colors">
-                    <PinOff className="w-3 h-3" /> 고정 해제
+                    className="w-full flex items-center gap-2.5 px-3 py-2 text-xs hover:bg-muted/80 transition-colors">
+                    <PinOff className="w-3.5 h-3.5 shrink-0" /> 고정 해제
                   </button>
                 )}
                 {canDelete && onDelete && (
                   <>
-                    <div className="border-t border-border/20 my-0.5" />
+                    <div className="border-t border-border/20 my-1" />
                     <button onClick={() => { onDelete(messageId); setShowMenu(false); }}
-                      className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-red-400 hover:bg-red-500/10 transition-colors">
-                      <Trash2 className="w-3 h-3" /> 삭제
+                      className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-red-400 hover:bg-red-500/10 transition-colors">
+                      <Trash2 className="w-3.5 h-3.5 shrink-0" /> 삭제
                     </button>
                   </>
                 )}
