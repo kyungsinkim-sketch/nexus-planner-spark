@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -345,8 +346,12 @@ function HoverActionBar({ messageId, content, canEdit, canDelete, canPin, isCurr
   onReply?: (messageId: string) => void;
 }) {
   const [showMenu, setShowMenu] = useState(false);
+  const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
   const [showEmoji, setShowEmoji] = useState(false);
+  const [emojiPos, setEmojiPos] = useState<{ top: number; left: number } | null>(null);
   const [isEditing, setIsEditing] = useState(false);
+  const moreRef = useRef<HTMLButtonElement>(null);
+  const emojiRef = useRef<HTMLButtonElement>(null);
   const [editText, setEditText] = useState('');
 
   const startEdit = () => {
@@ -384,26 +389,17 @@ function HoverActionBar({ messageId, content, canEdit, canDelete, canPin, isCurr
         showMenu || showEmoji ? 'opacity-100' : 'opacity-0 group-hover/msg:opacity-100'}`}
       >
         {/* Emoji */}
-        <div className="relative">
-          <button onClick={(e) => { e.stopPropagation(); setShowEmoji(!showEmoji); setShowMenu(false); }}
-            className="p-1.5 rounded-l-lg hover:bg-muted/60 transition-colors" title="리액션">
-            <SmilePlus className="w-3.5 h-3.5 text-muted-foreground" />
-          </button>
-          {showEmoji && (
-            <>
-              <div className="fixed inset-0 z-[99]" onClick={() => setShowEmoji(false)} />
-              <div className={`absolute top-full mt-1 flex items-center gap-1 rounded-xl px-2.5 py-2 z-[100] ${
-                'right-0'
-              }`} className="bg-white dark:bg-zinc-800 border border-black/10 dark:border-white/10 shadow-[0_4px_24px_rgba(0,0,0,0.15)]"
-                onClick={e => e.stopPropagation()}>
-                {QUICK_EMOJIS.map(emoji => (
-                  <button key={emoji} onClick={() => { onReactionToggle?.(messageId, emoji); setShowEmoji(false); }}
-                    className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors text-lg">{emoji}</button>
-                ))}
-              </div>
-            </>
-          )}
-        </div>
+        <button ref={emojiRef} onClick={(e) => {
+            e.stopPropagation();
+            if (!showEmoji && emojiRef.current) {
+              const r = emojiRef.current.getBoundingClientRect();
+              setEmojiPos({ top: r.bottom + 4, left: Math.max(8, r.right - 280) });
+            }
+            setShowEmoji(!showEmoji); setShowMenu(false);
+          }}
+          className="p-1.5 rounded-l-lg hover:bg-muted/60 transition-colors" title="리액션">
+          <SmilePlus className="w-3.5 h-3.5 text-muted-foreground" />
+        </button>
 
         {/* Reply */}
         {onReply && (
@@ -413,54 +409,76 @@ function HoverActionBar({ messageId, content, canEdit, canDelete, canPin, isCurr
           </button>
         )}
 
-        {/* More menu */}
+        {/* More menu trigger */}
         {(canEdit || canDelete || canPin) && (
-          <div className="relative">
-            <button onClick={(e) => { e.stopPropagation(); setShowMenu(!showMenu); setShowEmoji(false); }}
-              className="p-1.5 rounded-r-lg hover:bg-muted/60 transition-colors" title="더보기">
-              <MoreHorizontal className="w-3.5 h-3.5 text-muted-foreground" />
-            </button>
-            {showMenu && (
+          <button ref={moreRef} onClick={(e) => {
+              e.stopPropagation();
+              if (!showMenu && moreRef.current) {
+                const r = moreRef.current.getBoundingClientRect();
+                setMenuPos({ top: r.bottom + 4, left: Math.max(8, r.right - 160) });
+              }
+              setShowMenu(!showMenu); setShowEmoji(false);
+            }}
+            className="p-1.5 rounded-r-lg hover:bg-muted/60 transition-colors" title="더보기">
+            <MoreHorizontal className="w-3.5 h-3.5 text-muted-foreground" />
+          </button>
+        )}
+      </div>
+
+      {/* Emoji picker — Portal to body */}
+      {showEmoji && emojiPos && createPortal(
+        <>
+          <div className="fixed inset-0 z-[9998]" onClick={() => setShowEmoji(false)} />
+          <div className="fixed z-[9999] flex items-center gap-1 rounded-xl px-2.5 py-2 bg-white dark:bg-zinc-800 border border-black/10 dark:border-white/10 shadow-[0_4px_24px_rgba(0,0,0,0.15)]"
+            style={{ top: emojiPos.top, left: emojiPos.left }}
+            onClick={e => e.stopPropagation()}>
+            {QUICK_EMOJIS.map(emoji => (
+              <button key={emoji} onClick={() => { onReactionToggle?.(messageId, emoji); setShowEmoji(false); }}
+                className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors text-lg">{emoji}</button>
+            ))}
+          </div>
+        </>,
+        document.body
+      )}
+
+      {/* Context menu — Portal to body */}
+      {showMenu && menuPos && createPortal(
+        <>
+          <div className="fixed inset-0 z-[9998]" onClick={() => setShowMenu(false)} />
+          <div className="fixed z-[9999] rounded-xl py-1.5 min-w-[150px] whitespace-nowrap bg-white dark:bg-zinc-800 border border-black/10 dark:border-white/10 shadow-[0_4px_24px_rgba(0,0,0,0.15)]"
+            style={{ top: menuPos.top, left: menuPos.left }}
+            onClick={e => e.stopPropagation()}>
+            {canEdit && onEdit && (
+              <button onClick={startEdit}
+                className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors">
+                <Pencil className="w-4 h-4 shrink-0 text-gray-500 dark:text-gray-400" /> 수정
+              </button>
+            )}
+            {canPin && onPin && (
+              <button onClick={() => { onPin(messageId); setShowMenu(false); }}
+                className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors">
+                <Pin className="w-4 h-4 shrink-0 text-gray-500 dark:text-gray-400" /> 고정
+              </button>
+            )}
+            {canPin && onUnpin && (
+              <button onClick={() => { onUnpin(messageId); setShowMenu(false); }}
+                className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors">
+                <PinOff className="w-4 h-4 shrink-0 text-gray-500 dark:text-gray-400" /> 고정 해제
+              </button>
+            )}
+            {canDelete && onDelete && (
               <>
-                {/* Backdrop to catch clicks */}
-                <div className="fixed inset-0 z-[99]" onClick={() => setShowMenu(false)} />
-                <div className={`absolute top-full mt-1 rounded-xl py-1.5 z-[100] min-w-[140px] whitespace-nowrap ${
-                  'right-0'
-                }`} className="bg-white dark:bg-zinc-800 border border-black/10 dark:border-white/10 shadow-[0_4px_24px_rgba(0,0,0,0.15)]"
-                  onClick={e => e.stopPropagation()}>
-                  {canEdit && onEdit && (
-                    <button onClick={startEdit}
-                      className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors">
-                      <Pencil className="w-4 h-4 shrink-0 text-gray-500 dark:text-gray-400" /> 수정
-                    </button>
-                  )}
-                  {canPin && onPin && (
-                    <button onClick={() => { onPin(messageId); setShowMenu(false); }}
-                      className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors">
-                      <Pin className="w-4 h-4 shrink-0 text-gray-500 dark:text-gray-400" /> 고정
-                    </button>
-                  )}
-                  {canPin && onUnpin && (
-                    <button onClick={() => { onUnpin(messageId); setShowMenu(false); }}
-                      className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors">
-                      <PinOff className="w-4 h-4 shrink-0 text-gray-500 dark:text-gray-400" /> 고정 해제
-                    </button>
-                  )}
-                  {canDelete && onDelete && (
-                    <>
-                      <div className="border-t border-gray-100 dark:border-zinc-700 my-1" />
-                      <button onClick={() => { onDelete(messageId); setShowMenu(false); }}
-                        className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors">
-                        <Trash2 className="w-4 h-4 shrink-0" /> 삭제
-                      </button>
-                    </>
-                  )}
-                </div>
+                <div className="border-t border-gray-100 dark:border-zinc-700 my-1" />
+                <button onClick={() => { onDelete(messageId); setShowMenu(false); }}
+                  className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors">
+                  <Trash2 className="w-4 h-4 shrink-0" /> 삭제
+                </button>
               </>
             )}
           </div>
-        )}
-      </div>
+        </>,
+        document.body
+      )}
     </>
   );
 }
