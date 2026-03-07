@@ -3,7 +3,7 @@
  * Provides offline support and caching for PWA functionality
  */
 
-const CACHE_NAME = 're-be-v2';
+const CACHE_NAME = 're-be-v3';
 const STATIC_ASSETS = [
     '/',
     '/index.html',
@@ -57,14 +57,22 @@ self.addEventListener('fetch', (event) => {
         return;
     }
 
+    // Hashed assets (/assets/*) are immutable per build — use network-only
+    // to avoid serving stale chunks after redeployment
+    if (url.pathname.startsWith('/assets/')) {
+        return; // let browser handle normally (no cache interception)
+    }
+
     event.respondWith(
         fetch(event.request)
             .then((response) => {
-                // Clone the response before caching
-                const responseClone = response.clone();
-                caches.open(CACHE_NAME).then((cache) => {
-                    cache.put(event.request, responseClone);
-                });
+                // Only cache navigation and static files, not hashed chunks
+                if (event.request.mode === 'navigate' || STATIC_ASSETS.includes(url.pathname)) {
+                    const responseClone = response.clone();
+                    caches.open(CACHE_NAME).then((cache) => {
+                        cache.put(event.request, responseClone);
+                    });
+                }
                 return response;
             })
             .catch(() => {
