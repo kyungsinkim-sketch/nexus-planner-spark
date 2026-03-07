@@ -28,6 +28,7 @@ const transformMessage = (row: MessageRow): ChatMessage => {
         decisionData: row.decision_data as unknown as DecisionShare | undefined,
         brainActionData: row.brain_action_data as unknown as BrainAction | undefined,
         personaResponseData: row.persona_response_data as unknown as PersonaResponseData | undefined,
+        replyToMessageId: (row as Record<string, unknown>).reply_to_message_id as string | undefined,
     };
 };
 
@@ -218,27 +219,31 @@ export const sendRoomMessage = async (
         locationData?: LocationShare;
         scheduleData?: ScheduleShare;
         decisionData?: DecisionShare;
+        replyToMessageId?: string;
     }
 ): Promise<ChatMessage> => {
     if (!isSupabaseConfigured()) {
         throw new Error('Supabase not configured');
     }
 
-    const insertData: MessageInsert = {
+    const insertData: Record<string, unknown> = {
         room_id: roomId,
         project_id: projectId,
         user_id: userId,
         content,
         attachment_id: options?.attachmentId || null,
         message_type: options?.messageType || 'text',
-        location_data: options?.locationData ? (options.locationData as unknown as Database['public']['Tables']['chat_messages']['Insert']['location_data']) : null,
-        schedule_data: options?.scheduleData ? (options.scheduleData as unknown as Database['public']['Tables']['chat_messages']['Insert']['schedule_data']) : null,
-        decision_data: options?.decisionData ? (options.decisionData as unknown as Database['public']['Tables']['chat_messages']['Insert']['decision_data']) : null,
+        location_data: options?.locationData || null,
+        schedule_data: options?.scheduleData || null,
+        decision_data: options?.decisionData || null,
     };
+    if (options?.replyToMessageId) {
+        insertData.reply_to_message_id = options.replyToMessageId;
+    }
 
     const { data, error } = await supabase
         .from('chat_messages')
-        .insert(insertData as unknown as Record<string, unknown>)
+        .insert(insertData)
         .select()
         .single();
 

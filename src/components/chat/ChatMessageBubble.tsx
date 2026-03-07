@@ -200,18 +200,26 @@ export function ChatMessageBubble({ message, isCurrentUser, onVoteDecision, onAc
     );
   }
 
-  // Default text message
+  // Default text message (with optional reply quote)
+  const replyMsg = message.replyToMessage || (message.replyToMessageId ? allMessages.find(m => m.id === message.replyToMessageId) : null);
+
   return (
     <MessageWrapper isCurrentUser={isCurrentUser} onDelete={onDelete} onPin={onPin} onUnpin={onUnpin} onEdit={onEdit} onReply={onReply} messageId={message.id} content={message.content} reactions={message.reactions} onReactionToggle={onReactionToggle}>
-      <div
-        className={`w-fit rounded-2xl px-4 py-2 text-sm max-w-full whitespace-pre-wrap ${
-          isCurrentUser
-            ? 'bg-primary text-primary-foreground ml-auto'
-            : 'bg-muted text-foreground'
-        }`}
-        style={{ overflowWrap: 'anywhere', wordBreak: 'break-word' }}
-      >
-        {renderContentWithMentions(message.content, isCurrentUser)}
+      <div className={`w-fit max-w-full ${isCurrentUser ? 'ml-auto' : ''}`}>
+        {/* Reply quote block */}
+        {replyMsg && (
+          <ReplyQuote message={replyMsg} isCurrentUser={isCurrentUser} />
+        )}
+        <div
+          className={`w-fit rounded-2xl px-4 py-2 text-sm max-w-full whitespace-pre-wrap ${
+            isCurrentUser
+              ? 'bg-primary text-primary-foreground'
+              : 'bg-muted text-foreground'
+          } ${replyMsg ? 'rounded-tl-md' : ''}`}
+          style={{ overflowWrap: 'anywhere', wordBreak: 'break-word' }}
+        >
+          {renderContentWithMentions(message.content, isCurrentUser)}
+        </div>
       </div>
     </MessageWrapper>
   );
@@ -263,6 +271,23 @@ function ReactionBar({ reactions, messageId, onToggle }: {
           </button>
         );
       })}
+    </div>
+  );
+}
+
+// Reply quote block — shows the quoted message above a reply
+function ReplyQuote({ message: replyMsg, isCurrentUser }: { message: ChatMessage; isCurrentUser: boolean }) {
+  const { getUserById } = useAppStore();
+  const sender = getUserById(replyMsg.userId);
+  return (
+    <div className={`flex items-start gap-1.5 mb-0.5 px-3 py-1.5 rounded-t-xl text-[11px] ${
+      isCurrentUser ? 'bg-primary/20 text-primary-foreground/70' : 'bg-muted/80 text-muted-foreground'
+    }`}>
+      <div className="w-0.5 min-h-[16px] bg-primary/50 rounded-full shrink-0 mt-0.5" />
+      <div className="min-w-0">
+        <span className="font-semibold text-[10px]">{sender?.name || '알 수 없음'}</span>
+        <p className="truncate max-w-[200px]">{replyMsg.content}</p>
+      </div>
     </div>
   );
 }

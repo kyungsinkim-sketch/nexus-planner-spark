@@ -469,6 +469,8 @@ export interface ChatMessage {
   brainActionData?: BrainAction; // Brain AI extracted action
   personaResponseData?: PersonaResponseData; // AI persona response (@pablo)
   reactions?: ChatReaction[]; // Emoji reactions
+  replyToMessageId?: string; // Quoted/replied message ID
+  replyToMessage?: ChatMessage; // Resolved reply-to message (populated client-side)
 }
 
 export interface FileGroup {

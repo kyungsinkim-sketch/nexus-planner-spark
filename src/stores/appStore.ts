@@ -234,6 +234,7 @@ interface AppState {
     locationData?: LocationShare;
     scheduleData?: ScheduleShare;
     decisionData?: DecisionShare;
+    replyToMessageId?: string;
   }) => Promise<void>;
 
   // File Actions

@@ -102,6 +102,7 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
   const [showCallDialog, setShowCallDialog] = useState(false);
   const [callMediaType, setCallMediaType] = useState<'voice' | 'video'>('voice');
   const [pinnedAnnouncement, setPinnedAnnouncement] = useState<ChatMessage | null>(null);
+  const [replyingTo, setReplyingTo] = useState<ChatMessage | null>(null);
   const [newRoomName, setNewRoomName] = useState('');
   const [newRoomDescription, setNewRoomDescription] = useState('');
   const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([]);
@@ -451,10 +452,11 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
     const { isBrainMention: forceBrain, cleanContent } = brainService.detectBrainMention(trimmed);
 
     // Send the user's message first
+    const replyId = replyingTo?.id;
     try {
       if (selectedChat.type === 'project') {
         if (selectedChat.roomId) {
-          await sendRoomMessage(selectedChat.roomId, selectedChat.id, trimmed);
+          await sendRoomMessage(selectedChat.roomId, selectedChat.id, trimmed, replyId ? { replyToMessageId: replyId } : undefined);
         } else {
           await sendProjectMessage(selectedChat.id, trimmed);
         }
@@ -468,6 +470,7 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
     }
 
     setNewMessage('');
+    setReplyingTo(null);
 
     // NEW: If DM target is Brain AI, auto-trigger brain processing (no @Brain mention needed)
     if (selectedChat.type === 'direct' && isBrainAIUser(selectedChat.id)) {
@@ -1857,6 +1860,10 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
                                     if (msg) setPinnedAnnouncement(msg);
                                   }}
                                   onUnpin={() => setPinnedAnnouncement(null)}
+                                  onReply={(msgId) => {
+                                    const msg = chatMessages.find(m => m.id === msgId);
+                                    if (msg) setReplyingTo(msg);
+                                  }}
                                   onConfirmBrainAction={handleConfirmBrainAction}
                                   onRejectBrainAction={handleRejectBrainAction}
                                   onReactionToggle={handleReactionToggle}
@@ -1898,6 +1905,22 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
           )}
 
           {/* /analyze command removed */}
+
+          {/* Reply-to indicator */}
+          {replyingTo && (
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-muted/50 border-t border-border/30">
+              <div className="w-0.5 h-8 bg-primary/60 rounded-full shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="text-[10px] text-primary font-medium">
+                  {getUserById(replyingTo.userId)?.name || '알 수 없음'}에게 답장
+                </p>
+                <p className="text-xs text-muted-foreground truncate">{replyingTo.content}</p>
+              </div>
+              <button onClick={() => setReplyingTo(null)} className="p-1 hover:bg-muted rounded shrink-0">
+                <X className="w-3.5 h-3.5 text-muted-foreground" />
+              </button>
+            </div>
+          )}
 
           {/* Message Input — Enter=send, @AiAssistant=Brain AI, @pablo/@cd/@pd=Persona */}
           <div className={`p-2.5 bg-background shrink-0 min-w-0 ${isMobile ? 'sticky bottom-0 z-20 border-t' : ''}`}>
