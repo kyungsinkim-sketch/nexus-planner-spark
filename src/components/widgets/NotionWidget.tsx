@@ -540,7 +540,9 @@ export default function NotionWidget({ context }: { context: WidgetDataContext }
 
   const loadSyncedPages = useCallback(async () => {
     if (!userId) return;
+    console.log('[Notion] loadSyncedPages for', userId, 'project:', projectId);
     const pages = await getSyncedPages(userId, projectId);
+    console.log('[Notion] Got pages:', pages.length, pages.slice(0, 2).map(p => p.title));
     setSyncedPages(pages);
   }, [userId, projectId]);
 
@@ -577,10 +579,14 @@ export default function NotionWidget({ context }: { context: WidgetDataContext }
   const handleSync = useCallback(async () => {
     if (!userId || syncing) return;
     setSyncing(true);
-    await syncNotionPages(userId);
-    await loadSyncedPages();
+    console.log('[Notion] Starting sync for', userId);
+    const syncResult = await syncNotionPages(userId);
+    console.log('[Notion] Sync result:', syncResult);
+    const pages = await getSyncedPages(userId, projectId);
+    console.log('[Notion] Loaded pages:', pages.length);
+    setSyncedPages(pages);
     setSyncing(false);
-  }, [userId, syncing, loadSyncedPages]);
+  }, [userId, syncing, projectId]);
 
   // ─── View page ────────────────────────────────────
   const openPage = useCallback(async (
