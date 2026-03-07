@@ -361,8 +361,8 @@ function HoverActionBar({ messageId, content, canEdit, canDelete, canPin, onReac
 
   return (
     <>
-      {/* Floating action bar — top right */}
-      <div className="absolute -top-3 right-0 flex items-center gap-0.5 opacity-0 group-hover/msg:opacity-100 transition-opacity z-10 bg-popover/95 backdrop-blur-sm rounded-md px-0.5 py-0.5 border shadow-sm">
+      {/* Floating action bar — top right, inside bounds */}
+      <div className="absolute top-0 right-0 flex items-center gap-0.5 opacity-0 group-hover/msg:opacity-100 transition-opacity z-10 bg-popover/95 backdrop-blur-sm rounded-md px-0.5 py-0.5 border shadow-sm">
         {/* Emoji */}
         <div className="relative">
           <button onClick={(e) => { e.stopPropagation(); setShowEmoji(!showEmoji); setShowMenu(false); }}
@@ -370,7 +370,7 @@ function HoverActionBar({ messageId, content, canEdit, canDelete, canPin, onReac
             <SmilePlus className="w-3.5 h-3.5 text-muted-foreground" />
           </button>
           {showEmoji && (
-            <div className="absolute -top-9 right-0 flex items-center gap-0.5 bg-popover border border-border/40 rounded-lg shadow-lg px-1.5 py-1 z-20"
+            <div className="absolute top-7 right-0 flex items-center gap-0.5 bg-popover border border-border/40 rounded-lg shadow-lg px-1.5 py-1 z-20"
               onClick={e => e.stopPropagation()}>
               {QUICK_EMOJIS.map(emoji => (
                 <button key={emoji} onClick={() => { onReactionToggle?.(messageId, emoji); setShowEmoji(false); }}

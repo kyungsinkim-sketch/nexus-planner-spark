@@ -133,13 +133,18 @@ function SlackWidget({ context }: { context: WidgetDataContext }) {
     } catch (e) { console.error('[SlackWidget] channels:', e); }
   }, [userId]);
 
+  const userMapCacheRef = useRef<Record<string, SlackUserInfo>>({});
+
   const loadMessages = useCallback(async (channel: SlackChannel) => {
     if (!userId) return;
     setMessagesLoading(true);
     try {
       const data = await getSlackMessages(userId, channel.id);
       setMessages([...(data.messages || [])].reverse());
-      setUserMap(prev => ({ ...prev, ...(data.userMap || {}) }));
+      // Merge into cache
+      const newMap = { ...userMapCacheRef.current, ...(data.userMap || {}) };
+      userMapCacheRef.current = newMap;
+      setUserMap(newMap);
     } catch (e) { console.error('[SlackWidget] messages:', e); }
     finally { setMessagesLoading(false); }
   }, [userId]);
@@ -175,11 +180,11 @@ function SlackWidget({ context }: { context: WidgetDataContext }) {
     try {
       const threadTs = threadParentTs || undefined;
       await sendSlackMessage(userId, selectedChannel.id, text, threadTs);
-      // Reload to get real ts + server data
+      // Background reload — don't await to keep UI snappy
       if (threadParentTs) {
-        await loadThread(selectedChannel.id, threadParentTs);
+        loadThread(selectedChannel.id, threadParentTs);
       } else {
-        await loadMessages(selectedChannel);
+        loadMessages(selectedChannel);
       }
     } catch (e) {
       console.error('[SlackWidget] send:', e);
@@ -517,8 +522,8 @@ function SlackWidget({ context }: { context: WidgetDataContext }) {
           )}
         </div>
 
-        {/* Hover actions */}
-        <div className={`absolute -top-2 right-0 flex items-center gap-0.5 bg-background/95 border border-border/30 rounded-md shadow-sm px-0.5 py-0.5 transition-opacity ${
+        {/* Hover actions — inline right, not absolute to avoid overflow clipping */}
+        <div className={`absolute top-0 right-0 flex items-center gap-0.5 bg-background/95 border border-border/30 rounded-md shadow-sm px-0.5 py-0.5 transition-opacity ${
           isMenuOpen || isEmojiOpen ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
         }`}>
           <button onClick={e => { e.stopPropagation(); setEmojiPickerTs(isEmojiOpen ? null : msg.ts); setActiveMenu(null); }}
@@ -538,7 +543,7 @@ function SlackWidget({ context }: { context: WidgetDataContext }) {
 
         {/* Emoji quick picker */}
         {isEmojiOpen && (
-          <div className="absolute -top-8 right-0 flex items-center gap-0.5 bg-background border border-border/40 rounded-lg shadow-lg px-1 py-0.5 z-20" onClick={e => e.stopPropagation()}>
+          <div className="absolute top-6 right-0 flex items-center gap-0.5 bg-background border border-border/40 rounded-lg shadow-lg px-1 py-0.5 z-20" onClick={e => e.stopPropagation()}>
             {QUICK_EMOJIS.map(emoji => (
               <button key={emoji} onClick={() => handleReaction(msg, emoji)} className="text-base hover:scale-125 transition-transform px-0.5">{emoji}</button>
             ))}
@@ -547,7 +552,7 @@ function SlackWidget({ context }: { context: WidgetDataContext }) {
 
         {/* Context menu */}
         {isMenuOpen && (
-          <div className="absolute top-5 right-0 bg-background border border-border/40 rounded-lg shadow-lg py-1 z-20 min-w-[120px]" onClick={e => e.stopPropagation()}>
+          <div className="absolute top-6 right-0 bg-background border border-border/40 rounded-lg shadow-lg py-1 z-20 min-w-[120px]" onClick={e => e.stopPropagation()}>
             <button onClick={() => { setEditingMsg(msg); setEditText(msg.text); setActiveMenu(null); }}
               className="w-full flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-white/5">
               <Pencil className="w-3 h-3" /> 수정
