@@ -127,6 +127,14 @@ export function ActiveCallOverlay() {
     return subscribeCallState(setCallState);
   }, []);
 
+  // Auto-close error state after 3 seconds (rejection, timeout, connection failure)
+  useEffect(() => {
+    if (callState?.status === 'error') {
+      const timer = setTimeout(() => endCall(), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [callState?.status]);
+
   // Show suggestions panel after call ends
   if (showSuggestions && lastRoomId.current) {
     return (
@@ -324,21 +332,19 @@ export function ActiveCallOverlay() {
       {/* Error */}
       {status === 'error' && (
         <div className="flex flex-col items-center gap-4 mb-8">
-          <div className="w-24 h-24 rounded-full bg-red-500/20 flex items-center justify-center">
-            <PhoneOff className="w-12 h-12 text-red-400" />
+          <div className={`w-24 h-24 rounded-full flex items-center justify-center ${
+            callState.error?.includes('거절') ? 'bg-orange-500/20' : 'bg-red-500/20'
+          }`}>
+            <PhoneOff className={`w-12 h-12 ${
+              callState.error?.includes('거절') ? 'text-orange-400' : 'text-red-400'
+            }`} />
           </div>
-          <p className="text-red-400 text-sm text-center max-w-xs">
+          <p className={`text-sm text-center max-w-xs ${
+            callState.error?.includes('거절') ? 'text-orange-400' : 'text-red-400'
+          }`}>
             {callState.error || '통화 연결 실패'}
           </p>
-          <button
-            onClick={() => {
-              // Reset to idle
-              endCall();
-            }}
-            className="px-6 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-sm transition-colors"
-          >
-            닫기
-          </button>
+          <p className="text-xs text-white/40">잠시 후 자동으로 닫힙니다</p>
         </div>
       )}
 

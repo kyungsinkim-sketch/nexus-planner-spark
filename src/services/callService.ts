@@ -212,6 +212,45 @@ export async function createCall(targetUserId: string | string[], projectId?: st
     // Start ringback tone while waiting
     startRingbackTone();
 
+    // Poll for rejection while ringing (every 3s, max 30s)
+    const roomId = room.id || room;
+    let rejectionPollCount = 0;
+    const rejectionPoll = setInterval(async () => {
+      rejectionPollCount++;
+      if (rejectionPollCount > 10) {
+        clearInterval(rejectionPoll);
+        // Timeout — no answer
+        const currentState = getCallState();
+        if (currentState.status === 'ringing') {
+          stopRingbackTone();
+          setState({ status: 'error', error: '상대방이 응답하지 않습니다' });
+          setTimeout(() => endCall(), 3000);
+        }
+        return;
+      }
+      try {
+        const { data: roomData } = await supabase
+          .from('call_rooms')
+          .select('status')
+          .eq('id', roomId)
+          .single();
+        if (roomData?.status === 'rejected') {
+          clearInterval(rejectionPoll);
+          stopRingbackTone();
+          setState({ status: 'error', error: '상대방이 통화를 거절했습니다' });
+          setTimeout(() => endCall(), 3000);
+        }
+      } catch { /* ignore poll errors */ }
+    }, 3000);
+
+    // Clear poll when status changes from ringing
+    const unsubStatus = subscribeCallState((state) => {
+      if (state.status !== 'ringing') {
+        clearInterval(rejectionPoll);
+        unsubStatus();
+      }
+    });
+
     // Auto-connect caller
     await connectToRoom(wsUrl, token);
 

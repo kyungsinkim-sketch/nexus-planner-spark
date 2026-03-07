@@ -162,11 +162,22 @@ export function IncomingCallDialog() {
     }
   }, [incoming]);
 
-  const handleDecline = useCallback(() => {
+  const handleDecline = useCallback(async () => {
     console.log('[IncomingCall] Declined call:', incoming?.roomId);
     stopRingtone();
     if (incoming) {
       dismissedRoomIds.current.add(incoming.roomId);
+      // Update room status to 'rejected' so caller knows
+      try {
+        await supabase
+          .from('call_rooms')
+          .update({ status: 'rejected' })
+          .eq('id', incoming.roomId)
+          .eq('status', 'waiting');
+        console.log('[IncomingCall] Room status updated to rejected');
+      } catch (err) {
+        console.warn('[IncomingCall] Failed to update room status:', err);
+      }
     }
     setIncoming(null);
   }, [incoming]);
