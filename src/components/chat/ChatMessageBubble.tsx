@@ -379,9 +379,9 @@ function HoverActionBar({ messageId, content, canEdit, canDelete, canPin, isCurr
 
   return (
     <>
-      {/* Floating action bar — above the message bubble */}
-      <div className={`absolute -top-8 flex items-center rounded-lg border border-border/50 shadow-md z-20 transition-opacity ${
-        isCurrentUser ? 'right-0' : 'left-0'
+      {/* Floating action bar — bottom-right of bubble, dropdowns open downward */}
+      <div className={`absolute -bottom-4 flex items-center rounded-lg border border-border/50 shadow-md z-20 transition-opacity ${
+        isCurrentUser ? 'left-0' : 'right-0'
       } ${showMenu || showEmoji ? 'opacity-100' : 'opacity-0 group-hover/msg:opacity-100'}`}
         style={{ backgroundColor: 'hsl(var(--background))' }}
       >
@@ -393,7 +393,7 @@ function HoverActionBar({ messageId, content, canEdit, canDelete, canPin, isCurr
           </button>
           {showEmoji && (
             <div className={`absolute top-full mt-1 flex items-center gap-1 rounded-lg shadow-xl border border-border/50 px-2 py-1.5 z-50 ${
-              isCurrentUser ? 'right-0' : 'left-0'
+              isCurrentUser ? 'left-0' : 'right-0'
             }`} style={{ backgroundColor: 'hsl(var(--background))' }}
               onClick={e => e.stopPropagation()}>
               {QUICK_EMOJIS.map(emoji => (
@@ -421,7 +421,7 @@ function HoverActionBar({ messageId, content, canEdit, canDelete, canPin, isCurr
             </button>
             {showMenu && (
               <div className={`absolute top-full mt-1 rounded-lg shadow-xl border border-border/50 py-1 z-50 min-w-[140px] whitespace-nowrap ${
-                isCurrentUser ? 'right-0' : 'left-0'
+                isCurrentUser ? 'left-0' : 'right-0'
               }`} style={{ backgroundColor: 'hsl(var(--background))' }}
                 onClick={e => e.stopPropagation()}>
                 {canEdit && onEdit && (
