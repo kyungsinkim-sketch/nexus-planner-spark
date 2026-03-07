@@ -217,6 +217,7 @@ interface AppState {
 
   // Message Actions
   addMessage: (message: ChatMessage) => void;
+  editMessage: (messageId: string, content: string) => Promise<void>;
   deleteMessage: (messageId: string) => Promise<void>;
   clearChatMessages: (roomId?: string, directChatUserId?: string) => Promise<number>;
   sendProjectMessage: (projectId: string, content: string, attachmentId?: string) => Promise<void>;
@@ -1236,6 +1237,16 @@ export const useAppStore = create<AppState>()(
             }
           }
         }
+      },
+
+      editMessage: async (messageId, content) => {
+        if (isSupabaseConfigured()) {
+          const { editMessage: editSvc } = await import('@/services/chatService');
+          await editSvc(messageId, content);
+        }
+        set((state) => ({
+          messages: state.messages.map((m) => m.id === messageId ? { ...m, content } : m),
+        }));
       },
 
       deleteMessage: async (messageId) => {

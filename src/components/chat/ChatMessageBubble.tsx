@@ -20,7 +20,11 @@ import {
   X,
   Trash2,
   Pin,
+  PinOff,
   SmilePlus,
+  MoreHorizontal,
+  Pencil,
+  MessageCircle,
 } from 'lucide-react';
 import { useAppStore } from '@/stores/appStore';
 import { useTranslation } from '@/hooks/useTranslation';
@@ -84,13 +88,16 @@ interface ChatMessageBubbleProps {
   onVoteDecision?: (messageId: string, optionId: string, reason: string) => void;
   onAcceptSchedule?: (messageId: string) => void;
   onDelete?: (messageId: string) => void;
+  onEdit?: (messageId: string, content: string) => void;
   onPin?: (messageId: string) => void;
+  onUnpin?: (messageId: string) => void;
+  onReply?: (messageId: string) => void;
   onConfirmBrainAction?: (actionId: string) => void;
   onRejectBrainAction?: (actionId: string) => void;
   onReactionToggle?: (messageId: string, emoji: string) => void;
 }
 
-export function ChatMessageBubble({ message, isCurrentUser, onVoteDecision, onAcceptSchedule, onDelete, onPin, onConfirmBrainAction, onRejectBrainAction, onReactionToggle }: ChatMessageBubbleProps) {
+export function ChatMessageBubble({ message, isCurrentUser, onVoteDecision, onAcceptSchedule, onDelete, onEdit, onPin, onUnpin, onReply, onConfirmBrainAction, onRejectBrainAction, onReactionToggle }: ChatMessageBubbleProps) {
   const { messageType } = message;
   const { currentUser, messages: allMessages } = useAppStore();
 
@@ -119,6 +126,8 @@ export function ChatMessageBubble({ message, isCurrentUser, onVoteDecision, onAc
         canManage={isAiMessageCaller}
         onDelete={onDelete}
         onPin={onPin}
+        onUnpin={onUnpin}
+        onReply={onReply}
         messageId={message.id}
         reactions={message.reactions}
         onReactionToggle={onReactionToggle}
@@ -135,6 +144,8 @@ export function ChatMessageBubble({ message, isCurrentUser, onVoteDecision, onAc
         canManage={isAiMessageCaller}
         onDelete={onDelete}
         onPin={onPin}
+        onUnpin={onUnpin}
+        onReply={onReply}
         messageId={message.id}
         reactions={message.reactions}
         onReactionToggle={onReactionToggle}
@@ -150,7 +161,7 @@ export function ChatMessageBubble({ message, isCurrentUser, onVoteDecision, onAc
 
   if (messageType === 'location' && message.locationData) {
     return (
-      <MessageWrapper isCurrentUser={isCurrentUser} onDelete={onDelete} onPin={onPin} messageId={message.id} reactions={message.reactions} onReactionToggle={onReactionToggle}>
+      <MessageWrapper isCurrentUser={isCurrentUser} onDelete={onDelete} onPin={onPin} onUnpin={onUnpin} onEdit={onEdit} onReply={onReply} messageId={message.id} content={message.content} reactions={message.reactions} onReactionToggle={onReactionToggle}>
         <LocationBubble data={message.locationData} isCurrentUser={isCurrentUser} />
       </MessageWrapper>
     );
@@ -158,7 +169,7 @@ export function ChatMessageBubble({ message, isCurrentUser, onVoteDecision, onAc
 
   if (messageType === 'schedule' && message.scheduleData) {
     return (
-      <MessageWrapper isCurrentUser={isCurrentUser} onDelete={onDelete} onPin={onPin} messageId={message.id} reactions={message.reactions} onReactionToggle={onReactionToggle}>
+      <MessageWrapper isCurrentUser={isCurrentUser} onDelete={onDelete} onPin={onPin} onUnpin={onUnpin} onEdit={onEdit} onReply={onReply} messageId={message.id} content={message.content} reactions={message.reactions} onReactionToggle={onReactionToggle}>
         <ScheduleBubble
           data={message.scheduleData}
           isCurrentUser={isCurrentUser}
@@ -170,7 +181,7 @@ export function ChatMessageBubble({ message, isCurrentUser, onVoteDecision, onAc
 
   if (messageType === 'decision' && message.decisionData) {
     return (
-      <MessageWrapper isCurrentUser={isCurrentUser} onDelete={onDelete} onPin={onPin} messageId={message.id} reactions={message.reactions} onReactionToggle={onReactionToggle}>
+      <MessageWrapper isCurrentUser={isCurrentUser} onDelete={onDelete} onPin={onPin} onUnpin={onUnpin} onEdit={onEdit} onReply={onReply} messageId={message.id} content={message.content} reactions={message.reactions} onReactionToggle={onReactionToggle}>
         <DecisionBubble
           data={message.decisionData}
           messageId={message.id}
@@ -183,7 +194,7 @@ export function ChatMessageBubble({ message, isCurrentUser, onVoteDecision, onAc
 
   if (messageType === 'file') {
     return (
-      <MessageWrapper isCurrentUser={isCurrentUser} onDelete={onDelete} onPin={onPin} messageId={message.id} reactions={message.reactions} onReactionToggle={onReactionToggle}>
+      <MessageWrapper isCurrentUser={isCurrentUser} onDelete={onDelete} onPin={onPin} onUnpin={onUnpin} onEdit={onEdit} onReply={onReply} messageId={message.id} content={message.content} reactions={message.reactions} onReactionToggle={onReactionToggle}>
         <FileBubble message={message} isCurrentUser={isCurrentUser} />
       </MessageWrapper>
     );
@@ -191,7 +202,7 @@ export function ChatMessageBubble({ message, isCurrentUser, onVoteDecision, onAc
 
   // Default text message
   return (
-    <MessageWrapper isCurrentUser={isCurrentUser} onDelete={onDelete} onPin={onPin} messageId={message.id} reactions={message.reactions} onReactionToggle={onReactionToggle}>
+    <MessageWrapper isCurrentUser={isCurrentUser} onDelete={onDelete} onPin={onPin} onUnpin={onUnpin} onEdit={onEdit} onReply={onReply} messageId={message.id} content={message.content} reactions={message.reactions} onReactionToggle={onReactionToggle}>
       <div
         className={`w-fit rounded-2xl px-4 py-2 text-sm max-w-full whitespace-pre-wrap ${
           isCurrentUser
@@ -298,13 +309,141 @@ function EmojiPicker({ messageId, onToggle }: {
   );
 }
 
-// Wrapper that adds hover pin (left) and delete (right) buttons
-function MessageWrapper({ children, isCurrentUser, onDelete, onPin, messageId, reactions, onReactionToggle }: {
+/**
+ * Slack-style hover action bar — appears top-right on hover.
+ * Shows: emoji picker, reply, more menu (edit/pin/unpin/delete).
+ */
+function HoverActionBar({ messageId, content, canEdit, canDelete, canPin, onReactionToggle, onEdit, onDelete, onPin, onUnpin, onReply }: {
+  messageId: string;
+  content?: string;
+  canEdit: boolean;
+  canDelete: boolean;
+  canPin: boolean;
+  onReactionToggle?: (messageId: string, emoji: string) => void;
+  onEdit?: (messageId: string, content: string) => void;
+  onDelete?: (messageId: string) => void;
+  onPin?: (messageId: string) => void;
+  onUnpin?: (messageId: string) => void;
+  onReply?: (messageId: string) => void;
+}) {
+  const [showMenu, setShowMenu] = useState(false);
+  const [showEmoji, setShowEmoji] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editText, setEditText] = useState('');
+
+  const startEdit = () => {
+    setEditText(content || '');
+    setIsEditing(true);
+    setShowMenu(false);
+  };
+
+  const submitEdit = () => {
+    if (editText.trim() && onEdit) {
+      onEdit(messageId, editText.trim());
+    }
+    setIsEditing(false);
+  };
+
+  if (isEditing) {
+    return (
+      <div className="flex items-center gap-1 mt-1">
+        <input
+          type="text" value={editText} onChange={e => setEditText(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter') submitEdit(); if (e.key === 'Escape') setIsEditing(false); }}
+          className="flex-1 text-sm bg-muted/30 border border-border/50 rounded px-2 py-0.5 focus:outline-none"
+          autoFocus
+        />
+        <button onClick={submitEdit} className="p-0.5 hover:bg-green-500/20 rounded"><Check className="w-3.5 h-3.5 text-green-400" /></button>
+        <button onClick={() => setIsEditing(false)} className="p-0.5 hover:bg-red-500/20 rounded"><X className="w-3.5 h-3.5 text-red-400" /></button>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      {/* Floating action bar — top right */}
+      <div className="absolute -top-3 right-0 flex items-center gap-0.5 opacity-0 group-hover/msg:opacity-100 transition-opacity z-10 bg-popover/95 backdrop-blur-sm rounded-md px-0.5 py-0.5 border shadow-sm">
+        {/* Emoji */}
+        <div className="relative">
+          <button onClick={(e) => { e.stopPropagation(); setShowEmoji(!showEmoji); setShowMenu(false); }}
+            className="p-1 rounded hover:bg-muted transition-colors" title="리액션">
+            <SmilePlus className="w-3.5 h-3.5 text-muted-foreground" />
+          </button>
+          {showEmoji && (
+            <div className="absolute -top-9 right-0 flex items-center gap-0.5 bg-popover border border-border/40 rounded-lg shadow-lg px-1.5 py-1 z-20"
+              onClick={e => e.stopPropagation()}>
+              {QUICK_EMOJIS.map(emoji => (
+                <button key={emoji} onClick={() => { onReactionToggle?.(messageId, emoji); setShowEmoji(false); }}
+                  className="text-base hover:scale-125 transition-transform px-0.5">{emoji}</button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Reply */}
+        {onReply && (
+          <button onClick={() => onReply(messageId)} className="p-1 rounded hover:bg-muted transition-colors" title="답글">
+            <MessageCircle className="w-3.5 h-3.5 text-muted-foreground" />
+          </button>
+        )}
+
+        {/* More menu */}
+        {(canEdit || canDelete || canPin) && (
+          <div className="relative">
+            <button onClick={(e) => { e.stopPropagation(); setShowMenu(!showMenu); setShowEmoji(false); }}
+              className="p-1 rounded hover:bg-muted transition-colors" title="더보기">
+              <MoreHorizontal className="w-3.5 h-3.5 text-muted-foreground" />
+            </button>
+            {showMenu && (
+              <div className="absolute top-7 right-0 bg-popover border border-border/40 rounded-lg shadow-lg py-1 z-20 min-w-[110px]"
+                onClick={e => e.stopPropagation()}>
+                {canEdit && onEdit && (
+                  <button onClick={startEdit}
+                    className="w-full flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-muted transition-colors">
+                    <Pencil className="w-3 h-3" /> 수정
+                  </button>
+                )}
+                {canPin && onPin && (
+                  <button onClick={() => { onPin(messageId); setShowMenu(false); }}
+                    className="w-full flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-muted transition-colors">
+                    <Pin className="w-3 h-3" /> 고정
+                  </button>
+                )}
+                {canPin && onUnpin && (
+                  <button onClick={() => { onUnpin(messageId); setShowMenu(false); }}
+                    className="w-full flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-muted transition-colors">
+                    <PinOff className="w-3 h-3" /> 고정 해제
+                  </button>
+                )}
+                {canDelete && onDelete && (
+                  <>
+                    <div className="border-t border-border/20 my-0.5" />
+                    <button onClick={() => { onDelete(messageId); setShowMenu(false); }}
+                      className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-red-400 hover:bg-red-500/10 transition-colors">
+                      <Trash2 className="w-3 h-3" /> 삭제
+                    </button>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </>
+  );
+}
+
+// Wrapper that adds Slack-style hover actions
+function MessageWrapper({ children, isCurrentUser, onDelete, onEdit, onPin, onUnpin, onReply, messageId, content, reactions, onReactionToggle }: {
   children: React.ReactNode;
   isCurrentUser: boolean;
   onDelete?: (messageId: string) => void;
+  onEdit?: (messageId: string, content: string) => void;
   onPin?: (messageId: string) => void;
+  onUnpin?: (messageId: string) => void;
+  onReply?: (messageId: string) => void;
   messageId: string;
+  content?: string;
   reactions?: ChatReaction[];
   onReactionToggle?: (messageId: string, emoji: string) => void;
 }) {
@@ -312,38 +451,31 @@ function MessageWrapper({ children, isCurrentUser, onDelete, onPin, messageId, r
     <div className="group/msg relative w-fit max-w-full overflow-visible">
       {children}
       <ReactionBar reactions={reactions} messageId={messageId} onToggle={onReactionToggle} />
-      {/* Action buttons row */}
-      <div className="absolute -bottom-3 left-0 flex gap-0.5 opacity-0 group-hover/msg:opacity-100 transition-opacity z-10 bg-popover/90 backdrop-blur-sm rounded-full px-1 py-0.5 border shadow-sm">
-        <EmojiPicker messageId={messageId} onToggle={onReactionToggle} />
-        {isCurrentUser && onPin && (
-          <button
-            onClick={() => onPin(messageId)}
-            className="p-0.5 rounded hover:bg-amber-500/20 transition-all"
-            title="Pin message"
-          >
-            <Pin className="w-3.5 h-3.5 text-muted-foreground" />
-          </button>
-        )}
-        {isCurrentUser && onDelete && (
-          <button
-            onClick={() => onDelete(messageId)}
-            className="p-0.5 rounded hover:bg-destructive/20 transition-all"
-            title="Delete message"
-          >
-            <Trash2 className="w-3.5 h-3.5 text-muted-foreground" />
-          </button>
-        )}
-      </div>
+      <HoverActionBar
+        messageId={messageId}
+        content={content}
+        canEdit={isCurrentUser}
+        canDelete={isCurrentUser}
+        canPin={isCurrentUser}
+        onReactionToggle={onReactionToggle}
+        onEdit={onEdit}
+        onDelete={onDelete}
+        onPin={onPin}
+        onUnpin={onUnpin}
+        onReply={onReply}
+      />
     </div>
   );
 }
 
-// Wrapper for AI messages (persona + brain) that adds delete/pin buttons for the caller
-function AiMessageWrapper({ children, canManage, onDelete, onPin, messageId, reactions, onReactionToggle }: {
+// Wrapper for AI messages (persona + brain) that adds actions for the caller
+function AiMessageWrapper({ children, canManage, onDelete, onPin, onUnpin, onReply, messageId, reactions, onReactionToggle }: {
   children: React.ReactNode;
   canManage: boolean;
   onDelete?: (messageId: string) => void;
   onPin?: (messageId: string) => void;
+  onUnpin?: (messageId: string) => void;
+  onReply?: (messageId: string) => void;
   messageId: string;
   reactions?: ChatReaction[];
   onReactionToggle?: (messageId: string, emoji: string) => void;
@@ -352,27 +484,17 @@ function AiMessageWrapper({ children, canManage, onDelete, onPin, messageId, rea
     <div className="group/msg relative max-w-full overflow-visible">
       {children}
       <ReactionBar reactions={reactions} messageId={messageId} onToggle={onReactionToggle} />
-      <div className="absolute -bottom-3 left-0 flex gap-0.5 opacity-0 group-hover/msg:opacity-100 transition-opacity z-10 bg-popover/90 backdrop-blur-sm rounded-full px-1 py-0.5 border shadow-sm">
-        <EmojiPicker messageId={messageId} onToggle={onReactionToggle} />
-        {canManage && onPin && (
-          <button
-            onClick={() => onPin(messageId)}
-            className="p-0.5 rounded hover:bg-amber-500/20 transition-all"
-            title="Pin message"
-          >
-            <Pin className="w-3.5 h-3.5 text-muted-foreground" />
-          </button>
-        )}
-        {canManage && onDelete && (
-          <button
-            onClick={() => onDelete(messageId)}
-            className="p-0.5 rounded hover:bg-destructive/20 transition-all"
-            title="Delete message"
-          >
-            <Trash2 className="w-3.5 h-3.5 text-muted-foreground" />
-          </button>
-        )}
-      </div>
+      <HoverActionBar
+        messageId={messageId}
+        canEdit={false}
+        canDelete={canManage}
+        canPin={canManage}
+        onReactionToggle={onReactionToggle}
+        onDelete={onDelete}
+        onPin={onPin}
+        onUnpin={onUnpin}
+        onReply={onReply}
+      />
     </div>
   );
 }

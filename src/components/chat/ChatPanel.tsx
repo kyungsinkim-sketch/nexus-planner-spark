@@ -1846,10 +1846,17 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
                                   onVoteDecision={handleVoteDecision}
                                   onAcceptSchedule={handleAcceptSchedule}
                                   onDelete={handleDeleteMessage}
+                                  onEdit={async (msgId, content) => {
+                                    try {
+                                      const { editMessage } = useAppStore.getState();
+                                      await editMessage(msgId, content);
+                                    } catch { /* ignore */ }
+                                  }}
                                   onPin={(msgId) => {
                                     const msg = chatMessages.find(m => m.id === msgId);
                                     if (msg) setPinnedAnnouncement(msg);
                                   }}
+                                  onUnpin={() => setPinnedAnnouncement(null)}
                                   onConfirmBrainAction={handleConfirmBrainAction}
                                   onRejectBrainAction={handleRejectBrainAction}
                                   onReactionToggle={handleReactionToggle}

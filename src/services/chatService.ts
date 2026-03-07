@@ -563,6 +563,15 @@ export const subscribeToDirectMessages = (
 // ============================================================
 
 // Delete message
+export const editMessage = async (messageId: string, content: string): Promise<void> => {
+    if (!isSupabaseConfigured()) throw new Error('Supabase not configured');
+    const { error } = await supabase
+        .from('chat_messages')
+        .update({ content, updated_at: new Date().toISOString() })
+        .eq('id', messageId);
+    if (error) throw new Error(handleSupabaseError(error));
+};
+
 export const deleteMessage = async (messageId: string): Promise<void> => {
     if (!isSupabaseConfigured()) {
         throw new Error('Supabase not configured');
