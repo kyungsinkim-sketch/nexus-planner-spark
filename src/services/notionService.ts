@@ -434,37 +434,14 @@ export async function syncNotionPages(
 }
 
 /**
- * Get locally cached/pinned pages from DB.
+ * Get locally cached/pinned pages from DB (via Edge Function to bypass RLS).
  */
 export async function getSyncedPages(
   userId: string,
   projectId?: string,
 ): Promise<NotionSyncedPage[]> {
-  if (!isSupabaseConfigured()) return [];
-
-  try {
-    let query = supabase
-      .from('notion_synced_pages')
-      .select('*')
-      .eq('user_id', userId)
-      .order('is_pinned', { ascending: false })
-      .order('last_edited_at', { ascending: false, nullsFirst: false });
-
-    if (projectId) {
-      query = query.eq('project_id', projectId);
-    }
-
-    const { data, error } = await query;
-    if (error) {
-      console.error('[Notion] getSyncedPages error:', error);
-      return [];
-    }
-
-    return (data || []) as NotionSyncedPage[];
-  } catch (err) {
-    console.error('[Notion] getSyncedPages exception:', err);
-    return [];
-  }
+  const result = await notionApiCall<{ pages: NotionSyncedPage[] }>('getSyncedPages', userId, { projectId });
+  return result.success && result.data ? result.data.pages : [];
 }
 
 /**
@@ -475,15 +452,8 @@ export async function togglePinPage(
   notionPageId: string,
   isPinned: boolean,
 ): Promise<boolean> {
-  if (!isSupabaseConfigured()) return false;
-
-  const { error } = await supabase
-    .from('notion_synced_pages')
-    .update({ is_pinned: isPinned })
-    .eq('user_id', userId)
-    .eq('notion_page_id', notionPageId);
-
-  return !error;
+  const result = await notionApiCall('togglePin', userId, { notionPageId, isPinned });
+  return result.success;
 }
 
 /**
@@ -494,15 +464,8 @@ export async function linkPageToProject(
   notionPageId: string,
   projectId: string | null,
 ): Promise<boolean> {
-  if (!isSupabaseConfigured()) return false;
-
-  const { error } = await supabase
-    .from('notion_synced_pages')
-    .update({ project_id: projectId })
-    .eq('user_id', userId)
-    .eq('notion_page_id', notionPageId);
-
-  return !error;
+  const result = await notionApiCall('linkToProject', userId, { notionPageId, projectId });
+  return result.success;
 }
 
 /**

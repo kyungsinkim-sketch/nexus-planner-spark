@@ -117,6 +117,46 @@ Deno.serve(async (req) => {
       return jsonResponse({ success: true });
     }
 
+    // ─── DB-only actions (no Notion token needed) ────────
+    if (action === 'getSyncedPages') {
+      let query = supabase
+        .from('notion_synced_pages')
+        .select('*')
+        .eq('user_id', userId)
+        .order('is_pinned', { ascending: false })
+        .order('last_edited_at', { ascending: false, nullsFirst: false });
+
+      if (body.projectId) {
+        query = query.eq('project_id', body.projectId);
+      }
+
+      const { data, error: qErr } = await query;
+      if (qErr) return errorResponse(qErr.message);
+      return jsonResponse({ pages: data || [] });
+    }
+
+    if (action === 'togglePin') {
+      const { notionPageId, isPinned } = body;
+      const { error: pinErr } = await supabase
+        .from('notion_synced_pages')
+        .update({ is_pinned: isPinned })
+        .eq('user_id', userId)
+        .eq('notion_page_id', notionPageId);
+      if (pinErr) return errorResponse(pinErr.message);
+      return jsonResponse({ success: true });
+    }
+
+    if (action === 'linkToProject') {
+      const { notionPageId, projectId } = body;
+      const { error: linkErr } = await supabase
+        .from('notion_synced_pages')
+        .update({ project_id: projectId })
+        .eq('user_id', userId)
+        .eq('notion_page_id', notionPageId);
+      if (linkErr) return errorResponse(linkErr.message);
+      return jsonResponse({ success: true });
+    }
+
     // ─── Load token for all other actions ───────────
     const { data: tokenRow, error: tokenError } = await supabase
       .from('notion_tokens')
