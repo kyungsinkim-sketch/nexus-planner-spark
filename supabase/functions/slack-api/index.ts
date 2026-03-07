@@ -2,12 +2,19 @@
  * slack-api — Proxy for Slack Web API calls.
  *
  * Actions:
- *   - channels:     List channels the bot is in
- *   - messages:     Get messages from a channel (with pagination)
- *   - channel-info: Get channel details
- *   - send:         Send a message to a channel
- *   - status:       Check connection status
- *   - disconnect:   Remove Slack connection
+ *   - channels:       List channels the bot is in
+ *   - messages:       Get messages from a channel (with pagination)
+ *   - thread:         Get thread replies
+ *   - send:           Send a message to a channel
+ *   - edit:           Edit a message
+ *   - delete:         Delete a message
+ *   - reaction-add:   Add emoji reaction
+ *   - reaction-remove: Remove emoji reaction
+ *   - pin-add:        Pin a message
+ *   - pin-remove:     Unpin a message
+ *   - user-info:      Get user profile
+ *   - status:         Check connection status
+ *   - disconnect:     Remove Slack connection
  *
  * Request body: { action: string, userId: string, ...params }
  */
@@ -237,6 +244,130 @@ Deno.serve(async (req) => {
         JSON.stringify(result),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       );
+    }
+
+    // ─── Thread: get thread replies ───
+    if (action === 'thread') {
+      const { channelId, threadTs, limit: tLimit } = params;
+      if (!channelId || !threadTs) {
+        return new Response(
+          JSON.stringify({ error: 'channelId and threadTs required' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        );
+      }
+      const result = await slackApi(token.access_token, 'conversations.replies', {
+        channel: channelId,
+        ts: threadTs,
+        limit: tLimit || '50',
+      });
+      if (!result.ok) {
+        return new Response(
+          JSON.stringify({ error: `Slack API error: ${result.error}` }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        );
+      }
+      // Resolve user info
+      const msgs = (result.messages as Record<string, unknown>[]) || [];
+      const uids = [...new Set(msgs.map(m => m.user as string).filter(Boolean))];
+      const uMap: Record<string, { name: string; avatar: string }> = {};
+      for (const uid of uids.slice(0, 15)) {
+        try {
+          const u = await slackApi(token.access_token, 'users.info', { user: uid });
+          if (u.ok) {
+            const user = u.user as Record<string, unknown>;
+            const profile = user.profile as Record<string, unknown>;
+            uMap[uid] = { name: (user.real_name || user.name) as string, avatar: (profile?.image_48 || '') as string };
+          }
+        } catch { /* skip */ }
+      }
+      return new Response(
+        JSON.stringify({ messages: msgs, userMap: uMap }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      );
+    }
+
+    // ─── Edit: update a message ───
+    if (action === 'edit') {
+      const { channelId, ts, text } = params;
+      if (!channelId || !ts || !text) {
+        return new Response(
+          JSON.stringify({ error: 'channelId, ts, and text required' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        );
+      }
+      const sendToken = token.user_access_token || token.access_token;
+      const result = await slackPost(sendToken, 'chat.update', { channel: channelId, ts, text });
+      return new Response(JSON.stringify(result), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
+    // ─── Delete: remove a message ───
+    if (action === 'delete') {
+      const { channelId, ts } = params;
+      if (!channelId || !ts) {
+        return new Response(
+          JSON.stringify({ error: 'channelId and ts required' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        );
+      }
+      const sendToken = token.user_access_token || token.access_token;
+      const result = await slackPost(sendToken, 'chat.delete', { channel: channelId, ts });
+      return new Response(JSON.stringify(result), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
+    // ─── Reaction Add ───
+    if (action === 'reaction-add') {
+      const { channelId, ts, emoji } = params;
+      if (!channelId || !ts || !emoji) {
+        return new Response(
+          JSON.stringify({ error: 'channelId, ts, and emoji required' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        );
+      }
+      const result = await slackPost(token.access_token, 'reactions.add', {
+        channel: channelId, timestamp: ts, name: emoji,
+      });
+      return new Response(JSON.stringify(result), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
+    // ─── Reaction Remove ───
+    if (action === 'reaction-remove') {
+      const { channelId, ts, emoji } = params;
+      if (!channelId || !ts || !emoji) {
+        return new Response(
+          JSON.stringify({ error: 'channelId, ts, and emoji required' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        );
+      }
+      const result = await slackPost(token.access_token, 'reactions.remove', {
+        channel: channelId, timestamp: ts, name: emoji,
+      });
+      return new Response(JSON.stringify(result), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
+    // ─── Pin Add ───
+    if (action === 'pin-add') {
+      const { channelId, ts } = params;
+      if (!channelId || !ts) {
+        return new Response(
+          JSON.stringify({ error: 'channelId and ts required' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        );
+      }
+      const result = await slackPost(token.access_token, 'pins.add', { channel: channelId, timestamp: ts });
+      return new Response(JSON.stringify(result), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
+    // ─── Pin Remove ───
+    if (action === 'pin-remove') {
+      const { channelId, ts } = params;
+      if (!channelId || !ts) {
+        return new Response(
+          JSON.stringify({ error: 'channelId and ts required' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        );
+      }
+      const result = await slackPost(token.access_token, 'pins.remove', { channel: channelId, timestamp: ts });
+      return new Response(JSON.stringify(result), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
     // ─── Disconnect: remove Slack connection ───

@@ -188,6 +188,76 @@ export async function sendSlackMessage(
 }
 
 /**
+ * Edit a message.
+ */
+export async function editSlackMessage(
+  userId: string, channelId: string, ts: string, text: string,
+): Promise<{ ok: boolean; error?: string }> {
+  const data = await slackApiCall('edit', { userId, channelId, ts, text });
+  return data as { ok: boolean; error?: string };
+}
+
+/**
+ * Delete a message.
+ */
+export async function deleteSlackMessage(
+  userId: string, channelId: string, ts: string,
+): Promise<{ ok: boolean; error?: string }> {
+  const data = await slackApiCall('delete', { userId, channelId, ts });
+  return data as { ok: boolean; error?: string };
+}
+
+/**
+ * Add emoji reaction to a message.
+ */
+export async function addSlackReaction(
+  userId: string, channelId: string, ts: string, emoji: string,
+): Promise<{ ok: boolean; error?: string }> {
+  const data = await slackApiCall('reaction-add', { userId, channelId, ts, emoji });
+  return data as { ok: boolean; error?: string };
+}
+
+/**
+ * Remove emoji reaction from a message.
+ */
+export async function removeSlackReaction(
+  userId: string, channelId: string, ts: string, emoji: string,
+): Promise<{ ok: boolean; error?: string }> {
+  const data = await slackApiCall('reaction-remove', { userId, channelId, ts, emoji });
+  return data as { ok: boolean; error?: string };
+}
+
+/**
+ * Pin a message.
+ */
+export async function pinSlackMessage(
+  userId: string, channelId: string, ts: string,
+): Promise<{ ok: boolean; error?: string }> {
+  const data = await slackApiCall('pin-add', { userId, channelId, ts });
+  return data as { ok: boolean; error?: string };
+}
+
+/**
+ * Unpin a message.
+ */
+export async function unpinSlackMessage(
+  userId: string, channelId: string, ts: string,
+): Promise<{ ok: boolean; error?: string }> {
+  const data = await slackApiCall('pin-remove', { userId, channelId, ts });
+  return data as { ok: boolean; error?: string };
+}
+
+/**
+ * Get thread replies.
+ */
+export async function getSlackThread(
+  userId: string, channelId: string, threadTs: string,
+): Promise<{ messages: SlackMessage[]; userMap: Record<string, SlackUserInfo> }> {
+  const data = await slackApiCall('thread', { userId, channelId, threadTs });
+  return data as { messages: SlackMessage[]; userMap: Record<string, SlackUserInfo> };
+}
+
+/**
  * Disconnect Slack integration.
  */
 export async function disconnectSlack(userId: string): Promise<void> {
