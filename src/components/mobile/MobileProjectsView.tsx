@@ -28,12 +28,12 @@ const ProjectBoardWidget = lazy(() => import('@/components/widgets/ProjectBoardW
 type ViewStep = 'list' | 'detail' | 'widget';
 
 const WIDGET_DEFS = [
-  { key: 'notifications', labelKo: '알림', labelEn: 'Notifications', icon: Bell },
-  { key: 'files', labelKo: '파일', labelEn: 'Files', icon: FolderOpen },
-  { key: 'todos', labelKo: '할 일', labelEn: 'ToDos', icon: CheckSquare },
-  { key: 'notes', labelKo: '중요기록', labelEn: 'Notes', icon: StickyNote },
-  { key: 'chat', labelKo: '채팅', labelEn: 'Chat', icon: MessageCircle },
-  { key: 'board', labelKo: '보드', labelEn: 'Board', icon: LayoutGrid },
+  { key: 'notifications', labelKo: '알림', labelEn: 'Notifications', icon: Bell, badge: 0 },
+  { key: 'files', labelKo: '파일', labelEn: 'Files', icon: FolderOpen, badge: 0 },
+  { key: 'todos', labelKo: '할 일', labelEn: 'ToDos', icon: CheckSquare, badge: 0 },
+  { key: 'chat', labelKo: '채팅', labelEn: 'Chat', icon: MessageCircle, badge: 0 },
+  { key: 'notes', labelKo: '중요기록', labelEn: 'Notes', icon: StickyNote, badge: 0 },
+  { key: 'board', labelKo: '보드', labelEn: 'Board', icon: LayoutGrid, badge: 0 },
 ] as const;
 
 const WIDGET_MAP: Record<string, React.LazyExoticComponent<React.ComponentType<any>>> = {
@@ -186,24 +186,40 @@ export function MobileProjectsView() {
           </div>
         )}
 
-        {/* Widget icon grid */}
-        <div className="grid grid-cols-3 gap-3 px-4 mt-5 pb-24">
-          {WIDGET_DEFS.map((w) => {
+        {/* Widget bento grid — asymmetric layout like reference */}
+        <div className="grid grid-cols-2 gap-3 px-4 mt-5 pb-24"
+          style={{ gridTemplateRows: 'auto auto auto' }}
+        >
+          {WIDGET_DEFS.map((w, i) => {
             const Icon = w.icon;
+            // Row 1: Notifications (tall) + Files (tall)
+            // Row 2: ToDos (short) + Chat (short)
+            // Row 3: Notes (short) + Board (short)
+            const isTall = i < 2; // first 2 are tall
             return (
               <button
                 key={w.key}
                 onClick={() => { setWidgetKey(w.key); setStep('widget'); }}
                 className={cn(
-                  'relative flex flex-col items-center justify-center gap-2 py-5 rounded-2xl',
+                  'relative flex flex-col items-center justify-center gap-3 rounded-2xl',
                   'bg-white/60 dark:bg-white/5 backdrop-blur-xl',
                   'border border-white/20 dark:border-white/10',
                   'active:scale-[0.96] transition-transform',
                   'shadow-sm',
+                  isTall ? 'py-8' : 'py-5',
                 )}
               >
-                <Icon size={28} strokeWidth={1.5} className="text-foreground/70" />
-                <span className="typo-caption text-foreground/70 font-medium">
+                {/* Badge */}
+                {w.badge && (
+                  <span className="absolute top-2.5 right-2.5 min-w-[20px] h-5 flex items-center justify-center rounded-full bg-destructive text-destructive-foreground text-[11px] font-bold px-1.5">
+                    {w.badge}
+                  </span>
+                )}
+                <Icon size={isTall ? 32 : 26} strokeWidth={1.5} className="text-foreground/60" />
+                <span className={cn(
+                  'font-medium text-foreground/70',
+                  isTall ? 'typo-widget-body' : 'typo-caption',
+                )}>
                   {language === 'ko' ? w.labelKo : w.labelEn}
                 </span>
               </button>

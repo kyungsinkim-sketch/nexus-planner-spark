@@ -265,16 +265,18 @@ export function MobileMembersView() {
             <button
               key={user.id}
               onClick={() => setSelectedUserId(user.id)}
-              className="bg-white/60 dark:bg-white/5 backdrop-blur-xl border border-white/20 dark:border-white/10 rounded-2xl p-4 flex flex-col items-center gap-2 active:scale-[0.98] transition-transform text-center"
+              className="bg-white/60 dark:bg-white/5 backdrop-blur-xl border border-white/20 dark:border-white/10 rounded-2xl p-4 flex flex-col items-start gap-2 active:scale-[0.98] transition-transform text-left min-h-[140px]"
             >
               <Avatar className="w-12 h-12">
                 <AvatarImage src={user.avatar} />
-                <AvatarFallback>{user.name[0]}</AvatarFallback>
+                <AvatarFallback className="bg-primary/10 text-primary font-semibold">{user.name[0]}</AvatarFallback>
               </Avatar>
-              <span className="text-sm font-semibold leading-tight line-clamp-1">{user.name}</span>
-              <span className="typo-widget-sub text-muted-foreground text-[11px] leading-tight line-clamp-1">
-                {user.department ?? user.role ?? ''}
-              </span>
+              <div className="flex-1 min-w-0">
+                <p className="typo-widget-body font-bold leading-tight line-clamp-1">{user.name}</p>
+                <p className="typo-caption text-muted-foreground leading-tight line-clamp-2 mt-0.5">
+                  {[user.department, user.role].filter(Boolean).join(' · ') || ''}
+                </p>
+              </div>
             </button>
           ))}
         </div>

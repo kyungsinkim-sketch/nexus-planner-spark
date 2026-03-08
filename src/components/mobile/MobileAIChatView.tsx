@@ -76,14 +76,11 @@ function MorningBriefing({
 
   return (
     <div className="bg-white/70 dark:bg-white/5 backdrop-blur-xl border border-white/20 dark:border-white/10 rounded-2xl p-5">
-      <div className="flex items-center gap-2 mb-3">
-        <Sparkles className="w-4 h-4 text-amber-500" />
-        <h2 className="text-lg font-bold text-foreground">{greeting} ✋</h2>
-      </div>
+      <h2 className="typo-h2 font-bold text-foreground mb-1">{greeting} ✋</h2>
 
-      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
+      <h3 className="typo-h4 font-bold text-foreground mt-5 mb-3">
         {language === 'ko' ? '오늘의 일정' : "Today's Schedule"}
-      </p>
+      </h3>
 
       {topEvent ? (
         <div className="rounded-xl bg-accent/50 dark:bg-white/5 p-3">
