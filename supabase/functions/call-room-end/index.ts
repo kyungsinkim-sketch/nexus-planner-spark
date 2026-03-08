@@ -15,6 +15,7 @@
  */
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { authenticateOrFallback } from '../_shared/auth.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -32,25 +33,17 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
     );
 
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      return new Response(JSON.stringify({ error: 'Missing authorization' }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
+    const { roomId, audioBlob } = await req.json();
+    const { userId: authUserId } = await authenticateOrFallback(req);
 
-    const { data: { user }, error: authError } = await supabase.auth.getUser(
-      authHeader.replace('Bearer ', '')
-    );
-    if (authError || !user) {
+    // Build a user-like object for backward compatibility
+    const user = authUserId ? { id: authUserId } : null;
+    if (!user) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
-
-    const { roomId, audioBlob } = await req.json();
     if (!roomId) {
       return new Response(JSON.stringify({ error: 'roomId required' }), {
         status: 400,
@@ -173,6 +166,7 @@ Deno.serve(async (req) => {
               recordingId: voiceRec.id,
               userId: user.id,
               callRoomId: roomId,
+              audioStoragePath: storagePath,
             }),
           }).catch(err => console.error('[call-room-end] Pipeline trigger failed:', err));
         }

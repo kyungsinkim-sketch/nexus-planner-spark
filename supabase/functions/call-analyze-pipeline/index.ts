@@ -27,7 +27,7 @@ Deno.serve(async (req) => {
   let callRoomId: string | undefined;
 
   try {
-    const { recordingId, userId: bodyUserId, callRoomId: roomId } = await req.json();
+    const { recordingId, userId: bodyUserId, callRoomId: roomId, audioStoragePath: bodyAudioPath } = await req.json();
     const { userId: jwtUserId } = await authenticateOrFallback(req);
     const userId = jwtUserId || bodyUserId;
     callRoomId = roomId;
@@ -46,10 +46,21 @@ Deno.serve(async (req) => {
       await supabase.from('call_rooms').update({ analysis_status: 'transcribing' }).eq('id', callRoomId);
     }
 
+    // Resolve audio storage path: from request body or from voice_recordings table
+    let audioStoragePath = bodyAudioPath;
+    if (!audioStoragePath) {
+      const { data: rec } = await supabase
+        .from('voice_recordings')
+        .select('file_path')
+        .eq('id', recordingId)
+        .single();
+      audioStoragePath = rec?.file_path || `call-recordings/${callRoomId}.webm`;
+    }
+
     const sttResp = await fetch(`${supabaseUrl}/functions/v1/voice-transcribe`, {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${serviceKey}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ recordingId, userId }),
+      body: JSON.stringify({ recordingId, userId, audioStoragePath }),
     });
 
     if (!sttResp.ok) {
