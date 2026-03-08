@@ -52,6 +52,17 @@ interface SuggestionReviewDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   suggestion: EmailBrainSuggestion | null;
+  /** Optional custom confirm handler. If provided, overrides the default email flow. */
+  onConfirm?: (suggestion: EmailBrainSuggestion, edits: {
+    event?: BrainExtractedEvent;
+    todo?: BrainExtractedTodo;
+    note?: string;
+    includeEvent: boolean;
+    includeTodo: boolean;
+    includeNote: boolean;
+  }) => Promise<void>;
+  /** Optional source label shown in the header */
+  sourceLabel?: string;
 }
 
 // ─── Helpers ────────────────────────────────────────
@@ -90,6 +101,8 @@ export function SuggestionReviewDialog({
   open,
   onOpenChange,
   suggestion,
+  onConfirm,
+  sourceLabel,
 }: SuggestionReviewDialogProps) {
   const { t } = useTranslation();
   const {
@@ -225,14 +238,20 @@ export function SuggestionReviewDialog({
       : undefined;
 
     try {
-      await confirmEmailSuggestionWithEdits(suggestion.id, {
+      const edits = {
         event: editedEvent,
         todo: editedTodo,
         note: includeNote ? noteContent : undefined,
         includeEvent,
         includeTodo,
         includeNote,
-      });
+      };
+
+      if (onConfirm) {
+        await onConfirm(suggestion, edits);
+      } else {
+        await confirmEmailSuggestionWithEdits(suggestion.id, edits);
+      }
       onOpenChange(false);
     } catch (err) {
       console.error('[SuggestionReviewDialog] Submit error:', err);
@@ -261,7 +280,7 @@ export function SuggestionReviewDialog({
             {t('brainReviewTitle')}
           </DialogTitle>
           <DialogDescription className="text-xs text-muted-foreground truncate">
-            {email?.subject || ''}
+            {sourceLabel || email?.subject || ''}
           </DialogDescription>
         </DialogHeader>
 

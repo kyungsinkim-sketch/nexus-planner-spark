@@ -22,7 +22,7 @@ import {
   Hash, Lock, MessageSquare, Send, ExternalLink, Loader2,
   ChevronLeft, Users, Plug, Unplug, RefreshCw,
   Smile, MoreHorizontal, Trash2, Pencil, Pin, PinOff,
-  MessageCircle, X, Check, Sparkles, ListChecks, CalendarPlus, Star,
+  MessageCircle, X, Check, Sparkles,
 } from 'lucide-react';
 import {
   getSlackAuthUrl, exchangeSlackCode, getSlackStatus, getSlackChannels,
@@ -32,6 +32,8 @@ import {
   type SlackChannel, type SlackMessage, type SlackUserInfo, type SlackStatus,
 } from '@/services/slackService';
 import type { WidgetDataContext } from '@/types/widget';
+import { SuggestionReviewDialog } from '@/components/widgets/SuggestionReviewDialog';
+import type { EmailBrainSuggestion, BrainExtractedEvent, BrainExtractedTodo } from '@/types/core';
 
 const SLACK_REDIRECT_URI = `${window.location.origin}/integrations/slack/callback`;
 
@@ -79,18 +81,10 @@ function SlackWidget({ context }: { context: WidgetDataContext }) {
   // UI state
   const [activeMenu, setActiveMenu] = useState<string | null>(null); // ts of message showing menu
   const [emojiPickerTs, setEmojiPickerTs] = useState<string | null>(null);
-  const [brainMenuTs, setBrainMenuTs] = useState<string | null>(null); // ts of message showing brain menu
   const [brainProcessing, setBrainProcessing] = useState<string | null>(null); // ts of message being analyzed
-
-  // Brain AI review panel
-  const [brainSuggestion, setBrainSuggestion] = useState<{
-    id: string;
-    messageId: string;
-    actionType: 'todo' | 'calendar' | 'important';
-    extractedData: Record<string, unknown>;
-    sourceMessage: string;
-  } | null>(null);
-  const [brainReviewEdits, setBrainReviewEdits] = useState<Record<string, unknown>>({});
+  const [brainDialogOpen, setBrainDialogOpen] = useState(false);
+  const [brainSuggestion, setBrainSuggestion] = useState<EmailBrainSuggestion | null>(null);
+  const [brainSourceLabel, setBrainSourceLabel] = useState('');
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const sendingRef = useRef(false);
@@ -325,95 +319,102 @@ function SlackWidget({ context }: { context: WidgetDataContext }) {
   }, [userId, selectedChannel]);
 
   // ─── Brain AI Action ───
-  const handleBrainAction = useCallback(async (msg: SlackMessage, actionType: 'todo' | 'calendar' | 'important') => {
+  // Brain AI: single button → comprehensive analysis → SuggestionReviewDialog
+  const handleBrainAnalyze = useCallback(async (msg: SlackMessage) => {
     if (!userId || !selectedChannel) return;
-    setBrainMenuTs(null);
     setBrainProcessing(msg.ts);
 
     try {
       const { data, error } = await supabase.functions.invoke('brain-slack-action', {
         body: {
           userId,
-          channelId: selectedChannel.id,
-          channelName: selectedChannel.name,
           messageText: msg.text,
-          messageTs: msg.ts,
-          senderName: userMap[msg.user]?.name || msg.user,
-          actionType,
+          source: 'slack',
+          sourceMeta: {
+            channelId: selectedChannel.id,
+            channelName: selectedChannel.name,
+            messageTs: msg.ts,
+            senderName: userMap[msg.user]?.name || msg.user,
+          },
         },
       });
 
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
 
-      // Show review panel with suggestion
       if (data?.suggestion) {
-        setBrainSuggestion({
-          id: data.suggestion.id,
-          messageId: data.suggestion.messageId,
-          actionType,
-          extractedData: data.suggestion.extractedData,
-          sourceMessage: msg.text,
-        });
-        setBrainReviewEdits(data.suggestion.extractedData);
+        setBrainSuggestion(data.suggestion as EmailBrainSuggestion);
+        setBrainSourceLabel(`Slack #${selectedChannel.name} — ${userMap[msg.user]?.name || msg.user}`);
+        setBrainDialogOpen(true);
       }
     } catch (e) {
-      console.error('[SlackWidget] brain action:', e);
+      console.error('[SlackWidget] brain analyze:', e);
       toast.error('Brain AI 처리에 실패했습니다');
     } finally {
       setBrainProcessing(null);
     }
   }, [userId, selectedChannel, userMap]);
 
-  // Confirm brain suggestion → execute via brain-execute
-  const handleBrainConfirm = useCallback(async () => {
-    if (!brainSuggestion || !userId) return;
-    try {
-      // Update extracted_data if user edited
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+  // SuggestionReviewDialog confirm handler for Slack
+  const handleSlackBrainConfirm = useCallback(async (
+    suggestion: EmailBrainSuggestion,
+    edits: { event?: BrainExtractedEvent; todo?: BrainExtractedTodo; note?: string; includeEvent: boolean; includeTodo: boolean; includeNote: boolean },
+  ) => {
+    if (!userId) return;
 
-      // First update the brain_action with edited data
-      await supabase.from('brain_actions').update({
-        extracted_data: brainReviewEdits,
-        status: 'confirmed',
-      }).eq('id', brainSuggestion.id);
+    const created: string[] = [];
 
-      // Execute the action
-      const { data, error } = await supabase.functions.invoke('brain-execute', {
-        body: { actionId: brainSuggestion.id, userId },
+    // Create event if included
+    if (edits.includeEvent && edits.event) {
+      const { error } = await supabase.from('calendar_events').insert({
+        title: edits.event.title,
+        type: edits.event.type || 'MEETING',
+        start_at: edits.event.startAt,
+        end_at: edits.event.endAt,
+        location: edits.event.location || null,
+        project_id: edits.event.projectId || null,
+        owner_id: userId,
+        source: 'PAULUS',
+        attendee_ids: edits.event.attendeeIds?.length ? edits.event.attendeeIds : null,
       });
-
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
-
-      // Update preference log outcome
-      await supabase.from('brain_preference_log').update({ outcome: 'confirmed' })
-        .eq('brain_action_id', brainSuggestion.id);
-
-      const actionLabels = { todo: 'TODO', calendar: '캘린더', important: '중요기록' };
-      toast.success(`${actionLabels[brainSuggestion.actionType]}에 추가되었습니다 ✨`);
-      setBrainSuggestion(null);
-      setBrainReviewEdits({});
-    } catch (e) {
-      console.error('[SlackWidget] brain confirm:', e);
-      toast.error('실행에 실패했습니다');
+      if (error) console.error('Event create error:', error);
+      else created.push('📅 캘린더');
     }
-  }, [brainSuggestion, brainReviewEdits, userId]);
 
-  // Reject brain suggestion
-  const handleBrainReject = useCallback(async () => {
-    if (!brainSuggestion) return;
-    try {
-      await supabase.from('brain_actions').update({ status: 'rejected' }).eq('id', brainSuggestion.id);
-      await supabase.from('brain_preference_log').update({ outcome: 'rejected' })
-        .eq('brain_action_id', brainSuggestion.id);
-    } catch (e) {
-      console.warn('Failed to update rejection status:', e);
+    // Create todo if included
+    if (edits.includeTodo && edits.todo) {
+      const { error } = await supabase.from('personal_todos').insert({
+        title: edits.todo.title,
+        assignee_ids: edits.todo.assigneeIds?.filter(Boolean) || [],
+        requested_by_id: userId,
+        project_id: edits.todo.projectId || null,
+        due_date: edits.todo.dueDate,
+        priority: edits.todo.priority || 'NORMAL',
+        status: 'PENDING',
+      });
+      if (error) console.error('Todo create error:', error);
+      else created.push('📋 TODO');
     }
+
+    // Create important note if included
+    if (edits.includeNote && edits.note) {
+      const { error } = await supabase.from('important_notes').insert({
+        title: edits.note.substring(0, 50),
+        content: edits.note,
+        created_by: userId,
+        source: 'slack',
+      });
+      if (error) console.error('Note create error:', error);
+      else created.push('⭐ 중요기록');
+    }
+
+    if (created.length > 0) {
+      toast.success(`${created.join(', ')} 추가 완료 ✨`);
+    }
+
+    setBrainDialogOpen(false);
     setBrainSuggestion(null);
-    setBrainReviewEdits({});
-  }, [brainSuggestion]);
+  }, [userId]);
 
   // ─── Thread ───
   const loadThread = useCallback(async (channelId: string, threadTs: string) => {
@@ -592,7 +593,7 @@ function SlackWidget({ context }: { context: WidgetDataContext }) {
     const time = new Date(parseFloat(msg.ts) * 1000);
     const isMenuOpen = activeMenu === msg.ts;
     const isEmojiOpen = emojiPickerTs === msg.ts;
-    const isBrainOpen = brainMenuTs === msg.ts;
+    const isBrainActive = brainProcessing === msg.ts;
     const hasThread = (msg.reply_count || 0) > 0 && !isThread;
 
     return (
@@ -659,24 +660,24 @@ function SlackWidget({ context }: { context: WidgetDataContext }) {
 
         {/* Hover actions — inline right, not absolute to avoid overflow clipping */}
         <div className={`slack-action-bar absolute top-0 right-0 flex items-center gap-0.5 bg-white dark:bg-zinc-800 border border-black/10 dark:border-white/10 rounded-md shadow-sm px-0.5 py-0.5 transition-opacity ${
-          isMenuOpen || isEmojiOpen || isBrainOpen ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+          isMenuOpen || isEmojiOpen ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
         }`}>
-          <button onClick={e => { e.stopPropagation(); setEmojiPickerTs(isEmojiOpen ? null : msg.ts); setActiveMenu(null); setBrainMenuTs(null); }}
+          <button onClick={e => { e.stopPropagation(); setEmojiPickerTs(isEmojiOpen ? null : msg.ts); setActiveMenu(null); }}
             className="p-0.5 hover:bg-gray-100 dark:hover:bg-zinc-700 rounded" title="리액션">
             <Smile className="w-3.5 h-3.5" />
           </button>
-          {/* Brain AI */}
-          <button onClick={e => { e.stopPropagation(); setBrainMenuTs(isBrainOpen ? null : msg.ts); setActiveMenu(null); setEmojiPickerTs(null); }}
-            className={`p-0.5 hover:bg-gray-100 dark:hover:bg-zinc-700 rounded ${brainProcessing === msg.ts ? 'animate-pulse' : ''}`}
-            title="Brain AI" disabled={brainProcessing === msg.ts}>
-            <Sparkles className={`w-3.5 h-3.5 ${isBrainOpen ? 'text-primary' : ''}`} />
+          {/* Brain AI — single button, opens SuggestionReviewDialog */}
+          <button onClick={e => { e.stopPropagation(); handleBrainAnalyze(msg); }}
+            className={`p-0.5 hover:bg-gray-100 dark:hover:bg-zinc-700 rounded ${isBrainActive ? 'animate-pulse' : ''}`}
+            title="Brain AI 분석" disabled={isBrainActive}>
+            <Sparkles className={`w-3.5 h-3.5 ${isBrainActive ? 'text-primary' : ''}`} />
           </button>
           {!isThread && (
             <button onClick={() => openThread(msg)} className="p-0.5 hover:bg-gray-100 dark:hover:bg-zinc-700 rounded" title="스레드">
               <MessageCircle className="w-3.5 h-3.5" />
             </button>
           )}
-          <button onClick={e => { e.stopPropagation(); setActiveMenu(isMenuOpen ? null : msg.ts); setEmojiPickerTs(null); setBrainMenuTs(null); }}
+          <button onClick={e => { e.stopPropagation(); setActiveMenu(isMenuOpen ? null : msg.ts); setEmojiPickerTs(null); }}
             className="p-0.5 hover:bg-gray-100 dark:hover:bg-zinc-700 rounded" title="더보기">
             <MoreHorizontal className="w-3.5 h-3.5" />
           </button>
@@ -734,34 +735,12 @@ function SlackWidget({ context }: { context: WidgetDataContext }) {
           );
         })()}
 
-        {/* Brain AI menu — Portal to body */}
-        {isBrainOpen && (() => {
-          const actionBar = document.querySelector(`[data-slack-msg="${msg.ts}"] .slack-action-bar`);
-          if (!actionBar) return null;
-          const r = actionBar.getBoundingClientRect();
-          return createPortal(
-            <>
-              <div className="fixed inset-0 z-[9998]" onClick={() => setBrainMenuTs(null)} />
-              <div className="fixed z-[9999] bg-white dark:bg-zinc-800 border border-black/10 dark:border-white/10 rounded-lg shadow-lg py-1 min-w-[160px]"
-                style={{ top: r.bottom + 2, left: Math.max(8, r.right - 180) }} onClick={e => e.stopPropagation()}>
-                <div className="px-3 py-1 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Brain AI</div>
-                <button onClick={() => handleBrainAction(msg, 'todo')}
-                  className="w-full flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-gray-100 dark:hover:bg-zinc-700 transition">
-                  <ListChecks className="w-3.5 h-3.5 text-blue-500" /> TODO 만들기
-                </button>
-                <button onClick={() => handleBrainAction(msg, 'calendar')}
-                  className="w-full flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-gray-100 dark:hover:bg-zinc-700 transition">
-                  <CalendarPlus className="w-3.5 h-3.5 text-green-500" /> 캘린더에 추가
-                </button>
-                <button onClick={() => handleBrainAction(msg, 'important')}
-                  className="w-full flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-gray-100 dark:hover:bg-zinc-700 transition">
-                  <Star className="w-3.5 h-3.5 text-amber-500" /> 중요기록 저장
-                </button>
-              </div>
-            </>,
-            document.body
-          );
-        })()}
+        {/* Brain AI processing indicator */}
+        {isBrainActive && (
+          <div className="absolute -top-6 right-0 flex items-center gap-1 px-2 py-0.5 bg-primary/90 text-primary-foreground rounded-full text-[10px] animate-pulse">
+            <Loader2 className="w-2.5 h-2.5 animate-spin" /> 분석 중...
+          </div>
+        )}
       </div>
     );
   };
@@ -835,106 +814,17 @@ function SlackWidget({ context }: { context: WidgetDataContext }) {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Brain AI Review Panel */}
-      {brainSuggestion && (
-        <div className="border-t border-primary/30 bg-primary/5 px-3 py-2.5 space-y-2">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5 text-primary" />
-              <span className="text-xs font-semibold text-primary">Brain 제안 검토</span>
-              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary">
-                {brainSuggestion.actionType === 'todo' ? '📋 TODO' : brainSuggestion.actionType === 'calendar' ? '📅 캘린더' : '⭐ 중요기록'}
-              </span>
-            </div>
-            <button onClick={handleBrainReject} className="p-0.5 hover:bg-red-500/10 rounded"><X className="w-3.5 h-3.5 text-muted-foreground" /></button>
-          </div>
-
-          {/* Source message preview */}
-          <div className="text-[10px] text-muted-foreground/70 bg-muted/20 rounded px-2 py-1 truncate">
-            원본: &quot;{brainSuggestion.sourceMessage.substring(0, 80)}{brainSuggestion.sourceMessage.length > 80 ? '...' : ''}&quot;
-          </div>
-
-          {/* Editable fields based on action type */}
-          {brainSuggestion.actionType === 'todo' && (
-            <div className="space-y-1.5">
-              <input type="text" value={(brainReviewEdits.title as string) || ''}
-                onChange={e => setBrainReviewEdits(prev => ({ ...prev, title: e.target.value }))}
-                placeholder="할 일 제목"
-                className="w-full text-xs bg-muted/20 border border-border/30 rounded px-2 py-1 focus:outline-none focus:border-primary/50" />
-              <div className="flex gap-1.5">
-                <input type="date" value={(brainReviewEdits.dueDate as string)?.substring(0, 10) || ''}
-                  onChange={e => setBrainReviewEdits(prev => ({ ...prev, dueDate: e.target.value }))}
-                  className="flex-1 text-xs bg-muted/20 border border-border/30 rounded px-2 py-1 focus:outline-none" />
-                <select value={(brainReviewEdits.priority as string) || 'NORMAL'}
-                  onChange={e => setBrainReviewEdits(prev => ({ ...prev, priority: e.target.value }))}
-                  className="text-xs bg-muted/20 border border-border/30 rounded px-2 py-1 focus:outline-none">
-                  <option value="LOW">낮음</option>
-                  <option value="NORMAL">보통</option>
-                  <option value="HIGH">높음</option>
-                </select>
-              </div>
-            </div>
-          )}
-
-          {brainSuggestion.actionType === 'calendar' && (
-            <div className="space-y-1.5">
-              <input type="text" value={(brainReviewEdits.title as string) || ''}
-                onChange={e => setBrainReviewEdits(prev => ({ ...prev, title: e.target.value }))}
-                placeholder="일정 제목"
-                className="w-full text-xs bg-muted/20 border border-border/30 rounded px-2 py-1 focus:outline-none focus:border-primary/50" />
-              <div className="flex gap-1.5">
-                <input type="datetime-local" value={(brainReviewEdits.startAt as string)?.substring(0, 16) || ''}
-                  onChange={e => setBrainReviewEdits(prev => ({ ...prev, startAt: e.target.value + ':00+09:00' }))}
-                  className="flex-1 text-xs bg-muted/20 border border-border/30 rounded px-2 py-1 focus:outline-none" />
-                <input type="datetime-local" value={(brainReviewEdits.endAt as string)?.substring(0, 16) || ''}
-                  onChange={e => setBrainReviewEdits(prev => ({ ...prev, endAt: e.target.value + ':00+09:00' }))}
-                  className="flex-1 text-xs bg-muted/20 border border-border/30 rounded px-2 py-1 focus:outline-none" />
-              </div>
-              <input type="text" value={(brainReviewEdits.location as string) || ''}
-                onChange={e => setBrainReviewEdits(prev => ({ ...prev, location: e.target.value }))}
-                placeholder="장소 (선택)"
-                className="w-full text-xs bg-muted/20 border border-border/30 rounded px-2 py-1 focus:outline-none" />
-            </div>
-          )}
-
-          {brainSuggestion.actionType === 'important' && (
-            <div className="space-y-1.5">
-              <input type="text" value={(brainReviewEdits.title as string) || ''}
-                onChange={e => setBrainReviewEdits(prev => ({ ...prev, title: e.target.value }))}
-                placeholder="기록 제목"
-                className="w-full text-xs bg-muted/20 border border-border/30 rounded px-2 py-1 focus:outline-none focus:border-primary/50" />
-              <textarea value={(brainReviewEdits.content as string) || ''}
-                onChange={e => setBrainReviewEdits(prev => ({ ...prev, content: e.target.value }))}
-                placeholder="기록 내용"
-                rows={2}
-                className="w-full text-xs bg-muted/20 border border-border/30 rounded px-2 py-1 focus:outline-none resize-none" />
-              <select value={(brainReviewEdits.category as string) || 'reference'}
-                onChange={e => setBrainReviewEdits(prev => ({ ...prev, category: e.target.value }))}
-                className="text-xs bg-muted/20 border border-border/30 rounded px-2 py-1 focus:outline-none">
-                <option value="decision">결정사항</option>
-                <option value="risk">리스크</option>
-                <option value="insight">인사이트</option>
-                <option value="reference">참고사항</option>
-              </select>
-            </div>
-          )}
-
-          {/* Action buttons */}
-          <div className="flex items-center gap-2 pt-0.5">
-            <button onClick={handleBrainConfirm}
-              className="flex-1 flex items-center justify-center gap-1 px-3 py-1.5 bg-primary text-primary-foreground rounded-md text-xs font-medium hover:bg-primary/90 transition-colors">
-              <Check className="w-3 h-3" /> 확인
-            </button>
-            <button onClick={handleBrainReject}
-              className="px-3 py-1.5 border border-border/50 rounded-md text-xs text-muted-foreground hover:bg-muted/30 transition-colors">
-              취소
-            </button>
-          </div>
-        </div>
-      )}
+      {/* Brain AI Review Dialog — unified with email */}
+      <SuggestionReviewDialog
+        open={brainDialogOpen}
+        onOpenChange={setBrainDialogOpen}
+        suggestion={brainSuggestion}
+        onConfirm={handleSlackBrainConfirm}
+        sourceLabel={brainSourceLabel}
+      />
 
       {/* Send message */}
-      {!brainSuggestion && (
+      {(
         <div className="px-3 py-2 border-t border-border/30">
           <div className="flex items-center gap-2">
             <input type="text" value={messageText} onChange={e => setMessageText(e.target.value)}
