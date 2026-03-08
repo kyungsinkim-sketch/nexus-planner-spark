@@ -174,7 +174,7 @@ export function MobileBottomNav() {
             className="shrink-0"
           >
             <Avatar className="w-8 h-8 ring-2 ring-transparent hover:ring-primary/30 transition-all">
-              <AvatarImage src={currentUser?.avatarUrl} />
+              <AvatarImage src={currentUser?.avatar} />
               <AvatarFallback
                 className={cn(
                   'text-xs font-semibold',
