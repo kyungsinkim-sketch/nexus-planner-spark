@@ -483,11 +483,13 @@ async function connectToRoom(wsUrl: string, token: string): Promise<void> {
 
 // ─── Simple mic recording (called BEFORE room.connect) ──────
 async function startMicRecording(): Promise<void> {
+  console.log('[Call] startMicRecording() called, current mediaRecorder:', mediaRecorder?.state ?? 'null');
   if (mediaRecorder && mediaRecorder.state === 'recording') {
     console.log('[Call] Recording already active, skipping');
     return;
   }
   try {
+    console.log('[Call] Requesting getUserMedia({audio:true})...');
     const micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
     console.log('[Call] ✅ Got mic stream for recording');
     audioChunks = [];
@@ -653,8 +655,14 @@ export function toggleSpeaker(): boolean {
 
 // ─── End Call ────────────────────────────────────────
 
+let endCallInProgress = false;
 export async function endCall(): Promise<void> {
-  console.log('[Call] endCall() called, current status:', currentState.status);
+  console.log('[Call] endCall() called, current status:', currentState.status, 'mediaRecorder:', mediaRecorder?.state ?? 'null', 'inProgress:', endCallInProgress);
+  if (endCallInProgress) {
+    console.log('[Call] endCall already in progress, skipping duplicate');
+    return;
+  }
+  endCallInProgress = true;
 
   // Immediately disconnect and reset UI
   stopRingbackTone();
@@ -720,6 +728,7 @@ export async function endCall(): Promise<void> {
     error: null,
   });
 
+  endCallInProgress = false;
   console.log('[Call] UI reset to idle');
 
   // Send end signal to backend (non-blocking, after UI reset)
