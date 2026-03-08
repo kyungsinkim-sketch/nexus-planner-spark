@@ -234,7 +234,7 @@ export function ActiveCallOverlay() {
       </div>
 
       {/* ─── Content area ─── */}
-      <div className="flex-1 flex items-center justify-center min-h-0 overflow-hidden">
+      <div className="absolute inset-0 top-14 bottom-[140px] flex items-center justify-center overflow-hidden">
         {/* Connecting / Ringing / Creating */}
         {(status === 'creating' || status === 'ringing' || status === 'connecting') && (
           <div className="flex flex-col items-center gap-4">
@@ -387,7 +387,7 @@ export function ActiveCallOverlay() {
       </div>
 
       {/* ─── Bottom controls ─── */}
-      <div className="relative z-20 pb-8 pt-4 bg-gray-950 flex-shrink-0">
+      <div className="absolute bottom-0 inset-x-0 z-20 pb-8 pt-4 bg-gray-950">
         <div className="flex items-center justify-center gap-6">
           {/* Mute */}
           <div className="flex flex-col items-center gap-1">
