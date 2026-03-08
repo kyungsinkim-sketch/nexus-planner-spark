@@ -240,17 +240,13 @@ export function WelfareTab() {
 
             if (!hasDuplicate) {
                 try {
-                    const attendees = [session.userId];
-                    if (currentUser && currentUser.id !== session.userId) {
-                        attendees.push(currentUser.id);
-                    }
                     await addEvent({
                         title: eventTitle,
                         type: 'R_TRAINING',
                         startAt: startDate.toISOString(),
                         endAt: endDate.toISOString(),
                         ownerId: session.userId,
-                        attendeeIds: attendees,
+                        attendeeIds: [session.userId],
                         source: 'PAULUS',
                     });
                     copiedCount++;
@@ -411,17 +407,13 @@ export function WelfareTab() {
             try {
                 // Include both the event owner and the admin who created it
                 // so the event appears on both users' dashboard calendars.
-                const attendees = [selectedUserId];
-                if (currentUser && currentUser.id !== selectedUserId) {
-                    attendees.push(currentUser.id);
-                }
                 await addEvent({
                     title: eventTitle,
                     type: 'R_TRAINING',
                     startAt: startDate.toISOString(),
                     endAt: endDate.toISOString(),
                     ownerId: selectedUserId,
-                    attendeeIds: attendees,
+                    attendeeIds: [selectedUserId],
                     source: 'PAULUS',
                 });
                 toast.success(`${user.name}${t('bookingCreatedWithCalendar')}`);
