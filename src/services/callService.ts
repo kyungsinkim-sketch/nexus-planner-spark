@@ -710,7 +710,7 @@ export async function endCall(): Promise<void> {
         stopAndCollectRecording(),
         new Promise<null>(resolve => setTimeout(() => resolve(null), 3000)), // 3s timeout
       ]);
-      console.log('[Call] Recording collected:', audioBase64 ? `${Math.round(audioBase64.length / 1024)}KB` : 'null');
+      console.log('[Call] Recording collected:', audioBase64 ? `${Math.round(audioBase64.length / 1024)}KB base64 (${audioChunks.length} chunks)` : 'null');
     } catch (err) {
       console.warn('[Call] Recording collection failed:', err);
     }
@@ -765,8 +765,9 @@ export async function endCall(): Promise<void> {
           roomId: roomInfo.id,
           audioBlob: audioBase64,
         },
-      }).then(() => {
-        console.log('[Call] End signal sent to backend');
+      }).then((resp) => {
+        console.log('[Call] End signal sent to backend:', JSON.stringify(resp.data));
+        if (resp.error) console.error('[Call] Backend error:', resp.error);
       }).catch(err => {
         console.error('[Call] End call API failed:', err);
       });
