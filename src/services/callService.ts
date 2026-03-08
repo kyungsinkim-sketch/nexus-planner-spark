@@ -433,6 +433,10 @@ async function connectToRoom(wsUrl: string, token: string): Promise<void> {
     }
   });
 
+  // Start recording BEFORE connect — prevents race condition where
+  // ParticipantDisconnected fires before recording is initialized
+  await startMicRecording();
+
   // Connect
   try {
     console.log('[Call] Connecting to', wsUrl);
@@ -490,14 +494,6 @@ async function connectToRoom(wsUrl: string, token: string): Promise<void> {
       remoteParticipantName: existingRemote.map(p => p.name).join(', '),
       remoteParticipants: existingRemote,
     });
-  }
-
-  // Enable microphone
-  try {
-    await room.localParticipant.setMicrophoneEnabled(true);
-    console.log('[Call] Microphone enabled');
-  } catch (err: any) {
-    console.warn('[Call] Microphone enable failed:', err);
   }
 
   // Enable camera if video call
