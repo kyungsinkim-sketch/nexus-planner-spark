@@ -111,11 +111,20 @@ function ParticipantTile({ name, videoTrack, isLocal, callState, count }: {
 }
 
 /* ─── Grid layout helper ─── */
-function getGridClass(count: number): string {
+function getGridClass(count: number, isMobile: boolean): string {
+  if (isMobile) {
+    switch (count) {
+      case 1: return 'grid-cols-1 grid-rows-1';
+      case 2: return 'grid-cols-1 grid-rows-2'; // Top-bottom on mobile
+      case 3:
+      case 4: return 'grid-cols-2 grid-rows-2';
+      default: return 'grid-cols-2 auto-rows-fr';
+    }
+  }
   switch (count) {
     case 1: return 'grid-cols-1 grid-rows-1';
-    case 2: return 'grid-cols-2 grid-rows-1'; // Side by side!
-    case 3: return 'grid-cols-2 grid-rows-2'; // 2+1
+    case 2: return 'grid-cols-2 grid-rows-1'; // Side by side on desktop
+    case 3: return 'grid-cols-2 grid-rows-2';
     case 4: return 'grid-cols-2 grid-rows-2';
     case 5:
     case 6: return 'grid-cols-3 grid-rows-2';
@@ -129,6 +138,13 @@ export function ActiveCallOverlay() {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const lastRoomId = useRef<string | null>(null);
   const endHandled = useRef(false);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+
+  useEffect(() => {
+    const onResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
 
   // Track room for post-call suggestions
   useEffect(() => {
@@ -247,8 +263,9 @@ export function ActiveCallOverlay() {
 
           if (hasAnyVideo) {
             // ─── Video mode: grid layout ───
+            // Uses flex-1 so video area doesn't overlap bottom controls
             return (
-              <div className={`absolute inset-0 grid ${getGridClass(totalCount)} gap-1.5 p-1.5`}>
+              <div className={`w-full h-full grid ${getGridClass(totalCount, isMobile)} gap-1.5 p-1.5`}>
                 {allParticipants.map(p => (
                   <ParticipantTile
                     key={p.key}
@@ -363,11 +380,7 @@ export function ActiveCallOverlay() {
       </div>
 
       {/* ─── Bottom controls ─── */}
-      <div className="relative z-20 pb-8 pt-4">
-        {/* Gradient fade above controls when video is showing */}
-        {status === 'active' && callState.remoteParticipants?.some(p => p.videoTrack) && (
-          <div className="absolute inset-x-0 bottom-full h-32 bg-gradient-to-t from-gray-950 to-transparent pointer-events-none" />
-        )}
+      <div className="relative z-20 pb-8 pt-4 bg-gray-950 flex-shrink-0">
         <div className="flex items-center justify-center gap-6">
           {/* Mute */}
           <div className="flex flex-col items-center gap-1">
