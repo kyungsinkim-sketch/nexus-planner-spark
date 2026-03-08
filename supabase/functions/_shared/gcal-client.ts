@@ -201,15 +201,19 @@ export async function listGoogleEvents(
 ): Promise<GoogleEventsListResponse> {
   const params = new URLSearchParams({
     maxResults: '250',
-    singleEvents: 'true',
-    orderBy: 'startTime',
   });
 
   if (syncToken) {
+    // Incremental sync: syncToken is incompatible with singleEvents/orderBy/timeMin/timeMax.
+    // Must include showDeleted so cancelled events are returned for deletion.
     params.set('syncToken', syncToken);
+    params.set('showDeleted', 'true');
   } else {
-    // Initial sync: fetch events from 3 months ago to 6 months in the future
+    // Initial/full sync: fetch events from 3 months ago to 6 months in the future
     // (narrower window to avoid Edge Function timeout on first sync)
+    params.set('singleEvents', 'true');
+    params.set('orderBy', 'startTime');
+
     const timeMin = new Date();
     timeMin.setMonth(timeMin.getMonth() - 3);
     params.set('timeMin', timeMin.toISOString());

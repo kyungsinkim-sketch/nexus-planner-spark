@@ -269,7 +269,7 @@ Deno.serve(async (req) => {
       // ── Orphan cleanup: remove DB events that no longer exist in Google ──
       // Only runs on full re-sync (no sync token) — incremental sync handles
       // deletions via the 'cancelled' status.
-      if (needsFullSync && seenGoogleEventIds.size > 0) {
+      if (!currentSyncToken && seenGoogleEventIds.size > 0) {
         const orphanedEvents = (existingEvents || []).filter(
           evt => evt.google_event_id && !seenGoogleEventIds.has(evt.google_event_id)
         );
