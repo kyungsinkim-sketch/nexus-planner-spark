@@ -234,7 +234,7 @@ export function ActiveCallOverlay() {
       </div>
 
       {/* ─── Content area ─── */}
-      <div className="flex-1 flex items-center justify-center">
+      <div className="flex-1 flex items-center justify-center min-h-0 overflow-hidden">
         {/* Connecting / Ringing / Creating */}
         {(status === 'creating' || status === 'ringing' || status === 'connecting') && (
           <div className="flex flex-col items-center gap-4">
