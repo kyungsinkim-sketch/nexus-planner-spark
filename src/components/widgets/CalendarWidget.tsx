@@ -136,8 +136,8 @@ function CalendarWidget({ context }: { context: WidgetDataContext }) {
           start: event.startAt,
           end: event.endAt,
           allDay: event.startAt?.includes('T00:00:00') && event.endAt?.includes('T23:59:59'),
-          backgroundColor: `color-mix(in srgb, ${color} 15%, transparent)`,
-          borderColor: color,
+          backgroundColor: 'transparent',
+          borderColor: 'transparent',
           textColor: 'inherit',
           extendedProps: {
             location: event.location,
