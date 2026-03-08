@@ -81,7 +81,7 @@ function ParticipantTile({ name, videoTrack, isLocal, callState, count }: {
       {isLocal && callState.isCameraOn ? (
         <LocalVideoPreview callState={callState} className="w-full h-full object-cover" />
       ) : videoTrack ? (
-        <VideoRenderer track={videoTrack} className="w-full h-full object-cover" />
+        <VideoRenderer track={videoTrack} className="w-full h-full object-cover" mirror />
       ) : (
         /* Audio-only avatar */
         <div className="flex flex-col items-center gap-3">

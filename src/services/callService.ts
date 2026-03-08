@@ -241,7 +241,7 @@ export async function createCall(targetUserId: string | string[], projectId?: st
           setTimeout(() => endCall(), 3000);
         }
       } catch { /* ignore poll errors */ }
-    }, 3000);
+    }, 1500);
 
     // Clear poll when status changes from ringing
     const unsubStatus = subscribeCallState((state) => {
