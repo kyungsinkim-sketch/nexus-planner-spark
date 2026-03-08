@@ -167,7 +167,7 @@ function SlackWidget({ context }: { context: WidgetDataContext }) {
 
   // ─── Realtime: auto-refresh on new Slack webhook messages ───
   useEffect(() => {
-    if (!selectedChannel || !status.teamId) return;
+    if (!selectedChannel || !status?.teamId) return;
 
     const channel = supabase
       .channel(`slack-msgs-${selectedChannel.id}`)
@@ -191,7 +191,7 @@ function SlackWidget({ context }: { context: WidgetDataContext }) {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [selectedChannel, status.teamId, loadMessages]);
+  }, [selectedChannel, status?.teamId, loadMessages]);
 
   // ─── Send message (optimistic) ───
   const handleSend = useCallback(async () => {
