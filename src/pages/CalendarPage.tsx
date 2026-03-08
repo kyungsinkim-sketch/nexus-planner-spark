@@ -73,7 +73,7 @@ function GoogleCalendarIcon({ className }: { className?: string }) {
 }
 
 export default function CalendarPage() {
-  const { events, getProjectById, deleteEvent, updateEvent, loadEvents } = useAppStore();
+  const { events, getProjectById, deleteEvent, updateEvent, loadEvents, currentUser } = useAppStore();
   const calendarRef = useRef<FullCalendar>(null);
   const { t } = useTranslation();
   const [selectedTypes, setSelectedTypes] = useState<EventType[]>(['TASK', 'DEADLINE', 'MEETING', 'PT', 'DELIVERY', 'TODO', 'DELIVERABLE', 'R_TRAINING']);
@@ -134,7 +134,12 @@ export default function CalendarPage() {
   const filteredEvents = events.filter((e) => {
     const typeMatch = selectedTypes.includes(e.type);
     const sourceMatch = showGoogleEvents || e.source !== 'GOOGLE';
-    return typeMatch && sourceMatch;
+    if (!typeMatch || !sourceMatch) return false;
+    // R_TRAINING: only show events where current user is owner or attendee
+    if (e.type === 'R_TRAINING' && currentUser) {
+      return e.ownerId === currentUser.id || e.attendeeIds?.includes(currentUser.id);
+    }
+    return true;
   });
 
   const googleEventCount = events.filter((e) => e.source === 'GOOGLE').length;
