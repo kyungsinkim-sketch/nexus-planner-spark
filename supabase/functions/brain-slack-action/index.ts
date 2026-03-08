@@ -90,15 +90,16 @@ Deno.serve(async (req) => {
       } catch { /* use defaults */ }
 
       // Create personal_todo
+      const tomorrow = new Date(now.getTime() + 86400000).toISOString().split('T')[0];
       const { error: todoErr } = await supabase
         .from('personal_todos')
         .insert({
-          user_id: userId,
-          title,
-          description,
-          status: 'pending',
-          source: 'SLACK_BRAIN',
-          source_ref: `slack:${channelId}:${messageTs}`,
+          title: `${title} — ${description}`,
+          requested_by_id: userId,
+          assignee_ids: [userId],
+          status: 'PENDING',
+          priority: 'NORMAL',
+          due_date: tomorrow,
         });
 
       if (todoErr) return jsonResponse({ error: todoErr.message }, 500);
@@ -131,13 +132,13 @@ Deno.serve(async (req) => {
       const { error: calErr } = await supabase
         .from('calendar_events')
         .insert({
-          title,
-          description,
+          title: `${title} — ${description}`,
           start_at: startAt.toISOString(),
           end_at: endAt.toISOString(),
           owner_id: userId,
-          type: 'GENERAL',
-          source: 'SLACK_BRAIN',
+          attendee_ids: [userId],
+          type: 'MEETING',
+          source: 'PAULUS',
         });
 
       if (calErr) return jsonResponse({ error: calErr.message }, 500);
@@ -161,13 +162,17 @@ Deno.serve(async (req) => {
       const { error: noteErr } = await supabase
         .from('knowledge_items')
         .insert({
-          title,
-          content,
-          item_type: 'important_note',
-          owner_id: userId,
-          source: 'SLACK_BRAIN',
-          source_ref: `slack:${channelId}:${messageTs}`,
-          scope_layer: 'personal',
+          user_id: userId,
+          content: `[${title}] ${content}`,
+          summary: title,
+          knowledge_type: 'decision_pattern',
+          source_type: 'brain_action',
+          source_id: `${channelId}:${messageTs}`,
+          source_context: `Slack #${channelName} — ${senderName}`,
+          scope_layer: 'operations',
+          scope: 'personal',
+          is_active: true,
+          confidence: 1.0,
         });
 
       if (noteErr) return jsonResponse({ error: noteErr.message }, 500);
