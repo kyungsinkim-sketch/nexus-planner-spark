@@ -340,6 +340,11 @@ async function connectToRoom(wsUrl: string, token: string): Promise<void> {
       remoteParticipantName: updated.length > 0 ? updated.map(p => p.name).join(', ') : null,
       remoteParticipants: updated,
     });
+    // Auto-end call when all remote participants have left
+    if (updated.length === 0 && currentState.status === 'active') {
+      console.log('[Call] All remote participants left — auto-ending call');
+      endCall();
+    }
   });
 
   room.on(RoomEvent.TrackSubscribed, (track: RemoteTrack, pub: RemoteTrackPublication, participant: RemoteParticipant) => {
