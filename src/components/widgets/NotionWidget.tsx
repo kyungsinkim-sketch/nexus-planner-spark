@@ -1191,7 +1191,7 @@ function PageListItem({
   const timeAgo = lastEditedTime ? formatTimeAgo(new Date(lastEditedTime)) : '';
 
   return (
-    <div className="group flex items-center gap-2 px-3 py-2 hover:bg-muted/50 cursor-pointer transition" onClick={onOpen}>
+    <div className="group flex items-center gap-2 px-3 py-2.5 hover:bg-muted/50 cursor-pointer transition" onClick={onOpen}>
       <PageIcon icon={icon} type={objectType} className="w-4 h-4 shrink-0" />
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-1.5">
