@@ -18,7 +18,7 @@ import { useTranslation } from '@/hooks/useTranslation';
 import {
   FileText, Image, FileSpreadsheet, Presentation, Film,
   FileArchive, File, Music, Code, Download, Trash2,
-  MessageSquare, X, Eye, Send,
+  MessageSquare, X, Eye, Send, LayoutGrid, List,
 } from 'lucide-react';
 import {
   Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter,
@@ -274,6 +274,8 @@ function FilesWidget({ context }: { context: WidgetDataContext }) {
     toast.success(t('fileDeleted'));
   }, [selectedFile, t]);
 
+  const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
+
   if (allFiles.length === 0) {
     return (
       <div className="flex items-center justify-center h-full text-muted-foreground/60 text-sm">
@@ -284,6 +286,70 @@ function FilesWidget({ context }: { context: WidgetDataContext }) {
 
   return (
     <>
+      {/* View mode toggle */}
+      <div className="flex items-center justify-end gap-0.5 mb-1.5 px-1">
+        <button
+          onClick={() => setViewMode('list')}
+          className={`p-1 rounded transition-colors ${viewMode === 'list' ? 'bg-white/10 text-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-white/5'}`}
+          title="List view"
+        >
+          <List className="w-3.5 h-3.5" />
+        </button>
+        <button
+          onClick={() => setViewMode('grid')}
+          className={`p-1 rounded transition-colors ${viewMode === 'grid' ? 'bg-white/10 text-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-white/5'}`}
+          title="Grid view"
+        >
+          <LayoutGrid className="w-3.5 h-3.5" />
+        </button>
+      </div>
+
+      {/* Grid view */}
+      {viewMode === 'grid' && (
+        <div className="grid grid-cols-3 gap-2 px-1">
+          {allFiles.map((f) => {
+            const info = getFileInfo(f.name, f.type);
+            const Icon = info.icon;
+            const isImage = isImageFile(f.name, f.type);
+            const fileUrl = isImage ? getFileUrl(f.storagePath) : null;
+
+            return (
+              <div
+                key={f.id}
+                className="bg-card/50 backdrop-blur-sm border border-white/10 rounded-xl p-2 cursor-pointer transition-all hover:scale-[1.03] hover:shadow-lg hover:shadow-black/20 group relative"
+                onClick={() => handleFileClick(f)}
+                title={f.name}
+              >
+                {/* Icon / thumbnail area */}
+                <div className="aspect-square rounded-lg overflow-hidden flex items-center justify-center bg-muted/30 mb-1.5">
+                  {isImage && fileUrl ? (
+                    <img
+                      src={fileUrl} alt={f.name}
+                      className="w-full h-full object-cover" loading="lazy"
+                      onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                    />
+                  ) : (
+                    <Icon className={`w-8 h-8 ${info.color} opacity-80`} />
+                  )}
+                </div>
+                <p className="typo-caption text-foreground truncate">{f.name}</p>
+                {f.size && <p className="typo-micro text-muted-foreground">{formatSize(f.size)}</p>}
+                {/* Delete button */}
+                <button
+                  onClick={(e) => handleDeleteFile(f.id, e)}
+                  className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 p-0.5 rounded bg-black/40 hover:bg-red-500/30 transition-all"
+                  title={t('delete')}
+                >
+                  <Trash2 className="w-3 h-3 text-red-400" />
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* List view */}
+      {viewMode === 'list' && (
       <div className="space-y-0.5">
         {allFiles.map((f) => {
           const info = getFileInfo(f.name, f.type);
@@ -336,6 +402,7 @@ function FilesWidget({ context }: { context: WidgetDataContext }) {
           );
         })}
       </div>
+      )}
 
       {/* File Preview Dialog */}
       <Dialog open={!!selectedFile} onOpenChange={(open) => { if (!open) setSelectedFile(null); }}>

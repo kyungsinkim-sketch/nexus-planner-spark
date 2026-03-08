@@ -652,8 +652,19 @@
 
 /* Widget idle: semi-transparent BACKGROUND only (liquid glass).
    Content (text, icons, buttons) stays fully opaque. */
+/* ── Idle widgets: liquid glass transparency on ALL inner elements ── */
 .widget-item-idle {
   height: 100%;
+}
+.widget-item-idle .glass-widget .widget-content {
+  opacity: 0.55;
+  transition: opacity 0.3s ease;
+}
+.widget-item-idle:hover .glass-widget .widget-content {
+  opacity: 0.85;
+}
+.widget-item-active .glass-widget .widget-content {
+  opacity: 1;
 }
 .widget-item-idle .glass-widget {
   background: hsl(0 0% 100% / 0.5) !important;

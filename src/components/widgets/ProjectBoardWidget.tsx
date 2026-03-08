@@ -22,9 +22,10 @@ import { Input } from '@/components/ui/input';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { toast } from 'sonner';
-import { format, differenceInDays, addDays, startOfWeek, parseISO } from 'date-fns';
+import { format, differenceInDays, addDays, startOfWeek, startOfMonth, addMonths, parseISO, getISOWeek } from 'date-fns';
 
 type ViewMode = 'table' | 'gantt';
+type GanttScale = 'day' | 'week' | 'month';
 
 // ── Status config ──────────────────────────────────────────
 
@@ -74,7 +75,7 @@ function StatusBadge({
 
   if (!onStatusChange) {
     return (
-      <span className={cn('inline-flex items-center justify-center px-3 py-0.5 rounded text-xs font-medium min-w-[72px]', cfg.bg, cfg.text)}>
+      <span className={cn('inline-flex items-center justify-center px-3 py-0.5 rounded text-xs font-medium min-w-[72px] whitespace-nowrap', cfg.bg, cfg.text)}>
         {t(cfg.labelKey)}
       </span>
     );
@@ -84,7 +85,7 @@ function StatusBadge({
     <div className="relative">
       <button
         onClick={() => setOpen(!open)}
-        className={cn('inline-flex items-center justify-center px-3 py-0.5 rounded text-xs font-medium min-w-[72px] cursor-pointer hover:opacity-80 transition-opacity', cfg.bg, cfg.text)}
+        className={cn('inline-flex items-center justify-center px-3 py-0.5 rounded text-xs font-medium min-w-[72px] whitespace-nowrap cursor-pointer hover:opacity-80 transition-opacity', cfg.bg, cfg.text)}
       >
         {t(cfg.labelKey)}
       </button>
@@ -386,7 +387,7 @@ function MainTableView({
     <ScrollArea className="w-full h-full">
       <div className="min-w-[700px]">
         {/* Column header */}
-        <div className="grid grid-cols-[minmax(200px,2fr)_90px_120px_90px_90px_120px_36px] gap-1 px-3 py-2 typo-overline text-muted-foreground border-b border-border sticky top-0 bg-background z-10">
+        <div className="grid grid-cols-[minmax(180px,2fr)_100px_100px_100px_100px_130px_36px] gap-1 px-3 py-2 typo-overline text-muted-foreground border-b border-border sticky top-0 bg-background z-10">
           <span>{t('taskName')}</span>
           <span className="text-center">{t('taskStatus')}</span>
           <span className="text-center">{t('owner')}</span>
@@ -430,7 +431,7 @@ function MainTableView({
                 return (
                   <div
                     key={task.id}
-                    className="grid grid-cols-[minmax(200px,2fr)_90px_120px_90px_90px_120px_36px] gap-1 px-3 py-1.5 items-center border-l-[3px] hover:bg-muted/30 transition-colors group/row"
+                    className="grid grid-cols-[minmax(180px,2fr)_100px_100px_100px_100px_130px_36px] gap-1 px-3 py-1.5 items-center border-l-[3px] hover:bg-muted/30 transition-colors group/row"
                     style={{ borderLeftColor: group.color }}
                   >
                     {/* Title - editable */}
@@ -471,22 +472,22 @@ function MainTableView({
                     </div>
 
                     {/* Start date - editable */}
-                    <div className="text-center typo-widget-sub">
+                    <div className="text-center typo-widget-sub whitespace-nowrap">
                       <EditableCell
                         value={task.startDate || ''}
                         type="date"
                         onSave={(v) => onUpdateTask(task.id, { startDate: v || null })}
-                        className="text-xs"
+                        className="typo-caption whitespace-nowrap"
                       />
                     </div>
 
                     {/* Due date - editable (syncs endDate for Gantt) */}
-                    <div className="text-center typo-widget-sub">
+                    <div className="text-center typo-widget-sub whitespace-nowrap">
                       <EditableCell
                         value={task.dueDate || task.endDate || ''}
                         type="date"
                         onSave={(v) => onUpdateTask(task.id, { dueDate: v || null, endDate: v || null })}
-                        className="text-xs"
+                        className="typo-caption whitespace-nowrap"
                       />
                     </div>
 
@@ -512,7 +513,7 @@ function MainTableView({
 
               {/* Add item row */}
               {!isCollapsed && (
-                <div className="grid grid-cols-[minmax(200px,2fr)_90px_120px_90px_90px_120px_36px] gap-1 px-3 py-1.5 border-l-[3px] border-transparent bg-muted/20 text-xs text-muted-foreground">
+                <div className="grid grid-cols-[minmax(180px,2fr)_100px_100px_100px_100px_130px_36px] gap-1 px-3 py-1.5 border-l-[3px] border-transparent bg-muted/20 text-xs text-muted-foreground">
                   <button
                     onClick={() => onAddTask(group.id)}
                     className="pl-5 flex items-center gap-1 cursor-pointer hover:text-primary transition-colors text-left"
@@ -523,9 +524,7 @@ function MainTableView({
                   <span />
                   <span />
                   <span />
-                  <div className="flex justify-center">
-                    <ProgressBar value={groupTotal > 0 ? Math.round(groupTasks.reduce((sum, tk) => sum + calcTimeProgress(tk), 0) / groupTotal) : 0} />
-                  </div>
+                  <span />
                   <span />
                 </div>
               )}
@@ -542,7 +541,7 @@ function MainTableView({
 // Reference: staggered card layout with group-color accent bars,
 // avatar stacks, day-by-day header, today highlight.
 
-const DAY_WIDTH = 80; // px per day column
+const DAY_WIDTH_MAP: Record<GanttScale, number> = { day: 80, week: 40, month: 16 };
 const CARD_HEIGHT = 72; // card height in px
 const CARD_GAP = 12; // vertical gap between cards
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -576,13 +575,16 @@ function GanttChartView({
   users,
   t,
   onUpdateTask,
+  ganttScale = 'day',
 }: {
   groups: BoardGroup[];
   tasks: BoardTask[];
   users: User[];
   t: (k: string) => string;
   onUpdateTask: (taskId: string, updates: Record<string, unknown>) => void;
+  ganttScale?: GanttScale;
 }) {
+  const DAY_WIDTH = DAY_WIDTH_MAP[ganttScale];
   const userMap = useMemo(() => new Map(users.map(u => [u.id, u])), [users]);
   const containerRef = useRef<HTMLDivElement>(null);
   const [dragging, setDragging] = useState<{
@@ -720,9 +722,9 @@ function GanttChartView({
     <ScrollArea className="w-full h-full">
       <div ref={scrollRef} className="overflow-x-auto">
         <div style={{ width: totalDays * DAY_WIDTH, minWidth: '100%' }}>
-          {/* ── Day header row ── */}
+          {/* ── Header row (scale-aware) ── */}
           <div className="flex h-10 border-b border-border/40 sticky top-0 z-20 bg-background/95 backdrop-blur-sm">
-            {days.map((day, i) => {
+            {ganttScale === 'day' && days.map((day, i) => {
               const dayStr = format(day, 'yyyy-MM-dd');
               const isToday = dayStr === todayStr;
               const isWeekend = day.getDay() === 0 || day.getDay() === 6;
@@ -749,6 +751,53 @@ function GanttChartView({
                 </div>
               );
             })}
+            {ganttScale === 'week' && (() => {
+              const weeks: { start: Date; dayIndex: number; span: number }[] = [];
+              let i = 0;
+              while (i < days.length) {
+                const ws = startOfWeek(days[i], { weekStartsOn: 1 });
+                let span = 0;
+                const startIdx = i;
+                while (i < days.length && startOfWeek(days[i], { weekStartsOn: 1 }).getTime() === ws.getTime()) {
+                  span++;
+                  i++;
+                }
+                weeks.push({ start: ws, dayIndex: startIdx, span });
+              }
+              return weeks.map((w, idx) => (
+                <div
+                  key={idx}
+                  className="flex-shrink-0 flex flex-col items-center justify-center text-xs border-r border-border/30 text-muted-foreground"
+                  style={{ width: w.span * DAY_WIDTH }}
+                >
+                  <span className="text-[10px] font-medium">W{getISOWeek(w.start)}</span>
+                  <span className="text-[10px]">{format(w.start, 'M/d')}</span>
+                </div>
+              ));
+            })()}
+            {ganttScale === 'month' && (() => {
+              const months: { label: string; span: number }[] = [];
+              let i = 0;
+              while (i < days.length) {
+                const m = days[i].getMonth();
+                const y = days[i].getFullYear();
+                let span = 0;
+                while (i < days.length && days[i].getMonth() === m && days[i].getFullYear() === y) {
+                  span++;
+                  i++;
+                }
+                months.push({ label: format(new Date(y, m, 1), 'yyyy MMM'), span });
+              }
+              return months.map((m, idx) => (
+                <div
+                  key={idx}
+                  className="flex-shrink-0 flex items-center justify-center text-xs border-r border-border/30 text-muted-foreground font-medium"
+                  style={{ width: m.span * DAY_WIDTH }}
+                >
+                  {m.label}
+                </div>
+              ));
+            })()}
           </div>
 
           {/* ── Timeline body ── */}
@@ -758,19 +807,29 @@ function GanttChartView({
               const isWeekend = day.getDay() === 0 || day.getDay() === 6;
               const dayStr = format(day, 'yyyy-MM-dd');
               const isToday = dayStr === todayStr;
+              const showGridLine = ganttScale === 'day'
+                ? true
+                : ganttScale === 'week'
+                  ? day.getDay() === 1 // Monday
+                  : day.getDate() === 1; // 1st of month
               return (
                 <div
                   key={i}
                   className="absolute top-0 bottom-0"
                   style={{ left: i * DAY_WIDTH, width: DAY_WIDTH }}
                 >
-                  {isWeekend && (
+                  {ganttScale === 'day' && isWeekend && (
                     <div className="absolute inset-0 bg-muted/10" />
                   )}
                   {isToday && (
                     <div className="absolute inset-y-0 left-1/2 -translate-x-px w-[2px] bg-primary/50 z-[5]" />
                   )}
-                  <div className="absolute right-0 top-0 bottom-0 w-px bg-border/15" />
+                  {showGridLine && (
+                    <div className={cn(
+                      'absolute right-0 top-0 bottom-0 w-px',
+                      ganttScale === 'day' ? 'bg-border/15' : 'bg-border/30',
+                    )} />
+                  )}
                 </div>
               );
             })}
@@ -1238,6 +1297,7 @@ export default function ProjectBoardWidget({ context }: { context: WidgetDataCon
     deleteBoardTask,
   } = useAppStore();
   const [viewMode, setViewMode] = useState<ViewMode>('table');
+  const [ganttScale, setGanttScale] = useState<GanttScale>('day');
   const [newTaskGroupId, setNewTaskGroupId] = useState<string | null>(null);
   const [newTaskTitle, setNewTaskTitle] = useState('');
 
@@ -1350,6 +1410,22 @@ export default function ProjectBoardWidget({ context }: { context: WidgetDataCon
           {t('ganttChart')}
         </Button>
 
+        {viewMode === 'gantt' && (
+          <>
+            <div className="w-px h-4 bg-border/50 mx-1" />
+            {(['day', 'week', 'month'] as GanttScale[]).map(scale => (
+              <Button
+                key={scale}
+                variant={ganttScale === scale ? 'secondary' : 'ghost'}
+                size="sm"
+                className="h-6 text-[11px] px-2 min-w-0"
+                onClick={() => setGanttScale(scale)}
+              >
+                {scale === 'day' ? '일' : scale === 'week' ? '주' : '월'}
+              </Button>
+            ))}
+          </>
+        )}
       </div>
 
       {/* Content */}
@@ -1373,6 +1449,7 @@ export default function ProjectBoardWidget({ context }: { context: WidgetDataCon
             users={projectUsers}
             t={t}
             onUpdateTask={handleUpdateTask}
+            ganttScale={ganttScale}
           />
         )}
       </div>
