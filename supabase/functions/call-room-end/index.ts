@@ -118,7 +118,7 @@ Deno.serve(async (req) => {
           .insert({
             user_id: user.id,
             title: room.title || 'In-App Call',
-            file_path: storagePath,
+            audio_storage_path: storagePath,
             file_size: audioBuffer.length,
             duration: durationSeconds,
             status: 'transcribing',

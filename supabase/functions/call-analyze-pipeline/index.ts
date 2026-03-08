@@ -51,10 +51,10 @@ Deno.serve(async (req) => {
     if (!audioStoragePath) {
       const { data: rec } = await supabase
         .from('voice_recordings')
-        .select('file_path')
+        .select('audio_storage_path')
         .eq('id', recordingId)
         .single();
-      audioStoragePath = rec?.file_path || `call-recordings/${callRoomId}.webm`;
+      audioStoragePath = rec?.audio_storage_path || `call-recordings/${callRoomId}.webm`;
     }
 
     const sttResp = await fetch(`${supabaseUrl}/functions/v1/voice-transcribe`, {
