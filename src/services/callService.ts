@@ -295,10 +295,11 @@ async function connectToRoom(wsUrl: string, token: string): Promise<void> {
 
   // Event handlers
   room.on(RoomEvent.Connected, async () => {
+    console.log('[Call] ✅ Room connected');
     setState({ status: 'active' });
     startDurationTimer();
 
-    // Ensure microphone is enabled (LiveKit may not auto-publish)
+    // Ensure microphone is enabled
     try {
       await room.localParticipant.setMicrophoneEnabled(true);
       console.log('[Call] Microphone enabled');
@@ -306,28 +307,30 @@ async function connectToRoom(wsUrl: string, token: string): Promise<void> {
       console.warn('[Call] Failed to enable microphone:', err);
     }
 
-    // Retry recording start with backoff (track may not be ready immediately)
-    const tryStartRecording = (attempt: number) => {
-      if (mediaRecorder && mediaRecorder.state === 'recording') return; // Already recording
-      if (attempt > 5) {
-        console.error('[Call] Failed to start recording after 5 attempts');
-        return;
-      }
-      console.log(`[Call] Recording start attempt ${attempt}`);
-      startRecording(room);
-      if (!mediaRecorder || mediaRecorder.state !== 'recording') {
-        setTimeout(() => tryStartRecording(attempt + 1), 1000 * attempt);
-      }
-    };
-    setTimeout(() => tryStartRecording(1), 1500);
+    // Start recording with simple getUserMedia approach
+    // (LiveKit track extraction is unreliable across browsers)
+    try {
+      const micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      console.log('[Call] Got mic stream for recording');
+      audioChunks = [];
+      mediaRecorder = new MediaRecorder(micStream, {
+        mimeType: MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+          ? 'audio/webm;codecs=opus'
+          : 'audio/webm',
+      });
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) audioChunks.push(e.data);
+      };
+      mediaRecorder.start(1000);
+      callStartTime = Date.now();
+      console.log('[Call] ✅ Recording started (getUserMedia)');
+    } catch (err) {
+      console.error('[Call] Recording setup failed:', err);
+    }
   });
 
   room.on(RoomEvent.LocalTrackPublished, () => {
-    // Retry recording if it failed on first attempt
-    if (!mediaRecorder || mediaRecorder.state !== 'recording') {
-      console.log('[Call] LocalTrackPublished — retrying recording');
-      startRecording(room);
-    }
+    console.log('[Call] LocalTrackPublished');
   });
 
   room.on(RoomEvent.Disconnected, (reason?: any) => {
