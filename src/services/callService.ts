@@ -379,7 +379,7 @@ async function connectToRoom(wsUrl: string, token: string): Promise<void> {
     }
   });
 
-  room.on(RoomEvent.TrackUnsubscribed, (track: RemoteTrack) => {
+  room.on(RoomEvent.TrackUnsubscribed, (track: RemoteTrack, _pub: RemoteTrackPublication, participant: RemoteParticipant) => {
     if (track.kind === Track.Kind.Video) {
       const updated = currentState.remoteParticipants.map(p =>
         p.identity === participant.identity ? { ...p, videoTrack: null } : p
