@@ -203,17 +203,16 @@ export async function listGoogleEvents(
     maxResults: '250',
   });
 
+  // Always include showDeleted so cancelled events trigger deletion in Re-Be DB.
+  // Never use singleEvents/orderBy — they prevent Google from issuing a nextSyncToken,
+  // which means every sync becomes a full sync and deletions are never detected.
+  params.set('showDeleted', 'true');
+
   if (syncToken) {
-    // Incremental sync: syncToken is incompatible with singleEvents/orderBy/timeMin/timeMax.
-    // Must include showDeleted so cancelled events are returned for deletion.
+    // Incremental sync: only syncToken + showDeleted
     params.set('syncToken', syncToken);
-    params.set('showDeleted', 'true');
   } else {
     // Initial/full sync: fetch events from 3 months ago to 6 months in the future
-    // (narrower window to avoid Edge Function timeout on first sync)
-    params.set('singleEvents', 'true');
-    params.set('orderBy', 'startTime');
-
     const timeMin = new Date();
     timeMin.setMonth(timeMin.getMonth() - 3);
     params.set('timeMin', timeMin.toISOString());
