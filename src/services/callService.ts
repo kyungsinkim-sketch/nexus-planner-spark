@@ -477,29 +477,43 @@ async function connectToRoom(wsUrl: string, token: string): Promise<void> {
 
 // ─── Client-side Recording (MVP) ─────────────────────
 
+function getMediaStreamFromTrack(track: any): MediaStream | null {
+  // LiveKit v2: track.mediaStream may not exist; use track.mediaStreamTrack instead
+  if (track?.mediaStream) return track.mediaStream;
+  if (track?.mediaStreamTrack) {
+    const stream = new MediaStream([track.mediaStreamTrack]);
+    return stream;
+  }
+  return null;
+}
+
 function startRecording(room: Room) {
   try {
     // Get local audio stream for recording
-    const localTrack = room.localParticipant.audioTrackPublications.values().next().value;
-    if (!localTrack?.track?.mediaStream) {
-      console.warn('[Call] No local audio track for recording');
+    const localPub = Array.from(room.localParticipant.audioTrackPublications.values())
+      .find((p: any) => p.track);
+    const localStream = localPub ? getMediaStreamFromTrack((localPub as any).track) : null;
+    if (!localStream) {
+      console.warn('[Call] No local audio track for recording — will retry on LocalTrackPublished');
       return;
     }
+
+    console.log('[Call] Starting recording with local audio track');
 
     // Create AudioContext to mix local + remote audio
     const audioContext = new AudioContext();
     const destination = audioContext.createMediaStreamDestination();
 
     // Add local audio
-    const localStream = localTrack.track.mediaStream;
     const localSource = audioContext.createMediaStreamSource(localStream);
     localSource.connect(destination);
 
     // Add remote audio tracks
     room.remoteParticipants.forEach(participant => {
       participant.audioTrackPublications.forEach(pub => {
-        if (pub.track?.mediaStream) {
-          const source = audioContext.createMediaStreamSource(pub.track.mediaStream);
+        const stream = getMediaStreamFromTrack((pub as any).track);
+        if (stream) {
+          const source = audioContext.createMediaStreamSource(stream);
           source.connect(destination);
         }
       });
@@ -507,9 +521,12 @@ function startRecording(room: Room) {
 
     // Listen for new remote tracks
     room.on(RoomEvent.TrackSubscribed, (track: RemoteTrack) => {
-      if (track.kind === Track.Kind.Audio && track.mediaStream) {
-        const source = audioContext.createMediaStreamSource(track.mediaStream);
-        source.connect(destination);
+      if (track.kind === Track.Kind.Audio) {
+        const stream = getMediaStreamFromTrack(track);
+        if (stream) {
+          const source = audioContext.createMediaStreamSource(stream);
+          source.connect(destination);
+        }
       }
     });
 
@@ -596,7 +613,26 @@ export async function endCall(): Promise<void> {
     durationTimer = null;
   }
 
-  // Disconnect from LiveKit immediately
+  // Save room info before resetting
+  const roomInfo = currentState.room;
+
+  // Stop recording BEFORE disconnect (tracks get detached on disconnect)
+  let audioBase64: string | null = null;
+  if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+    try {
+      audioBase64 = await Promise.race([
+        stopAndCollectRecording(),
+        new Promise<null>(resolve => setTimeout(() => resolve(null), 3000)), // 3s timeout
+      ]);
+      console.log('[Call] Recording collected:', audioBase64 ? `${Math.round(audioBase64.length / 1024)}KB` : 'null');
+    } catch (err) {
+      console.warn('[Call] Recording collection failed:', err);
+    }
+  } else {
+    console.warn('[Call] No active mediaRecorder at endCall. state:', mediaRecorder?.state ?? 'null');
+  }
+
+  // Disconnect from LiveKit
   const roomRef = currentRoom;
   currentRoom = null;
   if (roomRef) {
@@ -609,22 +645,6 @@ export async function endCall(): Promise<void> {
     try { audioOutputContext.close(); } catch { /* ignore */ }
     audioOutputContext = null;
     audioOutputGain = null;
-  }
-
-  // Save room info before resetting
-  const roomInfo = currentState.room;
-
-  // Stop recording (with timeout so it doesn't hang)
-  let audioBase64: string | null = null;
-  if (mediaRecorder && mediaRecorder.state !== 'inactive') {
-    try {
-      audioBase64 = await Promise.race([
-        stopAndCollectRecording(),
-        new Promise<null>(resolve => setTimeout(() => resolve(null), 3000)), // 3s timeout
-      ]);
-    } catch (err) {
-      console.warn('[Call] Recording collection failed:', err);
-    }
   }
 
   // Reset state immediately so UI closes
