@@ -244,23 +244,8 @@ export const deleteEvent = async (id: string): Promise<void> => {
         throw new Error('Supabase not configured');
     }
 
-    // Check if this event has a google_event_id — if so, delete from Google too
-    const { data: eventRow } = await supabase
-        .from('calendar_events')
-        .select('google_event_id, owner_id')
-        .eq('id', id)
-        .maybeSingle();
-
-    if (eventRow?.google_event_id && eventRow?.owner_id) {
-        try {
-            await supabase.functions.invoke('gcal-delete-event', {
-                body: { userId: eventRow.owner_id, googleEventId: eventRow.google_event_id },
-            });
-        } catch (err) {
-            console.warn('[eventService] Failed to delete from Google Calendar:', err);
-            // Non-fatal — still delete locally
-        }
-    }
+    // Note: Google Calendar deletion is handled by appStore.ts via
+    // googleCalendarService.deleteGoogleCalendarEvent() — no need to duplicate here.
 
     const { data, error } = await supabase
         .from('calendar_events')
