@@ -21,7 +21,7 @@ import {
   Hash, Lock, MessageSquare, Send, ExternalLink, Loader2,
   ChevronLeft, Users, Plug, Unplug, RefreshCw,
   Smile, MoreHorizontal, Trash2, Pencil, Pin, PinOff,
-  MessageCircle, X, Check,
+  MessageCircle, X, Check, Sparkles, ListChecks, CalendarPlus, Star,
 } from 'lucide-react';
 import {
   getSlackAuthUrl, exchangeSlackCode, getSlackStatus, getSlackChannels,
@@ -78,6 +78,8 @@ function SlackWidget({ context }: { context: WidgetDataContext }) {
   // UI state
   const [activeMenu, setActiveMenu] = useState<string | null>(null); // ts of message showing menu
   const [emojiPickerTs, setEmojiPickerTs] = useState<string | null>(null);
+  const [brainMenuTs, setBrainMenuTs] = useState<string | null>(null); // ts of message showing brain menu
+  const [brainProcessing, setBrainProcessing] = useState<string | null>(null); // ts of message being analyzed
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const sendingRef = useRef(false);
@@ -311,6 +313,38 @@ function SlackWidget({ context }: { context: WidgetDataContext }) {
     } catch (e) { console.error('[SlackWidget] pin:', e); }
   }, [userId, selectedChannel]);
 
+  // ─── Brain AI Action ───
+  const handleBrainAction = useCallback(async (msg: SlackMessage, actionType: 'todo' | 'calendar' | 'important') => {
+    if (!userId || !selectedChannel) return;
+    setBrainMenuTs(null);
+    setBrainProcessing(msg.ts);
+
+    try {
+      const { data, error } = await supabase.functions.invoke('brain-slack-action', {
+        body: {
+          userId,
+          channelId: selectedChannel.id,
+          channelName: selectedChannel.name,
+          messageText: msg.text,
+          messageTs: msg.ts,
+          senderName: userMap[msg.user]?.name || msg.user,
+          actionType,
+        },
+      });
+
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      const actionLabels = { todo: 'TODO', calendar: '캘린더', important: '중요기록' };
+      toast.success(`${actionLabels[actionType]}에 추가되었습니다`);
+    } catch (e) {
+      console.error('[SlackWidget] brain action:', e);
+      toast.error('Brain AI 처리에 실패했습니다');
+    } finally {
+      setBrainProcessing(null);
+    }
+  }, [userId, selectedChannel, userMap]);
+
   // ─── Thread ───
   const loadThread = useCallback(async (channelId: string, threadTs: string) => {
     if (!userId) return;
@@ -488,6 +522,7 @@ function SlackWidget({ context }: { context: WidgetDataContext }) {
     const time = new Date(parseFloat(msg.ts) * 1000);
     const isMenuOpen = activeMenu === msg.ts;
     const isEmojiOpen = emojiPickerTs === msg.ts;
+    const isBrainOpen = brainMenuTs === msg.ts;
     const hasThread = (msg.reply_count || 0) > 0 && !isThread;
 
     return (
@@ -554,19 +589,25 @@ function SlackWidget({ context }: { context: WidgetDataContext }) {
 
         {/* Hover actions — inline right, not absolute to avoid overflow clipping */}
         <div className={`slack-action-bar absolute top-0 right-0 flex items-center gap-0.5 bg-white dark:bg-zinc-800 border border-black/10 dark:border-white/10 rounded-md shadow-sm px-0.5 py-0.5 transition-opacity ${
-          isMenuOpen || isEmojiOpen ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+          isMenuOpen || isEmojiOpen || isBrainOpen ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
         }`}>
-          <button onClick={e => { e.stopPropagation(); setEmojiPickerTs(isEmojiOpen ? null : msg.ts); setActiveMenu(null); }}
-            className="p-0.5 hover:bg-white/10 rounded" title="리액션">
+          <button onClick={e => { e.stopPropagation(); setEmojiPickerTs(isEmojiOpen ? null : msg.ts); setActiveMenu(null); setBrainMenuTs(null); }}
+            className="p-0.5 hover:bg-gray-100 dark:hover:bg-zinc-700 rounded" title="리액션">
             <Smile className="w-3.5 h-3.5" />
           </button>
+          {/* Brain AI */}
+          <button onClick={e => { e.stopPropagation(); setBrainMenuTs(isBrainOpen ? null : msg.ts); setActiveMenu(null); setEmojiPickerTs(null); }}
+            className={`p-0.5 hover:bg-gray-100 dark:hover:bg-zinc-700 rounded ${brainProcessing === msg.ts ? 'animate-pulse' : ''}`}
+            title="Brain AI" disabled={brainProcessing === msg.ts}>
+            <Sparkles className={`w-3.5 h-3.5 ${isBrainOpen ? 'text-primary' : ''}`} />
+          </button>
           {!isThread && (
-            <button onClick={() => openThread(msg)} className="p-0.5 hover:bg-white/10 rounded" title="스레드">
+            <button onClick={() => openThread(msg)} className="p-0.5 hover:bg-gray-100 dark:hover:bg-zinc-700 rounded" title="스레드">
               <MessageCircle className="w-3.5 h-3.5" />
             </button>
           )}
-          <button onClick={e => { e.stopPropagation(); setActiveMenu(isMenuOpen ? null : msg.ts); setEmojiPickerTs(null); }}
-            className="p-0.5 hover:bg-white/10 rounded" title="더보기">
+          <button onClick={e => { e.stopPropagation(); setActiveMenu(isMenuOpen ? null : msg.ts); setEmojiPickerTs(null); setBrainMenuTs(null); }}
+            className="p-0.5 hover:bg-gray-100 dark:hover:bg-zinc-700 rounded" title="더보기">
             <MoreHorizontal className="w-3.5 h-3.5" />
           </button>
         </div>
@@ -616,6 +657,35 @@ function SlackWidget({ context }: { context: WidgetDataContext }) {
                 <button onClick={() => handleDelete(msg)}
                   className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition">
                   <Trash2 className="w-3 h-3" /> 삭제
+                </button>
+              </div>
+            </>,
+            document.body
+          );
+        })()}
+
+        {/* Brain AI menu — Portal to body */}
+        {isBrainOpen && (() => {
+          const actionBar = document.querySelector(`[data-slack-msg="${msg.ts}"] .slack-action-bar`);
+          if (!actionBar) return null;
+          const r = actionBar.getBoundingClientRect();
+          return createPortal(
+            <>
+              <div className="fixed inset-0 z-[9998]" onClick={() => setBrainMenuTs(null)} />
+              <div className="fixed z-[9999] bg-white dark:bg-zinc-800 border border-black/10 dark:border-white/10 rounded-lg shadow-lg py-1 min-w-[160px]"
+                style={{ top: r.bottom + 2, left: Math.max(8, r.right - 180) }} onClick={e => e.stopPropagation()}>
+                <div className="px-3 py-1 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Brain AI</div>
+                <button onClick={() => handleBrainAction(msg, 'todo')}
+                  className="w-full flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-gray-100 dark:hover:bg-zinc-700 transition">
+                  <ListChecks className="w-3.5 h-3.5 text-blue-500" /> TODO 만들기
+                </button>
+                <button onClick={() => handleBrainAction(msg, 'calendar')}
+                  className="w-full flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-gray-100 dark:hover:bg-zinc-700 transition">
+                  <CalendarPlus className="w-3.5 h-3.5 text-green-500" /> 캘린더에 추가
+                </button>
+                <button onClick={() => handleBrainAction(msg, 'important')}
+                  className="w-full flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-gray-100 dark:hover:bg-zinc-700 transition">
+                  <Star className="w-3.5 h-3.5 text-amber-500" /> 중요기록 저장
                 </button>
               </div>
             </>,
