@@ -111,10 +111,8 @@ const App = () => {
   }, [initializeAuth]);
 
   // Apply theme class on mount and changes
-  // Mobile: always force dark mode for cosmos theme
   useEffect(() => {
-    const isMobile = window.innerWidth < 768;
-    if (isMobile || theme === 'dark') {
+    if (theme === 'dark') {
       document.documentElement.classList.add('dark');
     } else {
       document.documentElement.classList.remove('dark');

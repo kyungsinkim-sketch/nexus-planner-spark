@@ -126,16 +126,44 @@ export function MobileProjectsView() {
               </p>
             </div>
           ) : (
-            projects.map((p) => (
-              <ProjectCover
-                key={p.id}
-                proj={p}
-                height={180}
-                onClick={() => {
-                  setProjectId(p.id);
-                  setStep('detail');
-                }}
-              />
+            projects.map((p, idx) => (
+              <div key={p.id} className="relative" style={{ marginBottom: idx < projects.length - 1 ? -8 : 0 }}>
+                {/* Stacked card shadow layers behind */}
+                {idx < projects.length - 1 && (
+                  <>
+                    <div
+                      className="absolute left-2 right-2 rounded-2xl"
+                      style={{
+                        bottom: -4,
+                        height: 12,
+                        background: 'var(--stack-bg-1, rgba(128,128,128,0.15))',
+                        filter: 'blur(1px)',
+                        zIndex: 0,
+                      }}
+                    />
+                    <div
+                      className="absolute left-4 right-4 rounded-2xl"
+                      style={{
+                        bottom: -7,
+                        height: 10,
+                        background: 'var(--stack-bg-2, rgba(128,128,128,0.08))',
+                        filter: 'blur(2px)',
+                        zIndex: 0,
+                      }}
+                    />
+                  </>
+                )}
+                <div className="relative z-10">
+                  <ProjectCover
+                    proj={p}
+                    height={180}
+                    onClick={() => {
+                      setProjectId(p.id);
+                      setStep('detail');
+                    }}
+                  />
+                </div>
+              </div>
             ))
           )}
         </div>

@@ -117,17 +117,21 @@ export function MobileBottomNav() {
         </div>
       )}
 
-      {/* Nav bar */}
-      <div
-        className="border-t"
-        style={{
-          background: isDark ? 'rgba(0,0,0,0.85)' : 'rgba(255,255,255,0.85)',
-          backdropFilter: 'blur(20px)',
-          WebkitBackdropFilter: 'blur(20px)',
-          borderColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)',
-        }}
-      >
-        <div className="flex items-center justify-around px-2 h-14">
+      {/* Nav bar — rounded liquid glass */}
+      <div className="px-3 pb-1">
+        <div
+          className="rounded-2xl border"
+          style={{
+            background: isDark ? 'rgba(20,20,30,0.65)' : 'rgba(255,255,255,0.70)',
+            backdropFilter: 'blur(24px) saturate(1.4)',
+            WebkitBackdropFilter: 'blur(24px) saturate(1.4)',
+            borderColor: isDark ? 'rgba(255,255,255,0.10)' : 'rgba(0,0,0,0.08)',
+            boxShadow: isDark
+              ? '0 4px 20px rgba(0,0,0,0.4), inset 0 0.5px 0 rgba(255,255,255,0.06)'
+              : '0 4px 20px rgba(0,0,0,0.08), inset 0 0.5px 0 rgba(255,255,255,0.8)',
+          }}
+        >
+          <div className="flex items-center justify-around px-2 h-14">
           {tabs.map(tab => {
             const Icon = tab.icon;
             const active = !isSubRoute && mobileView === tab.id;
@@ -185,6 +189,7 @@ export function MobileBottomNav() {
               </AvatarFallback>
             </Avatar>
           </button>
+        </div>
         </div>
       </div>
     </div>
