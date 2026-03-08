@@ -38,13 +38,11 @@ import { NewProjectModal } from '@/components/project/NewProjectModal';
 import { useIsMobile } from '@/hooks/use-mobile';
 import type { WidgetDataContext } from '@/types/widget';
 
-// Lazy load mobile components — only loaded on mobile
-const CosmosHome = lazy(() => import('@/components/mobile/CosmosHome'));
-const ConstellationMap = lazy(() => import('@/components/mobile/ConstellationMap'));
-const CosmosCalendar = lazy(() => import('@/components/mobile/CosmosCalendar'));
-const CosmosEmail = lazy(() => import('@/components/mobile/CosmosEmail'));
-const MobileProjectView = lazy(() => import('@/components/mobile/MobileProjectView'));
-const MobileChatView = lazy(() => import('@/components/mobile/MobileChatView'));
+// Lazy load mobile components — only loaded on mobile (Phase 3 redesign)
+const MobileAIChatView = lazy(() => import('@/components/mobile/MobileAIChatView'));
+const MobileProjectsView = lazy(() => import('@/components/mobile/MobileProjectsView'));
+const MobileMembersView = lazy(() => import('@/components/mobile/MobileMembersView'));
+const MobileCalendarView = lazy(() => import('@/components/mobile/MobileCalendarView'));
 const MobileBottomNav = lazy(() => import('@/components/mobile/MobileBottomNav'));
 
 export function TabLayout() {
@@ -90,18 +88,16 @@ export function TabLayout() {
               <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
             </div>
           }>
-            {mobileView === 'home' ? (
-              <CosmosHome />
-            ) : mobileView === 'constellation' ? (
-              <ConstellationMap />
-            ) : mobileView === 'chat' ? (
-              <MobileChatView />
+            {mobileView === 'ai-chat' ? (
+              <MobileAIChatView />
+            ) : mobileView === 'projects' ? (
+              <MobileProjectsView />
+            ) : mobileView === 'members' ? (
+              <MobileMembersView />
             ) : mobileView === 'calendar' ? (
-              <CosmosCalendar />
-            ) : mobileView === 'email' ? (
-              <CosmosEmail />
+              <MobileCalendarView />
             ) : (
-              <MobileProjectView />
+              <MobileAIChatView />
             )}
           </Suspense>
         </div>
