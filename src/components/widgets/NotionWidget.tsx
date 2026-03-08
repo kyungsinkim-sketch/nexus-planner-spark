@@ -727,7 +727,6 @@ export default function NotionWidget({ context }: { context: WidgetDataContext }
     const sel = window.getSelection();
     if (!sel || sel.isCollapsed || !sel.toString().trim()) {
       setSelectionBubble(null);
-      setBrainMenuOpen(false);
       return;
     }
     const range = sel.getRangeAt(0);
