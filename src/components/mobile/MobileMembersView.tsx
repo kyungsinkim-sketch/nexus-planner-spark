@@ -93,15 +93,18 @@ export function MobileMembersView() {
     const startDay = getDay(startOfMonth(calendarMonth)); // 0=Sun
 
     return (
-      <div className="flex flex-col h-full">
+      <div className="flex flex-col h-full bg-background">
         {/* Header */}
         <div className="flex items-center gap-3 px-4 pt-4 pb-2">
           <button
             onClick={() => setSelectedUserId(null)}
-            className="p-2 -ml-2 rounded-full active:bg-black/5 dark:active:bg-white/10"
+            className="p-2 -ml-2 rounded-lg bg-muted hover:bg-muted/80 transition-colors"
           >
-            <ArrowLeft className="w-5 h-5" />
+            <ArrowLeft className="w-5 h-5 text-foreground" />
           </button>
+          <span className="typo-h4 font-semibold text-foreground">
+            {language === 'ko' ? '멤버 상세' : 'Member Detail'}
+          </span>
         </div>
 
         <div className="flex-1 overflow-y-auto px-4 pb-8">
@@ -137,6 +140,9 @@ export function MobileMembersView() {
 
           {/* Tasks Schedule / Mini Calendar */}
           <div className="bg-white/60 dark:bg-white/5 backdrop-blur-xl border border-white/20 dark:border-white/10 rounded-2xl p-4">
+            <h4 className="typo-label font-semibold text-foreground mb-3">
+              {language === 'ko' ? '일정 & 업무' : 'Tasks Schedule'}
+            </h4>
             <div className="flex items-center justify-between mb-3">
               <button onClick={() => setCalendarMonth(m => subMonths(m, 1))} className="p-1 rounded-full active:bg-black/5 dark:active:bg-white/10">
                 <ChevronLeft className="w-4 h-4" />
@@ -194,7 +200,7 @@ export function MobileMembersView() {
 
   // ─── List View ───────────────────────────────────────────
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full bg-background">
       {/* Header */}
       <div className="flex items-center justify-between px-4 pt-4 pb-2">
         <h2 className="typo-h2">Members</h2>
