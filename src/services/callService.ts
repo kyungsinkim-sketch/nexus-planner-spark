@@ -294,16 +294,38 @@ async function connectToRoom(wsUrl: string, token: string): Promise<void> {
   });
 
   // Event handlers
-  room.on(RoomEvent.Connected, () => {
+  room.on(RoomEvent.Connected, async () => {
     setState({ status: 'active' });
     startDurationTimer();
-    // Delay recording start to ensure local track is published
-    setTimeout(() => startRecording(room), 1500);
+
+    // Ensure microphone is enabled (LiveKit may not auto-publish)
+    try {
+      await room.localParticipant.setMicrophoneEnabled(true);
+      console.log('[Call] Microphone enabled');
+    } catch (err) {
+      console.warn('[Call] Failed to enable microphone:', err);
+    }
+
+    // Retry recording start with backoff (track may not be ready immediately)
+    const tryStartRecording = (attempt: number) => {
+      if (mediaRecorder && mediaRecorder.state === 'recording') return; // Already recording
+      if (attempt > 5) {
+        console.error('[Call] Failed to start recording after 5 attempts');
+        return;
+      }
+      console.log(`[Call] Recording start attempt ${attempt}`);
+      startRecording(room);
+      if (!mediaRecorder || mediaRecorder.state !== 'recording') {
+        setTimeout(() => tryStartRecording(attempt + 1), 1000 * attempt);
+      }
+    };
+    setTimeout(() => tryStartRecording(1), 1500);
   });
 
   room.on(RoomEvent.LocalTrackPublished, () => {
     // Retry recording if it failed on first attempt
-    if (!mediaRecorder || mediaRecorder.state === 'inactive') {
+    if (!mediaRecorder || mediaRecorder.state !== 'recording') {
+      console.log('[Call] LocalTrackPublished — retrying recording');
       startRecording(room);
     }
   });
@@ -487,18 +509,39 @@ function getMediaStreamFromTrack(track: any): MediaStream | null {
   return null;
 }
 
-function startRecording(room: Room) {
+async function startRecording(room: Room) {
   try {
     // Get local audio stream for recording
-    const localPub = Array.from(room.localParticipant.audioTrackPublications.values())
-      .find((p: any) => p.track);
-    const localStream = localPub ? getMediaStreamFromTrack((localPub as any).track) : null;
+    const pubs = Array.from(room.localParticipant.audioTrackPublications.values());
+    console.log('[Call] Audio publications:', pubs.length, pubs.map((p: any) => ({
+      trackSid: p.trackSid,
+      hasTrack: !!p.track,
+      kind: p.track?.kind,
+      hasMediaStream: !!p.track?.mediaStream,
+      hasMediaStreamTrack: !!p.track?.mediaStreamTrack,
+    })));
+
+    const localPub = pubs.find((p: any) => p.track);
+    let localStream = localPub ? getMediaStreamFromTrack((localPub as any).track) : null;
+
+    // Fallback: try to get mic stream directly from browser
     if (!localStream) {
-      console.warn('[Call] No local audio track for recording — will retry on LocalTrackPublished');
+      console.warn('[Call] No LiveKit audio track, trying getUserMedia fallback');
+      try {
+        localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        console.log('[Call] Got fallback mic stream');
+      } catch (err) {
+        console.warn('[Call] getUserMedia fallback failed:', err);
+        return;
+      }
+    }
+
+    if (!localStream) {
+      console.warn('[Call] No audio stream available for recording');
       return;
     }
 
-    console.log('[Call] Starting recording with local audio track');
+    console.log('[Call] Starting recording with audio track');
 
     // Create AudioContext to mix local + remote audio
     const audioContext = new AudioContext();
