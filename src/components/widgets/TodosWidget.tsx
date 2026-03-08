@@ -249,7 +249,7 @@ function TodosWidget({ context }: { context: WidgetDataContext }) {
                       }`}
                     />
                     <p
-                      className={`text-sm truncate ${
+                      className={`typo-widget-body truncate ${
                         todo.status === 'COMPLETED'
                           ? 'line-through text-muted-foreground'
                           : 'text-foreground'
@@ -260,10 +260,10 @@ function TodosWidget({ context }: { context: WidgetDataContext }) {
                   </div>
                   {todo.dueDate && (
                     <p
-                      className={`text-xs mt-0.5 ml-3 ${
+                      className={`typo-widget-sub mt-0.5 ml-3 ${
                         isOverdue
                           ? 'text-red-500 font-medium'
-                          : 'text-muted-foreground'
+                          : ''
                       }`}
                     >
                       {new Date(todo.dueDate).toLocaleDateString(locale, {
@@ -289,7 +289,7 @@ function TodosWidget({ context }: { context: WidgetDataContext }) {
           <div className="space-y-3 py-2">
             {/* Title */}
             <div>
-              <label className="text-xs font-medium text-muted-foreground mb-1 block">
+              <label className="typo-label text-muted-foreground mb-1 block">
                 {t('title') || '제목'}
               </label>
               <Input
@@ -302,7 +302,7 @@ function TodosWidget({ context }: { context: WidgetDataContext }) {
 
             {/* Due Date */}
             <div>
-              <label className="text-xs font-medium text-muted-foreground mb-1 block">
+              <label className="typo-label text-muted-foreground mb-1 block">
                 {t('dueDate')}
               </label>
               <Input
@@ -314,7 +314,7 @@ function TodosWidget({ context }: { context: WidgetDataContext }) {
 
             {/* Priority */}
             <div>
-              <label className="text-xs font-medium text-muted-foreground mb-1 block">
+              <label className="typo-label text-muted-foreground mb-1 block">
                 {t('priority')}
               </label>
               <div className="flex gap-2">
@@ -381,7 +381,7 @@ function TodosWidget({ context }: { context: WidgetDataContext }) {
 
             {/* Assignees (multi-select) */}
             <div>
-              <label className="text-xs font-medium text-muted-foreground mb-1 block">
+              <label className="typo-label text-muted-foreground mb-1 block">
                 {t('assignees')}
               </label>
               <UserSearchInput
@@ -397,7 +397,7 @@ function TodosWidget({ context }: { context: WidgetDataContext }) {
             {/* Due Date & Time */}
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <label className="text-xs font-medium text-muted-foreground mb-1 block">
+                <label className="typo-label text-muted-foreground mb-1 block">
                   {t('dueDate')}
                 </label>
                 <Input
@@ -407,7 +407,7 @@ function TodosWidget({ context }: { context: WidgetDataContext }) {
                 />
               </div>
               <div>
-                <label className="text-xs font-medium text-muted-foreground mb-1 block">
+                <label className="typo-label text-muted-foreground mb-1 block">
                   {t('time')}
                 </label>
                 <Input
@@ -424,7 +424,7 @@ function TodosWidget({ context }: { context: WidgetDataContext }) {
 
             {/* Priority */}
             <div>
-              <label className="text-xs font-medium text-muted-foreground mb-1 block">
+              <label className="typo-label text-muted-foreground mb-1 block">
                 {t('priority')}
               </label>
               <div className="flex gap-2">

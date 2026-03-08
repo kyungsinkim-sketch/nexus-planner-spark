@@ -312,10 +312,10 @@ function BrainChatWidget({ context }: { context: WidgetDataContext }) {
                 {item.type === 'brain' && (
                   <div className="flex items-center gap-1 mb-0.5">
                     <Brain className="w-2.5 h-2.5 text-violet-500" />
-                    <span className="text-xs font-medium font-semibold text-violet-600 dark:text-violet-400">Brain AI</span>
+                    <span className="typo-chat-name text-violet-600 dark:text-violet-400">Brain AI</span>
                   </div>
                 )}
-                <p className="text-xs leading-relaxed" style={{ overflowWrap: 'anywhere', wordBreak: 'break-word' }}>
+                <p className="typo-chat-message leading-relaxed" style={{ overflowWrap: 'anywhere', wordBreak: 'break-word' }}>
                   {item.content}
                 </p>
                 {/* Action badges */}
@@ -339,7 +339,7 @@ function BrainChatWidget({ context }: { context: WidgetDataContext }) {
                     ))}
                   </div>
                 )}
-                <span className={`block text-xs font-medium mt-0.5 ${
+                <span className={`block typo-caption mt-0.5 ${
                   item.type === 'user' ? 'text-white/60' : 'text-muted-foreground/60'
                 }`}>
                   {formatTime(item.timestamp)}

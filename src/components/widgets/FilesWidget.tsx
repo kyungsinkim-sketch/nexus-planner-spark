@@ -318,8 +318,8 @@ function FilesWidget({ context }: { context: WidgetDataContext }) {
                 </div>
               )}
               <div className="flex-1 min-w-0">
-                <p className="text-xs font-medium text-foreground truncate">{f.name}</p>
-                <p className="text-xs font-medium text-muted-foreground">
+                <p className="typo-widget-body text-foreground truncate">{f.name}</p>
+                <p className="typo-widget-sub">
                   {info.label}
                   {f.size ? ` · ${formatSize(f.size)}` : ''}
                 </p>

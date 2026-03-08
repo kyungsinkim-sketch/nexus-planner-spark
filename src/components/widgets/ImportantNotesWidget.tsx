@@ -225,9 +225,9 @@ function ImportantNotesWidget({ context }: { context: WidgetDataContext }) {
                   <div className="flex items-start gap-2">
                     <div className="flex-1 min-w-0">
                       {hasTitle && (
-                        <p className="text-xs font-semibold text-foreground leading-snug mb-0.5">{note.title}</p>
+                        <p className="typo-widget-body font-semibold text-foreground leading-snug mb-0.5">{note.title}</p>
                       )}
-                      <p className={`text-xs text-foreground/80 leading-relaxed break-words whitespace-pre-wrap ${
+                      <p className={`typo-widget-sub text-foreground/80 leading-relaxed break-words whitespace-pre-wrap ${
                         !isExpanded && isLong ? 'line-clamp-2' : ''
                       }`}>
                         {note.content}
@@ -239,17 +239,17 @@ function ImportantNotesWidget({ context }: { context: WidgetDataContext }) {
                         </button>
                       )}
                       <div className="flex items-center gap-2 mt-1">
-                        <span className="text-xs font-medium text-muted-foreground">
+                        <span className="typo-caption text-muted-foreground">
                           {creator?.name || note.createdBy}
                         </span>
-                        <span className="text-xs font-medium text-muted-foreground/50">·</span>
-                        <span className="text-xs font-medium text-muted-foreground">
+                        <span className="typo-caption text-muted-foreground/50">·</span>
+                        <span className="typo-caption text-muted-foreground">
                           {new Date(note.createdAt).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })}
                         </span>
                         {note.sourceMessageId && (
                           <>
-                            <span className="text-xs font-medium text-muted-foreground/50">·</span>
-                            <span className="text-xs font-medium text-muted-foreground flex items-center gap-0.5">
+                            <span className="typo-caption text-muted-foreground/50">·</span>
+                            <span className="typo-caption text-muted-foreground flex items-center gap-0.5">
                               <MessageSquare className="w-2.5 h-2.5" />
                               {t('fromChat')}
                             </span>

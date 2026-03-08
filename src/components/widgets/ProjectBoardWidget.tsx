@@ -381,7 +381,7 @@ function MainTableView({
     <ScrollArea className="w-full h-full">
       <div className="min-w-[700px]">
         {/* Column header */}
-        <div className="grid grid-cols-[minmax(200px,2fr)_90px_120px_90px_90px_120px_36px] gap-1 px-3 py-2 text-xs font-medium text-muted-foreground border-b border-border sticky top-0 bg-background z-10">
+        <div className="grid grid-cols-[minmax(200px,2fr)_90px_120px_90px_90px_120px_36px] gap-1 px-3 py-2 typo-overline text-muted-foreground border-b border-border sticky top-0 bg-background z-10">
           <span>{t('taskName')}</span>
           <span className="text-center">{t('taskStatus')}</span>
           <span className="text-center">{t('owner')}</span>
@@ -406,8 +406,8 @@ function MainTableView({
                 style={{ borderLeft: `3px solid ${group.color}` }}
               >
                 {isCollapsed ? <ChevronRight className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
-                <span className="font-semibold text-sm" style={{ color: group.color }}>{group.title}</span>
-                <span className="text-xs text-muted-foreground ml-auto bg-muted/50 px-2 py-0.5 rounded-full">{groupDone}/{groupTotal}</span>
+                <span className="typo-h4" style={{ color: group.color }}>{group.title}</span>
+                <span className="typo-caption text-muted-foreground ml-auto bg-muted/50 px-2 py-0.5 rounded-full">{groupDone}/{groupTotal}</span>
               </button>
 
               {/* Task rows */}
@@ -427,7 +427,7 @@ function MainTableView({
                       <EditableCell
                         value={task.title}
                         onSave={(v) => { if (v.trim()) onUpdateTask(task.id, { title: v.trim() }); }}
-                        className="text-sm truncate block w-full"
+                        className="typo-widget-body truncate block w-full"
                       />
                     </div>
 
@@ -460,7 +460,7 @@ function MainTableView({
                     </div>
 
                     {/* Start date - editable */}
-                    <div className="text-center text-xs text-muted-foreground">
+                    <div className="text-center typo-widget-sub">
                       <EditableCell
                         value={task.startDate || ''}
                         type="date"
@@ -470,7 +470,7 @@ function MainTableView({
                     </div>
 
                     {/* Due date - editable (syncs endDate for Gantt) */}
-                    <div className="text-center text-xs text-muted-foreground">
+                    <div className="text-center typo-widget-sub">
                       <EditableCell
                         value={task.dueDate || task.endDate || ''}
                         type="date"
@@ -847,13 +847,13 @@ function GanttChartView({
                           </Avatar>
                         )}
                       </div>
-                      <span className="text-sm font-semibold truncate text-foreground">
+                      <span className="typo-widget-body font-semibold truncate text-foreground">
                         {task.title}
                       </span>
                     </div>
 
                     {/* Bottom row: group + status + duration */}
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <div className="flex items-center gap-2 typo-widget-sub">
                       <span
                         className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium"
                         style={{ backgroundColor: groupColor + '20', color: groupColor }}
