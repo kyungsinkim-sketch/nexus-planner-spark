@@ -54,12 +54,14 @@ export function IncomingCallDialog() {
 
       const roomIds = myParticipations.map(p => p.room_id);
 
-      // Step 2: Find waiting/active rooms from those
+      // Step 2: Find waiting/active rooms from those (only recent — within 60s)
+      const cutoff = new Date(Date.now() - 60_000).toISOString();
       const { data: activeRooms, error: rErr } = await supabase
         .from('call_rooms')
         .select('id, title, livekit_room_name, status, created_by, created_at, is_video')
         .in('id', roomIds)
         .in('status', ['waiting', 'active'])
+        .gte('created_at', cutoff)
         .order('created_at', { ascending: false })
         .limit(1);
 
