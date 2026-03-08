@@ -355,6 +355,30 @@ Deno.serve(async (req) => {
         break;
       }
 
+      case 'create_important_note': {
+        const noteData = extractedData;
+        const { data: note, error: noteError } = await supabase
+          .from('important_notes')
+          .insert({
+            title: noteData.title || '중요기록',
+            content: noteData.content || '',
+            category: noteData.category || 'reference',
+            project_id: noteData.projectId || null,
+            created_by: userId,
+            source: noteData.source || 'brain',
+            source_ref: noteData.sourceMessageTs ? `slack:${noteData.sourceChannelId}:${noteData.sourceMessageTs}` : null,
+          })
+          .select()
+          .single();
+
+        if (noteError) {
+          throw new Error(`Failed to create important note: ${noteError.message}`);
+        }
+
+        executedData = { noteId: note.id, type: 'important_note', ...note };
+        break;
+      }
+
       case 'share_location': {
         // Location sharing doesn't create a DB entity — it's just surfaced in chat.
         // We mark it as executed and store the search URL.

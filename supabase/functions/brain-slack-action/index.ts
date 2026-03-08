@@ -1,55 +1,85 @@
-/**
- * brain-slack-action — Analyze a Slack message and create TODO/Calendar/Important note.
- *
- * Called when user clicks 🧠 Brain AI on a specific Slack message.
- * Uses Claude to extract structured data, then creates the item.
- *
- * Request: { userId, channelId, channelName, messageText, messageTs, senderName, actionType }
- * actionType: 'todo' | 'calendar' | 'important'
- */
+// Brain Slack Action Edge Function
+// Analyzes a Slack message using Claude LLM and creates a pending brain_action
+// for the user to review before execution.
+//
+// Flow:
+//   1. Client sends { userId, channelId, channelName, messageText, messageTs, senderName, actionType }
+//   2. Claude analyzes the message for the requested action type
+//   3. Creates a brain_action row with status='pending'
+//   4. Logs the user preference (actionType choice) for future learning
+//   5. Returns the suggestion for the review UI
 
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 import { authenticateOrFallback } from '../_shared/auth.ts';
+
+const BRAIN_BOT_USER_ID = '00000000-0000-0000-0000-000000000099';
+const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
+const MODEL = 'claude-haiku-4-5-20251001';
+const MAX_TOKENS = 1024;
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-function jsonResponse(data: unknown, status = 200) {
-  return new Response(JSON.stringify(data), {
-    status,
-    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-  });
+interface SlackBrainRequest {
+  userId: string;
+  channelId: string;
+  channelName: string;
+  messageText: string;
+  messageTs: string;
+  senderName: string;
+  actionType: 'todo' | 'calendar' | 'important';
+  projectId?: string;
 }
 
-// Simple Claude API call
-async function callClaude(prompt: string, systemPrompt: string): Promise<string> {
-  const apiKey = Deno.env.get('ANTHROPIC_API_KEY');
-  if (!apiKey) throw new Error('ANTHROPIC_API_KEY not configured');
+/**
+ * Build a focused prompt for extracting a single action type from a Slack message.
+ */
+function buildPrompt(actionType: string, messageText: string, senderName: string, channelName: string): string {
+  const today = new Date().toISOString().split('T')[0];
+  const kstTime = new Date().toLocaleTimeString('ko-KR', { timeZone: 'Asia/Seoul', hour: '2-digit', minute: '2-digit' });
 
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
-    },
-    body: JSON.stringify({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 1024,
-      system: systemPrompt,
-      messages: [{ role: 'user', content: prompt }],
-    }),
-  });
+  const actionInstructions: Record<string, string> = {
+    todo: `Extract a TODO item from this message.
+Return JSON: {"title":"string","dueDate":"YYYY-MM-DD or null","priority":"LOW"|"NORMAL"|"HIGH","assigneeNames":["string"]}
+- title: Clear, actionable task description derived from the message
+- dueDate: Extract if mentioned, else null
+- priority: HIGH if urgent words (급한, ASAP, 긴급), else NORMAL
+- assigneeNames: People mentioned or implied (can be empty)`,
 
-  if (!res.ok) {
-    const err = await res.text();
-    throw new Error(`Claude API error: ${res.status} ${err}`);
-  }
+    calendar: `Extract a calendar event from this message.
+Return JSON: {"title":"string","startAt":"ISO datetime or null","endAt":"ISO datetime or null","location":"string or null","type":"MEETING"|"TASK"|"DEADLINE"|"DELIVERY"}
+- title: Clear event name
+- startAt/endAt: Extract date/time if mentioned. Use KST (+09:00). Default duration 1hr.
+- location: Extract if mentioned
+- type: MEETING for 미팅/회의, DEADLINE for 마감/데드라인, DELIVERY for 납품/전달, else TASK`,
 
-  const data = await res.json();
-  return data.content?.[0]?.text || '';
+    important: `Extract an important record/note from this message.
+Return JSON: {"title":"string","content":"string","category":"decision"|"risk"|"insight"|"reference"}
+- title: Short summary (max 50 chars)
+- content: The full important information to remember
+- category: decision(결정사항), risk(리스크/주의), insight(인사이트), reference(참고사항)`,
+  };
+
+  return `You are Re-Be Brain AI. Extract structured data from a Slack message.
+
+## Context
+- Channel: #${channelName}
+- Sender: ${senderName}
+- Today: ${today} (KST: ${kstTime})
+
+## Task
+${actionInstructions[actionType] || actionInstructions.todo}
+
+## Message
+"${messageText}"
+
+## Rules
+- Return ONLY valid JSON, no markdown fences, no extra text.
+- Extract from the message content — be specific, not generic.
+- Korean text is expected. Keep titles/content in the original language.
+- If the message doesn't clearly contain relevant info for this action type, still extract the best possible interpretation.`;
 }
 
 Deno.serve(async (req) => {
@@ -58,130 +88,202 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const body = await req.json();
+    const body: SlackBrainRequest = await req.json();
     const { userId: jwtUserId } = await authenticateOrFallback(req);
     const userId = jwtUserId || body.userId;
-    const { channelId, channelName, messageText, messageTs, senderName, actionType } = body;
+    const { channelId, channelName, messageText, messageTs, senderName, actionType, projectId } = body;
 
     if (!userId || !messageText || !actionType) {
-      return jsonResponse({ error: 'Missing required fields' }, 400);
+      return new Response(
+        JSON.stringify({ error: 'Missing required fields: userId, messageText, actionType' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      );
     }
 
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+    const anthropicKey = Deno.env.get('ANTHROPIC_API_KEY');
+    if (!anthropicKey) {
+      return new Response(
+        JSON.stringify({ error: 'ANTHROPIC_API_KEY not configured' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      );
+    }
+
+    // Create Supabase service client
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // ─── Step 1: Call Claude to analyze the message ───
+    const prompt = buildPrompt(actionType, messageText, senderName, channelName);
+
+    const llmResponse = await fetch(ANTHROPIC_API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': anthropicKey,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model: MODEL,
+        max_tokens: MAX_TOKENS,
+        messages: [{ role: 'user', content: prompt }],
+      }),
+    });
+
+    if (!llmResponse.ok) {
+      const errText = await llmResponse.text();
+      console.error('Anthropic API error:', llmResponse.status, errText);
+      return new Response(
+        JSON.stringify({ error: `LLM error (${llmResponse.status})` }),
+        { status: llmResponse.status === 429 ? 429 : 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      );
+    }
+
+    const llmResult = await llmResponse.json();
+    const textBlock = llmResult.content?.find((b: { type: string }) => b.type === 'text');
+    if (!textBlock?.text) {
+      throw new Error('No text in LLM response');
+    }
+
+    // Parse LLM JSON response
+    let extractedData: Record<string, unknown>;
+    try {
+      // Try direct parse
+      extractedData = JSON.parse(textBlock.text.trim());
+    } catch {
+      // Try extracting JSON from text
+      const match = textBlock.text.match(/\{[\s\S]*\}/);
+      if (match) {
+        extractedData = JSON.parse(match[0]);
+      } else {
+        throw new Error('Failed to parse LLM response as JSON');
+      }
+    }
+
+    // ─── Step 2: Map actionType to brain_action type ───
+    const actionTypeMap: Record<string, string> = {
+      todo: 'create_todo',
+      calendar: 'create_event',
+      important: 'create_important_note',
+    };
+
+    const brainActionType = actionTypeMap[actionType] || 'create_todo';
+
+    // Enrich with projectId and source info
+    const enrichedData = {
+      ...extractedData,
+      projectId: projectId || null,
+      source: 'slack',
+      sourceChannel: channelName,
+      sourceChannelId: channelId,
+      sourceMessageTs: messageTs,
+      sourceSender: senderName,
+    };
+
+    // ─── Step 3: Create brain_action with status='pending' ───
+    // First create a bot message to hold the action
+    const replyMessage = actionType === 'todo'
+      ? `📋 TODO 제안: "${extractedData.title}"`
+      : actionType === 'calendar'
+        ? `📅 캘린더 제안: "${extractedData.title}"`
+        : `⭐ 중요기록 제안: "${extractedData.title}"`;
+
+    const { data: botMessage, error: msgError } = await supabase
+      .from('chat_messages')
+      .insert({
+        user_id: BRAIN_BOT_USER_ID,
+        content: replyMessage,
+        message_type: 'brain_action',
+        brain_action_data: {
+          hasAction: true,
+          replyMessage,
+          actions: [{
+            type: brainActionType,
+            confidence: 0.85,
+            data: enrichedData,
+          }],
+          source: 'slack',
+        },
+      })
+      .select()
+      .single();
+
+    if (msgError) {
+      console.error('Failed to insert bot message:', msgError);
+      throw new Error(`DB error: ${msgError.message}`);
+    }
+
+    const { data: brainAction, error: actionError } = await supabase
+      .from('brain_actions')
+      .insert({
+        message_id: botMessage.id,
+        action_type: brainActionType,
+        status: 'pending',
+        extracted_data: enrichedData,
+      })
+      .select()
+      .single();
+
+    if (actionError) {
+      console.error('Failed to insert brain_action:', actionError);
+      throw new Error(`DB error: ${actionError.message}`);
+    }
+
+    // Update bot message with real action ID
+    await supabase
+      .from('chat_messages')
+      .update({
+        brain_action_data: {
+          hasAction: true,
+          replyMessage,
+          actions: [{
+            id: brainAction.id,
+            type: brainActionType,
+            status: 'pending',
+            confidence: 0.85,
+            data: enrichedData,
+          }],
+          source: 'slack',
+        },
+      })
+      .eq('id', botMessage.id);
+
+    // ─── Step 4: Log user preference for learning ───
+    await supabase
+      .from('brain_preference_log')
+      .insert({
+        user_id: userId,
+        source: 'slack',
+        source_channel_id: channelId,
+        message_text: messageText.substring(0, 500), // truncate for storage
+        chosen_action_type: actionType,
+        extracted_data: enrichedData,
+        brain_action_id: brainAction.id,
+      })
+      .then(({ error }) => {
+        if (error) console.warn('Failed to log preference (non-fatal):', error.message);
+      });
+
+    // ─── Step 5: Return suggestion for review UI ───
+    return new Response(
+      JSON.stringify({
+        success: true,
+        suggestion: {
+          id: brainAction.id,
+          messageId: botMessage.id,
+          actionType,
+          brainActionType,
+          extractedData,
+          replyMessage,
+        },
+      }),
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
     );
-
-    const now = new Date();
-    const todayStr = now.toISOString().split('T')[0];
-    const context = `Slack 채널: #${channelName || channelId}\n보낸 사람: ${senderName}\n메시지: "${messageText}"`;
-
-    if (actionType === 'todo') {
-      // Use Claude to extract a clean TODO title and description
-      const systemPrompt = `You are a task extraction assistant. Given a Slack message, extract a clear TODO item. Respond in JSON only: {"title": "...", "description": "..."}. Title should be concise (under 50 chars). Description includes context. Always respond in Korean.`;
-      const raw = await callClaude(context, systemPrompt);
-
-      let title = messageText.slice(0, 50);
-      let description = `Slack #${channelName} — ${senderName}`;
-      try {
-        const parsed = JSON.parse(raw);
-        title = parsed.title || title;
-        description = parsed.description || description;
-      } catch { /* use defaults */ }
-
-      // Create personal_todo
-      const tomorrow = new Date(now.getTime() + 86400000).toISOString().split('T')[0];
-      const { error: todoErr } = await supabase
-        .from('personal_todos')
-        .insert({
-          title: `${title} — ${description}`,
-          requested_by_id: userId,
-          assignee_ids: [userId],
-          status: 'PENDING',
-          priority: 'NORMAL',
-          due_date: tomorrow,
-        });
-
-      if (todoErr) return jsonResponse({ error: todoErr.message }, 500);
-      return jsonResponse({ success: true, type: 'todo', title });
-    }
-
-    if (actionType === 'calendar') {
-      // Use Claude to extract date/time
-      const systemPrompt = `You are a calendar event extraction assistant. Given a Slack message, extract an event. Today is ${todayStr}. Respond in JSON only: {"title": "...", "date": "YYYY-MM-DD", "startHour": 9, "endHour": 10, "description": "..."}. If no specific date mentioned, use tomorrow. Always respond in Korean.`;
-      const raw = await callClaude(context, systemPrompt);
-
-      let title = messageText.slice(0, 50);
-      let date = new Date(now.getTime() + 86400000).toISOString().split('T')[0]; // tomorrow
-      let startHour = 9;
-      let endHour = 10;
-      let description = `Slack #${channelName} — ${senderName}`;
-      try {
-        const parsed = JSON.parse(raw);
-        title = parsed.title || title;
-        date = parsed.date || date;
-        startHour = parsed.startHour ?? startHour;
-        endHour = parsed.endHour ?? endHour;
-        description = parsed.description || description;
-      } catch { /* use defaults */ }
-
-      const startAt = new Date(`${date}T${String(startHour).padStart(2, '0')}:00:00+09:00`);
-      const endAt = new Date(`${date}T${String(endHour).padStart(2, '0')}:00:00+09:00`);
-
-      // Create calendar event
-      const { error: calErr } = await supabase
-        .from('calendar_events')
-        .insert({
-          title: `${title} — ${description}`,
-          start_at: startAt.toISOString(),
-          end_at: endAt.toISOString(),
-          owner_id: userId,
-          attendee_ids: [userId],
-          type: 'MEETING',
-          source: 'PAULUS',
-        });
-
-      if (calErr) return jsonResponse({ error: calErr.message }, 500);
-      return jsonResponse({ success: true, type: 'calendar', title, date });
-    }
-
-    if (actionType === 'important') {
-      // Use Claude to create a structured important note
-      const systemPrompt = `You are a note-taking assistant. Given a Slack message, create a concise important note. Respond in JSON only: {"title": "...", "content": "..."}. Title should be concise. Content should capture the key information. Always respond in Korean.`;
-      const raw = await callClaude(context, systemPrompt);
-
-      let title = messageText.slice(0, 50);
-      let content = `${senderName} (Slack #${channelName}): ${messageText}`;
-      try {
-        const parsed = JSON.parse(raw);
-        title = parsed.title || title;
-        content = parsed.content || content;
-      } catch { /* use defaults */ }
-
-      // Create important note (knowledge_items)
-      const { error: noteErr } = await supabase
-        .from('knowledge_items')
-        .insert({
-          user_id: userId,
-          content: `[${title}] ${content}`,
-          summary: title,
-          knowledge_type: 'decision_pattern',
-          source_type: 'brain_action',
-          source_id: `${channelId}:${messageTs}`,
-          source_context: `Slack #${channelName} — ${senderName}`,
-          scope_layer: 'operations',
-          scope: 'personal',
-          is_active: true,
-          confidence: 1.0,
-        });
-
-      if (noteErr) return jsonResponse({ error: noteErr.message }, 500);
-      return jsonResponse({ success: true, type: 'important', title });
-    }
-
-    return jsonResponse({ error: `Unknown action type: ${actionType}` }, 400);
-  } catch (err) {
-    console.error('[brain-slack-action] Error:', err);
-    return jsonResponse({ error: (err as Error).message }, 500);
+  } catch (error) {
+    console.error('brain-slack-action error:', error);
+    return new Response(
+      JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+    );
   }
 });
