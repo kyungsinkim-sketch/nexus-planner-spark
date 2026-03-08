@@ -301,39 +301,8 @@ async function connectToRoom(wsUrl: string, token: string): Promise<void> {
   });
 
   // Event handlers
-  room.on(RoomEvent.Connected, async () => {
-    console.log('[Call] ✅ Room connected');
-    setState({ status: 'active' });
-    startDurationTimer();
-
-    // Ensure microphone is enabled
-    try {
-      await room.localParticipant.setMicrophoneEnabled(true);
-      console.log('[Call] Microphone enabled');
-    } catch (err) {
-      console.warn('[Call] Failed to enable microphone:', err);
-    }
-
-    // Start recording with simple getUserMedia approach
-    // (LiveKit track extraction is unreliable across browsers)
-    try {
-      const micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      console.log('[Call] Got mic stream for recording');
-      audioChunks = [];
-      mediaRecorder = new MediaRecorder(micStream, {
-        mimeType: MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
-          ? 'audio/webm;codecs=opus'
-          : 'audio/webm',
-      });
-      mediaRecorder.ondataavailable = (e) => {
-        if (e.data.size > 0) audioChunks.push(e.data);
-      };
-      mediaRecorder.start(1000);
-      callStartTime = Date.now();
-      console.log('[Call] ✅ Recording started (getUserMedia)');
-    } catch (err) {
-      console.error('[Call] Recording setup failed:', err);
-    }
+  room.on(RoomEvent.Connected, () => {
+    console.log('[Call] ✅ Room connected event fired');
   });
 
   room.on(RoomEvent.LocalTrackPublished, () => {
