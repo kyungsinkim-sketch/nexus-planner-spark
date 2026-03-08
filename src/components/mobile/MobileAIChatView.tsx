@@ -29,7 +29,7 @@ function DateWidget({ locale, language }: { locale: Locale; language: string }) 
 
   return (
     <div className="flex-1 bg-slate-900/90 dark:bg-slate-950 rounded-2xl p-4 flex flex-col justify-between min-h-[120px]">
-      <span className="text-xs font-medium text-white/50 uppercase tracking-wide">{dayOfWeek}</span>
+      <span className="text-xs font-semibold text-primary uppercase tracking-wide">{dayOfWeek}</span>
       <span className="text-[42px] font-bold text-white leading-none tracking-tight">{dayNum}</span>
       <span className="text-[11px] text-white/40">{yearMonth}</span>
     </div>
@@ -81,7 +81,7 @@ function MorningBriefing({
         <h2 className="text-lg font-bold text-foreground">{greeting} ✋</h2>
       </div>
 
-      <p className="text-xs font-medium text-slate-500 dark:text-white/40 uppercase tracking-wider mb-2">
+      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
         {language === 'ko' ? '오늘의 일정' : "Today's Schedule"}
       </p>
 
@@ -154,7 +154,7 @@ function ConversationHistory({ messages, language }: { messages: ChatMessage[]; 
             </div>
             <p className={cn(
               'text-[13px] leading-relaxed',
-              msg.role === 'user' ? 'text-slate-700 dark:text-white/60' : 'text-slate-600 dark:text-white/50',
+              msg.role === 'user' ? 'text-foreground/80' : 'text-foreground/60',
               !isExpanded && 'line-clamp-2'
             )}>
               {msg.content}
@@ -254,7 +254,7 @@ export function MobileAIChatView() {
 
       {/* Fixed Input Bar */}
       <div className="absolute bottom-0 left-0 right-0 px-4 pb-2 pt-2 bg-background/80 backdrop-blur-lg">
-        <div className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-white dark:bg-white/10 border border-slate-200 dark:border-white/10 shadow-sm">
+        <div className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-card border border-border shadow-sm">
           <input
             ref={inputRef}
             type="text"
@@ -262,10 +262,10 @@ export function MobileAIChatView() {
             onChange={e => setInput(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && handleSubmit()}
             placeholder={language === 'ko' ? 'Brain AI에게 물어보세요...' : 'Ask Brain AI...'}
-            className="flex-1 bg-transparent text-sm text-slate-800 dark:text-white placeholder:text-slate-400 dark:placeholder:text-white/30 outline-none"
+            className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none"
             disabled={loading}
           />
-          <button className="w-8 h-8 rounded-full flex items-center justify-center text-slate-400 dark:text-white/30 hover:text-slate-600 dark:hover:text-white/50 transition-colors">
+          <button className="w-8 h-8 rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors">
             <Mic className="w-4 h-4" />
           </button>
           {(input.trim() || loading) && (
