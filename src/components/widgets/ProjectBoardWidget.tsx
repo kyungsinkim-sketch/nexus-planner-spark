@@ -189,11 +189,13 @@ function EditableCell({
   onSave,
   type = 'text',
   className = '',
+  style,
 }: {
   value: string;
   onSave: (v: string) => void;
   type?: 'text' | 'date';
   className?: string;
+  style?: React.CSSProperties;
 }) {
   const [editing, setEditing] = useState(false);
   const [editVal, setEditVal] = useState(value);
@@ -202,6 +204,7 @@ function EditableCell({
     return (
       <span
         className={cn('cursor-pointer hover:bg-accent/30 rounded px-1 py-0.5 transition-colors', className)}
+        style={style}
         onClick={() => { setEditVal(value); setEditing(true); }}
       >
         {type === 'date' && value ? format(parseISO(value), 'M/d') : (value || '-')}
@@ -359,6 +362,7 @@ function MainTableView({
   onUpdateTask,
   onDeleteTask,
   onAddTask,
+  onUpdateGroup,
 }: {
   groups: BoardGroup[];
   tasks: BoardTask[];
@@ -368,6 +372,7 @@ function MainTableView({
   onUpdateTask: (taskId: string, updates: Record<string, unknown>) => void;
   onDeleteTask: (taskId: string) => void;
   onAddTask: (groupId: string) => void;
+  onUpdateGroup: (groupId: string, updates: { title?: string; color?: string }) => void;
 }) {
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
 
@@ -400,15 +405,21 @@ function MainTableView({
           return (
             <div key={group.id} className="mb-1">
               {/* Group header */}
-              <button
-                onClick={() => toggleGroup(group.id)}
+              <div
                 className="flex items-center gap-2 w-full px-3 py-2.5 hover:bg-muted/40 transition-colors rounded-lg mx-1"
                 style={{ borderLeft: `3px solid ${group.color}` }}
               >
-                {isCollapsed ? <ChevronRight className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
-                <span className="typo-h4" style={{ color: group.color }}>{group.title}</span>
+                <button onClick={() => toggleGroup(group.id)} className="flex-shrink-0">
+                  {isCollapsed ? <ChevronRight className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+                </button>
+                <EditableCell
+                  value={group.title}
+                  onSave={(v) => { if (v.trim()) onUpdateGroup(group.id, { title: v.trim() }); }}
+                  className="typo-h4 font-semibold"
+                  style={{ color: group.color }}
+                />
                 <span className="typo-caption text-muted-foreground ml-auto bg-muted/50 px-2 py-0.5 rounded-full">{groupDone}/{groupTotal}</span>
-              </button>
+              </div>
 
               {/* Task rows */}
               {!isCollapsed && groupTasks.map(task => {
@@ -1221,6 +1232,7 @@ export default function ProjectBoardWidget({ context }: { context: WidgetDataCon
     boardTasks,
     loadBoardData,
     addBoardGroup,
+    updateBoardGroup,
     addBoardTask,
     updateBoardTask,
     deleteBoardTask,
@@ -1298,6 +1310,10 @@ export default function ProjectBoardWidget({ context }: { context: WidgetDataCon
     toast.success(t('todoCreated') || '작업이 추가되었습니다');
   }, [newTaskTitle, newTaskGroupId, projectId, currentUser, project, addBoardTask, t]);
 
+  const handleUpdateGroup = useCallback((groupId: string, updates: { title?: string; color?: string }) => {
+    updateBoardGroup(groupId, updates);
+  }, [updateBoardGroup]);
+
   const handleAddGroup = useCallback((title: string, color: string) => {
     if (!projectId) return;
     addBoardGroup(projectId, title, color);
@@ -1348,6 +1364,7 @@ export default function ProjectBoardWidget({ context }: { context: WidgetDataCon
             onUpdateTask={handleUpdateTask}
             onDeleteTask={handleDeleteTask}
             onAddTask={handleAddTask}
+            onUpdateGroup={handleUpdateGroup}
           />
         ) : (
           <GanttChartView
