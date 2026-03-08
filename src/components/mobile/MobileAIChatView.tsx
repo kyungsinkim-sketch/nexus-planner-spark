@@ -28,10 +28,10 @@ function DateWidget({ locale, language }: { locale: Locale; language: string }) 
     : format(now, 'MMMM yyyy', { locale });
 
   return (
-    <div className="flex-1 bg-slate-900/90 dark:bg-slate-950 rounded-2xl p-4 flex flex-col justify-between min-h-[120px]">
+    <div className="flex-1 bg-card border border-border rounded-2xl p-4 flex flex-col justify-between min-h-[120px]">
       <span className="text-xs font-semibold text-primary uppercase tracking-wide">{dayOfWeek}</span>
-      <span className="text-[42px] font-bold text-white leading-none tracking-tight">{dayNum}</span>
-      <span className="text-[11px] text-white/40">{yearMonth}</span>
+      <span className="text-[42px] font-bold text-foreground leading-none tracking-tight">{dayNum}</span>
+      <span className="text-[11px] text-muted-foreground">{yearMonth}</span>
     </div>
   );
 }
@@ -46,15 +46,15 @@ function WeatherWidget({ language }: { language: string }) {
   const status = language === 'ko' ? '구름 조금' : 'Partly Cloudy';
 
   return (
-    <div className="flex-1 bg-slate-900/90 dark:bg-slate-950 rounded-2xl p-4 flex flex-col justify-between min-h-[120px]">
-      <span className="text-xs font-medium text-white/50">{city}</span>
+    <div className="flex-1 bg-card border border-border rounded-2xl p-4 flex flex-col justify-between min-h-[120px]">
+      <span className="text-xs font-medium text-muted-foreground">{city}</span>
       <div className="flex items-end gap-2">
-        <span className="text-[42px] font-bold text-white leading-none tracking-tight">{temp}</span>
-        <Cloud className="w-6 h-6 text-white/40 mb-1.5" />
+        <span className="text-[42px] font-bold text-foreground leading-none tracking-tight">{temp}</span>
+        <Cloud className="w-6 h-6 text-muted-foreground mb-1.5" />
       </div>
       <div className="flex items-center gap-1.5">
-        <span className="text-[11px] text-white/40">{status}</span>
-        <span className="text-[11px] text-white/25">H:{high} L:{low}</span>
+        <span className="text-[11px] text-muted-foreground">{status}</span>
+        <span className="text-[11px] text-muted-foreground/60">H:{high} L:{low}</span>
       </div>
     </div>
   );
@@ -86,17 +86,17 @@ function MorningBriefing({
       </p>
 
       {topEvent ? (
-        <div className="rounded-xl bg-slate-100/80 dark:bg-white/5 p-3">
+        <div className="rounded-xl bg-accent/50 dark:bg-white/5 p-3">
           <div className="flex items-center justify-between">
-            <span className="text-sm font-semibold text-slate-800 dark:text-white/80">{topEvent.title}</span>
-            <span className="text-xs text-slate-500 dark:text-white/30 font-mono">
+            <span className="text-sm font-semibold text-foreground">{topEvent.title}</span>
+            <span className="text-xs text-muted-foreground font-mono">
               {format(parseISO(topEvent.startAt), 'HH:mm')}
             </span>
           </div>
           {topEvent.location && (
-            <p className="text-xs text-slate-400 dark:text-white/25 mt-1">📍 {topEvent.location}</p>
+            <p className="text-xs text-muted-foreground mt-1">📍 {topEvent.location}</p>
           )}
-          <p className="text-xs text-slate-500 dark:text-white/35 mt-1.5">
+          <p className="text-xs text-muted-foreground mt-1.5">
             {todayEvents.length > 1
               ? (language === 'ko'
                 ? `외 ${todayEvents.length - 1}개 일정이 있어요`
@@ -105,7 +105,7 @@ function MorningBriefing({
           </p>
         </div>
       ) : (
-        <p className="text-sm text-slate-400 dark:text-white/30">
+        <p className="text-sm text-muted-foreground">
           {language === 'ko' ? '오늘은 일정이 없어요 🎉' : 'No events today 🎉'}
         </p>
       )}
@@ -120,8 +120,8 @@ function ConversationHistory({ messages, language }: { messages: ChatMessage[]; 
 
   if (recent.length === 0) {
     return (
-      <div className="rounded-2xl border border-dashed border-slate-200 dark:border-white/10 p-4">
-        <p className="text-xs text-slate-400 dark:text-white/25 text-center">
+      <div className="rounded-2xl border border-dashed border-border p-4">
+        <p className="text-xs text-muted-foreground text-center">
           {language === 'ko' ? 'Brain AI와 대화를 시작해보세요' : 'Start a conversation with Brain AI'}
         </p>
       </div>
@@ -130,7 +130,7 @@ function ConversationHistory({ messages, language }: { messages: ChatMessage[]; 
 
   return (
     <div className="space-y-2">
-      <p className="text-xs font-medium text-slate-400 dark:text-white/30 uppercase tracking-wider mb-1">
+      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">
         {language === 'ko' ? '최근 대화' : 'Recent'}
       </p>
       {recent.map((msg, i) => {
@@ -142,13 +142,13 @@ function ConversationHistory({ messages, language }: { messages: ChatMessage[]; 
             className={cn(
               'w-full text-left rounded-xl p-3 transition-all',
               msg.role === 'user'
-                ? 'bg-slate-100/80 dark:bg-white/5'
+                ? 'bg-accent/50 dark:bg-white/5'
                 : 'bg-white/60 dark:bg-white/[0.03] border border-white/10 dark:border-white/5'
             )}
           >
             <div className="flex items-center gap-2 mb-0.5">
               {msg.role === 'assistant' && <Sparkles className="w-3 h-3 text-amber-500" />}
-              <span className="text-[10px] text-slate-400 dark:text-white/25">
+              <span className="text-[10px] text-muted-foreground">
                 {format(msg.timestamp, 'HH:mm')}
               </span>
             </div>
@@ -275,7 +275,7 @@ export function MobileAIChatView() {
               className={cn(
                 'w-8 h-8 rounded-full flex items-center justify-center transition-colors',
                 loading
-                  ? 'bg-slate-300 dark:bg-white/20 animate-pulse'
+                  ? 'bg-muted animate-pulse'
                   : 'bg-primary text-primary-foreground'
               )}
             >
