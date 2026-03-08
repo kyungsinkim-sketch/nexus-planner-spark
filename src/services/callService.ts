@@ -435,6 +435,36 @@ async function connectToRoom(wsUrl: string, token: string): Promise<void> {
       new Promise((_, reject) => setTimeout(() => reject(new Error('연결 시간 초과')), 15000)),
     ]);
     console.log('[Call] Connected successfully');
+
+    // Start recording here (Connected event may not fire if connect() resolves after connection)
+    if (!mediaRecorder || mediaRecorder.state !== 'recording') {
+      setState({ status: 'active' });
+      startDurationTimer();
+      try {
+        await room.localParticipant.setMicrophoneEnabled(true);
+        console.log('[Call] Microphone enabled (post-connect)');
+      } catch (err) {
+        console.warn('[Call] Mic enable failed:', err);
+      }
+      try {
+        const micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        console.log('[Call] Got mic stream for recording');
+        audioChunks = [];
+        mediaRecorder = new MediaRecorder(micStream, {
+          mimeType: MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+            ? 'audio/webm;codecs=opus'
+            : 'audio/webm',
+        });
+        mediaRecorder.ondataavailable = (e) => {
+          if (e.data.size > 0) audioChunks.push(e.data);
+        };
+        mediaRecorder.start(1000);
+        callStartTime = Date.now();
+        console.log('[Call] ✅ Recording started (post-connect)');
+      } catch (err) {
+        console.error('[Call] Recording setup failed:', err);
+      }
+    }
   } catch (err: any) {
     console.error('[Call] Connection failed:', err);
     try { room.disconnect(); } catch { /* ignore */ }
