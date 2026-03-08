@@ -1074,8 +1074,11 @@
   @apply text-xs sm:text-sm text-foreground p-1 sm:p-2;
 }
 .fc .fc-event {
-  @apply text-[10px] sm:text-xs border-0 cursor-pointer;
+  @apply text-[10px] sm:text-xs cursor-pointer;
+  border: none !important;
+  border-left: none !important;
   border-radius: 4px !important;
+  background-color: transparent !important;
 }
 
 /* Mobile Calendar Adjustments */
@@ -1091,15 +1094,19 @@
   }
 }
 
-/* Event Type Colors */
-.fc-event-task { background-color: hsl(var(--event-task) / 0.15) !important; border-left-color: hsl(var(--event-task)) !important; }
-.fc-event-deadline { background-color: hsl(var(--event-deadline) / 0.15) !important; border-left-color: hsl(var(--event-deadline)) !important; }
-.fc-event-meeting { background-color: hsl(var(--event-meeting) / 0.15) !important; border-left-color: hsl(var(--event-meeting)) !important; }
-.fc-event-pt { background-color: hsl(var(--event-pt) / 0.15) !important; border-left-color: hsl(var(--event-pt)) !important; }
-.fc-event-delivery { background-color: hsl(var(--event-delivery) / 0.15) !important; border-left-color: hsl(var(--event-delivery)) !important; }
-.fc-event-todo { background-color: hsl(188 94% 43% / 0.15) !important; border-left-color: hsl(188 94% 43%) !important; }
+/* Event Type Colors — dot-only (no left border bar) */
+.fc-event-task,
+.fc-event-deadline,
+.fc-event-meeting,
+.fc-event-pt,
+.fc-event-delivery,
+.fc-event-todo,
+.fc-event-training {
+  background-color: transparent !important;
+  border-color: transparent !important;
+  border-left-color: transparent !important;
+}
 .fc-event-todo.completed { opacity: 0.5; }
-.fc-event-training { background-color: hsl(270 70% 55% / 0.15) !important; border-left-color: hsl(270 70% 55%) !important; }
 
 .event-badge-training {
   @apply bg-purple-500/10 text-purple-600 border-purple-500/30;
