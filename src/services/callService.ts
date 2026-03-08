@@ -728,7 +728,9 @@ export async function endCall(): Promise<void> {
     error: null,
   });
 
-  endCallInProgress = false;
+  // Keep endCallInProgress=true for 3s to block delayed duplicate calls
+  // (e.g. Disconnected event fires after ParticipantDisconnected auto-end)
+  setTimeout(() => { endCallInProgress = false; }, 3000);
   console.log('[Call] UI reset to idle');
 
   // Send end signal to backend (non-blocking, after UI reset)
