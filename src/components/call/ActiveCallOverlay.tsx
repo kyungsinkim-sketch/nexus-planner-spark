@@ -146,19 +146,26 @@ export function ActiveCallOverlay() {
     return () => window.removeEventListener('resize', onResize);
   }, []);
 
+  const lastDuration = useRef(0);
+
   // Track room for post-call suggestions
   useEffect(() => {
     if (callState?.room?.id) {
       lastRoomId.current = callState.room.id;
       endHandled.current = false;
     }
+    // Track duration while active (before it resets to 0)
+    if (callState?.status === 'active' && (callState?.durationSeconds ?? 0) > 0) {
+      lastDuration.current = callState.durationSeconds;
+    }
     if (callState?.status === 'idle' && lastRoomId.current && !endHandled.current) {
       endHandled.current = true;
-      if ((callState?.durationSeconds ?? 0) >= 10) {
+      if (lastDuration.current >= 10) {
         setShowSuggestions(true);
       } else {
         lastRoomId.current = null;
       }
+      lastDuration.current = 0;
     }
   }, [callState?.status, callState?.room?.id]);
 

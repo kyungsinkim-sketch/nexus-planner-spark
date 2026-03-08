@@ -145,19 +145,22 @@ export function IncomingCallDialog() {
 
   const handleAccept = useCallback(async () => {
     if (!incoming) return;
+    const callInfo = { ...incoming };
     setJoining(true);
     stopRingtone();
+    // Close incoming dialog immediately — ActiveCallOverlay will show "연결 중..."
+    setIncoming(null);
 
     try {
-      console.log('[IncomingCall] Accepting call, joining room:', incoming.roomId, 'isVideo:', incoming.isVideo);
-      await joinCall(incoming.roomId);
+      console.log('[IncomingCall] Accepting call, joining room:', callInfo.roomId, 'isVideo:', callInfo.isVideo);
+      await joinCall(callInfo.roomId);
       // Auto-enable camera for video calls
-      if (incoming.isVideo) {
+      if (callInfo.isVideo) {
         setTimeout(() => toggleCamera(), 500);
       }
-      setIncoming(null);
     } catch (err: any) {
       console.error('[IncomingCall] Join failed:', err);
+    } finally {
       setJoining(false);
     }
   }, [incoming]);

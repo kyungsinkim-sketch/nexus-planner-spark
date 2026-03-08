@@ -404,10 +404,15 @@ async function connectToRoom(wsUrl: string, token: string): Promise<void> {
   // Connect
   try {
     console.log('[Call] Connecting to', wsUrl);
-    await room.connect(wsUrl, token);
+    // 15s timeout for WebSocket connection (mobile can be slow)
+    await Promise.race([
+      room.connect(wsUrl, token),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('연결 시간 초과')), 15000)),
+    ]);
     console.log('[Call] Connected successfully');
   } catch (err: any) {
     console.error('[Call] Connection failed:', err);
+    try { room.disconnect(); } catch { /* ignore */ }
     setState({ status: 'error', error: `연결 실패: ${err.message}` });
     return;
   }
