@@ -196,7 +196,7 @@ export async function startNotionOAuthPopup(
     setTimeout(() => {
       clearInterval(interval);
       if (!resolved) {
-        try { popup.close(); } catch {}
+        try { popup.close(); } catch { /* ignore */ }
         resolve({ success: false, error: 'OAuth timed out' });
       }
     }, 300000);
