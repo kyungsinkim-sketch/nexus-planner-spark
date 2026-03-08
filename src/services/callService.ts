@@ -407,6 +407,42 @@ async function connectToRoom(wsUrl: string, token: string): Promise<void> {
     return;
   }
 
+  // ── Enumerate participants already in the room ──
+  // ParticipantConnected only fires for NEW joins after connect().
+  // Anyone already in the room must be added manually.
+  const existingRemote: typeof currentState.remoteParticipants = [];
+  room.remoteParticipants.forEach((participant) => {
+    const entry: (typeof existingRemote)[0] = {
+      identity: participant.identity,
+      name: participant.name || participant.identity,
+      videoTrack: null,
+    };
+    // Check for existing video tracks
+    participant.videoTrackPublications.forEach((pub) => {
+      if (pub.track) {
+        entry.videoTrack = pub.track as any;
+      }
+    });
+    // Attach existing audio tracks
+    participant.audioTrackPublications.forEach((pub) => {
+      if (pub.track) {
+        const element = pub.track.attach();
+        (element as any).dataset.livekitAudio = participant.identity;
+        element.volume = currentState.isSpeakerOn ? 1.0 : 0.15;
+        document.body.appendChild(element);
+      }
+    });
+    existingRemote.push(entry);
+  });
+  if (existingRemote.length > 0) {
+    console.log('[Call] Found existing participants:', existingRemote.map(p => p.name).join(', '));
+    stopRingbackTone();
+    setState({
+      remoteParticipantName: existingRemote.map(p => p.name).join(', '),
+      remoteParticipants: existingRemote,
+    });
+  }
+
   // Enable microphone
   try {
     await room.localParticipant.setMicrophoneEnabled(true);
