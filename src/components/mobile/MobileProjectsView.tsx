@@ -1,10 +1,23 @@
+/**
+ * MobileProjectsView — Phase 3 Projects tab
+ *
+ * 3-step drill-down:
+ * 1. Project card stack (vertical scroll)
+ * 2. Project detail (cover + team + widget icon grid)
+ * 3. Widget fullscreen
+ */
+
 import { useState, useMemo, lazy, Suspense } from 'react';
 import { useAppStore } from '@/stores/appStore';
 import { useTranslation } from '@/hooks/useTranslation';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { ArrowLeft, Bell, FolderOpen, CheckSquare, StickyNote, MessageCircle, LayoutGrid, Pencil } from 'lucide-react';
+import {
+  ArrowLeft, Bell, FolderOpen, CheckSquare,
+  StickyNote, MessageCircle, LayoutGrid, Pencil,
+} from 'lucide-react';
 
+// Lazy-load widget components
 const TodosWidget = lazy(() => import('@/components/widgets/TodosWidget'));
 const FilesWidget = lazy(() => import('@/components/widgets/FilesWidget'));
 const ChatWidget = lazy(() => import('@/components/widgets/ChatWidget'));
@@ -12,25 +25,18 @@ const ImportantNotesWidget = lazy(() => import('@/components/widgets/ImportantNo
 const NotificationsWidget = lazy(() => import('@/components/widgets/NotificationsWidget'));
 const ProjectBoardWidget = lazy(() => import('@/components/widgets/ProjectBoardWidget'));
 
-type ProjectViewStep = 'list' | 'detail' | 'widget';
+type ViewStep = 'list' | 'detail' | 'widget';
 
-interface WidgetDef {
-  key: string;
-  label: string;
-  icon: React.ElementType;
-  badge?: number;
-}
+const WIDGET_DEFS = [
+  { key: 'notifications', labelKo: '알림', labelEn: 'Notifications', icon: Bell },
+  { key: 'files', labelKo: '파일', labelEn: 'Files', icon: FolderOpen },
+  { key: 'todos', labelKo: '할 일', labelEn: 'ToDos', icon: CheckSquare },
+  { key: 'notes', labelKo: '중요기록', labelEn: 'Notes', icon: StickyNote },
+  { key: 'chat', labelKo: '채팅', labelEn: 'Chat', icon: MessageCircle },
+  { key: 'board', labelKo: '보드', labelEn: 'Board', icon: LayoutGrid },
+] as const;
 
-const WIDGETS: WidgetDef[] = [
-  { key: 'notifications', label: 'Notifications', icon: Bell, badge: 3 },
-  { key: 'files', label: 'Files', icon: FolderOpen },
-  { key: 'todos', label: 'ToDos', icon: CheckSquare, badge: 5 },
-  { key: 'notes', label: 'Notes', icon: StickyNote },
-  { key: 'chat', label: 'Chat', icon: MessageCircle, badge: 2 },
-  { key: 'board', label: 'Board', icon: LayoutGrid },
-];
-
-const WIDGET_COMPONENTS: Record<string, React.LazyExoticComponent<React.ComponentType<any>>> = {
+const WIDGET_MAP: Record<string, React.LazyExoticComponent<React.ComponentType<any>>> = {
   notifications: NotificationsWidget,
   files: FilesWidget,
   todos: TodosWidget,
@@ -39,192 +45,213 @@ const WIDGET_COMPONENTS: Record<string, React.LazyExoticComponent<React.Componen
   board: ProjectBoardWidget,
 };
 
-const GLASS = 'bg-white/60 dark:bg-white/5 backdrop-blur-xl border border-white/20 dark:border-white/10 rounded-2xl';
-
 export function MobileProjectsView() {
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
   const projects = useAppStore((s) => s.projects);
   const users = useAppStore((s) => s.users);
 
-  const [step, setStep] = useState<ProjectViewStep>('list');
-  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
-  const [selectedWidget, setSelectedWidget] = useState<string | null>(null);
+  const [step, setStep] = useState<ViewStep>('list');
+  const [projectId, setProjectId] = useState<string | null>(null);
+  const [widgetKey, setWidgetKey] = useState<string | null>(null);
 
-  const selectedProject = useMemo(
-    () => projects.find((p) => p.id === selectedProjectId) ?? null,
-    [projects, selectedProjectId],
-  );
+  const project = useMemo(() => projects.find((p) => p.id === projectId), [projects, projectId]);
 
   const teamMembers = useMemo(() => {
-    if (!selectedProject?.teamMemberIds) return [];
-    return selectedProject.teamMemberIds
+    if (!project?.teamMemberIds?.length) return [];
+    return project.teamMemberIds
       .map((uid) => users.find((u) => u.id === uid))
-      .filter(Boolean);
-  }, [selectedProject, users]);
+      .filter(Boolean) as typeof users;
+  }, [project, users]);
 
-  const handleSelectProject = (id: string) => {
-    setSelectedProjectId(id);
-    setStep('detail');
-  };
-
-  const handleSelectWidget = (key: string) => {
-    setSelectedWidget(key);
-    setStep('widget');
-  };
-
-  const handleBack = () => {
-    if (step === 'widget') {
-      setSelectedWidget(null);
-      setStep('detail');
-    } else if (step === 'detail') {
-      setSelectedProjectId(null);
-      setStep('list');
-    }
-  };
-
-  // --- Render helpers ---
-
-  const renderProjectCard = (
-    project: typeof projects[number],
-    height: string,
-    onClick?: () => void,
-  ) => (
-    <div
-      key={project.id}
-      className={cn(
-        'relative overflow-hidden rounded-2xl transition-transform active:scale-[0.98]',
-        height,
-        onClick && 'cursor-pointer',
-      )}
-      onClick={onClick}
-      style={
-        !project.thumbnail
-          ? { background: `linear-gradient(135deg, ${project.keyColor || '#6366f1'}, ${project.keyColor || '#6366f1'}88)` }
-          : undefined
-      }
-    >
-      {project.thumbnail && (
-        <img
-          src={project.thumbnail}
-          alt={project.title}
-          className="absolute inset-0 h-full w-full object-cover"
-        />
-      )}
-      <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-      <span className="absolute bottom-3 left-4 text-white font-bold text-lg drop-shadow-md">
-        {project.title}
-      </span>
-    </div>
-  );
-
-  // --- Step 1: Project List ---
-  if (step === 'list') {
+  // ── Project Cover Card ──
+  function ProjectCover({
+    proj,
+    height,
+    onClick,
+  }: {
+    proj: typeof projects[number];
+    height: number;
+    onClick?: () => void;
+  }) {
     return (
-      <div className="flex flex-col gap-3 px-4 pt-4 pb-24 overflow-y-auto h-full">
-        {projects.map((p) => renderProjectCard(p, 'h-[180px]', () => handleSelectProject(p.id)))}
+      <div
+        className={cn(
+          'relative overflow-hidden rounded-2xl flex-shrink-0',
+          onClick && 'cursor-pointer active:scale-[0.98] transition-transform',
+        )}
+        style={{
+          height,
+          background: proj.thumbnail
+            ? undefined
+            : `linear-gradient(135deg, ${proj.keyColor || 'hsl(var(--primary))'}, ${proj.keyColor || 'hsl(var(--primary))'}88)`,
+        }}
+        onClick={onClick}
+      >
+        {proj.thumbnail && (
+          <img
+            src={proj.thumbnail}
+            alt={proj.title}
+            className="absolute inset-0 w-full h-full object-cover"
+          />
+        )}
+        {/* Gradient overlay for text readability */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+        {/* Project name */}
+        <span className="absolute bottom-4 left-4 typo-h3 text-white font-bold drop-shadow-lg">
+          {proj.title}
+        </span>
       </div>
     );
   }
 
-  // --- Step 2: Project Detail ---
-  if (step === 'detail' && selectedProject) {
+  // ═══════════════════════════════════════
+  // Step 1: Project List
+  // ═══════════════════════════════════════
+  if (step === 'list') {
     return (
-      <div className="flex flex-col h-full overflow-y-auto pb-24">
-        {/* Back button */}
-        <button
-          onClick={handleBack}
-          className="absolute top-3 left-3 z-20 p-2 rounded-full bg-black/30 backdrop-blur-md text-white"
-        >
-          <ArrowLeft size={20} />
-        </button>
-
-        {/* Cover */}
-        <div className="px-4 pt-4">
-          {renderProjectCard(selectedProject, 'h-[120px]')}
+      <div className="h-full overflow-y-auto bg-background">
+        {/* Header */}
+        <div className="px-4 pt-6 pb-3">
+          <h1 className="typo-h2 text-foreground font-bold">
+            {language === 'ko' ? '프로젝트' : 'Projects'}
+          </h1>
         </div>
 
-        {/* Avatars */}
+        {/* Project cards */}
+        <div className="flex flex-col gap-3 px-4 pb-24">
+          {projects.length === 0 ? (
+            <div className="flex items-center justify-center py-20">
+              <p className="typo-widget-sub text-muted-foreground">
+                {language === 'ko' ? '프로젝트가 없습니다' : 'No projects'}
+              </p>
+            </div>
+          ) : (
+            projects.map((p) => (
+              <ProjectCover
+                key={p.id}
+                proj={p}
+                height={180}
+                onClick={() => {
+                  setProjectId(p.id);
+                  setStep('detail');
+                }}
+              />
+            ))
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // ═══════════════════════════════════════
+  // Step 2: Project Detail
+  // ═══════════════════════════════════════
+  if (step === 'detail' && project) {
+    return (
+      <div className="h-full overflow-y-auto bg-background">
+        {/* Back button */}
+        <div className="px-4 pt-4 pb-2">
+          <button
+            onClick={() => { setProjectId(null); setStep('list'); }}
+            className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <ArrowLeft size={20} />
+            <span className="typo-label">{language === 'ko' ? '뒤로' : 'Back'}</span>
+          </button>
+        </div>
+
+        {/* Cover card (shrunk) */}
+        <div className="px-4">
+          <ProjectCover proj={project} height={140} />
+        </div>
+
+        {/* Team members */}
         {teamMembers.length > 0 && (
-          <div className="flex -space-x-2 px-4 mt-3">
-            {teamMembers.map((u: any) => (
-              <Avatar key={u.id} className="h-8 w-8 border-2 border-white dark:border-gray-900">
-                <AvatarImage src={u.avatar} alt={u.name} />
-                <AvatarFallback className="text-xs">{u.name?.[0] ?? '?'}</AvatarFallback>
-              </Avatar>
-            ))}
+          <div className="flex items-center gap-1 px-4 mt-3">
+            <div className="flex -space-x-2">
+              {teamMembers.slice(0, 6).map((u) => (
+                <Avatar key={u.id} className="w-8 h-8 border-2 border-background">
+                  <AvatarImage src={u.avatar} alt={u.name} />
+                  <AvatarFallback className="typo-micro bg-primary/10 text-primary font-medium">
+                    {u.name?.slice(-2) || '?'}
+                  </AvatarFallback>
+                </Avatar>
+              ))}
+            </div>
+            {teamMembers.length > 6 && (
+              <span className="typo-caption text-muted-foreground ml-1">
+                +{teamMembers.length - 6}
+              </span>
+            )}
           </div>
         )}
 
-        {/* Widget Grid */}
-        <div className="grid grid-cols-2 gap-3 px-4 mt-4">
-          {WIDGETS.map((w) => {
+        {/* Widget icon grid */}
+        <div className="grid grid-cols-3 gap-3 px-4 mt-5 pb-24">
+          {WIDGET_DEFS.map((w) => {
             const Icon = w.icon;
             return (
               <button
                 key={w.key}
-                onClick={() => handleSelectWidget(w.key)}
+                onClick={() => { setWidgetKey(w.key); setStep('widget'); }}
                 className={cn(
-                  GLASS,
-                  'relative flex flex-col items-center justify-center gap-2 py-6 transition-transform active:scale-[0.98]',
+                  'relative flex flex-col items-center justify-center gap-2 py-5 rounded-2xl',
+                  'bg-white/60 dark:bg-white/5 backdrop-blur-xl',
+                  'border border-white/20 dark:border-white/10',
+                  'active:scale-[0.96] transition-transform',
+                  'shadow-sm',
                 )}
               >
-                {w.badge != null && w.badge > 0 && (
-                  <span className="absolute top-2 right-2 min-w-[20px] h-5 flex items-center justify-center rounded-full bg-red-500 text-white text-[11px] font-semibold px-1">
-                    {w.badge}
-                  </span>
-                )}
-                <Icon size={26} className="text-foreground/70" />
-                <span className="text-xs font-medium text-foreground/80">{w.label}</span>
+                <Icon size={28} strokeWidth={1.5} className="text-foreground/70" />
+                <span className="typo-caption text-foreground/70 font-medium">
+                  {language === 'ko' ? w.labelKo : w.labelEn}
+                </span>
               </button>
             );
           })}
-        </div>
-
-        {/* AI Input Bar */}
-        <div className="px-4 mt-4">
-          <div className={cn(GLASS, 'flex items-center gap-3 px-4 py-3')}>
-            <Pencil size={18} className="text-foreground/50" />
-            <span className="text-sm text-foreground/40">Ask AI about this project…</span>
-          </div>
         </div>
       </div>
     );
   }
 
-  // --- Step 3: Widget Fullscreen ---
-  if (step === 'widget' && selectedProject && selectedWidget) {
-    const WidgetComponent = WIDGET_COMPONENTS[selectedWidget];
-    const widgetDef = WIDGETS.find((w) => w.key === selectedWidget);
+  // ═══════════════════════════════════════
+  // Step 3: Widget Fullscreen
+  // ═══════════════════════════════════════
+  if (step === 'widget' && project && widgetKey) {
+    const WidgetComp = WIDGET_MAP[widgetKey];
+    const wDef = WIDGET_DEFS.find((w) => w.key === widgetKey);
 
     return (
-      <div className="flex flex-col h-full overflow-hidden">
+      <div className="flex flex-col h-full bg-background">
         {/* Header */}
-        <div className="flex items-center gap-3 px-4 py-2">
+        <div className="flex items-center gap-3 px-4 py-3 border-b border-border shrink-0">
           <button
-            onClick={handleBack}
-            className="p-2 rounded-full bg-black/10 dark:bg-white/10 text-foreground"
+            onClick={() => { setWidgetKey(null); setStep('detail'); }}
+            className="p-1.5 rounded-lg bg-muted hover:bg-muted/80 transition-colors"
           >
-            <ArrowLeft size={20} />
+            <ArrowLeft size={18} className="text-foreground" />
           </button>
-          <span className="font-semibold text-base flex-1">{widgetDef?.label}</span>
+          <span className="typo-h4 text-foreground font-semibold flex-1">
+            {wDef ? (language === 'ko' ? wDef.labelKo : wDef.labelEn) : ''}
+          </span>
         </div>
 
-        {/* Compressed project strip */}
-        <div className="px-4 mb-2">
-          {renderProjectCard(selectedProject, 'h-[60px]')}
+        {/* Mini project strip */}
+        <div className="px-4 py-2 shrink-0">
+          <ProjectCover proj={project} height={56} />
         </div>
 
         {/* Widget content */}
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 min-h-0 overflow-hidden">
           <Suspense
             fallback={
-              <div className="flex items-center justify-center h-32 text-foreground/40 text-sm">
-                Loading…
+              <div className="flex items-center justify-center h-32">
+                <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
               </div>
             }
           >
-            {WidgetComponent && (
-              <WidgetComponent context={{ type: 'project', projectId: selectedProject.id }} />
+            {WidgetComp && (
+              <WidgetComp context={{ type: 'project', projectId: project.id }} />
             )}
           </Suspense>
         </div>
