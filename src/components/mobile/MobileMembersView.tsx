@@ -127,7 +127,7 @@ export function MobileMembersView() {
               <button
                 key={label}
                 onClick={action}
-                className="flex items-center gap-2 bg-slate-900 dark:bg-white/10 text-white rounded-full px-6 py-3 active:scale-[0.97] transition-transform"
+                className="flex items-center gap-2 bg-primary dark:bg-primary text-primary-foreground rounded-full px-6 py-3 active:scale-[0.97] transition-transform"
               >
                 <Icon className="w-4 h-4" />
                 <span className="text-sm font-medium">{label}</span>

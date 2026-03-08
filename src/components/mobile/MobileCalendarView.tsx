@@ -129,7 +129,7 @@ function ClockDialPicker({ startHour, endHour, onStartChange, onEndChange }: Clo
         {/* Background arc */}
         <path d={bgArc} fill="none" stroke="#334155" strokeWidth="8" strokeLinecap="round" />
         {/* Highlighted arc */}
-        <path d={highlightArc} fill="none" stroke="#C4B5FD" strokeWidth="8" strokeLinecap="round" />
+        <path d={highlightArc} fill="none" stroke="hsl(234, 89%, 60%)" strokeWidth="8" strokeLinecap="round" />
         {/* Tick marks & labels */}
         {ticks.map(h => {
           const a = hourToAngle(h);
@@ -147,18 +147,18 @@ function ClockDialPicker({ startHour, endHour, onStartChange, onEndChange }: Clo
           );
         })}
         {/* Start handle */}
-        <circle cx={startPos.x} cy={startPos.y} r={12} fill="#C4B5FD" stroke="#fff" strokeWidth="2"
+        <circle cx={startPos.x} cy={startPos.y} r={12} fill="hsl(234, 89%, 60%)" stroke="#fff" strokeWidth="2"
           className="cursor-grab" onMouseDown={handlePointerDown('start')} onTouchStart={handlePointerDown('start')} />
         <text x={startPos.x} y={startPos.y + 1} textAnchor="middle" dominantBaseline="middle"
-          className="fill-slate-900 text-[8px] font-bold pointer-events-none" style={{ fontSize: 8 }}>S</text>
+          className="fill-primary-foreground text-[8px] font-bold pointer-events-none" style={{ fontSize: 8 }}>S</text>
         {/* End handle */}
         <circle cx={endPos.x} cy={endPos.y} r={12} fill="#A78BFA" stroke="#fff" strokeWidth="2"
           className="cursor-grab" onMouseDown={handlePointerDown('end')} onTouchStart={handlePointerDown('end')} />
         <text x={endPos.x} y={endPos.y + 1} textAnchor="middle" dominantBaseline="middle"
-          className="fill-slate-900 text-[8px] font-bold pointer-events-none" style={{ fontSize: 8 }}>E</text>
+          className="fill-primary-foreground text-[8px] font-bold pointer-events-none" style={{ fontSize: 8 }}>E</text>
       </svg>
       <div className="flex gap-6 text-sm">
-        <span className="text-slate-300">Start <span className="font-mono font-bold text-[#C4B5FD]">{formatDecimalHour(startHour)}</span></span>
+        <span className="text-slate-300">Start <span className="font-mono font-bold text-primary">{formatDecimalHour(startHour)}</span></span>
         <span className="text-slate-300">End <span className="font-mono font-bold text-[#A78BFA]">{formatDecimalHour(endHour)}</span></span>
       </div>
     </div>
@@ -206,7 +206,7 @@ function NewEventSheet({ date, onClose }: NewEventSheetProps) {
     <div className="fixed inset-0 z-50 flex items-end" onClick={onClose}>
       <div className="absolute inset-0 bg-black/60" />
       <div
-        className="relative w-full bg-slate-950 rounded-t-3xl p-5 pb-8 max-h-[85vh] overflow-y-auto"
+        className="relative w-full bg-card dark:bg-card rounded-t-3xl p-5 pb-8 max-h-[85vh] overflow-y-auto"
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
@@ -230,7 +230,7 @@ function NewEventSheet({ date, onClose }: NewEventSheetProps) {
           placeholder={language === 'ko' ? '이벤트 제목' : 'Event title'}
           value={title}
           onChange={e => setTitle(e.target.value)}
-          className="w-full bg-slate-900 text-white rounded-xl px-4 py-3 text-sm outline-none focus:ring-1 focus:ring-[#C4B5FD] placeholder:text-slate-600 mb-3"
+          className="w-full bg-muted dark:bg-muted text-foreground rounded-xl px-4 py-3 text-sm outline-none focus:ring-1 focus:ring-primary placeholder:text-muted-foreground mb-3"
         />
 
         {/* Project chips */}
@@ -243,7 +243,7 @@ function NewEventSheet({ date, onClose }: NewEventSheetProps) {
                 className={cn(
                   'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs whitespace-nowrap shrink-0 transition-colors',
                   selectedProjectId === p.id
-                    ? 'bg-[#C4B5FD]/20 text-[#C4B5FD] ring-1 ring-[#C4B5FD]/40'
+                    ? 'bg-primary/20 text-primary ring-1 ring-primary/40'
                     : 'bg-slate-800 text-slate-400'
                 )}
               >
@@ -260,7 +260,7 @@ function NewEventSheet({ date, onClose }: NewEventSheetProps) {
           value={description}
           onChange={e => setDescription(e.target.value)}
           rows={2}
-          className="w-full bg-slate-900 text-white rounded-xl px-4 py-3 text-sm outline-none focus:ring-1 focus:ring-[#C4B5FD] placeholder:text-slate-600 resize-none mb-4"
+          className="w-full bg-muted dark:bg-muted text-foreground rounded-xl px-4 py-3 text-sm outline-none focus:ring-1 focus:ring-primary placeholder:text-muted-foreground resize-none mb-4"
         />
 
         {/* Clock Dial Picker */}
@@ -275,7 +275,7 @@ function NewEventSheet({ date, onClose }: NewEventSheetProps) {
         <button
           onClick={handleSave}
           disabled={saving}
-          className="w-full mt-5 py-3 rounded-2xl bg-[#C4B5FD] text-slate-900 font-semibold text-sm disabled:opacity-50 active:scale-[0.98] transition-transform"
+          className="w-full mt-5 py-3 rounded-2xl bg-primary text-primary-foreground font-semibold text-sm disabled:opacity-50 active:scale-[0.98] transition-transform"
         >
           {saving
             ? (language === 'ko' ? '저장 중...' : 'Saving...')
@@ -333,7 +333,7 @@ export function MobileCalendarView() {
       <div className="shrink-0 px-4 py-3 flex items-center justify-between">
         <button
           onClick={() => setShowNewEvent(true)}
-          className="w-10 h-10 flex items-center justify-center rounded-full bg-pink-500 text-white shadow-lg active:scale-95 transition-transform"
+          className="w-10 h-10 flex items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg active:scale-95 transition-transform"
         >
           <Plus className="w-5 h-5" />
         </button>
@@ -359,9 +359,9 @@ export function MobileCalendarView() {
                   className={cn(
                     'flex flex-col items-center min-w-[40px] py-1.5 px-1 rounded-xl transition-colors',
                     isSelected
-                      ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900'
+                      ? 'bg-primary text-primary-foreground'
                       : isToday
-                        ? 'bg-pink-500/10 text-pink-500'
+                        ? 'bg-primary/10 text-primary'
                         : 'text-muted-foreground hover:bg-accent'
                   )}
                 >
@@ -390,7 +390,7 @@ export function MobileCalendarView() {
             </p>
             <button
               onClick={() => setShowNewEvent(true)}
-              className="mt-3 text-xs text-[#C4B5FD] underline"
+              className="mt-3 text-xs text-primary underline"
             >
               {language === 'ko' ? '새 이벤트 추가' : 'Add new event'}
             </button>

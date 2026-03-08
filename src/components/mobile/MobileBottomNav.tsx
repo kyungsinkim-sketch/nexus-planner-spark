@@ -121,7 +121,7 @@ export function MobileBottomNav() {
       <div
         className="border-t"
         style={{
-          background: isDark ? 'rgba(0,0,0,0.85)' : 'rgba(255,255,255,0.08)',
+          background: isDark ? 'rgba(0,0,0,0.85)' : 'rgba(255,255,255,0.85)',
           backdropFilter: 'blur(20px)',
           WebkitBackdropFilter: 'blur(20px)',
           borderColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)',

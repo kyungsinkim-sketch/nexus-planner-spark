@@ -78,7 +78,7 @@ function MorningBriefing({
     <div className="bg-white/70 dark:bg-white/5 backdrop-blur-xl border border-white/20 dark:border-white/10 rounded-2xl p-5">
       <div className="flex items-center gap-2 mb-3">
         <Sparkles className="w-4 h-4 text-amber-500" />
-        <h2 className="text-lg font-bold text-slate-900 dark:text-white">{greeting} ✋</h2>
+        <h2 className="text-lg font-bold text-foreground">{greeting} ✋</h2>
       </div>
 
       <p className="text-xs font-medium text-slate-500 dark:text-white/40 uppercase tracking-wider mb-2">
@@ -229,7 +229,7 @@ export function MobileAIChatView() {
   }, [input, loading, currentUser, language]);
 
   return (
-    <div className="relative flex flex-col h-full bg-[#F4F8F6] dark:bg-[#081020]">
+    <div className="relative flex flex-col h-full bg-background">
       {/* Scrollable content */}
       <div className="flex-1 overflow-y-auto px-4 pt-6 pb-20">
         {/* Widget row: Date + Weather */}
@@ -253,7 +253,7 @@ export function MobileAIChatView() {
       </div>
 
       {/* Fixed Input Bar */}
-      <div className="absolute bottom-0 left-0 right-0 px-4 pb-2 pt-2 bg-[#F4F8F6]/80 dark:bg-[#081020]/80 backdrop-blur-lg">
+      <div className="absolute bottom-0 left-0 right-0 px-4 pb-2 pt-2 bg-background/80 backdrop-blur-lg">
         <div className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-white dark:bg-white/10 border border-slate-200 dark:border-white/10 shadow-sm">
           <input
             ref={inputRef}
@@ -276,7 +276,7 @@ export function MobileAIChatView() {
                 'w-8 h-8 rounded-full flex items-center justify-center transition-colors',
                 loading
                   ? 'bg-slate-300 dark:bg-white/20 animate-pulse'
-                  : 'bg-slate-900 dark:bg-white text-white dark:text-black'
+                  : 'bg-primary text-primary-foreground'
               )}
             >
               <ArrowUp className="w-4 h-4" />
