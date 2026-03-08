@@ -115,7 +115,7 @@ export function Sidebar() {
                 <span className="animate-fade-in flex-1">{t(item.labelKey)}</span>
               )}
               {!sidebarCollapsed && item.pro && (
-                <span className="text-[9px] font-bold bg-amber-500/20 text-amber-600 dark:text-amber-400 px-1.5 py-0.5 rounded-full animate-fade-in">
+                <span className="text-xs font-medium font-bold bg-amber-500/20 text-amber-600 dark:text-amber-400 px-1.5 py-0.5 rounded-full animate-fade-in">
                   Pro
                 </span>
               )}

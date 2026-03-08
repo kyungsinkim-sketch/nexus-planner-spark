@@ -117,7 +117,7 @@ export function MobileProjectView() {
                     <p className="text-sm font-medium truncate text-[hsl(var(--foreground))]">{project.title}</p>
                     <div className="flex items-center gap-2 mt-0.5">
                       <span
-                        className="text-[10px] px-1.5 py-0.5 rounded-full font-medium"
+                        className="text-xs font-medium px-1.5 py-0.5 rounded-full font-medium"
                         style={{
                           backgroundColor: `${project.keyColor || 'hsl(43,74%,55%)'}15`,
                           color: project.keyColor || 'hsl(43,74%,55%)',
@@ -179,7 +179,7 @@ export function MobileProjectView() {
                 key={p.id}
                 onClick={() => handleSelectProject(p.id)}
                 className={cn(
-                  'flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-[11px] font-medium shrink-0 transition-colors border',
+                  'flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-medium shrink-0 transition-colors border',
                   isSelected
                     ? 'border-[hsla(43,74%,55%,0.3)] bg-[hsla(43,74%,55%,0.1)] text-[hsl(43,74%,55%)]'
                     : 'border-[hsla(var(--glass-border))] text-[hsl(var(--muted-foreground))]'

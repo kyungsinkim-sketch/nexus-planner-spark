@@ -254,13 +254,13 @@ export function DiligenceTab() {
 
                       <div className="grid grid-cols-2 gap-4 mb-3">
                         <div className="space-y-1">
-                          <span className="text-[10px] text-muted-foreground uppercase">{t('diligenceWorkOvertime')}</span>
+                          <span className="text-xs font-medium text-muted-foreground uppercase">{t('diligenceWorkOvertime')}</span>
                           <p className="text-sm font-medium">
                             {formatMinutesToHM(stat.totalMinutes)} / {formatMinutesToHM(stat.overtimeMinutes)}
                           </p>
                         </div>
                         <div className="space-y-1">
-                          <span className="text-[10px] text-muted-foreground uppercase">{t('diligenceOverseasField')}</span>
+                          <span className="text-xs font-medium text-muted-foreground uppercase">{t('diligenceOverseasField')}</span>
                           <p className="text-sm font-medium">
                             {stat.overseasDays}{t('diligenceDaySuffix')} / {stat.filmingDays}{t('diligenceDaySuffix')}
                           </p>

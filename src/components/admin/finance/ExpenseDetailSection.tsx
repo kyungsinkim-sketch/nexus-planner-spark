@@ -437,7 +437,7 @@ export function ExpenseDetailSection({ year }: ExpenseDetailSectionProps) {
             <p className="text-xs text-muted-foreground">{t('typeTaxInvoice')}</p>
           </div>
           <AutoFitText className="text-lg font-bold text-foreground mt-1">{formatKRW(totalTaxInvoice)}</AutoFitText>
-          <p className="text-[10px] text-muted-foreground">{allTaxInvoices.length}{t('itemCountSuffix')}</p>
+          <p className="text-xs font-medium text-muted-foreground">{allTaxInvoices.length}{t('itemCountSuffix')}</p>
         </Card>
         <Card className="p-3 sm:p-4 shadow-card overflow-hidden">
           <div className="flex items-center gap-1.5">
@@ -445,7 +445,7 @@ export function ExpenseDetailSection({ year }: ExpenseDetailSectionProps) {
             <p className="text-xs text-muted-foreground">{t('typeWithholding')}</p>
           </div>
           <AutoFitText className="text-lg font-bold text-foreground mt-1">{formatKRW(totalWithholding)}</AutoFitText>
-          <p className="text-[10px] text-muted-foreground">{allWithholding.length}{t('itemCountSuffix')}</p>
+          <p className="text-xs font-medium text-muted-foreground">{allWithholding.length}{t('itemCountSuffix')}</p>
         </Card>
         <Card className="p-3 sm:p-4 shadow-card overflow-hidden">
           <div className="flex items-center gap-1.5">
@@ -453,7 +453,7 @@ export function ExpenseDetailSection({ year }: ExpenseDetailSectionProps) {
             <p className="text-xs text-muted-foreground">{t('typeCorporateCard')}</p>
           </div>
           <AutoFitText className="text-lg font-bold text-foreground mt-1">{formatKRW(totalCard)}</AutoFitText>
-          <p className="text-[10px] text-muted-foreground">{allCorporateCard.length}{t('itemCountSuffix')}</p>
+          <p className="text-xs font-medium text-muted-foreground">{allCorporateCard.length}{t('itemCountSuffix')}</p>
         </Card>
         <Card className="p-3 sm:p-4 shadow-card overflow-hidden">
           <div className="flex items-center gap-1.5">
@@ -461,7 +461,7 @@ export function ExpenseDetailSection({ year }: ExpenseDetailSectionProps) {
             <p className="text-xs text-muted-foreground">법인현금</p>
           </div>
           <AutoFitText className="text-lg font-bold text-foreground mt-1">{formatKRW(totalCash)}</AutoFitText>
-          <p className="text-[10px] text-muted-foreground">{allCorporateCash.length}{t('itemCountSuffix')}</p>
+          <p className="text-xs font-medium text-muted-foreground">{allCorporateCash.length}{t('itemCountSuffix')}</p>
         </Card>
         <Card className="p-3 sm:p-4 shadow-card overflow-hidden">
           <div className="flex items-center gap-1.5">
@@ -469,7 +469,7 @@ export function ExpenseDetailSection({ year }: ExpenseDetailSectionProps) {
             <p className="text-xs text-muted-foreground">{t('typePersonalExpense')}</p>
           </div>
           <AutoFitText className="text-lg font-bold text-foreground mt-1">{formatKRW(totalPersonal)}</AutoFitText>
-          <p className="text-[10px] text-muted-foreground">{allPersonalExpense.length}{t('itemCountSuffix')}</p>
+          <p className="text-xs font-medium text-muted-foreground">{allPersonalExpense.length}{t('itemCountSuffix')}</p>
         </Card>
         <Card className="p-3 sm:p-4 shadow-card bg-primary/5 overflow-hidden">
           <div className="flex items-center gap-1.5">
@@ -540,7 +540,7 @@ export function ExpenseDetailSection({ year }: ExpenseDetailSectionProps) {
                       <div key={idx} className="flex items-center gap-1">
                         <Badge
                           variant={step.status === 'APPROVED' ? 'default' : step.status === 'REJECTED' ? 'destructive' : 'outline'}
-                          className={`text-[10px] ${step.status === 'APPROVED' ? 'bg-green-100 text-green-700' : idx === req.currentStep ? 'bg-amber-100 text-amber-700' : ''}`}
+                          className={`text-xs font-medium ${step.status === 'APPROVED' ? 'bg-green-100 text-green-700' : idx === req.currentStep ? 'bg-amber-100 text-amber-700' : ''}`}
                         >
                           {step.approverRole}{step.approverName ? ` (${step.approverName})` : ''}
                         </Badge>
@@ -750,7 +750,7 @@ export function ExpenseDetailSection({ year }: ExpenseDetailSectionProps) {
                       <span className="text-sm flex-1">
                         {step.approverRole} — {step.approverName || '미지정'}
                       </span>
-                      <Badge variant="outline" className="text-[10px]">
+                      <Badge variant="outline" className="text-xs font-medium">
                         {step.status === 'APPROVED' ? '결재완료' : step.status === 'REJECTED' ? '반송' : idx === reviewingRequest.currentStep ? '결재대기' : '대기'}
                       </Badge>
                     </div>

@@ -936,7 +936,7 @@ export function AdminSettingsTab() {
                                     <MessageSquare className="w-5 h-5 text-violet-500" />
                                     Brain Report
                                     {brainReports.filter(r => r.status === 'new').length > 0 && (
-                                        <Badge variant="destructive" className="text-[10px] px-1.5 py-0">
+                                        <Badge variant="destructive" className="text-xs font-medium px-1.5 py-0">
                                             {brainReports.filter(r => r.status === 'new').length} 신규
                                         </Badge>
                                     )}
@@ -968,7 +968,7 @@ export function AdminSettingsTab() {
                                         <div className="flex items-start justify-between gap-2">
                                             <div className="flex-1 min-w-0">
                                                 <div className="flex items-center gap-2 flex-wrap">
-                                                    <Badge variant="outline" className="text-[10px]">
+                                                    <Badge variant="outline" className="text-xs font-medium">
                                                         {report.category === 'feature_request' ? '기능 요청' :
                                                          report.category === 'bug_report' ? '버그 리포트' :
                                                          report.category === 'ui_improvement' ? 'UI 개선' :
@@ -976,7 +976,7 @@ export function AdminSettingsTab() {
                                                     </Badge>
                                                     <Badge
                                                         variant="outline"
-                                                        className={`text-[10px] ${
+                                                        className={`text-xs font-medium ${
                                                             report.priority === 'high'
                                                                 ? 'border-red-300 text-red-600 dark:text-red-400'
                                                                 : report.priority === 'medium'
@@ -986,7 +986,7 @@ export function AdminSettingsTab() {
                                                     >
                                                         {report.priority === 'high' ? '높음' : report.priority === 'medium' ? '보통' : '낮음'}
                                                     </Badge>
-                                                    <span className="text-[10px] text-muted-foreground">
+                                                    <span className="text-xs font-medium text-muted-foreground">
                                                         {report.userName} · {new Date(report.createdAt).toLocaleDateString('ko-KR')}
                                                     </span>
                                                 </div>
@@ -1007,7 +1007,7 @@ export function AdminSettingsTab() {
                                                 value={report.status}
                                                 onValueChange={(val: string) => updateBrainReportStatus(report.id, val as BrainReportStatus)}
                                             >
-                                                <SelectTrigger className="w-24 h-7 text-[10px]">
+                                                <SelectTrigger className="w-24 h-7 text-xs font-medium">
                                                     <SelectValue />
                                                 </SelectTrigger>
                                                 <SelectContent>

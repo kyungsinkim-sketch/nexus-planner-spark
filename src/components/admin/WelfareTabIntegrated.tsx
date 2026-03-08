@@ -517,7 +517,7 @@ export function WelfareTabIntegrated() {
                                                                 <div className="p-2 rounded-lg bg-pink-500/10 border border-pink-500/20 text-xs">
                                                                     <div className="font-medium">{session.userName}</div>
                                                                     {session.trainerConfirmed && session.traineeConfirmed && (
-                                                                        <Badge variant="secondary" className="mt-1 text-[10px]">
+                                                                        <Badge variant="secondary" className="mt-1 text-xs font-medium">
                                                                             Confirmed
                                                                         </Badge>
                                                                     )}

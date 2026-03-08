@@ -562,7 +562,7 @@ function SlackWidget({ context }: { context: WidgetDataContext }) {
                   )}
                   <span className="text-sm truncate">{ch.is_im ? (ch.user_name || 'DM') : ch.name}</span>
                   {ch.num_members && !ch.is_im && (
-                    <span className="ml-auto text-[10px] text-muted-foreground/50 flex items-center gap-0.5">
+                    <span className="ml-auto text-xs font-medium text-muted-foreground/50 flex items-center gap-0.5">
                       <Users className="w-3 h-3" />{ch.num_members}
                     </span>
                   )}
@@ -606,7 +606,7 @@ function SlackWidget({ context }: { context: WidgetDataContext }) {
         <div className="min-w-0 flex-1">
           <div className="flex items-baseline gap-1.5">
             <span className="text-xs font-semibold truncate">{user?.name || msg.user || 'Unknown'}</span>
-            <span className="text-[10px] text-muted-foreground/50">{time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+            <span className="text-xs font-medium text-muted-foreground/50">{time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
           </div>
 
           {/* Edit mode */}
@@ -627,7 +627,7 @@ function SlackWidget({ context }: { context: WidgetDataContext }) {
           {msg.files && msg.files.length > 0 && (
             <div className="mt-1 flex flex-wrap gap-1">
               {msg.files.map((f, i) => (
-                <span key={i} className="text-[10px] px-1.5 py-0.5 rounded bg-muted/50 text-muted-foreground">📎 {f.name}</span>
+                <span key={i} className="text-xs font-medium px-1.5 py-0.5 rounded bg-muted/50 text-muted-foreground">📎 {f.name}</span>
               ))}
             </div>
           )}
@@ -637,7 +637,7 @@ function SlackWidget({ context }: { context: WidgetDataContext }) {
             <div className="mt-1 flex flex-wrap gap-1">
               {msg.reactions.map((r, i) => (
                 <button key={i} onClick={() => handleReaction(msg, SLACK_TO_EMOJI[r.name] || r.name)}
-                  className={`text-[11px] px-1.5 py-0.5 rounded-full border transition-colors ${
+                  className={`text-xs px-1.5 py-0.5 rounded-full border transition-colors ${
                     r.users?.includes(userId || '') ? 'border-primary/50 bg-primary/10' : 'border-border/30 bg-muted/30 hover:bg-muted/50'
                   }`}
                 >
@@ -650,7 +650,7 @@ function SlackWidget({ context }: { context: WidgetDataContext }) {
           {/* Thread indicator */}
           {hasThread && (
             <button onClick={() => openThread(msg)}
-              className="mt-1 text-[11px] text-primary/70 hover:text-primary flex items-center gap-1"
+              className="mt-1 text-xs text-primary/70 hover:text-primary flex items-center gap-1"
             >
               <MessageCircle className="w-3 h-3" />
               {msg.reply_count}개 답장
@@ -737,7 +737,7 @@ function SlackWidget({ context }: { context: WidgetDataContext }) {
 
         {/* Brain AI processing indicator */}
         {isBrainActive && (
-          <div className="absolute -top-6 right-0 flex items-center gap-1 px-2 py-0.5 bg-primary/90 text-primary-foreground rounded-full text-[10px] animate-pulse">
+          <div className="absolute -top-6 right-0 flex items-center gap-1 px-2 py-0.5 bg-primary/90 text-primary-foreground rounded-full text-xs font-medium animate-pulse">
             <Loader2 className="w-2.5 h-2.5 animate-spin" /> 분석 중...
           </div>
         )}

@@ -132,7 +132,7 @@ export function PersonaResponseBubble({ message }: PersonaResponseBubbleProps) {
           {ragCount > 0 && (
             <Badge
               variant="outline"
-              className={`text-[10px] gap-0.5 ${theme.badgeColor} ml-1`}
+              className={`text-xs font-medium gap-0.5 ${theme.badgeColor} ml-1`}
             >
               <BookOpen className="w-2.5 h-2.5" />
               {ragCount}개 지식 참조
@@ -153,7 +153,7 @@ export function PersonaResponseBubble({ message }: PersonaResponseBubbleProps) {
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-6 px-2 text-[10px] gap-1 text-muted-foreground hover:text-green-600 hover:bg-green-50 dark:hover:bg-green-950/30"
+                  className="h-6 px-2 text-xs font-medium gap-1 text-muted-foreground hover:text-green-600 hover:bg-green-50 dark:hover:bg-green-950/30"
                   onClick={() => handleFeedback('helpful')}
                 >
                   <ThumbsUp className="w-3 h-3" />
@@ -162,7 +162,7 @@ export function PersonaResponseBubble({ message }: PersonaResponseBubbleProps) {
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-6 px-2 text-[10px] gap-1 text-muted-foreground hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30"
+                  className="h-6 px-2 text-xs font-medium gap-1 text-muted-foreground hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30"
                   onClick={() => handleFeedback('unhelpful')}
                 >
                   <ThumbsDown className="w-3 h-3" />
@@ -170,12 +170,12 @@ export function PersonaResponseBubble({ message }: PersonaResponseBubbleProps) {
                 </Button>
               </>
             ) : feedbackState === 'submitting' ? (
-              <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+              <span className="text-xs font-medium text-muted-foreground flex items-center gap-1">
                 <Loader2 className="w-3 h-3 animate-spin" />
                 전송 중...
               </span>
             ) : (
-              <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+              <span className="text-xs font-medium text-muted-foreground flex items-center gap-1">
                 <CheckCircle2 className="w-3 h-3 text-green-500" />
                 {feedbackState === 'helpful' ? '감사합니다! 👍' : '피드백 감사합니다'}
               </span>

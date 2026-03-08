@@ -270,7 +270,7 @@ export function MentionTextarea({
             >
               {item.isPersona ? (
                 /* AI Persona entry — per-persona style */
-                <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 ${
+                <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium font-bold shrink-0 ${
                   item.isBrain
                     ? 'bg-violet-100 dark:bg-violet-900/40 text-violet-600 dark:text-violet-400'
                     : 'bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400'
@@ -278,7 +278,7 @@ export function MentionTextarea({
                   {item.personaIcon || '👑'}
                 </div>
               ) : (
-                <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-medium text-primary shrink-0">
+                <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-xs font-medium text-primary shrink-0">
                   {item.name?.[0] || '?'}
                 </div>
               )}
@@ -290,7 +290,7 @@ export function MentionTextarea({
                   {item.isPersona ? item.personaLabel : item.name}
                 </p>
                 {!item.isPersona && (
-                  <p className="text-[10px] text-muted-foreground truncate">
+                  <p className="text-xs font-medium text-muted-foreground truncate">
                     {item.email}
                   </p>
                 )}

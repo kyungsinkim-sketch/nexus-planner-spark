@@ -106,14 +106,14 @@ function TodayScheduleWidget({ context }: { context: WidgetDataContext }) {
                   {/* Time */}
                   <div className="flex items-center gap-1.5 text-muted-foreground mb-0.5">
                     <Clock className="w-3 h-3 shrink-0" />
-                    <span className="text-[11px] font-medium">
+                    <span className="text-xs font-medium">
                       {isAllDay(event)
                         ? (t('allDay') || '종일')
                         : `${formatTime(event.startAt)} – ${formatTime(event.endAt)}`
                       }
                     </span>
                     {isCurrent && (
-                      <span className="text-[9px] font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded-full">
+                      <span className="text-xs font-medium font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded-full">
                         NOW
                       </span>
                     )}
@@ -128,7 +128,7 @@ function TodayScheduleWidget({ context }: { context: WidgetDataContext }) {
                   <div className="flex items-center gap-2 mt-0.5">
                     {project && (
                       <span
-                        className="text-[10px] font-medium px-1.5 py-0.5 rounded"
+                        className="text-xs font-medium px-1.5 py-0.5 rounded"
                         style={{
                           backgroundColor: `color-mix(in srgb, ${color} 15%, transparent)`,
                           color: color,
@@ -138,12 +138,12 @@ function TodayScheduleWidget({ context }: { context: WidgetDataContext }) {
                       </span>
                     )}
                     {event.source === 'GOOGLE' && !project && (
-                      <span className="text-[10px] font-medium text-sky-600 bg-sky-500/10 px-1.5 py-0.5 rounded">
+                      <span className="text-xs font-medium text-sky-600 bg-sky-500/10 px-1.5 py-0.5 rounded">
                         Google
                       </span>
                     )}
                     {event.location && (
-                      <span className="flex items-center gap-0.5 text-[10px] text-muted-foreground truncate">
+                      <span className="flex items-center gap-0.5 text-xs font-medium text-muted-foreground truncate">
                         <MapPin className="w-2.5 h-2.5 shrink-0" />
                         {event.location}
                       </span>

@@ -204,7 +204,7 @@ export function VendorAutocomplete({
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <p className="text-sm font-medium truncate">{vendor.name}</p>
-                  <Badge variant="outline" className="text-[10px] shrink-0">
+                  <Badge variant="outline" className="text-xs font-medium shrink-0">
                     {vendor.type === 'company' ? t('vendorCompany') : t('vendorIndividual')}
                   </Badge>
                 </div>

@@ -48,7 +48,7 @@ function HealthWidget({ context }: { context: WidgetDataContext }) {
             <p className={`text-xs font-semibold ${cfg.color}`}>
               {cfg.label}
             </p>
-            <p className="text-[10px] text-white/50 mt-0.5">{item.label}</p>
+            <p className="text-xs font-medium text-white/50 mt-0.5">{item.label}</p>
           </div>
         );
       })}

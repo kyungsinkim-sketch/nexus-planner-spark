@@ -175,7 +175,7 @@ function NotionBlockRenderer({ block }: { block: Record<string, unknown> }) {
       const lang = (content.language as string) || '';
       return (
         <div className="my-2 rounded-lg bg-muted/60 border overflow-hidden">
-          {lang && <div className="text-[10px] text-muted-foreground px-3 py-1 border-b bg-muted/50">{lang}</div>}
+          {lang && <div className="text-xs font-medium text-muted-foreground px-3 py-1 border-b bg-muted/50">{lang}</div>}
           <pre className="p-3 text-xs overflow-x-auto font-mono">
             {richText?.map(t => t.plain_text).join('') || ''}
           </pre>
@@ -384,8 +384,8 @@ function CommentsPanel({ userId, pageId }: { userId: string; pageId: string }) {
                 <div className="w-5 h-5 rounded-full bg-muted flex items-center justify-center text-[8px] font-medium shrink-0">
                   {c.created_by.name?.charAt(0)?.toUpperCase() || '?'}
                 </div>
-                <span className="text-[11px] font-medium">{c.created_by.name || 'Unknown'}</span>
-                <span className="text-[10px] text-muted-foreground">
+                <span className="text-xs font-medium">{c.created_by.name || 'Unknown'}</span>
+                <span className="text-xs font-medium text-muted-foreground">
                   {new Date(c.created_time).toLocaleString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                 </span>
               </div>
@@ -948,11 +948,11 @@ export default function NotionWidget({ context }: { context: WidgetDataContext }
           {/* Tab switcher */}
           <div className="flex items-center gap-0.5 bg-muted/50 rounded-lg p-0.5 shrink-0">
             <button onClick={() => setPageTab('content')}
-              className={`px-2 py-0.5 text-[10px] rounded-md transition ${pageTab === 'content' ? 'bg-background shadow-sm font-medium' : 'text-muted-foreground hover:text-foreground'}`}>
+              className={`px-2 py-0.5 text-xs font-medium rounded-md transition ${pageTab === 'content' ? 'bg-background shadow-sm font-medium' : 'text-muted-foreground hover:text-foreground'}`}>
               내용
             </button>
             <button onClick={() => setPageTab('comments')}
-              className={`px-2 py-0.5 text-[10px] rounded-md transition ${pageTab === 'comments' ? 'bg-background shadow-sm font-medium' : 'text-muted-foreground hover:text-foreground'}`}>
+              className={`px-2 py-0.5 text-xs font-medium rounded-md transition ${pageTab === 'comments' ? 'bg-background shadow-sm font-medium' : 'text-muted-foreground hover:text-foreground'}`}>
               💬
             </button>
           </div>
@@ -996,7 +996,7 @@ export default function NotionWidget({ context }: { context: WidgetDataContext }
 
         {/* Breadcrumb */}
         {navStack.length > 1 && (
-          <div className="flex items-center gap-1 px-3 py-1 border-b bg-muted/20 text-[10px] text-muted-foreground overflow-x-auto">
+          <div className="flex items-center gap-1 px-3 py-1 border-b bg-muted/20 text-xs font-medium text-muted-foreground overflow-x-auto">
             {navStack.map((item, idx) => (
               <span key={item.id} className="flex items-center gap-1 shrink-0">
                 {idx > 0 && <ChevronRight className="w-2.5 h-2.5" />}
@@ -1128,7 +1128,7 @@ export default function NotionWidget({ context }: { context: WidgetDataContext }
 
         {/* Breadcrumb */}
         {navStack.length > 1 && (
-          <div className="flex items-center gap-1 px-3 py-1 border-b bg-muted/20 text-[10px] text-muted-foreground overflow-x-auto">
+          <div className="flex items-center gap-1 px-3 py-1 border-b bg-muted/20 text-xs font-medium text-muted-foreground overflow-x-auto">
             {navStack.map((item, idx) => (
               <span key={item.id} className="flex items-center gap-1 shrink-0">
                 {idx > 0 && <ChevronRight className="w-2.5 h-2.5" />}
@@ -1282,7 +1282,7 @@ function PageSection({ title, pages, onOpen, onTogglePin, isPinned, projectId, o
   return (
     <div className="py-1">
       <div className="px-3 py-1.5">
-        <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">{title}</span>
+        <span className="text-xs font-medium font-semibold text-muted-foreground uppercase tracking-wider">{title}</span>
       </div>
       {pages.map(page => (
         <PageListItem
@@ -1335,7 +1335,7 @@ function PageListItem({
           {objectType === 'database' && <Table2 className="w-3 h-3 text-muted-foreground shrink-0" />}
           {isLinked && <Link2 className="w-3 h-3 text-primary/60 shrink-0" />}
         </div>
-        {timeAgo && <p className="text-[10px] text-muted-foreground">{timeAgo}</p>}
+        {timeAgo && <p className="text-xs font-medium text-muted-foreground">{timeAgo}</p>}
       </div>
       <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition shrink-0">
         {onTogglePin && (

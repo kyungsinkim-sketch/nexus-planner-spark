@@ -218,12 +218,12 @@ const RecordingListItem = memo(function RecordingListItem({
         <span className="text-xs font-medium truncate flex-1">
           {recording.title}
         </span>
-        <span className="text-[9px] text-muted-foreground shrink-0">
+        <span className="text-xs font-medium text-muted-foreground shrink-0">
           {formatDuration(recording.duration)}
         </span>
       </div>
       <div className="flex items-center gap-1.5 mt-0.5 pl-5">
-        <span className="text-[9px] text-muted-foreground/60">
+        <span className="text-xs font-medium text-muted-foreground/60">
           {STATUS_LABELS[recording.status] || recording.status}
         </span>
         {projectTitle && (
@@ -412,7 +412,7 @@ function VoiceRecorderWidget({ context }: { context: WidgetDataContext }) {
           <button
             key={key}
             onClick={() => setTab(key)}
-            className={`flex-1 flex items-center justify-center gap-1 py-1.5 text-[10px] font-medium transition-colors ${
+            className={`flex-1 flex items-center justify-center gap-1 py-1.5 text-xs font-medium transition-colors ${
               tab === key
                 ? 'text-primary border-b-2 border-primary'
                 : 'text-muted-foreground hover:text-foreground'
@@ -476,7 +476,7 @@ function VoiceRecorderWidget({ context }: { context: WidgetDataContext }) {
                   )}
                   <span className="absolute inset-0 rounded-full animate-ping bg-red-500/30" style={{ animationDuration: '2s' }} />
                 </button>
-                <span className="text-[10px] text-muted-foreground">{t('voiceRecorderTapToRecord')}</span>
+                <span className="text-xs font-medium text-muted-foreground">{t('voiceRecorderTapToRecord')}</span>
               </>
             ) : (
               <>
@@ -510,7 +510,7 @@ function VoiceRecorderWidget({ context }: { context: WidgetDataContext }) {
                     <MicOff className="w-5 h-5 text-muted-foreground" />
                   </button>
                 </div>
-                <span className="text-[9px] text-red-500 font-medium animate-pulse">
+                <span className="text-xs font-medium text-red-500 font-medium animate-pulse">
                   {isPaused ? t('voiceRecorderPaused') : t('voiceRecorderRecording')}
                 </span>
               </>
@@ -562,7 +562,7 @@ function VoiceRecorderWidget({ context }: { context: WidgetDataContext }) {
               <span className="text-xs text-muted-foreground">
                 {isProcessing ? t('voiceRecorderUploading') : t('voiceRecorderDropHere')}
               </span>
-              <span className="text-[9px] text-muted-foreground/50">
+              <span className="text-xs font-medium text-muted-foreground/50">
                 mp3, wav, m4a, webm, ogg
               </span>
             </div>

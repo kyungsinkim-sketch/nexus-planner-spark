@@ -109,7 +109,7 @@ export function MobileDashboard() {
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium truncate">{event.title}</p>
                       {project && (
-                        <p className="text-[10px] text-muted-foreground truncate">
+                        <p className="text-xs font-medium text-muted-foreground truncate">
                           {project.title}
                         </p>
                       )}
@@ -180,7 +180,7 @@ export function MobileDashboard() {
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium truncate">{project.title}</p>
                     <div className="flex items-center gap-2 mt-0.5">
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${
+                      <span className={`text-xs font-medium px-1.5 py-0.5 rounded-full font-medium ${
                         project.status === 'IN_PROGRESS'
                           ? 'bg-blue-500/10 text-blue-600'
                           : 'bg-amber-500/10 text-amber-600'
@@ -190,7 +190,7 @@ export function MobileDashboard() {
                           : (language === 'ko' ? '기획' : 'Planning')}
                       </span>
                       {projectTodayEvents > 0 && (
-                        <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
+                        <span className="text-xs font-medium text-muted-foreground flex items-center gap-0.5">
                           <Clock className="w-3 h-3" />
                           {projectTodayEvents}
                         </span>

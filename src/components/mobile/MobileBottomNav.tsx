@@ -79,7 +79,7 @@ export function MobileBottomNav() {
                 strokeWidth={active ? 2 : 1.5}
               />
               <span className={cn(
-                'text-[9px] font-medium transition-colors',
+                'text-xs font-medium font-medium transition-colors',
                 active ? 'text-white' : 'text-white/25'
               )}>
                 {language === 'ko' ? tab.labelKo : tab.labelEn}
@@ -93,7 +93,7 @@ export function MobileBottomNav() {
           <SheetTrigger asChild>
             <button className="flex flex-col items-center gap-0.5 py-1 px-3 rounded-lg min-w-0 flex-1">
               <MoreHorizontal className="w-[18px] h-[18px] text-white/25" strokeWidth={1.5} />
-              <span className="text-[9px] font-medium text-white/25">
+              <span className="text-xs font-medium font-medium text-white/25">
                 {language === 'ko' ? '더보기' : 'More'}
               </span>
             </button>
@@ -112,7 +112,7 @@ export function MobileBottomNav() {
                 </Avatar>
                 <div>
                   <SheetTitle className="text-left text-sm text-white">{currentUser?.name}</SheetTitle>
-                  <p className="text-[11px] text-white/30">{currentUser?.role}</p>
+                  <p className="text-xs text-white/30">{currentUser?.role}</p>
                 </div>
               </div>
             </SheetHeader>
@@ -154,7 +154,7 @@ export function MobileBottomNav() {
                   <Languages className="w-4 h-4 text-white/40" />
                   <span className="text-[13px] text-white/80">{language === 'ko' ? '한국어' : 'English'}</span>
                 </div>
-                <span className="text-[11px] text-white/30 font-mono">{language === 'ko' ? 'EN' : 'KO'}</span>
+                <span className="text-xs text-white/30 font-mono">{language === 'ko' ? 'EN' : 'KO'}</span>
               </button>
 
               <Separator className="bg-white/[0.06] my-2" />

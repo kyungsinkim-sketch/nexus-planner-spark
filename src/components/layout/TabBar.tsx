@@ -234,7 +234,7 @@ export function TabBar() {
           >
             <Bell className="w-4 h-4" />
             {unreadCount > 0 && (
-              <span className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full bg-red-500 text-white text-[9px] font-bold flex items-center justify-center leading-none">
+              <span className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full bg-red-500 text-white text-xs font-medium font-bold flex items-center justify-center leading-none">
                 {unreadCount > 9 ? '9+' : unreadCount}
               </span>
             )}
@@ -248,7 +248,7 @@ export function TabBar() {
                 {unreadCount > 0 && (
                   <button
                     onClick={() => markAllAppNotificationsRead()}
-                    className="text-[10px] text-primary hover:text-primary/80 transition-colors"
+                    className="text-xs font-medium text-primary hover:text-primary/80 transition-colors"
                   >
                     {t('markAllRead')}
                   </button>
@@ -342,11 +342,11 @@ export function TabBar() {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center justify-between gap-1">
                             <span className="text-xs font-medium text-foreground truncate">{n.title}</span>
-                            <span className="text-[9px] text-muted-foreground shrink-0">
+                            <span className="text-xs font-medium text-muted-foreground shrink-0">
                               {new Date(n.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                             </span>
                           </div>
-                          <p className="text-[10px] text-muted-foreground truncate mt-0.5">{n.message}</p>
+                          <p className="text-xs font-medium text-muted-foreground truncate mt-0.5">{n.message}</p>
                         </div>
                         {!n.read && (
                           <span className="w-2 h-2 rounded-full bg-red-500 shrink-0 mt-1.5" />
@@ -372,7 +372,7 @@ export function TabBar() {
         {/* Language toggle */}
         <button
           onClick={toggleLanguage}
-          className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-white/10 transition-colors text-[10px] font-bold min-w-[28px]"
+          className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-white/10 transition-colors text-xs font-medium font-bold min-w-[28px]"
           title={language === 'ko' ? 'Switch to English' : '한국어로 전환'}
         >
           {language === 'ko' ? 'EN' : 'KO'}
@@ -402,7 +402,7 @@ export function TabBar() {
                   {currentUser?.avatar && (
                     <AvatarImage src={currentUser.avatar} alt={currentUser.name} />
                   )}
-                  <AvatarFallback className="bg-primary text-primary-foreground text-[9px]">
+                  <AvatarFallback className="bg-primary text-primary-foreground text-xs font-medium">
                     {currentUser?.name.split(' ').map(n => n[0]).join('') || '?'}
                   </AvatarFallback>
                 </Avatar>
@@ -419,10 +419,10 @@ export function TabBar() {
                 )} />
               </div>
               <div className="text-left hidden xl:block">
-                <p className="text-[10px] font-medium text-foreground leading-tight truncate max-w-[80px]">
+                <p className="text-xs font-medium text-foreground leading-tight truncate max-w-[80px]">
                   {currentUser?.name}
                 </p>
-                <p className={cn('text-[9px] leading-tight', currentStatus.colorClass)}>
+                <p className={cn('text-xs font-medium leading-tight', currentStatus.colorClass)}>
                   {t(currentStatus.labelKey)}
                 </p>
               </div>

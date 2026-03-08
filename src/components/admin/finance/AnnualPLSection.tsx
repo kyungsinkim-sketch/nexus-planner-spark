@@ -256,7 +256,7 @@ export function AnnualPLSection({ year }: AnnualPLSectionProps) {
             <div className="flex items-center justify-between py-2 sm:py-3 border-t-2 border-primary/20 bg-primary/5 rounded-lg px-2 sm:px-3 -mx-2 sm:-mx-3 gap-2">
               <div className="shrink-0">
                 <span className="font-bold text-sm sm:text-lg text-foreground">{t('netProfit')}</span>
-                <span className="ml-1 sm:ml-2 text-[10px] sm:text-sm text-muted-foreground">{t('plProfitRateLabel')} {profitRate}%</span>
+                <span className="ml-1 sm:ml-2 text-xs font-medium sm:text-sm text-muted-foreground">{t('plProfitRateLabel')} {profitRate}%</span>
               </div>
               <AutoFitText className={`text-base sm:text-xl font-bold font-mono tabular-nums ${currentData.netProfit >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
                 {formatKRW(currentData.netProfit)}
@@ -268,7 +268,7 @@ export function AnnualPLSection({ year }: AnnualPLSectionProps) {
               <div className="flex items-center justify-between py-2 sm:py-3 border-t border-dashed border-blue-300 bg-blue-50/50 rounded-lg px-2 sm:px-3 -mx-2 sm:-mx-3 mt-2 gap-2">
                 <div className="shrink-0">
                   <span className="font-medium text-sm text-blue-700">{t('plArkworksExpense')}</span>
-                  <span className="ml-2 text-[10px] sm:text-xs text-blue-500">{t('plArkworksNote')}</span>
+                  <span className="ml-2 text-xs font-medium sm:text-xs text-blue-500">{t('plArkworksNote')}</span>
                 </div>
                 <AutoFitText className="text-sm sm:text-base font-semibold text-blue-700 font-mono tabular-nums">
                   {formatKRW(currentData.arkworksExpense)}
@@ -311,25 +311,25 @@ export function AnnualPLSection({ year }: AnnualPLSectionProps) {
       {/* Cost Structure Breakdown */}
       <div className="grid gap-3 grid-cols-3">
         <Card className="p-3 sm:p-4 shadow-card overflow-hidden">
-          <p className="text-[10px] sm:text-sm text-muted-foreground mb-1 truncate">{t('plOverheadRatio')}</p>
+          <p className="text-xs font-medium sm:text-sm text-muted-foreground mb-1 truncate">{t('plOverheadRatio')}</p>
           <AutoFitText className="text-lg sm:text-2xl font-bold text-foreground">
             {((currentData.overhead.total / currentData.revenue) * 100).toFixed(1)}%
           </AutoFitText>
-          <AutoFitText className="text-[10px] sm:text-xs text-muted-foreground">{formatBillions(currentData.overhead.total)}</AutoFitText>
+          <AutoFitText className="text-xs font-medium sm:text-xs text-muted-foreground">{formatBillions(currentData.overhead.total)}</AutoFitText>
         </Card>
         <Card className="p-3 sm:p-4 shadow-card overflow-hidden">
-          <p className="text-[10px] sm:text-sm text-muted-foreground mb-1 truncate">{t('plPayrollRatio')}</p>
+          <p className="text-xs font-medium sm:text-sm text-muted-foreground mb-1 truncate">{t('plPayrollRatio')}</p>
           <AutoFitText className="text-lg sm:text-2xl font-bold text-foreground">
             {((currentData.productionPayroll.total / currentData.revenue) * 100).toFixed(1)}%
           </AutoFitText>
-          <AutoFitText className="text-[10px] sm:text-xs text-muted-foreground">{formatBillions(currentData.productionPayroll.total)}</AutoFitText>
+          <AutoFitText className="text-xs font-medium sm:text-xs text-muted-foreground">{formatBillions(currentData.productionPayroll.total)}</AutoFitText>
         </Card>
         <Card className="p-3 sm:p-4 shadow-card overflow-hidden">
-          <p className="text-[10px] sm:text-sm text-muted-foreground mb-1 truncate">{t('plProductionCostRatio')}</p>
+          <p className="text-xs font-medium sm:text-sm text-muted-foreground mb-1 truncate">{t('plProductionCostRatio')}</p>
           <AutoFitText className="text-lg sm:text-2xl font-bold text-foreground">
             {((currentData.productionCost.total / currentData.revenue) * 100).toFixed(1)}%
           </AutoFitText>
-          <AutoFitText className="text-[10px] sm:text-xs text-muted-foreground">{formatBillions(currentData.productionCost.total)}</AutoFitText>
+          <AutoFitText className="text-xs font-medium sm:text-xs text-muted-foreground">{formatBillions(currentData.productionCost.total)}</AutoFitText>
         </Card>
       </div>
     </div>

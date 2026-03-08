@@ -52,7 +52,7 @@ export function CalendarEventFilter({ selectedTypes, onToggleType, eventCounts }
             {count > 0 && (
               <Badge
                 variant="secondary"
-                className={`text-[10px] px-1.5 py-0 min-w-[18px] ${isSelected ? 'bg-background text-foreground' : 'bg-muted'
+                className={`text-xs font-medium px-1.5 py-0 min-w-[18px] ${isSelected ? 'bg-background text-foreground' : 'bg-muted'
                   }`}
               >
                 {count}

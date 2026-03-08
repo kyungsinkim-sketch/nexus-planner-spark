@@ -289,7 +289,7 @@ export function ProjectCalendarTab({ projectId }: ProjectCalendarTabProps) {
 
             return (
               <div className="px-1 sm:px-1.5 py-0.5 overflow-hidden">
-                <div className="flex items-center gap-1 text-[10px] sm:text-xs font-medium truncate">
+                <div className="flex items-center gap-1 text-xs font-medium sm:text-xs font-medium truncate">
                   {EventIcon && <EventIcon className="w-3 h-3 shrink-0" />}
                   <span className="truncate">{eventInfo.event.title}</span>
                 </div>

@@ -1515,18 +1515,18 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
                                 </h3>
                                 <div className="flex items-center gap-1 shrink-0">
                                   {lastMessage && (
-                                    <span className="text-[10px] text-muted-foreground">
+                                    <span className="text-xs font-medium text-muted-foreground">
                                       {formatTime(lastMessage.createdAt)}
                                     </span>
                                   )}
                                   <ChevronRight className={`w-3 h-3 text-muted-foreground transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
                                 </div>
                               </div>
-                              <p className="text-[10px] text-muted-foreground truncate mt-0.5">
+                              <p className="text-xs font-medium text-muted-foreground truncate mt-0.5">
                                 {project.client}
                               </p>
                               {lastMessage && (
-                                <p className="text-[10px] text-muted-foreground line-clamp-1 mt-0.5">
+                                <p className="text-xs font-medium text-muted-foreground line-clamp-1 mt-0.5">
                                   {lastMessage.content}
                                 </p>
                               )}
@@ -1557,10 +1557,10 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
                                     <Hash className="w-3 h-3 shrink-0" />
                                     <span className="truncate">{room.name}</span>
                                     {isDefaultRoom && (
-                                      <span className="text-[9px] bg-muted px-1 py-0.5 rounded-full shrink-0">{t('defaultRoom')}</span>
+                                      <span className="text-xs font-medium bg-muted px-1 py-0.5 rounded-full shrink-0">{t('defaultRoom')}</span>
                                     )}
                                     {isRoomLocked && (
-                                      <span className="text-[9px] bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 px-1 py-0.5 rounded-full shrink-0">
+                                      <span className="text-xs font-medium bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 px-1 py-0.5 rounded-full shrink-0">
                                         {t('subChatOnly')}
                                       </span>
                                     )}
@@ -1620,12 +1620,12 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
                               <h3 className="font-medium text-foreground text-xs flex items-center gap-1">
                                 {user.name}
                                 {isBrainAIUser(user.id) && (
-                                  <span className="text-[9px] px-1 py-0.5 rounded-full font-medium bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300">
+                                  <span className="text-xs font-medium px-1 py-0.5 rounded-full font-medium bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300">
                                     AI
                                   </span>
                                 )}
                                 {isAIPersonaUser(user.id) && (
-                                  <span className={`text-[9px] px-1 py-0.5 rounded-full font-medium ${
+                                  <span className={`text-xs font-medium px-1 py-0.5 rounded-full font-medium ${
                                     PERSONA_ID_MAP[user.id]?.color === 'amber' ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300' :
                                     PERSONA_ID_MAP[user.id]?.color === 'blue' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300' :
                                     'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300'
@@ -1635,16 +1635,16 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
                                 )}
                               </h3>
                               {lastDM && (
-                                <span className="text-[10px] text-muted-foreground shrink-0">
+                                <span className="text-xs font-medium text-muted-foreground shrink-0">
                                   {formatTime(lastDM.createdAt)}
                                 </span>
                               )}
                             </div>
-                            <p className="text-[10px] text-muted-foreground">
+                            <p className="text-xs font-medium text-muted-foreground">
                               {user.department}
                             </p>
                             {lastDM && (
-                              <p className="text-[10px] text-muted-foreground line-clamp-1 mt-0.5">
+                              <p className="text-xs font-medium text-muted-foreground line-clamp-1 mt-0.5">
                                 {lastDM.content}
                               </p>
                             )}
@@ -1702,12 +1702,12 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
                   {selectedChatInfo?.name}
                 </h2>
                 {brainIntelligenceEnabled && (
-                  <Badge variant="outline" className="text-[10px] gap-1 text-violet-500 border-violet-200 dark:border-violet-800 shrink-0">
+                  <Badge variant="outline" className="text-xs font-medium gap-1 text-violet-500 border-violet-200 dark:border-violet-800 shrink-0">
                     <Brain className="w-2.5 h-2.5" /> {t('brainAiActive')}
                   </Badge>
                 )}
               </div>
-              <p className="text-[10px] text-muted-foreground truncate">
+              <p className="text-xs font-medium text-muted-foreground truncate">
                 {selectedChatInfo?.subtitle}
               </p>
             </div>
@@ -1801,7 +1801,7 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
                   <div key={date} className="max-w-full">
                     <div className="flex items-center gap-2 mb-3">
                       <Separator className="flex-1" />
-                      <span className="text-[10px] font-medium text-muted-foreground">{date}</span>
+                      <span className="text-xs font-medium text-muted-foreground">{date}</span>
                       <Separator className="flex-1" />
                     </div>
                     <div className="space-y-3">
@@ -1819,7 +1819,7 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
                             {showAvatar ? (
                               <Avatar className="w-7 h-7 shrink-0">
                                 {user?.avatar && <AvatarImage src={user.avatar} alt={user?.name} />}
-                                <AvatarFallback className={`text-[10px] ${isCurrentUser
+                                <AvatarFallback className={`text-xs font-medium ${isCurrentUser
                                   ? 'bg-primary text-primary-foreground'
                                   : 'bg-muted text-muted-foreground'
                                   }`}>
@@ -1835,7 +1835,7 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
                                   <span className="text-xs font-medium text-foreground">
                                     {isCurrentUser ? t('you') : user?.name}
                                   </span>
-                                  <span className="text-[10px] text-muted-foreground">
+                                  <span className="text-xs font-medium text-muted-foreground">
                                     {formatMessageTime(message.createdAt)}
                                   </span>
                                 </div>
@@ -1912,7 +1912,7 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
             <div className="flex items-center gap-2 px-3 py-1.5 bg-muted/50 border-t border-border/30">
               <div className="w-0.5 h-8 bg-primary/60 rounded-full shrink-0" />
               <div className="flex-1 min-w-0">
-                <p className="text-[10px] text-primary font-medium">
+                <p className="text-xs font-medium text-primary font-medium">
                   {getUserById(replyingTo.userId)?.name || '알 수 없음'}에게 답장
                 </p>
                 <p className="text-xs text-muted-foreground truncate">{replyingTo.content}</p>
@@ -1978,16 +1978,16 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
             </div>
             {/* Keyboard shortcut hints — hidden on mobile */}
             <div className={`flex items-center gap-3 mt-1 px-1 ${isMobile ? 'hidden' : ''}`}>
-              <span className="text-[10px] text-muted-foreground">
-                <kbd className="px-1 py-0.5 rounded bg-muted text-[9px] font-mono">Shift</kbd>+<kbd className="px-1 py-0.5 rounded bg-muted text-[9px] font-mono">Enter</kbd> {t('newLine')}
+              <span className="text-xs font-medium text-muted-foreground">
+                <kbd className="px-1 py-0.5 rounded bg-muted text-xs font-medium font-mono">Shift</kbd>+<kbd className="px-1 py-0.5 rounded bg-muted text-xs font-medium font-mono">Enter</kbd> {t('newLine')}
               </span>
               {selectedChat?.type === 'direct' && selectedChat?.id && isBrainAIUser(selectedChat.id) ? (
-                <span className="text-[10px] text-violet-500 font-medium flex items-center gap-1">
+                <span className="text-xs font-medium text-violet-500 font-medium flex items-center gap-1">
                   <Brain className="w-3 h-3" />
                   Brain AI와 직접 대화 · 대화 내용이 누적됩니다
                 </span>
               ) : (
-                <span className="text-[10px] text-violet-500 font-medium flex items-center gap-1">
+                <span className="text-xs font-medium text-violet-500 font-medium flex items-center gap-1">
                   <Brain className="w-3 h-3" />
                   @Brain AI @pablo @cd @pd → AI 페르소나
                 </span>

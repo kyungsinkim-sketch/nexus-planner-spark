@@ -259,14 +259,14 @@ export function CallSuggestionsPanel({ roomId, onClose }: CallSuggestionsPanelPr
                 <div className="mt-0.5">{typeIcon(s.suggestionType)}</div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
-                    <span className="text-[10px] font-medium text-white/40 uppercase">{typeLabel(s.suggestionType)}</span>
+                    <span className="text-xs font-medium text-white/40 uppercase">{typeLabel(s.suggestionType)}</span>
                     {s.noteCategory && (
-                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-white/10 text-white/40">
+                      <span className="text-xs font-medium px-1.5 py-0.5 rounded bg-white/10 text-white/40">
                         {categoryLabel(s.noteCategory)}
                       </span>
                     )}
                     {s.todoPriority && (
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded ${
+                      <span className={`text-xs font-medium px-1.5 py-0.5 rounded ${
                         s.todoPriority === 'HIGH' ? 'bg-red-500/20 text-red-400' :
                         s.todoPriority === 'MEDIUM' ? 'bg-yellow-500/20 text-yellow-400' :
                         'bg-white/10 text-white/40'
@@ -274,7 +274,7 @@ export function CallSuggestionsPanel({ roomId, onClose }: CallSuggestionsPanelPr
                         {s.todoPriority}
                       </span>
                     )}
-                    <span className="text-[10px] text-white/20 ml-auto">{Math.round(s.confidence * 100)}%</span>
+                    <span className="text-xs font-medium text-white/20 ml-auto">{Math.round(s.confidence * 100)}%</span>
                   </div>
 
                   <p className="text-sm font-medium text-white">{s.title}</p>
@@ -286,13 +286,13 @@ export function CallSuggestionsPanel({ roomId, onClose }: CallSuggestionsPanelPr
                   {/* Meta */}
                   <div className="flex flex-wrap gap-2 mt-2">
                     {s.eventStart && (
-                      <span className="flex items-center gap-1 text-[10px] text-white/40">
+                      <span className="flex items-center gap-1 text-xs font-medium text-white/40">
                         <Clock className="w-3 h-3" />
                         {new Date(s.eventStart).toLocaleString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                       </span>
                     )}
                     {s.todoDueDate && (
-                      <span className="flex items-center gap-1 text-[10px] text-white/40">
+                      <span className="flex items-center gap-1 text-xs font-medium text-white/40">
                         <Clock className="w-3 h-3" />
                         마감: {s.todoDueDate}
                       </span>
@@ -301,7 +301,7 @@ export function CallSuggestionsPanel({ roomId, onClose }: CallSuggestionsPanelPr
 
                   {/* Source quote */}
                   {s.sourceQuote && (
-                    <div className="text-[10px] italic text-white/30 border-l-2 border-white/10 pl-2 mt-2">
+                    <div className="text-xs font-medium italic text-white/30 border-l-2 border-white/10 pl-2 mt-2">
                       "{s.sourceQuote.substring(0, 120)}{s.sourceQuote.length > 120 ? '...' : ''}"
                     </div>
                   )}

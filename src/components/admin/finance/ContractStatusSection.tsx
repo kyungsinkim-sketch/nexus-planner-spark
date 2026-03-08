@@ -226,12 +226,12 @@ export function ContractStatusSection({ year }: ContractStatusSectionProps) {
         <Card className="p-3 sm:p-4 shadow-card overflow-hidden">
           <p className="text-xs sm:text-sm text-muted-foreground truncate">{t('totalContractAmountCS')}</p>
           <AutoFitText className="text-lg sm:text-2xl font-bold text-foreground">{formatKRW(totalContract)}</AutoFitText>
-          <p className="text-[10px] sm:text-xs text-muted-foreground">{contractData.length}{t('itemCountSuffix')}</p>
+          <p className="text-xs font-medium sm:text-xs text-muted-foreground">{contractData.length}{t('itemCountSuffix')}</p>
         </Card>
         <Card className="p-3 sm:p-4 shadow-card overflow-hidden">
           <p className="text-xs sm:text-sm text-muted-foreground">{t('depositCompleted')}</p>
           <AutoFitText className="text-lg sm:text-2xl font-bold text-emerald-600">{formatKRW(totalReceived)}</AutoFitText>
-          <p className="text-[10px] sm:text-xs text-muted-foreground">총 예정금액: {formatKRW(totalExpected)}</p>
+          <p className="text-xs font-medium sm:text-xs text-muted-foreground">총 예정금액: {formatKRW(totalExpected)}</p>
         </Card>
         <Card className="p-3 sm:p-4 shadow-card overflow-hidden">
           <p className="text-xs sm:text-sm text-muted-foreground">{t('totalActualExpense')}</p>
@@ -240,7 +240,7 @@ export function ContractStatusSection({ year }: ContractStatusSectionProps) {
         <Card className="p-3 sm:p-4 shadow-card overflow-hidden">
           <p className="text-xs sm:text-sm text-muted-foreground">{t('netProfit')}</p>
           <AutoFitText className="text-lg sm:text-2xl font-bold text-primary">{formatKRW(netProfit)}</AutoFitText>
-          <p className="text-[10px] sm:text-xs text-emerald-600">{totalContract > 0 ? ((netProfit / totalContract) * 100).toFixed(1) : '0'}% {t('profitRatePercent')}</p>
+          <p className="text-xs font-medium sm:text-xs text-emerald-600">{totalContract > 0 ? ((netProfit / totalContract) * 100).toFixed(1) : '0'}% {t('profitRatePercent')}</p>
         </Card>
       </div>
 
@@ -261,11 +261,11 @@ export function ContractStatusSection({ year }: ContractStatusSectionProps) {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="font-medium text-foreground text-xs sm:text-sm truncate">{contract.projectName}</p>
-                <p className="text-[10px] sm:text-xs text-muted-foreground">{contract.client}</p>
+                <p className="text-xs font-medium sm:text-xs text-muted-foreground">{contract.client}</p>
               </div>
               <div className="text-right shrink-0 min-w-0 max-w-[140px] sm:max-w-[200px]">
                 <AutoFitText className="font-semibold text-foreground text-xs sm:text-sm font-mono tabular-nums">{formatKRW(contract.totalAmount)}</AutoFitText>
-                <p className="text-[10px] sm:text-xs text-emerald-600">{t('profitRatePercent')} {contract.profitRate}%</p>
+                <p className="text-xs font-medium sm:text-xs text-emerald-600">{t('profitRatePercent')} {contract.profitRate}%</p>
               </div>
               <div className="shrink-0 hidden sm:block">
                 {getStatusBadge(
@@ -328,7 +328,7 @@ export function ContractStatusSection({ year }: ContractStatusSectionProps) {
                       </TableCell>
                       <TableCell className="font-medium text-xs sm:text-sm">
                         <span className="line-clamp-1">{contract.projectName}</span>
-                        <span className="sm:hidden text-[10px] text-muted-foreground block">{contract.client}</span>
+                        <span className="sm:hidden text-xs font-medium text-muted-foreground block">{contract.client}</span>
                       </TableCell>
                       <TableCell className="hidden sm:table-cell text-sm">{contract.client}</TableCell>
                       <TableCell className="text-right font-mono text-xs sm:text-sm tabular-nums">{formatKRW(contract.totalAmount)}</TableCell>
@@ -340,7 +340,7 @@ export function ContractStatusSection({ year }: ContractStatusSectionProps) {
                       </TableCell>
                       <TableCell className="text-center">
                         <Badge
-                          className={`text-[10px] sm:text-xs ${
+                          className={`text-xs font-medium sm:text-xs ${
                             contract.profitRate >= 70 ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-100' :
                             contract.profitRate >= 40 ? 'bg-blue-100 text-blue-700 hover:bg-blue-100' :
                             'bg-amber-100 text-amber-700 hover:bg-amber-100'

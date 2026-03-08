@@ -325,7 +325,7 @@ export function SuggestionReviewDialog({
                   <div className="space-y-2 pl-6">
                     {/* Title */}
                     <div className="space-y-1">
-                      <Label className="text-[10px] text-muted-foreground">{t('brainFieldTitle')}</Label>
+                      <Label className="text-xs font-medium text-muted-foreground">{t('brainFieldTitle')}</Label>
                       <Input
                         value={eventTitle}
                         onChange={(e) => setEventTitle(e.target.value)}
@@ -336,7 +336,7 @@ export function SuggestionReviewDialog({
                     {/* Date + Start + End */}
                     <div className="grid grid-cols-3 gap-2">
                       <div className="space-y-1">
-                        <Label className="text-[10px] text-muted-foreground">{t('brainFieldDate')}</Label>
+                        <Label className="text-xs font-medium text-muted-foreground">{t('brainFieldDate')}</Label>
                         <Input
                           type="date"
                           value={eventDate}
@@ -345,7 +345,7 @@ export function SuggestionReviewDialog({
                         />
                       </div>
                       <div className="space-y-1">
-                        <Label className="text-[10px] text-muted-foreground">{t('brainFieldStartTime')}</Label>
+                        <Label className="text-xs font-medium text-muted-foreground">{t('brainFieldStartTime')}</Label>
                         <Input
                           type="time"
                           value={eventStartTime}
@@ -354,7 +354,7 @@ export function SuggestionReviewDialog({
                         />
                       </div>
                       <div className="space-y-1">
-                        <Label className="text-[10px] text-muted-foreground">{t('brainFieldEndTime')}</Label>
+                        <Label className="text-xs font-medium text-muted-foreground">{t('brainFieldEndTime')}</Label>
                         <Input
                           type="time"
                           value={eventEndTime}
@@ -366,7 +366,7 @@ export function SuggestionReviewDialog({
 
                     {/* Location */}
                     <div className="space-y-1">
-                      <Label className="text-[10px] text-muted-foreground">{t('brainFieldLocation')}</Label>
+                      <Label className="text-xs font-medium text-muted-foreground">{t('brainFieldLocation')}</Label>
                       <Input
                         value={eventLocation}
                         onChange={(e) => setEventLocation(e.target.value)}
@@ -378,7 +378,7 @@ export function SuggestionReviewDialog({
                     {/* Type + Project (side by side) */}
                     <div className="grid grid-cols-2 gap-2">
                       <div className="space-y-1">
-                        <Label className="text-[10px] text-muted-foreground">{t('brainFieldType')}</Label>
+                        <Label className="text-xs font-medium text-muted-foreground">{t('brainFieldType')}</Label>
                         <Select value={eventType} onValueChange={(v) => setEventType(v as BrainExtractedEvent['type'])}>
                           <SelectTrigger className="h-8 text-xs">
                             <SelectValue />
@@ -392,7 +392,7 @@ export function SuggestionReviewDialog({
                         </Select>
                       </div>
                       <div className="space-y-1">
-                        <Label className="text-[10px] text-muted-foreground">{t('brainFieldProject')}</Label>
+                        <Label className="text-xs font-medium text-muted-foreground">{t('brainFieldProject')}</Label>
                         <Select value={eventProjectId || '__none__'} onValueChange={(v) => setEventProjectId(v === '__none__' ? '' : v)}>
                           <SelectTrigger className="h-8 text-xs">
                             <SelectValue placeholder={t('brainFieldProjectNone')} />
@@ -411,7 +411,7 @@ export function SuggestionReviewDialog({
 
                     {/* Attendees */}
                     <div className="space-y-1">
-                      <Label className="text-[10px] text-muted-foreground">{t('brainFieldAttendees')}</Label>
+                      <Label className="text-xs font-medium text-muted-foreground">{t('brainFieldAttendees')}</Label>
                       <UserSearchInput
                         users={users}
                         selectedUsers={eventAttendees}
@@ -445,7 +445,7 @@ export function SuggestionReviewDialog({
                   <div className="space-y-2 pl-6">
                     {/* Title */}
                     <div className="space-y-1">
-                      <Label className="text-[10px] text-muted-foreground">{t('brainFieldTitle')}</Label>
+                      <Label className="text-xs font-medium text-muted-foreground">{t('brainFieldTitle')}</Label>
                       <Input
                         value={todoTitle}
                         onChange={(e) => setTodoTitle(e.target.value)}
@@ -456,7 +456,7 @@ export function SuggestionReviewDialog({
                     {/* Due Date + Priority */}
                     <div className="grid grid-cols-2 gap-2">
                       <div className="space-y-1">
-                        <Label className="text-[10px] text-muted-foreground">{t('brainFieldDueDate')}</Label>
+                        <Label className="text-xs font-medium text-muted-foreground">{t('brainFieldDueDate')}</Label>
                         <Input
                           type="date"
                           value={todoDueDate}
@@ -465,7 +465,7 @@ export function SuggestionReviewDialog({
                         />
                       </div>
                       <div className="space-y-1">
-                        <Label className="text-[10px] text-muted-foreground">{t('brainFieldPriority')}</Label>
+                        <Label className="text-xs font-medium text-muted-foreground">{t('brainFieldPriority')}</Label>
                         <Select value={todoPriority} onValueChange={(v) => setTodoPriority(v as 'LOW' | 'MEDIUM' | 'HIGH')}>
                           <SelectTrigger className="h-8 text-xs">
                             <SelectValue />
@@ -481,7 +481,7 @@ export function SuggestionReviewDialog({
 
                     {/* Project */}
                     <div className="space-y-1">
-                      <Label className="text-[10px] text-muted-foreground">{t('brainFieldProject')}</Label>
+                      <Label className="text-xs font-medium text-muted-foreground">{t('brainFieldProject')}</Label>
                       <Select value={todoProjectId || '__none__'} onValueChange={(v) => setTodoProjectId(v === '__none__' ? '' : v)}>
                         <SelectTrigger className="h-8 text-xs">
                           <SelectValue placeholder={t('brainFieldProjectNone')} />
@@ -499,7 +499,7 @@ export function SuggestionReviewDialog({
 
                     {/* Assignees */}
                     <div className="space-y-1">
-                      <Label className="text-[10px] text-muted-foreground">{t('brainFieldAssignees')}</Label>
+                      <Label className="text-xs font-medium text-muted-foreground">{t('brainFieldAssignees')}</Label>
                       <UserSearchInput
                         users={users}
                         selectedUsers={todoAssignees}

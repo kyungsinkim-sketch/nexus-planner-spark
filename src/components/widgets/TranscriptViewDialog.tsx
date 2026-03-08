@@ -110,14 +110,14 @@ const TranscriptTimeline = memo(function TranscriptTimeline({
             className={`flex gap-2 px-2 py-1 rounded-md cursor-pointer hover:bg-muted/30 transition-colors ${SPEAKER_BG_COLORS[colorIdx]}`}
             onClick={() => onSeek(seg.startTime)}
           >
-            <span className="text-[9px] text-muted-foreground/60 shrink-0 w-10 pt-0.5 tabular-nums">
+            <span className="text-xs font-medium text-muted-foreground/60 shrink-0 w-10 pt-0.5 tabular-nums">
               {formatTime(seg.startTime)}
             </span>
             <div className="min-w-0">
-              <span className={`text-[10px] font-medium ${SPEAKER_COLORS[colorIdx]}`}>
+              <span className={`text-xs font-medium ${SPEAKER_COLORS[colorIdx]}`}>
                 {seg.speaker}
               </span>
-              <p className="text-[11px] text-foreground/80">{seg.text}</p>
+              <p className="text-xs text-foreground/80">{seg.text}</p>
             </div>
           </div>
         );
@@ -148,7 +148,7 @@ const BrainAnalysisView = memo(function BrainAnalysisView({
       label: t('voiceRecorderSummary'),
       color: 'text-primary',
       content: analysis.summary ? (
-        <p className="text-[11px] text-foreground/80">{analysis.summary}</p>
+        <p className="text-xs text-foreground/80">{analysis.summary}</p>
       ) : null,
     },
     {
@@ -160,7 +160,7 @@ const BrainAnalysisView = memo(function BrainAnalysisView({
       content: analysis.decisions?.length ? (
         <ul className="space-y-1">
           {analysis.decisions.map((d, i) => (
-            <li key={i} className="text-[11px] text-foreground/80 flex gap-1.5">
+            <li key={i} className="text-xs text-foreground/80 flex gap-1.5">
               <span className="text-amber-500 shrink-0">•</span>
               <span>{d.content}{d.decidedBy ? ` — ${d.decidedBy}` : ''}</span>
             </li>
@@ -177,7 +177,7 @@ const BrainAnalysisView = memo(function BrainAnalysisView({
       content: analysis.suggestedEvents?.length ? (
         <div className="space-y-1.5">
           {analysis.suggestedEvents.map((ev, i) => (
-            <div key={i} className="flex items-start gap-1.5 text-[11px]">
+            <div key={i} className="flex items-start gap-1.5 text-xs">
               <Calendar className="w-3 h-3 text-blue-500 shrink-0 mt-0.5" />
               <div className="flex-1 min-w-0">
                 <span className="font-medium">{ev.title}</span>
@@ -208,7 +208,7 @@ const BrainAnalysisView = memo(function BrainAnalysisView({
       content: analysis.actionItems?.length ? (
         <div className="space-y-1.5">
           {analysis.actionItems.map((item, i) => (
-            <div key={i} className="flex items-start gap-1.5 text-[11px]">
+            <div key={i} className="flex items-start gap-1.5 text-xs">
               <CheckSquare className="w-3 h-3 text-green-500 shrink-0 mt-0.5" />
               <div className="flex-1 min-w-0">
                 <span className="font-medium">{item.title}</span>
@@ -237,9 +237,9 @@ const BrainAnalysisView = memo(function BrainAnalysisView({
       content: analysis.keyQuotes?.length ? (
         <div className="space-y-1.5">
           {analysis.keyQuotes.map((q, i) => (
-            <div key={i} className="text-[11px] px-2 py-1.5 rounded-md bg-violet-500/5 border-l-2 border-violet-500/30">
+            <div key={i} className="text-xs px-2 py-1.5 rounded-md bg-violet-500/5 border-l-2 border-violet-500/30">
               <p className="italic text-foreground/80">"{q.text}"</p>
-              <span className="text-[9px] text-muted-foreground">
+              <span className="text-xs font-medium text-muted-foreground">
                 — {q.speaker} ({formatTime(q.timestamp)})
               </span>
             </div>
@@ -264,12 +264,12 @@ const BrainAnalysisView = memo(function BrainAnalysisView({
           <div key={section.id} className="rounded-md border border-border/30">
             <button
               onClick={() => handleToggle(section.id)}
-              className="w-full flex items-center gap-1.5 px-2 py-1.5 text-[10px] font-medium hover:bg-muted/30 transition-colors"
+              className="w-full flex items-center gap-1.5 px-2 py-1.5 text-xs font-medium hover:bg-muted/30 transition-colors"
             >
               <Icon className={`w-3 h-3 ${section.color}`} />
               <span className="flex-1 text-left">{section.label}</span>
               {section.count !== undefined && section.count > 0 && (
-                <span className="text-[9px] text-muted-foreground">{section.count}</span>
+                <span className="text-xs font-medium text-muted-foreground">{section.count}</span>
               )}
               {isExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
             </button>
@@ -361,7 +361,7 @@ function TranscriptViewDialog({
                 onEnded={handleAudioEnded}
                 className="hidden"
               />
-              <div className="flex-1 text-[10px] text-muted-foreground">
+              <div className="flex-1 text-xs font-medium text-muted-foreground">
                 {t('voiceRecorderAudioPlayer')}
               </div>
             </div>
@@ -390,7 +390,7 @@ function TranscriptViewDialog({
           {/* Transcript */}
           {transcript.length > 0 && (
             <div>
-              <h4 className="text-[10px] font-medium text-muted-foreground mb-1.5 flex items-center gap-1">
+              <h4 className="text-xs font-medium text-muted-foreground mb-1.5 flex items-center gap-1">
                 <Clock className="w-3 h-3" />
                 {t('voiceRecorderTranscript')}
               </h4>
@@ -401,7 +401,7 @@ function TranscriptViewDialog({
           {/* Brain Analysis */}
           {analysis && (
             <div>
-              <h4 className="text-[10px] font-medium text-muted-foreground mb-1.5 flex items-center gap-1">
+              <h4 className="text-xs font-medium text-muted-foreground mb-1.5 flex items-center gap-1">
                 <Brain className="w-3 h-3 text-primary" />
                 {t('voiceRecorderBrainAnalysis')}
               </h4>

@@ -119,7 +119,7 @@ export function MobileNav() {
                 )}
               >
                 <item.icon className="w-5 h-5" />
-                <span className="text-[10px] font-medium truncate w-full text-center">
+                <span className="text-xs font-medium truncate w-full text-center">
                   {t(item.labelKey)}
                 </span>
               </NavLink>

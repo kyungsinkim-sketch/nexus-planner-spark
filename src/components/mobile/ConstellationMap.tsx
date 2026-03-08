@@ -225,7 +225,7 @@ export function ConstellationMap() {
         <h1 className="text-lg font-bold text-white tracking-tight">
           {language === 'ko' ? '관계' : 'People'}
         </h1>
-        <p className="text-[11px] text-white/25 mt-0.5">
+        <p className="text-xs text-white/25 mt-0.5">
           {language === 'ko'
             ? '가까울수록 최근 대화가 많은 사람'
             : 'Closer = more recent conversations'}
@@ -256,7 +256,7 @@ export function ConstellationMap() {
               </div>
               <div className="flex-1">
                 <p className="text-[13px] font-semibold text-white">{tappedStar.name}</p>
-                <p className="text-[11px] text-white/30">
+                <p className="text-xs text-white/30">
                   {language === 'ko'
                     ? `최근 7일 ${tappedStar.recentCount}회 대화`
                     : `${tappedStar.recentCount} messages (7d)`}
@@ -264,7 +264,7 @@ export function ConstellationMap() {
               </div>
               <button
                 onClick={() => { setMobileView('chat'); setTappedStar(null); }}
-                className="px-4 py-1.5 rounded-full text-[11px] font-medium bg-white text-black"
+                className="px-4 py-1.5 rounded-full text-xs font-medium bg-white text-black"
               >
                 {language === 'ko' ? '채팅' : 'Chat'}
               </button>

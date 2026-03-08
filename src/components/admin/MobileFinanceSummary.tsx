@@ -83,7 +83,7 @@ export function MobileFinanceSummary({ onViewDetails }: MobileFinanceSummaryProp
                         {f.year}{t('yearSuffix')}
                         <Badge
                             variant={f.isTarget ? 'outline' : 'secondary'}
-                            className="ml-1.5 text-[10px] px-1.5 py-0"
+                            className="ml-1.5 text-xs font-medium px-1.5 py-0"
                         >
                             {f.isTarget ? t('target') : t('actual')}
                         </Badge>
@@ -163,10 +163,10 @@ export function MobileFinanceSummary({ onViewDetails }: MobileFinanceSummaryProp
                                 <div key={cat.label} className={`p-2 rounded-lg ${cat.bgColor}`}>
                                     <div className="flex items-center gap-1.5 mb-1">
                                         <cat.icon className={`w-3.5 h-3.5 ${cat.color}`} />
-                                        <span className="text-[10px] text-muted-foreground truncate">{cat.label}</span>
+                                        <span className="text-xs font-medium text-muted-foreground truncate">{cat.label}</span>
                                     </div>
                                     <p className="text-sm font-bold text-foreground">{formatBillions(cat.value, t('billionUnit'))}</p>
-                                    <p className="text-[10px] text-muted-foreground">
+                                    <p className="text-xs font-medium text-muted-foreground">
                                         {((cat.value / totalExpense) * 100).toFixed(0)}%
                                     </p>
                                 </div>

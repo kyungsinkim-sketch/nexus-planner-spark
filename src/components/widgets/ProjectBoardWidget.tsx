@@ -47,7 +47,7 @@ function OwnerAvatar({ user, size = 7 }: { user?: User; size?: number }) {
     <TooltipProvider delayDuration={200}>
       <Tooltip>
         <TooltipTrigger asChild>
-          <Avatar className="text-[10px] cursor-default" style={{ width: size * 4, height: size * 4 }}>
+          <Avatar className="text-xs font-medium cursor-default" style={{ width: size * 4, height: size * 4 }}>
             {user.avatar && <AvatarImage src={user.avatar} alt={user.name} />}
             <AvatarFallback className="bg-primary/10 text-primary font-medium">
               {user.name.slice(-2)}
@@ -155,10 +155,10 @@ function ProgressBar({ value, onChange }: { value: number; onChange?: (v: number
             }
             if (e.key === 'Escape') setEditing(false);
           }}
-          className="w-12 h-5 text-[11px] text-center border border-border rounded bg-background px-1"
+          className="w-12 h-5 text-xs text-center border border-border rounded bg-background px-1"
           autoFocus
         />
-        <span className="text-[10px] text-muted-foreground">%</span>
+        <span className="text-xs font-medium text-muted-foreground">%</span>
       </div>
     );
   }
@@ -177,7 +177,7 @@ function ProgressBar({ value, onChange }: { value: number; onChange?: (v: number
           style={{ width: `${Math.min(value, 100)}%` }}
         />
       </div>
-      <span className="text-[11px] text-muted-foreground w-8 text-right">{value}%</span>
+      <span className="text-xs text-muted-foreground w-8 text-right">{value}%</span>
     </div>
   );
 }
@@ -407,7 +407,7 @@ function MainTableView({
               >
                 {isCollapsed ? <ChevronRight className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
                 <span className="font-semibold text-sm" style={{ color: group.color }}>{group.title}</span>
-                <span className="text-[11px] text-muted-foreground ml-auto bg-muted/50 px-2 py-0.5 rounded-full">{groupDone}/{groupTotal}</span>
+                <span className="text-xs text-muted-foreground ml-auto bg-muted/50 px-2 py-0.5 rounded-full">{groupDone}/{groupTotal}</span>
               </button>
 
               {/* Task rows */}
@@ -719,13 +719,13 @@ function GanttChartView({
                 <div
                   key={i}
                   className={cn(
-                    'flex-shrink-0 flex flex-col items-center justify-center text-[11px] border-r border-border/20',
+                    'flex-shrink-0 flex flex-col items-center justify-center text-xs border-r border-border/20',
                     isWeekend && 'text-muted-foreground/50',
                     !isWeekend && !isToday && 'text-muted-foreground',
                   )}
                   style={{ width: DAY_WIDTH }}
                 >
-                  <span className="text-[10px]">{DAY_NAMES[day.getDay()]}</span>
+                  <span className="text-xs font-medium">{DAY_NAMES[day.getDay()]}</span>
                   {isToday ? (
                     <span className="w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold">
                       {format(day, 'd')}
@@ -830,7 +830,7 @@ function GanttChartView({
                                   style={{ width: 28, height: 28, zIndex: 3 - idx }}
                                 >
                                   {user.avatar && <AvatarImage src={user.avatar} alt={user.name} className="object-cover" />}
-                                  <AvatarFallback className="bg-primary/15 text-primary font-bold text-[9px]">
+                                  <AvatarFallback className="bg-primary/15 text-primary font-bold text-xs font-medium">
                                     {user.name.slice(-2)}
                                   </AvatarFallback>
                                 </Avatar>
@@ -841,7 +841,7 @@ function GanttChartView({
                         ))}
                         {owners.length > 3 && (
                           <Avatar className="border-2 border-card" style={{ width: 28, height: 28 }}>
-                            <AvatarFallback className="bg-muted text-muted-foreground text-[9px] font-medium">
+                            <AvatarFallback className="bg-muted text-muted-foreground text-xs font-medium font-medium">
                               +{owners.length - 3}
                             </AvatarFallback>
                           </Avatar>
@@ -853,9 +853,9 @@ function GanttChartView({
                     </div>
 
                     {/* Bottom row: group + status + duration */}
-                    <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
                       <span
-                        className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium"
+                        className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium"
                         style={{ backgroundColor: groupColor + '20', color: groupColor }}
                       >
                         {groups.find(g => g.id === task.boardGroupId)?.title || ''}
@@ -975,7 +975,7 @@ function TimelineView({
                 )}
                 style={{ width: `${100 / totalDays}%`, minWidth: 48 }}
               >
-                <span className={cn('text-[10px] uppercase', isToday ? 'text-primary font-bold' : 'text-muted-foreground')}>
+                <span className={cn('text-xs font-medium uppercase', isToday ? 'text-primary font-bold' : 'text-muted-foreground')}>
                   {dayName}
                 </span>
                 <span className={cn(
@@ -1014,7 +1014,7 @@ function TimelineView({
               <div className="flex items-center gap-2 px-3 py-2 bg-muted/20 border-b border-border/30">
                 <span className="w-2 h-2 rounded-full" style={{ backgroundColor: groupColor }} />
                 <span className="text-xs font-semibold" style={{ color: groupColor }}>{group.title}</span>
-                <span className="text-[10px] text-muted-foreground">{groupTasks.length}</span>
+                <span className="text-xs font-medium text-muted-foreground">{groupTasks.length}</span>
               </div>
 
               {/* Task rows */}
@@ -1085,7 +1085,7 @@ function TimelineView({
                           {/* Title + description */}
                           <div className="flex-1 min-w-0">
                             <div className="text-xs font-semibold truncate">{task.title}</div>
-                            <div className="text-[10px] text-muted-foreground truncate">
+                            <div className="text-xs font-medium text-muted-foreground truncate">
                               {task.startDate && task.endDate
                                 ? `${format(parseISO(task.startDate), 'M/d')} - ${format(parseISO(task.endDate), 'M/d')}`
                                 : ''}
@@ -1137,7 +1137,7 @@ function TimelineView({
                 })}
 
                 {groupTasks.filter(tk => !tk.startDate || !(tk.endDate || tk.dueDate)).length > 0 && (
-                  <div className="px-3 py-2 text-[10px] text-muted-foreground/60">
+                  <div className="px-3 py-2 text-xs font-medium text-muted-foreground/60">
                     + {groupTasks.filter(tk => !tk.startDate || !(tk.endDate || tk.dueDate)).length} {t('tasksNoDateSet') || 'no date set'}
                   </div>
                 )}

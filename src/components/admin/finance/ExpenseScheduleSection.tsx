@@ -229,7 +229,7 @@ export function ExpenseScheduleSection({ year }: ExpenseScheduleSectionProps) {
                           <div className="min-w-0">
                             <p className="font-medium text-xs sm:text-sm truncate">{item.description}</p>
                             {item.projectName !== '운영비' && item.projectName !== '금융비용' && item.projectName !== '세금' && item.projectName !== '개인비용' && (
-                              <p className="text-[10px] sm:text-xs text-muted-foreground truncate">{item.projectName}</p>
+                              <p className="text-xs font-medium sm:text-xs text-muted-foreground truncate">{item.projectName}</p>
                             )}
                           </div>
                         </div>
@@ -246,7 +246,7 @@ export function ExpenseScheduleSection({ year }: ExpenseScheduleSectionProps) {
                           </TableCell>
                         </>
                       )}
-                      <TableCell className="text-[10px] sm:text-xs text-muted-foreground hidden lg:table-cell">{item.note || ''}</TableCell>
+                      <TableCell className="text-xs font-medium sm:text-xs text-muted-foreground hidden lg:table-cell">{item.note || ''}</TableCell>
                     </TableRow>
                   ))}
                 </>

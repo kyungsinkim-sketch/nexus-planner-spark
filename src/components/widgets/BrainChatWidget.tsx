@@ -294,7 +294,7 @@ function BrainChatWidget({ context }: { context: WidgetDataContext }) {
         {history.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-muted-foreground/50 gap-1.5">
             <Brain className="w-5 h-5 text-violet-400/50" />
-            <span className="text-[10px]">Brain AI</span>
+            <span className="text-xs font-medium">Brain AI</span>
           </div>
         ) : (
           history.map((item) => (
@@ -312,7 +312,7 @@ function BrainChatWidget({ context }: { context: WidgetDataContext }) {
                 {item.type === 'brain' && (
                   <div className="flex items-center gap-1 mb-0.5">
                     <Brain className="w-2.5 h-2.5 text-violet-500" />
-                    <span className="text-[9px] font-semibold text-violet-600 dark:text-violet-400">Brain AI</span>
+                    <span className="text-xs font-medium font-semibold text-violet-600 dark:text-violet-400">Brain AI</span>
                   </div>
                 )}
                 <p className="text-xs leading-relaxed" style={{ overflowWrap: 'anywhere', wordBreak: 'break-word' }}>
@@ -326,7 +326,7 @@ function BrainChatWidget({ context }: { context: WidgetDataContext }) {
                         key={idx}
                         className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full
                                    bg-white/80 dark:bg-white/10 border border-border/50
-                                   text-[9px] font-medium text-foreground/80"
+                                   text-xs font-medium font-medium text-foreground/80"
                       >
                         {getActionStatusIcon(action.status)}
                         <span>{getActionTypeLabel(action.type)}</span>
@@ -339,7 +339,7 @@ function BrainChatWidget({ context }: { context: WidgetDataContext }) {
                     ))}
                   </div>
                 )}
-                <span className={`block text-[9px] mt-0.5 ${
+                <span className={`block text-xs font-medium mt-0.5 ${
                   item.type === 'user' ? 'text-white/60' : 'text-muted-foreground/60'
                 }`}>
                   {formatTime(item.timestamp)}
@@ -354,7 +354,7 @@ function BrainChatWidget({ context }: { context: WidgetDataContext }) {
             <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl
                             bg-violet-50 dark:bg-violet-950/40 border border-violet-200/50 dark:border-violet-800/50">
               <Loader2 className="w-3 h-3 text-violet-500 animate-spin" />
-              <span className="text-[10px] text-violet-600 dark:text-violet-400 font-medium">
+              <span className="text-xs font-medium text-violet-600 dark:text-violet-400 font-medium">
                 Brain AI is thinking...
               </span>
             </div>

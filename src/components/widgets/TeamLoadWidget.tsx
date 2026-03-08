@@ -82,7 +82,7 @@ function TeamLoadWidget({ context }: { context: WidgetDataContext }) {
         {(Object.keys(WEIGHTS) as Array<keyof typeof WEIGHTS>).map(key => (
           <div key={key} className="flex items-center gap-1">
             <div className={`w-2 h-2 rounded-sm ${CATEGORY_COLORS[key].bg}`} />
-            <span className="text-[9px] text-muted-foreground">
+            <span className="text-xs font-medium text-muted-foreground">
               {catLabels[key]} {Math.round(WEIGHTS[key] * 100)}%
             </span>
           </div>
@@ -123,7 +123,7 @@ function TeamLoadWidget({ context }: { context: WidgetDataContext }) {
                     {user?.name || member.userId}
                   </span>
                 </div>
-                <span className={`text-[10px] tabular-nums ${isOverloaded ? 'text-red-500 font-semibold' : 'text-muted-foreground'}`}>
+                <span className={`text-xs font-medium tabular-nums ${isOverloaded ? 'text-red-500 font-semibold' : 'text-muted-foreground'}`}>
                   {member.loadScore.toFixed(1)}%
                 </span>
               </div>

@@ -310,7 +310,7 @@ function FilesWidget({ context }: { context: WidgetDataContext }) {
                 </div>
               ) : isPdf ? (
                 <div className="shrink-0 w-8 h-8 rounded bg-red-50 dark:bg-red-950/30 flex items-center justify-center border border-red-200/50 dark:border-red-800/30">
-                  <span className="text-[9px] font-bold text-red-500">PDF</span>
+                  <span className="text-xs font-medium font-bold text-red-500">PDF</span>
                 </div>
               ) : (
                 <div className={`shrink-0 ${info.color}`}>
@@ -319,7 +319,7 @@ function FilesWidget({ context }: { context: WidgetDataContext }) {
               )}
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-medium text-foreground truncate">{f.name}</p>
-                <p className="text-[10px] text-muted-foreground">
+                <p className="text-xs font-medium text-muted-foreground">
                   {info.label}
                   {f.size ? ` · ${formatSize(f.size)}` : ''}
                 </p>
@@ -424,14 +424,14 @@ function FilesWidget({ context }: { context: WidgetDataContext }) {
                         return (
                           <div key={c.id} className="flex gap-2">
                             <Avatar className="w-6 h-6 shrink-0">
-                              <AvatarFallback className="text-[9px] bg-primary/10 text-primary">
+                              <AvatarFallback className="text-xs font-medium bg-primary/10 text-primary">
                                 {initials}
                               </AvatarFallback>
                             </Avatar>
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-1.5">
                                 <span className="text-xs font-medium text-foreground">{user?.name || 'Unknown'}</span>
-                                <span className="text-[10px] text-muted-foreground">
+                                <span className="text-xs font-medium text-muted-foreground">
                                   {new Date(c.createdAt).toLocaleString(undefined, {
                                     month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
                                   })}

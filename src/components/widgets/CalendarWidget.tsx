@@ -156,9 +156,9 @@ function CalendarWidget({ context }: { context: WidgetDataContext }) {
       // Mobile: vertical layout for better readability on small screens
       return (
         <div className="fc-event-inner flex flex-col px-0.5 overflow-hidden min-w-0 leading-tight">
-          <span className="truncate text-[11px] font-medium text-foreground">{eventInfo.event.title}</span>
+          <span className="truncate text-xs font-medium text-foreground">{eventInfo.event.title}</span>
           {eventInfo.timeText && (
-            <span className="text-[9px] text-muted-foreground">{eventInfo.timeText}</span>
+            <span className="text-xs font-medium text-muted-foreground">{eventInfo.timeText}</span>
           )}
         </div>
       );
@@ -171,9 +171,9 @@ function CalendarWidget({ context }: { context: WidgetDataContext }) {
           style={{ backgroundColor: eventInfo.event.extendedProps.dotColor || 'hsl(234 89% 60%)' }}
         />
         {eventInfo.timeText && (
-          <span className="text-[10px] text-muted-foreground shrink-0">{eventInfo.timeText}</span>
+          <span className="text-xs font-medium text-muted-foreground shrink-0">{eventInfo.timeText}</span>
         )}
-        <span className="truncate text-[11px] font-medium text-foreground">{eventInfo.event.title}</span>
+        <span className="truncate text-xs font-medium text-foreground">{eventInfo.event.title}</span>
       </div>
     );
   };

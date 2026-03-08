@@ -83,7 +83,7 @@ export function EventSidePanel({ event, isOpen, onClose, onEdit, onDelete }: Eve
                 <TooltipTrigger asChild>
                   <Badge
                     variant="outline"
-                    className={`gap-1 text-[10px] px-1.5 py-0 ${
+                    className={`gap-1 text-xs font-medium px-1.5 py-0 ${
                       isGoogleEvent
                         ? 'border-blue-500/30 text-blue-600 bg-blue-500/10'
                         : 'border-primary/30 text-primary bg-primary/10'
@@ -207,7 +207,7 @@ export function EventSidePanel({ event, isOpen, onClose, onEdit, onDelete }: Eve
                   {attendees.map((user) => user && (
                     <div key={user.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50">
                       <Avatar className="w-7 h-7">
-                        <AvatarFallback className="text-[10px]">
+                        <AvatarFallback className="text-xs font-medium">
                           {getInitials(user.name)}
                         </AvatarFallback>
                       </Avatar>
@@ -237,7 +237,7 @@ export function EventSidePanel({ event, isOpen, onClose, onEdit, onDelete }: Eve
               </p>
             </div>
             {isGoogleEvent && event.googleEventId && (
-              <p className="text-[10px] text-muted-foreground font-mono">
+              <p className="text-xs font-medium text-muted-foreground font-mono">
                 {t('eventIdLabel')}: {event.googleEventId}
               </p>
             )}

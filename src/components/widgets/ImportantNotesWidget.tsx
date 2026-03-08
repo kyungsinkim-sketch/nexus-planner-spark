@@ -170,7 +170,7 @@ function ImportantNotesWidget({ context }: { context: WidgetDataContext }) {
           <div className="flex flex-col items-center justify-center h-full text-muted-foreground/50 gap-2 py-8">
             <StickyNote className="w-8 h-8" />
             <p className="text-xs text-center">{t('noImportantNotes')}</p>
-            <p className="text-[10px] text-center max-w-[200px]">{t('importantNotesHint')}</p>
+            <p className="text-xs font-medium text-center max-w-[200px]">{t('importantNotesHint')}</p>
           </div>
         ) : (
           <div className="space-y-1.5">
@@ -233,23 +233,23 @@ function ImportantNotesWidget({ context }: { context: WidgetDataContext }) {
                         {note.content}
                       </p>
                       {isLong && (
-                        <button className="text-[10px] text-amber-600/70 hover:text-amber-600 mt-0.5 flex items-center gap-0.5">
+                        <button className="text-xs font-medium text-amber-600/70 hover:text-amber-600 mt-0.5 flex items-center gap-0.5">
                           {isExpanded ? <ChevronUp className="w-2.5 h-2.5" /> : <ChevronDown className="w-2.5 h-2.5" />}
                           {isExpanded ? (t('collapse') || '접기') : (t('expand') || '더보기')}
                         </button>
                       )}
                       <div className="flex items-center gap-2 mt-1">
-                        <span className="text-[10px] text-muted-foreground">
+                        <span className="text-xs font-medium text-muted-foreground">
                           {creator?.name || note.createdBy}
                         </span>
-                        <span className="text-[10px] text-muted-foreground/50">·</span>
-                        <span className="text-[10px] text-muted-foreground">
+                        <span className="text-xs font-medium text-muted-foreground/50">·</span>
+                        <span className="text-xs font-medium text-muted-foreground">
                           {new Date(note.createdAt).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })}
                         </span>
                         {note.sourceMessageId && (
                           <>
-                            <span className="text-[10px] text-muted-foreground/50">·</span>
-                            <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
+                            <span className="text-xs font-medium text-muted-foreground/50">·</span>
+                            <span className="text-xs font-medium text-muted-foreground flex items-center gap-0.5">
                               <MessageSquare className="w-2.5 h-2.5" />
                               {t('fromChat')}
                             </span>

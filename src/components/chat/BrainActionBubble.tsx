@@ -382,7 +382,7 @@ function InlineActionBadge({ action }: { action: { type: string; status?: string
   const StatusIcon = statusConfig.icon;
 
   return (
-    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium border ${statusConfig.colors}`}>
+    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border ${statusConfig.colors}`}>
       <ActionIcon type={action.type} className="w-3 h-3" />
       <StatusIcon className="w-3 h-3" />
       {title && <span className="truncate max-w-[120px]">{title}</span>}
@@ -396,35 +396,35 @@ function StatusBadge({ status }: { status: string }) {
   switch (status) {
     case 'pending':
       return (
-        <Badge variant="outline" className="text-[10px] gap-1 text-amber-600 border-amber-300">
+        <Badge variant="outline" className="text-xs font-medium gap-1 text-amber-600 border-amber-300">
           <Clock className="w-2.5 h-2.5" />
           {t('brainPending')}
         </Badge>
       );
     case 'confirmed':
       return (
-        <Badge variant="outline" className="text-[10px] gap-1 text-blue-600 border-blue-300">
+        <Badge variant="outline" className="text-xs font-medium gap-1 text-blue-600 border-blue-300">
           <Loader2 className="w-2.5 h-2.5 animate-spin" />
           {t('brainProcessing')}
         </Badge>
       );
     case 'executed':
       return (
-        <Badge variant="outline" className="text-[10px] gap-1 text-green-600 border-green-300">
+        <Badge variant="outline" className="text-xs font-medium gap-1 text-green-600 border-green-300">
           <CheckCircle2 className="w-2.5 h-2.5" />
           {t('brainDone')}
         </Badge>
       );
     case 'rejected':
       return (
-        <Badge variant="outline" className="text-[10px] gap-1 text-gray-500 border-gray-300">
+        <Badge variant="outline" className="text-xs font-medium gap-1 text-gray-500 border-gray-300">
           <XCircle className="w-2.5 h-2.5" />
           {t('brainRejected')}
         </Badge>
       );
     case 'failed':
       return (
-        <Badge variant="outline" className="text-[10px] gap-1 text-red-600 border-red-300">
+        <Badge variant="outline" className="text-xs font-medium gap-1 text-red-600 border-red-300">
           <AlertTriangle className="w-2.5 h-2.5" />
           {t('brainFailed')}
         </Badge>
@@ -465,7 +465,7 @@ function TodoActionBody({ data }: { data: BrainExtractedTodo }) {
       {data.priority && data.priority !== 'NORMAL' && (
         <Badge
           variant={data.priority === 'HIGH' ? 'destructive' : 'secondary'}
-          className="text-[10px]"
+          className="text-xs font-medium"
         >
           {data.priority}
         </Badge>
@@ -514,7 +514,7 @@ function EventActionBody({ data }: { data: BrainExtractedEvent }) {
           <span>{attendeeNames.join(', ')}</span>
         </div>
       )}
-      <Badge variant="secondary" className="text-[10px]">
+      <Badge variant="secondary" className="text-xs font-medium">
         {data.type || 'MEETING'}
       </Badge>
     </div>

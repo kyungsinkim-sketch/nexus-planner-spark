@@ -105,7 +105,7 @@ export function CosmosHome() {
       <div className="relative z-10 shrink-0 px-6 pt-14 pb-3">
         {/* Greeting */}
         <h1 className="text-[26px] font-bold tracking-tight text-white">{greeting}</h1>
-        <p className="text-[12px] text-white/20 mt-0.5 font-mono">
+        <p className="text-xs text-white/20 mt-0.5 font-mono">
           {format(new Date(), language === 'ko' ? 'yyyy.MM.dd EEEE' : 'EEEE, MMMM d', { locale })}
         </p>
 
@@ -149,7 +149,7 @@ export function CosmosHome() {
           {todayEvents.length > 0 && (
             <div className="flex items-start gap-2 mb-4">
               <Sparkles className="w-3 h-3 text-[#D4A843] mt-0.5 shrink-0" />
-              <p className="text-[12px] text-white/35 leading-relaxed">
+              <p className="text-xs text-white/35 leading-relaxed">
                 {language === 'ko'
                   ? `오늘 ${todayEvents.length}개 일정. ${todayEvents[0].title}부터.`
                   : `${todayEvents.length} events. Starting with ${todayEvents[0].title}.`}
@@ -158,13 +158,13 @@ export function CosmosHome() {
           )}
 
           {/* Timeline */}
-          <p className="text-[10px] text-white/15 uppercase tracking-[0.15em] font-medium mb-3">
+          <p className="text-xs font-medium text-white/15 uppercase tracking-[0.15em] font-medium mb-3">
             {language === 'ko' ? '타임라인' : 'Timeline'}
           </p>
           <div className="space-y-2">
             {todayEvents.length === 0 ? (
               <div className="rounded-lg p-3 border border-dashed border-white/[0.04]">
-                <p className="text-[12px] text-white/15 text-center">
+                <p className="text-xs text-white/15 text-center">
                   {language === 'ko' ? '오늘 일정 없음' : 'No events today'}
                 </p>
               </div>
@@ -179,8 +179,8 @@ export function CosmosHome() {
                       <div className="w-1 h-1 rounded-full mt-1.5 shrink-0" style={{ backgroundColor: project?.keyColor || '#fff' }} />
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between gap-2">
-                          <span className="text-[11px] text-white/30 truncate">{project?.title || ''}</span>
-                          <span className="text-[10px] text-white/15 font-mono">{format(parseISO(event.startAt), 'HH:mm')}</span>
+                          <span className="text-xs text-white/30 truncate">{project?.title || ''}</span>
+                          <span className="text-xs font-medium text-white/15 font-mono">{format(parseISO(event.startAt), 'HH:mm')}</span>
                         </div>
                         <p className="text-[13px] text-white/70 mt-0.5">{event.title}</p>
                       </div>

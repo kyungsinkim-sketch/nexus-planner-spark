@@ -66,7 +66,7 @@ export function CosmosCalendar() {
         <h1 className="text-lg font-bold text-white tracking-tight">
           {language === 'ko' ? '캘린더' : 'Calendar'}
         </h1>
-        <p className="text-[11px] text-white/25 mt-0.5 font-mono">
+        <p className="text-xs text-white/25 mt-0.5 font-mono">
           {format(centerDate, language === 'ko' ? 'yyyy.MM' : 'MMMM yyyy', { locale })}
         </p>
       </div>
@@ -99,7 +99,7 @@ export function CosmosCalendar() {
                   <div className="pl-14 pr-5">
                     {/* Date label */}
                     <p className={cn(
-                      'text-[11px] font-medium mb-1.5',
+                      'text-xs font-medium mb-1.5',
                       day.isToday ? 'text-white' : 'text-white/30',
                     )}>
                       {day.isToday
@@ -119,12 +119,12 @@ export function CosmosCalendar() {
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center justify-between gap-2">
                                   <p className="text-[13px] font-medium text-white/80 truncate">{event.title}</p>
-                                  <span className="text-[10px] text-white/20 font-mono shrink-0">
+                                  <span className="text-xs font-medium text-white/20 font-mono shrink-0">
                                     {format(parseISO(event.startAt), 'HH:mm')}
                                   </span>
                                 </div>
                                 {project && (
-                                  <p className="text-[10px] text-white/25 truncate mt-0.5">{project.title}</p>
+                                  <p className="text-xs font-medium text-white/25 truncate mt-0.5">{project.title}</p>
                                 )}
                               </div>
                             </div>
@@ -135,7 +135,7 @@ export function CosmosCalendar() {
 
                     {day.isToday && day.events.length === 0 && (
                       <div className="rounded-lg p-3 border border-dashed border-white/[0.06]">
-                        <p className="text-[12px] text-white/20 text-center">
+                        <p className="text-xs text-white/20 text-center">
                           {language === 'ko' ? '일정 없음' : 'No events'}
                         </p>
                       </div>
@@ -151,7 +151,7 @@ export function CosmosCalendar() {
       {/* Today button */}
       <button
         onClick={() => todayRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })}
-        className="absolute bottom-20 right-5 z-30 px-3 py-1.5 rounded-full text-[10px] font-medium bg-white text-black"
+        className="absolute bottom-20 right-5 z-30 px-3 py-1.5 rounded-full text-xs font-medium bg-white text-black"
       >
         {language === 'ko' ? '오늘' : 'Today'}
       </button>

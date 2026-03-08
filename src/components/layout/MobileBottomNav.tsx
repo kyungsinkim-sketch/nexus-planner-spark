@@ -47,7 +47,7 @@ export function MobileBottomNav() {
                   </span>
                 )}
               </div>
-              <span className="text-[10px] font-medium">{t(item.labelKey)}</span>
+              <span className="text-xs font-medium">{t(item.labelKey)}</span>
               {isActive && (
                 <div className="absolute bottom-1 w-1 h-1 rounded-full bg-primary" />
               )}

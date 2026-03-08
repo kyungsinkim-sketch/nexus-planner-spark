@@ -170,13 +170,13 @@ function WorldClockWidget({ context: _context }: { context: WidgetDataContext })
           const offset = getOffsetLabel(city.timezone, language);
           return (
             <div key={city.key} className="text-center py-0.5">
-              <p className="text-[11px] font-semibold text-white/90 truncate">
+              <p className="text-xs font-semibold text-white/90 truncate">
                 {city.label}
-                {offset && <span className="text-[10px] text-white/40 font-normal ml-0.5">({offset})</span>}
+                {offset && <span className="text-xs font-medium text-white/40 font-normal ml-0.5">({offset})</span>}
               </p>
               <p className="text-xl font-mono font-bold text-white tabular-nums leading-tight">
                 {formatTime(city.timezone)}
-                <span className="text-[10px] text-white/30 font-normal ml-0.5">{formatSeconds(city.timezone)}</span>
+                <span className="text-xs font-medium text-white/30 font-normal ml-0.5">{formatSeconds(city.timezone)}</span>
               </p>
             </div>
           );
@@ -209,7 +209,7 @@ function WorldClockWidget({ context: _context }: { context: WidgetDataContext })
           <Input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder={language === 'ko' ? '도시명 또는 타임존 입력...' : 'City name or timezone...'} className="h-8 text-sm" autoFocus />
           {customTimezoneMatch && !tempSelected.includes(customTimezoneMatch.key) && (
             <button onClick={() => toggleCity(customTimezoneMatch.key)} className={`flex items-center gap-2 px-2.5 py-2 rounded-lg text-sm transition-colors border bg-emerald-50 dark:bg-emerald-950/30 border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 ${tempSelected.length >= MAX_CITIES ? 'opacity-40 pointer-events-none' : ''}`}>
-              <span className="text-base">🌐</span><span className="truncate">{customTimezoneMatch.label}</span><span className="text-[10px] text-emerald-500 ml-auto">{customTimezoneMatch.timezone}</span>
+              <span className="text-base">🌐</span><span className="truncate">{customTimezoneMatch.label}</span><span className="text-xs font-medium text-emerald-500 ml-auto">{customTimezoneMatch.timezone}</span>
             </button>
           )}
           <div className="grid grid-cols-2 gap-1.5 max-h-48 overflow-y-auto py-1">

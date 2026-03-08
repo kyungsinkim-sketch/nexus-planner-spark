@@ -81,13 +81,13 @@ function EmailReplyDialog({ suggestionId, onClose }: EmailReplyDialogProps) {
             <span>·</span>
             <span className="truncate">{email.subject}</span>
           </div>
-          <p className="text-[11px] text-muted-foreground/70 line-clamp-3">{email.snippet}</p>
+          <p className="text-xs text-muted-foreground/70 line-clamp-3">{email.snippet}</p>
         </div>
 
         {/* Brain suggestion summary */}
         {suggestion.summary && (
           <div className="px-4 py-2 border-b bg-primary/5">
-            <div className="flex items-center gap-1.5 text-[10px] text-primary">
+            <div className="flex items-center gap-1.5 text-xs font-medium text-primary">
               <Brain className="w-3 h-3" />
               <span className="font-medium">Brain 분석:</span>
               <span className="text-foreground/70">{suggestion.summary}</span>
@@ -109,7 +109,7 @@ function EmailReplyDialog({ suggestionId, onClose }: EmailReplyDialogProps) {
         <div className="flex items-center justify-between px-4 py-3 border-t bg-muted/20">
           {/* Confirm suggestion checkbox */}
           {suggestion.status === 'pending' && (suggestion.suggestedEvent || suggestion.suggestedTodo || suggestion.suggestedNote) && (
-            <label className="flex items-center gap-1.5 text-[11px] text-muted-foreground cursor-pointer">
+            <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer">
               <input
                 type="checkbox"
                 checked={confirmToo}

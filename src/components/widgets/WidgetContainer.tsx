@@ -72,7 +72,7 @@ class WidgetErrorBoundary extends React.Component<
           <p className="text-xs text-center">Widget error</p>
           <button
             onClick={() => this.setState({ hasError: false, error: null })}
-            className="flex items-center gap-1 text-[10px] px-2 py-1 rounded bg-muted hover:bg-muted/80 transition-colors"
+            className="flex items-center gap-1 text-xs font-medium px-2 py-1 rounded bg-muted hover:bg-muted/80 transition-colors"
           >
             <RotateCcw className="w-3 h-3" />
             Retry

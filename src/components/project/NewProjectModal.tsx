@@ -470,7 +470,7 @@ export function NewProjectModal({ open, onOpenChange }: NewProjectModalProps) {
                         </SelectItem>
                         {Object.entries(groupedRoles).map(([category, roles]) => (
                           <div key={category}>
-                            <div className="px-2 py-1 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+                            <div className="px-2 py-1 text-xs font-medium font-semibold text-muted-foreground uppercase tracking-wider">
                               {category}
                             </div>
                             {roles.map((role) => (

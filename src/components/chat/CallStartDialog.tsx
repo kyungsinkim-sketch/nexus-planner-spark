@@ -294,7 +294,7 @@ export function CallStartDialog({
                       />
                       <Avatar className="w-6 h-6">
                         {user.avatar && <AvatarImage src={user.avatar} alt={user.name} />}
-                        <AvatarFallback className="text-[10px] bg-primary/10">
+                        <AvatarFallback className="text-xs font-medium bg-primary/10">
                           {user.name?.split(' ').map(n => n[0]).join('')}
                         </AvatarFallback>
                       </Avatar>

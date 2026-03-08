@@ -171,7 +171,7 @@ export function ComposeEmailDialog({ open, onOpenChange, replyToMessage }: Compo
               </summary>
               <div className="mt-2 p-3 rounded-md bg-muted/20 border border-border/50 text-xs text-muted-foreground max-h-[120px] overflow-y-auto whitespace-pre-wrap">
                 <div className="mb-1 font-medium">{replyToMessage.from}</div>
-                <div className="mb-1 text-[10px]">{new Date(replyToMessage.date).toLocaleString()}</div>
+                <div className="mb-1 text-xs font-medium">{new Date(replyToMessage.date).toLocaleString()}</div>
                 <div className="border-t border-border/30 pt-1 mt-1">
                   {replyToMessage.body.slice(0, 500)}
                   {replyToMessage.body.length > 500 && '...'}

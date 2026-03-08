@@ -293,13 +293,13 @@ function ReplyQuote({ message: replyMsg, isCurrentUser }: { message: ChatMessage
   return (
     <div
       onClick={scrollToOriginal}
-      className={`flex items-start gap-1.5 mb-0.5 px-3 py-1.5 rounded-t-xl text-[11px] cursor-pointer hover:opacity-80 transition-opacity ${
+      className={`flex items-start gap-1.5 mb-0.5 px-3 py-1.5 rounded-t-xl text-xs cursor-pointer hover:opacity-80 transition-opacity ${
         isCurrentUser ? 'bg-primary/40 text-primary-foreground' : 'bg-muted text-foreground/70'
       }`}
     >
       <div className="w-0.5 min-h-[16px] bg-primary/70 rounded-full shrink-0 mt-0.5" />
       <div className="min-w-0">
-        <span className="font-semibold text-[10px]">{sender?.name || '알 수 없음'}</span>
+        <span className="font-semibold text-xs font-medium">{sender?.name || '알 수 없음'}</span>
         <p className="truncate max-w-[200px]">{replyMsg.content}</p>
       </div>
     </div>
@@ -464,19 +464,19 @@ function HoverActionBar({ messageId, content, canEdit, canDelete, canPin, isCurr
             onClick={e => e.stopPropagation()}>
             {canEdit && onEdit && (
               <button onClick={startEdit}
-                className="w-full flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors">
+                className="w-full flex items-center gap-1.5 px-2.5 py-1.5 text-xs text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors">
                 <Pencil className="w-3 h-3 shrink-0 text-gray-500 dark:text-gray-400" /> 수정
               </button>
             )}
             {canPin && onPin && (
               <button onClick={() => { onPin(messageId); setShowMenu(false); }}
-                className="w-full flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors">
+                className="w-full flex items-center gap-1.5 px-2.5 py-1.5 text-xs text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors">
                 <Pin className="w-3 h-3 shrink-0 text-gray-500 dark:text-gray-400" /> 고정
               </button>
             )}
             {canPin && onUnpin && (
               <button onClick={() => { onUnpin(messageId); setShowMenu(false); }}
-                className="w-full flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors">
+                className="w-full flex items-center gap-1.5 px-2.5 py-1.5 text-xs text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors">
                 <PinOff className="w-3 h-3 shrink-0 text-gray-500 dark:text-gray-400" /> 고정 해제
               </button>
             )}
@@ -484,7 +484,7 @@ function HoverActionBar({ messageId, content, canEdit, canDelete, canPin, isCurr
               <>
                 <div className="border-t border-gray-100 dark:border-zinc-700 my-1" />
                 <button onClick={() => { onDelete(messageId); setShowMenu(false); }}
-                  className="w-full flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors">
+                  className="w-full flex items-center gap-1.5 px-2.5 py-1.5 text-xs text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors">
                   <Trash2 className="w-3 h-3 shrink-0" /> 삭제
                 </button>
               </>
@@ -924,7 +924,7 @@ function DecisionBubble({ data, messageId, isCurrentUser, onVote }: {
                   <div className="flex items-center gap-2">
                     {isSelected && <Check className="w-4 h-4 text-green-500" />}
                     <span className="text-sm font-medium">{option.title}</span>
-                    {isMyVote && <Badge variant="outline" className="text-[10px]">{t('myChoice')}</Badge>}
+                    {isMyVote && <Badge variant="outline" className="text-xs font-medium">{t('myChoice')}</Badge>}
                   </div>
                   <span className="text-xs text-muted-foreground">{optionVotes.length}{t('votesUnit')}</span>
                 </div>

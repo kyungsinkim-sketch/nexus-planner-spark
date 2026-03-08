@@ -134,9 +134,9 @@ export function FinanceTab() {
                 <stat.icon className={`w-4 h-4 sm:w-5 sm:h-5 ${stat.color}`} />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-[10px] sm:text-xs text-muted-foreground truncate">{stat.label}</p>
+                <p className="text-xs font-medium sm:text-xs text-muted-foreground truncate">{stat.label}</p>
                 <AutoFitText className="text-sm sm:text-lg font-bold text-foreground">{stat.value}</AutoFitText>
-                <p className="text-[10px] sm:text-xs text-muted-foreground truncate">{stat.sub}</p>
+                <p className="text-xs font-medium sm:text-xs text-muted-foreground truncate">{stat.sub}</p>
               </div>
             </div>
           </Card>

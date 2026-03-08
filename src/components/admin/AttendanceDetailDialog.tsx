@@ -100,7 +100,7 @@ export function AttendanceDetailDialog({ record, open, onOpenChange }: Attendanc
                             </p>
                             {record.check_in_latitude && record.check_in_longitude && (
                                 <div className="flex items-center justify-between">
-                                    <span className="text-[10px] text-muted-foreground">
+                                    <span className="text-xs font-medium text-muted-foreground">
                                         {record.check_in_latitude.toFixed(6)}, {record.check_in_longitude.toFixed(6)}
                                     </span>
                                     <Button

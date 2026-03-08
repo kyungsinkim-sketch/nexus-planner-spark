@@ -145,10 +145,10 @@ function BudgetWidget({ context }: { context: WidgetDataContext }) {
       <div className="flex-1 flex items-center justify-around gap-2">
         {/* 총 계약금액 */}
         <div className="text-center min-w-0">
-          <p className="text-[10px] text-white/50 mb-0.5 whitespace-nowrap">
+          <p className="text-xs font-medium text-white/50 mb-0.5 whitespace-nowrap">
             {language === 'ko' ? '총 계약금액' : 'Contract'}
           </p>
-          <p className="text-sm font-bold text-white tabular-nums leading-tight">{fmt(budgetData.totalContractAmount)}<span className="text-[10px] font-normal text-white/60">원</span></p>
+          <p className="text-sm font-bold text-white tabular-nums leading-tight">{fmt(budgetData.totalContractAmount)}<span className="text-xs font-medium font-normal text-white/60">원</span></p>
         </div>
 
         {/* Divider */}
@@ -156,10 +156,10 @@ function BudgetWidget({ context }: { context: WidgetDataContext }) {
 
         {/* 목표지출비용 */}
         <div className="text-center min-w-0">
-          <p className="text-[10px] text-white/50 mb-0.5 whitespace-nowrap">
+          <p className="text-xs font-medium text-white/50 mb-0.5 whitespace-nowrap">
             {language === 'ko' ? '목표지출비용' : 'Target Expense'}
           </p>
-          <p className="text-sm font-bold text-white tabular-nums leading-tight">{fmt(budgetData.targetExpense)}<span className="text-[10px] font-normal text-white/60">원</span></p>
+          <p className="text-sm font-bold text-white tabular-nums leading-tight">{fmt(budgetData.targetExpense)}<span className="text-xs font-medium font-normal text-white/60">원</span></p>
         </div>
 
         {/* Divider */}
@@ -167,11 +167,11 @@ function BudgetWidget({ context }: { context: WidgetDataContext }) {
 
         {/* 내수율 */}
         <div className="text-center min-w-0">
-          <p className="text-[10px] text-white/50 mb-0.5 whitespace-nowrap">
+          <p className="text-xs font-medium text-white/50 mb-0.5 whitespace-nowrap">
             {language === 'ko' ? '내수율' : 'Margin'}
           </p>
           <p className={`text-sm font-bold tabular-nums leading-tight ${budgetData.internalRate >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-            {budgetData.internalRate}<span className={`text-[10px] font-normal ${budgetData.internalRate >= 0 ? 'text-emerald-400/60' : 'text-red-400/60'}`}>%</span>
+            {budgetData.internalRate}<span className={`text-xs font-medium font-normal ${budgetData.internalRate >= 0 ? 'text-emerald-400/60' : 'text-red-400/60'}`}>%</span>
           </p>
         </div>
       </div>

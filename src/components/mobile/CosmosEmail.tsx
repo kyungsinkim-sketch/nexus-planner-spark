@@ -35,16 +35,16 @@ function BrainBar({
     <div className="border-b border-white/[0.04] px-4 py-2.5 space-y-2">
       <div className="flex items-center gap-1.5">
         <Brain className="w-3 h-3 text-white/30" />
-        <span className="text-[10px] font-medium text-white/30 uppercase tracking-wider">Brain AI</span>
+        <span className="text-xs font-medium text-white/30 uppercase tracking-wider">Brain AI</span>
       </div>
       {suggestions.map((s) => (
         <div key={s.id} className="space-y-1.5">
-          <p className="text-[12px] text-white/50 leading-relaxed">{s.summary}</p>
+          <p className="text-xs text-white/50 leading-relaxed">{s.summary}</p>
           <div className="flex flex-wrap gap-1.5">
             {s.suggestedEvent && s.status === 'pending' && (
               <button
                 onClick={() => onConfirm(s.id)}
-                className="inline-flex items-center gap-1 text-[10px] px-2 py-1 rounded-md bg-blue-500/10 text-blue-400/80 border border-blue-500/10 active:scale-95 transition-transform"
+                className="inline-flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-md bg-blue-500/10 text-blue-400/80 border border-blue-500/10 active:scale-95 transition-transform"
               >
                 <Calendar className="w-2.5 h-2.5" />
                 <span className="truncate max-w-[120px]">{s.suggestedEvent.title}</span>
@@ -54,7 +54,7 @@ function BrainBar({
             {s.suggestedTodo && s.status === 'pending' && (
               <button
                 onClick={() => onConfirm(s.id)}
-                className="inline-flex items-center gap-1 text-[10px] px-2 py-1 rounded-md bg-emerald-500/10 text-emerald-400/80 border border-emerald-500/10 active:scale-95 transition-transform"
+                className="inline-flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-md bg-emerald-500/10 text-emerald-400/80 border border-emerald-500/10 active:scale-95 transition-transform"
               >
                 <CheckSquare className="w-2.5 h-2.5" />
                 <span className="truncate max-w-[120px]">{s.suggestedTodo.title}</span>
@@ -64,7 +64,7 @@ function BrainBar({
             {s.suggestedNote && s.status === 'pending' && (
               <button
                 onClick={() => onConfirm(s.id)}
-                className="inline-flex items-center gap-1 text-[10px] px-2 py-1 rounded-md bg-violet-500/10 text-violet-400/80 border border-violet-500/10 active:scale-95 transition-transform"
+                className="inline-flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-md bg-violet-500/10 text-violet-400/80 border border-violet-500/10 active:scale-95 transition-transform"
               >
                 <FileText className="w-2.5 h-2.5" />
                 {lang === 'ko' ? '기록 저장' : 'Save note'}
@@ -72,10 +72,10 @@ function BrainBar({
               </button>
             )}
             {s.status === 'executed' && (
-              <span className="text-[10px] text-emerald-400/50">✓ {lang === 'ko' ? '완료' : 'Done'}</span>
+              <span className="text-xs font-medium text-emerald-400/50">✓ {lang === 'ko' ? '완료' : 'Done'}</span>
             )}
             {s.status === 'rejected' && (
-              <span className="text-[10px] text-white/20">— {lang === 'ko' ? '무시됨' : 'Dismissed'}</span>
+              <span className="text-xs font-medium text-white/20">— {lang === 'ko' ? '무시됨' : 'Dismissed'}</span>
             )}
           </div>
         </div>
@@ -122,7 +122,7 @@ function ReplyComposer({
         onClick={e => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-3">
-          <p className="text-[12px] text-white/40">
+          <p className="text-xs text-white/40">
             {lang === 'ko' ? '답장:' : 'Reply to:'} {formatSender(email.from || '')}
           </p>
           <button onClick={onClose} className="w-6 h-6 rounded-full flex items-center justify-center hover:bg-white/5">
@@ -139,7 +139,7 @@ function ReplyComposer({
         <button
           onClick={handleSend}
           disabled={!body.trim() || sending}
-          className="mt-2 w-full flex items-center justify-center gap-2 py-2.5 rounded-lg text-[12px] font-medium bg-white text-black disabled:opacity-30 active:scale-[0.98] transition-transform"
+          className="mt-2 w-full flex items-center justify-center gap-2 py-2.5 rounded-lg text-xs font-medium bg-white text-black disabled:opacity-30 active:scale-[0.98] transition-transform"
         >
           {sending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
           {lang === 'ko' ? '보내기' : 'Send'}
@@ -190,7 +190,7 @@ function EmailCard({
             <div className="w-[6px] h-[6px] rounded-full bg-green-500/40" />
           </div>
           <div className="flex-1 mx-2">
-            <div className="bg-white/[0.03] rounded-md px-2 py-0.5 text-[9px] text-white/15 font-mono truncate text-center">
+            <div className="bg-white/[0.03] rounded-md px-2 py-0.5 text-xs font-medium text-white/15 font-mono truncate text-center">
               {formatSender(email.from || '')}
             </div>
           </div>
@@ -208,19 +208,19 @@ function EmailCard({
         <div className="px-4 py-3 space-y-2">
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2 min-w-0">
-              <div className="w-6 h-6 rounded-full bg-white/[0.06] flex items-center justify-center shrink-0 text-[9px] font-semibold text-white/30">
+              <div className="w-6 h-6 rounded-full bg-white/[0.06] flex items-center justify-center shrink-0 text-xs font-medium font-semibold text-white/30">
                 {formatSender(email.from || '').charAt(0).toUpperCase()}
               </div>
-              <span className="text-[12px] font-medium text-white/60 truncate">
+              <span className="text-xs font-medium text-white/60 truncate">
                 {formatSender(email.from || '')}
               </span>
             </div>
-            <span className="text-[10px] text-white/15 font-mono shrink-0">{formatDate(email.date || '')}</span>
+            <span className="text-xs font-medium text-white/15 font-mono shrink-0">{formatDate(email.date || '')}</span>
           </div>
-          <p className="text-[14px] font-medium text-white/80 leading-snug">
+          <p className="text-sm font-medium text-white/80 leading-snug">
             {email.subject || (lang === 'ko' ? '(제목 없음)' : '(no subject)')}
           </p>
-          <p className="text-[12px] text-white/30 leading-relaxed line-clamp-5">
+          <p className="text-xs text-white/30 leading-relaxed line-clamp-5">
             {email.snippet || email.body || ''}
           </p>
         </div>
@@ -229,20 +229,20 @@ function EmailCard({
         {isActive && (
           <div className="flex items-center gap-2 px-4 py-3 border-t border-white/[0.04]">
             <button onClick={onDelete}
-              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-medium text-red-400/70 bg-red-500/5 border border-red-500/10 active:scale-95 transition-transform">
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium text-red-400/70 bg-red-500/5 border border-red-500/10 active:scale-95 transition-transform">
               <Trash2 className="w-3 h-3" />
             </button>
             <button onClick={onArchive}
-              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-medium text-white/30 bg-white/[0.02] border border-white/[0.06] active:scale-95 transition-transform">
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium text-white/30 bg-white/[0.02] border border-white/[0.06] active:scale-95 transition-transform">
               <Archive className="w-3 h-3" />
             </button>
             <button onClick={onReply}
-              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-medium text-white/30 bg-white/[0.02] border border-white/[0.06] active:scale-95 transition-transform">
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium text-white/30 bg-white/[0.02] border border-white/[0.06] active:scale-95 transition-transform">
               <Reply className="w-3 h-3" />
             </button>
             <div className="flex-1" />
             <button onClick={onNext}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-medium bg-white text-black active:scale-95 transition-transform">
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-white text-black active:scale-95 transition-transform">
               {lang === 'ko' ? '다음' : 'Next'}
               <ArrowRight className="w-3 h-3" />
             </button>
@@ -329,7 +329,7 @@ export function CosmosEmail() {
           <h1 className="text-lg font-bold text-white tracking-tight">
             {language === 'ko' ? '이메일' : 'Email'}
           </h1>
-          <p className="text-[11px] text-white/20 mt-0.5">
+          <p className="text-xs text-white/20 mt-0.5">
             {sortedEmails.length > 0
               ? (language === 'ko' ? `${remaining}개 남음` : `${remaining} remaining`)
               : (language === 'ko' ? '모두 처리됨' : 'All done')}
@@ -422,7 +422,7 @@ export function CosmosEmail() {
                 style={{ width: `${Math.min(100, ((currentIndex + 1) / sortedEmails.length) * 100)}%` }}
               />
             </div>
-            <span className="text-[9px] text-white/15 font-mono">
+            <span className="text-xs font-medium text-white/15 font-mono">
               {Math.min(currentIndex + 1, sortedEmails.length)}/{sortedEmails.length}
             </span>
           </div>

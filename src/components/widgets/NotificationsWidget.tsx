@@ -222,7 +222,7 @@ function NotificationsWidget({ context }: { context: WidgetDataContext }) {
       <div className="flex justify-end px-1 pb-1 shrink-0">
         <button
           onClick={handleDismissAll}
-          className="text-[10px] text-muted-foreground hover:text-primary transition-colors"
+          className="text-xs font-medium text-muted-foreground hover:text-primary transition-colors"
         >
           {t('markAllRead')}
         </button>
@@ -247,11 +247,11 @@ function NotificationsWidget({ context }: { context: WidgetDataContext }) {
               }`} />
               <div className="flex-1 min-w-0">
                 {n.senderName && (
-                  <span className="text-[10px] font-medium text-primary/80">{n.senderName}</span>
+                  <span className="text-xs font-medium text-primary/80">{n.senderName}</span>
                 )}
                 <p className="text-xs text-foreground truncate">{n.text}</p>
               </div>
-              <span className="text-[10px] text-muted-foreground shrink-0">{n.time}</span>
+              <span className="text-xs font-medium text-muted-foreground shrink-0">{n.time}</span>
               <Check className="w-3 h-3 text-muted-foreground/0 group-hover:text-muted-foreground/60 transition-colors shrink-0 mt-0.5" />
             </div>
           );

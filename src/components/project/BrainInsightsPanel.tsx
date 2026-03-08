@@ -109,13 +109,13 @@ export function BrainInsightsPanel({ projectId }: BrainInsightsPanelProps) {
                 {item.priority && (
                   <Badge
                     variant="secondary"
-                    className={`text-[9px] px-1.5 py-0 h-4 ${getPriorityColor(item.priority)}`}
+                    className={`text-xs font-medium px-1.5 py-0 h-4 ${getPriorityColor(item.priority)}`}
                   >
                     {item.priority}
                   </Badge>
                 )}
                 {item.category && (
-                  <span className="text-[9px] text-muted-foreground">{item.category}</span>
+                  <span className="text-xs font-medium text-muted-foreground">{item.category}</span>
                 )}
               </div>
             </div>
@@ -197,14 +197,14 @@ export function BrainInsightsPanel({ projectId }: BrainInsightsPanelProps) {
         <div className="flex items-center gap-2">
           <Brain className="w-5 h-5 text-violet-500" />
           <h3 className="text-lg font-semibold text-foreground">{t('brainInsights')}</h3>
-          <Badge variant="outline" className="text-[9px] gap-1 text-violet-500 border-violet-200 dark:border-violet-800">
+          <Badge variant="outline" className="text-xs font-medium gap-1 text-violet-500 border-violet-200 dark:border-violet-800">
             <Brain className="w-2.5 h-2.5" />
             {t('brainAiActive')}
           </Badge>
         </div>
         <div className="flex items-center gap-2">
           {insights.lastAnalyzedAt && (
-            <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+            <span className="text-xs font-medium text-muted-foreground flex items-center gap-1">
               <Clock className="w-3 h-3" />
               {t('brainLastAnalyzed')}: {formatLastAnalyzed(insights.lastAnalyzedAt)}
             </span>
@@ -229,7 +229,7 @@ export function BrainInsightsPanel({ projectId }: BrainInsightsPanelProps) {
             <Lightbulb className="w-4 h-4 text-blue-500" />
             <h4 className="text-sm font-medium text-foreground">{t('brainDecisions')}</h4>
             {insights.recentDecisions.length > 0 && (
-              <Badge variant="secondary" className="text-[9px] px-1.5 h-4 ml-auto">
+              <Badge variant="secondary" className="text-xs font-medium px-1.5 h-4 ml-auto">
                 {insights.recentDecisions.length}
               </Badge>
             )}
@@ -247,7 +247,7 @@ export function BrainInsightsPanel({ projectId }: BrainInsightsPanelProps) {
             <ListChecks className="w-4 h-4 text-emerald-500" />
             <h4 className="text-sm font-medium text-foreground">{t('brainActionItems')}</h4>
             {insights.openActionItems.length > 0 && (
-              <Badge variant="secondary" className="text-[9px] px-1.5 h-4 ml-auto">
+              <Badge variant="secondary" className="text-xs font-medium px-1.5 h-4 ml-auto">
                 {insights.openActionItems.length}
               </Badge>
             )}
@@ -265,7 +265,7 @@ export function BrainInsightsPanel({ projectId }: BrainInsightsPanelProps) {
             <AlertTriangle className="w-4 h-4 text-amber-500" />
             <h4 className="text-sm font-medium text-foreground">{t('brainRisks')}</h4>
             {insights.identifiedRisks.length > 0 && (
-              <Badge variant="secondary" className="text-[9px] px-1.5 h-4 ml-auto">
+              <Badge variant="secondary" className="text-xs font-medium px-1.5 h-4 ml-auto">
                 {insights.identifiedRisks.length}
               </Badge>
             )}
@@ -288,13 +288,13 @@ export function BrainInsightsPanel({ projectId }: BrainInsightsPanelProps) {
           <p className="text-xs text-muted-foreground leading-relaxed">
             {insights.conversationSummary}
           </p>
-          <div className="flex items-center gap-3 mt-2 text-[10px] text-muted-foreground">
+          <div className="flex items-center gap-3 mt-2 text-xs font-medium text-muted-foreground">
             <span>{insights.messageCount} messages analyzed</span>
             <span>
               Activity:{' '}
               <Badge
                 variant="secondary"
-                className={`text-[9px] px-1.5 h-4 ${
+                className={`text-xs font-medium px-1.5 h-4 ${
                   insights.activityLevel === 'high'
                     ? 'text-emerald-600 bg-emerald-50 dark:text-emerald-400 dark:bg-emerald-950/30'
                     : insights.activityLevel === 'medium'

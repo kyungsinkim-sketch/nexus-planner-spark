@@ -388,7 +388,7 @@ export function AttendanceWidget() {
                                                     <Icon className="w-4 h-4" />
                                                     <span>{language === 'ko' ? type.label_ko : type.label_en}</span>
                                                     {type.requires_gps && (
-                                                        <Badge variant="outline" className="text-[10px] px-1.5 py-0">GPS</Badge>
+                                                        <Badge variant="outline" className="text-xs font-medium px-1.5 py-0">GPS</Badge>
                                                     )}
                                                 </div>
                                             </SelectItem>

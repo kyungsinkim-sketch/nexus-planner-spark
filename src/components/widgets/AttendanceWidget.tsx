@@ -171,7 +171,7 @@ function AttendanceWidget({ context: _context }: { context: WidgetDataContext })
                   )}
                   <div className={`w-3 h-3 rounded-full absolute -bottom-0.5 -right-0.5 border-2 border-background ${dotColor}`} />
                 </div>
-                <span className="text-[10px] truncate max-w-[48px]">{user.name}</span>
+                <span className="text-xs font-medium truncate max-w-[48px]">{user.name}</span>
               </button>
             </PopoverTrigger>
             <PopoverContent className="w-48 p-3 space-y-2">

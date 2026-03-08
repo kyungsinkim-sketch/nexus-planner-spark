@@ -47,31 +47,31 @@ function StatusBadge({ status }: { status: BrainActionStatus }) {
   switch (status) {
     case 'pending':
       return (
-        <span className="inline-flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400">
+        <span className="inline-flex items-center gap-0.5 text-xs font-medium px-1.5 py-0.5 rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400">
           <Clock className="w-2.5 h-2.5" /> 대기 중
         </span>
       );
     case 'confirmed':
       return (
-        <span className="inline-flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded-full bg-blue-500/15 text-blue-600 dark:text-blue-400">
+        <span className="inline-flex items-center gap-0.5 text-xs font-medium px-1.5 py-0.5 rounded-full bg-blue-500/15 text-blue-600 dark:text-blue-400">
           <Loader2 className="w-2.5 h-2.5 animate-spin" /> 처리 중
         </span>
       );
     case 'executed':
       return (
-        <span className="inline-flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
+        <span className="inline-flex items-center gap-0.5 text-xs font-medium px-1.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
           <CheckCircle2 className="w-2.5 h-2.5" /> 완료
         </span>
       );
     case 'rejected':
       return (
-        <span className="inline-flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded-full bg-gray-500/15 text-gray-500">
+        <span className="inline-flex items-center gap-0.5 text-xs font-medium px-1.5 py-0.5 rounded-full bg-gray-500/15 text-gray-500">
           <XCircle className="w-2.5 h-2.5" /> 무시됨
         </span>
       );
     case 'failed':
       return (
-        <span className="inline-flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded-full bg-red-500/15 text-red-500">
+        <span className="inline-flex items-center gap-0.5 text-xs font-medium px-1.5 py-0.5 rounded-full bg-red-500/15 text-red-500">
           <AlertTriangle className="w-2.5 h-2.5" /> 실패
         </span>
       );
@@ -110,15 +110,15 @@ function SuggestionCard({
         <Brain className="w-3.5 h-3.5 text-primary shrink-0 mt-0.5" />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5 flex-wrap">
-            <span className="text-[10px] font-medium text-primary">Brain 제안</span>
+            <span className="text-xs font-medium text-primary">Brain 제안</span>
             {matchedProject && (
-              <span className="inline-flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded-full bg-violet-500/10 text-violet-600 dark:text-violet-400 font-medium truncate max-w-[120px]">
+              <span className="inline-flex items-center gap-0.5 text-xs font-medium px-1.5 py-0.5 rounded-full bg-violet-500/10 text-violet-600 dark:text-violet-400 font-medium truncate max-w-[120px]">
                 {matchedProject.title}
               </span>
             )}
             <StatusBadge status={suggestion.status} />
           </div>
-          <p className="text-[11px] text-foreground/80 mt-0.5">{suggestion.summary}</p>
+          <p className="text-xs text-foreground/80 mt-0.5">{suggestion.summary}</p>
         </div>
       </div>
 
@@ -126,7 +126,7 @@ function SuggestionCard({
       {suggestion.dateInconsistency && (
         <div className="flex items-start gap-1.5 px-2 py-1.5 rounded-md bg-amber-500/10 border border-amber-500/20 mt-1.5">
           <AlertTriangle className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5" />
-          <div className="text-[10px]">
+          <div className="text-xs font-medium">
             <p className="font-medium text-amber-600 dark:text-amber-400">
               날짜 불일치: {suggestion.dateInconsistency.mentioned} → 실제 {suggestion.dateInconsistency.actualDay}
             </p>
@@ -140,7 +140,7 @@ function SuggestionCard({
       {/* Suggested items list */}
       <div className="mt-1.5 space-y-1">
         {suggestion.suggestedEvent && (
-          <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+          <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
             <Calendar className="w-3 h-3 text-blue-500" />
             <span className="truncate">일정: {suggestion.suggestedEvent.title}</span>
             {suggestion.suggestedEvent.location && (
@@ -149,13 +149,13 @@ function SuggestionCard({
           </div>
         )}
         {suggestion.suggestedTodo && (
-          <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+          <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
             <CheckSquare className="w-3 h-3 text-green-500" />
             <span className="truncate">할 일: {suggestion.suggestedTodo.title}</span>
           </div>
         )}
         {suggestion.suggestedNote && (
-          <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+          <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
             <FileText className="w-3 h-3 text-violet-500" />
             <span className="truncate">중요 기록: {suggestion.suggestedNote.split('\n')[0]}</span>
           </div>
@@ -167,21 +167,21 @@ function SuggestionCard({
         <div className="flex items-center gap-1.5 mt-2 pt-1.5 border-t border-border/30">
           <button
             onClick={onConfirm}
-            className="flex items-center gap-1 text-[10px] px-2 py-1 rounded-md bg-primary/10 hover:bg-primary/20 text-primary transition-colors"
+            className="flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-md bg-primary/10 hover:bg-primary/20 text-primary transition-colors"
           >
             <Check className="w-3 h-3" /> 확인
           </button>
           {suggestion.suggestedReplyDraft && (
             <button
               onClick={onReply}
-              className="flex items-center gap-1 text-[10px] px-2 py-1 rounded-md bg-blue-500/10 hover:bg-blue-500/20 text-blue-600 dark:text-blue-400 transition-colors"
+              className="flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-md bg-blue-500/10 hover:bg-blue-500/20 text-blue-600 dark:text-blue-400 transition-colors"
             >
               <MessageSquare className="w-3 h-3" /> 답장
             </button>
           )}
           <button
             onClick={onReject}
-            className="flex items-center gap-1 text-[10px] px-2 py-1 rounded-md hover:bg-muted/50 text-muted-foreground transition-colors ml-auto"
+            className="flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-md hover:bg-muted/50 text-muted-foreground transition-colors ml-auto"
           >
             <X className="w-3 h-3" /> 무시
           </button>
@@ -252,16 +252,16 @@ function EmailItem({
             <span className={`text-xs font-medium truncate ${email.isUnread ? 'text-foreground' : 'text-muted-foreground'}`}>
               {senderName}
             </span>
-            <span className="text-[10px] text-muted-foreground shrink-0">{dateStr}</span>
+            <span className="text-xs font-medium text-muted-foreground shrink-0">{dateStr}</span>
             {suggestions.length > 0 && (
               <Brain className="w-3 h-3 text-primary shrink-0" />
             )}
           </div>
-          <p className={`text-[11px] ${isExpanded ? '' : 'truncate'} ${email.isUnread ? 'text-foreground/90 font-medium' : 'text-muted-foreground'}`}>
+          <p className={`text-xs ${isExpanded ? '' : 'truncate'} ${email.isUnread ? 'text-foreground/90 font-medium' : 'text-muted-foreground'}`}>
             {email.subject}
           </p>
           {!isExpanded && (
-            <p className="text-[10px] text-muted-foreground/60 truncate mt-0.5">{email.snippet}</p>
+            <p className="text-xs font-medium text-muted-foreground/60 truncate mt-0.5">{email.snippet}</p>
           )}
         </div>
       </div>
@@ -270,34 +270,34 @@ function EmailItem({
       {isExpanded && (
         <div className="px-3 pb-2 space-y-2">
           {/* Sender/recipient details */}
-          <div className="text-[10px] text-muted-foreground/70 space-y-0.5 pl-5">
+          <div className="text-xs font-medium text-muted-foreground/70 space-y-0.5 pl-5">
             <p>From: {senderName} &lt;{senderEmail}&gt;</p>
             <p>To: {email.to.join(', ')}</p>
             {email.cc && email.cc.length > 0 && <p>Cc: {email.cc.join(', ')}</p>}
           </div>
           {/* Email body */}
-          <div className="pl-5 text-[11px] text-foreground/80 whitespace-pre-wrap break-words max-h-48 overflow-auto rounded-md bg-muted/20 p-2">
+          <div className="pl-5 text-xs text-foreground/80 whitespace-pre-wrap break-words max-h-48 overflow-auto rounded-md bg-muted/20 p-2">
             {email.body || email.snippet}
           </div>
           {/* Action buttons: Reply + Brain Analyze + Trash */}
           <div className="flex items-center gap-1.5 pl-5 mt-1.5">
             <button
               onClick={(e) => { e.stopPropagation(); onDirectReply(emailId); }}
-              className="flex items-center gap-1 text-[10px] px-2 py-1 rounded-md bg-blue-500/10 hover:bg-blue-500/20 text-blue-600 dark:text-blue-400 transition-colors"
+              className="flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-md bg-blue-500/10 hover:bg-blue-500/20 text-blue-600 dark:text-blue-400 transition-colors"
               title="답장"
             >
               <Reply className="w-3 h-3" /> 답장
             </button>
             <button
               onClick={(e) => { e.stopPropagation(); onAnalyze(emailId); }}
-              className="flex items-center gap-1 text-[10px] px-2 py-1 rounded-md bg-violet-500/10 hover:bg-violet-500/20 text-violet-600 dark:text-violet-400 transition-colors"
+              className="flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-md bg-violet-500/10 hover:bg-violet-500/20 text-violet-600 dark:text-violet-400 transition-colors"
               title="Brain AI 분석"
             >
               <Brain className="w-3 h-3" /> Brain 분석
             </button>
             <button
               onClick={(e) => { e.stopPropagation(); onTrash(emailId); }}
-              className="flex items-center gap-1 text-[10px] px-2 py-1 rounded-md bg-red-500/10 hover:bg-red-500/20 text-red-600 dark:text-red-400 transition-colors ml-auto"
+              className="flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-md bg-red-500/10 hover:bg-red-500/20 text-red-600 dark:text-red-400 transition-colors ml-auto"
               title={t('deleteEmail')}
             >
               <Trash2 className="w-3 h-3" /> 삭제
@@ -475,14 +475,14 @@ function EmailWidget({ context: _context }: { context: WidgetDataContext }) {
           <Mail className={`text-primary ${isMobile ? 'w-4 h-4' : 'w-3.5 h-3.5'}`} />
           <span className={`font-medium ${isMobile ? 'text-sm' : 'text-xs'}`}>Gmail</span>
           {dedupedEmails.filter(m => m.isUnread).length > 0 && (
-            <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-primary/15 text-primary font-medium">
+            <span className="text-xs font-medium px-1.5 py-0.5 rounded-full bg-primary/15 text-primary font-medium">
               {dedupedEmails.filter(m => m.isUnread).length}
             </span>
           )}
         </div>
         <div className="flex items-center gap-1.5">
           {gmailLastSyncAt && (
-            <span className="text-[9px] text-muted-foreground/50">
+            <span className="text-xs font-medium text-muted-foreground/50">
               {new Date(gmailLastSyncAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
             </span>
           )}

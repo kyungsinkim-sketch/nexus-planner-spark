@@ -401,7 +401,7 @@ export function ActiveCallOverlay() {
             >
               {callState.isMuted ? <MicOff className="w-6 h-6" /> : <Mic className="w-6 h-6" />}
             </button>
-            <span className="text-[10px] text-white/50">{callState.isMuted ? '음소거 중' : '음소거'}</span>
+            <span className="text-xs font-medium text-white/50">{callState.isMuted ? '음소거 중' : '음소거'}</span>
           </div>
 
           {/* Camera */}
@@ -416,7 +416,7 @@ export function ActiveCallOverlay() {
             >
               {callState.isCameraOn ? <Video className="w-6 h-6" /> : <VideoOff className="w-6 h-6" />}
             </button>
-            <span className="text-[10px] text-white/50">{callState.isCameraOn ? '카메라 끄기' : '카메라'}</span>
+            <span className="text-xs font-medium text-white/50">{callState.isCameraOn ? '카메라 끄기' : '카메라'}</span>
           </div>
 
           {/* End call */}
@@ -439,7 +439,7 @@ export function ActiveCallOverlay() {
             >
               {callState.isSpeakerOn ? <Volume2 className="w-6 h-6" /> : <VolumeX className="w-6 h-6" />}
             </button>
-            <span className="text-[10px] text-white/50">{callState.isSpeakerOn ? '스피커' : '수화기'}</span>
+            <span className="text-xs font-medium text-white/50">{callState.isSpeakerOn ? '스피커' : '수화기'}</span>
           </div>
         </div>
       </div>

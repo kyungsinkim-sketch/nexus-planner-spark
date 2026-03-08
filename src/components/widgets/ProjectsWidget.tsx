@@ -89,7 +89,7 @@ function ProjectsWidget({ context: _context }: { context: WidgetDataContext }) {
           <button
             key={status}
             onClick={() => setFilter(filter === status ? 'ALL' : status)}
-            className={`px-2 py-1 rounded text-[10px] font-medium transition-colors ${
+            className={`px-2 py-1 rounded text-xs font-medium transition-colors ${
               filter === status
                 ? 'bg-primary text-primary-foreground'
                 : 'bg-white/10 text-muted-foreground hover:bg-white/20'
@@ -133,7 +133,7 @@ function ProjectsWidget({ context: _context }: { context: WidgetDataContext }) {
                     <span className="text-white text-sm font-bold">{getInitials(project.title)}</span>
                   </div>
                 )}
-                <p className="text-[10px] font-medium text-foreground line-clamp-2 leading-tight w-full">
+                <p className="text-xs font-medium text-foreground line-clamp-2 leading-tight w-full">
                   {project.title}
                 </p>
               </button>

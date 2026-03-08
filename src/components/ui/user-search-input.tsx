@@ -83,7 +83,7 @@ export function UserSearchInput({
     return (
       <div className="flex items-center gap-2 p-2 border border-border rounded-md bg-background">
         <Avatar className="w-6 h-6">
-          <AvatarFallback className="text-[10px]">{getInitials(resolvedSelectedUser.name)}</AvatarFallback>
+          <AvatarFallback className="text-xs font-medium">{getInitials(resolvedSelectedUser.name)}</AvatarFallback>
         </Avatar>
         <span className="flex-1 text-sm">{resolvedSelectedUser.name}</span>
         <button

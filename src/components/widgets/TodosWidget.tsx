@@ -260,7 +260,7 @@ function TodosWidget({ context }: { context: WidgetDataContext }) {
                   </div>
                   {todo.dueDate && (
                     <p
-                      className={`text-[11px] mt-0.5 ml-3 ${
+                      className={`text-xs mt-0.5 ml-3 ${
                         isOverdue
                           ? 'text-red-500 font-medium'
                           : 'text-muted-foreground'
@@ -417,7 +417,7 @@ function TodosWidget({ context }: { context: WidgetDataContext }) {
                   placeholder={t('allDay')}
                 />
                 {!newTime && (
-                  <p className="text-[10px] text-muted-foreground mt-0.5">{t('allDay')}</p>
+                  <p className="text-xs font-medium text-muted-foreground mt-0.5">{t('allDay')}</p>
                 )}
               </div>
             </div>

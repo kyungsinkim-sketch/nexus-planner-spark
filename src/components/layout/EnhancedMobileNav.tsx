@@ -139,7 +139,7 @@ export function EnhancedMobileNav() {
             </div>
             <span className="text-lg font-semibold">Re-Be.io</span>
             {isInstalled && (
-              <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+              <Badge variant="secondary" className="text-xs font-medium px-1.5 py-0">
                 App
               </Badge>
             )}
@@ -262,7 +262,7 @@ export function EnhancedMobileNav() {
                         <span className="font-medium flex-1">{t(item.labelKey)}</span>
                         {item.pro && (
                           <span className={cn(
-                            "text-[9px] font-bold px-1.5 py-0.5 rounded-full",
+                            "text-xs font-medium font-bold px-1.5 py-0.5 rounded-full",
                             isActive ? "bg-white/20 text-white" : "bg-amber-500/20 text-amber-600"
                           )}>
                             Pro
@@ -374,7 +374,7 @@ export function EnhancedMobileNav() {
                   )}
                 >
                   <item.icon className={cn("w-5 h-5", isActive && "scale-110")} />
-                  <span className="text-[10px] font-medium truncate text-center">
+                  <span className="text-xs font-medium truncate text-center">
                     {t(item.labelKey)}
                   </span>
                 </NavLink>

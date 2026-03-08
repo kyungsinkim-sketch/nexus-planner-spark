@@ -107,14 +107,14 @@ export function ProjectCompleteModal({ open, onClose, project, onConfirm }: Proj
                     className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-muted"
                   >
                     <Avatar className="w-5 h-5">
-                      <AvatarFallback className="text-[10px] bg-primary/20 text-primary">
+                      <AvatarFallback className="text-xs font-medium bg-primary/20 text-primary">
                         {member!.name.split(' ').map(n => n[0]).join('')}
                       </AvatarFallback>
                     </Avatar>
                     <span className="text-xs font-medium text-foreground">
                       {member!.name}
                     </span>
-                    <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                    <Badge variant="outline" className="text-xs font-medium px-1.5 py-0">
                       Pending
                     </Badge>
                   </div>
