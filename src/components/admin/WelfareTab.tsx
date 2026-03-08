@@ -20,7 +20,7 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
-import { Calendar, Clock, Dumbbell, Users, CheckCircle, ChevronLeft, ChevronRight, TrendingUp } from 'lucide-react';
+import { Calendar, Clock, Dumbbell, Users, CheckCircle, ChevronLeft, ChevronRight, TrendingUp, Copy } from 'lucide-react';
 import { toast } from 'sonner';
 import { useTranslation } from '@/hooks/useTranslation';
 import { useAppStore } from '@/stores/appStore';
@@ -180,6 +180,92 @@ export function WelfareTab() {
         const newDate = new Date(currentWeekStart);
         newDate.setDate(newDate.getDate() + 7);
         setCurrentWeekStart(newDate);
+    };
+
+    // Copy last week's bookings to current week
+    const [isCopying, setIsCopying] = useState(false);
+    const handleCopyLastWeek = async () => {
+        if (isCopying) return;
+
+        // Get last week's date range
+        const lastWeekStart = new Date(currentWeekStart);
+        lastWeekStart.setDate(lastWeekStart.getDate() - 7);
+        const lastWeekEnd = new Date(currentWeekStart);
+
+        // Find last week's training sessions
+        const lastWeekSessions = trainingSessions.filter(s => {
+            const sessionDate = parseLocalDate(s.date);
+            return sessionDate >= lastWeekStart && sessionDate < lastWeekEnd;
+        });
+
+        if (lastWeekSessions.length === 0) {
+            toast.error('지난주 예약이 없습니다');
+            return;
+        }
+
+        // Check for existing sessions this week to avoid duplicates
+        const currentWeekEnd = new Date(currentWeekStart);
+        currentWeekEnd.setDate(currentWeekEnd.getDate() + 7);
+        const currentWeekSessions = trainingSessions.filter(s => {
+            const sessionDate = parseLocalDate(s.date);
+            return sessionDate >= currentWeekStart && sessionDate < currentWeekEnd;
+        });
+
+        if (currentWeekSessions.length > 0) {
+            if (!confirm(`이번 주에 이미 ${currentWeekSessions.length}개의 예약이 있습니다. 지난주 예약을 추가로 복사하시겠습니까?`)) {
+                return;
+            }
+        }
+
+        setIsCopying(true);
+        let copiedCount = 0;
+
+        for (const session of lastWeekSessions) {
+            const sessionDate = parseLocalDate(session.date);
+            const dayOffset = Math.floor((sessionDate.getTime() - lastWeekStart.getTime()) / (1000 * 60 * 60 * 24));
+            const newDate = new Date(currentWeekStart);
+            newDate.setDate(newDate.getDate() + dayOffset);
+
+            const hour = timeSlotToHour(session.timeSlot);
+            const startDate = parseLocalDate(toLocalDateStr(newDate), hour);
+            const endDate = parseLocalDate(toLocalDateStr(newDate), hour + 1);
+
+            // Check for duplicates
+            const eventTitle = t('renatusTrainingEvent');
+            const hasDuplicate = events.some(
+                e => e.title === eventTitle &&
+                     e.ownerId === session.userId &&
+                     e.startAt === startDate.toISOString()
+            );
+
+            if (!hasDuplicate) {
+                try {
+                    const attendees = [session.userId];
+                    if (currentUser && currentUser.id !== session.userId) {
+                        attendees.push(currentUser.id);
+                    }
+                    await addEvent({
+                        title: eventTitle,
+                        type: 'R_TRAINING',
+                        startAt: startDate.toISOString(),
+                        endAt: endDate.toISOString(),
+                        ownerId: session.userId,
+                        attendeeIds: attendees,
+                        source: 'PAULUS',
+                    });
+                    copiedCount++;
+                } catch (err) {
+                    console.error('Failed to copy session:', err);
+                }
+            }
+        }
+
+        setIsCopying(false);
+        if (copiedCount > 0) {
+            toast.success(`지난주 예약 ${copiedCount}건이 복사되었습니다`);
+        } else {
+            toast.info('복사할 새 예약이 없습니다 (모두 중복)');
+        }
     };
 
     // Get sessions for a specific date and time
@@ -480,6 +566,10 @@ export function WelfareTab() {
                                     </div>
                                     <Button variant="outline" size="sm" onClick={goToNextWeek}>
                                         <ChevronRight className="w-4 h-4" />
+                                    </Button>
+                                    <Button variant="outline" size="sm" onClick={handleCopyLastWeek} disabled={isCopying} className="ml-2 gap-1.5">
+                                        <Copy className="w-3.5 h-3.5" />
+                                        {isCopying ? '복사 중...' : '지난주 예약 복사'}
                                     </Button>
                                 </div>
                             </div>
