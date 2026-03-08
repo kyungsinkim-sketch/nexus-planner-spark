@@ -17,6 +17,7 @@
  */
 
 import { useEffect, useState, useCallback, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useAppStore } from '@/stores/appStore';
 import { useTranslation } from '@/hooks/useTranslation';
 import {
@@ -43,7 +44,14 @@ import {
   Table2,
   MoreHorizontal,
   X,
+  Sparkles,
+  ListChecks,
+  CalendarPlus,
+  Star,
+  Check,
 } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
+import { toast } from 'sonner';
 import type { WidgetDataContext } from '@/types/widget';
 import {
   isNotionConfigured,
@@ -516,6 +524,16 @@ export default function NotionWidget({ context }: { context: WidgetDataContext }
   // More menu
   const [showMoreMenu, setShowMoreMenu] = useState(false);
 
+  // Brain AI text selection bubble menu
+  const [selectionBubble, setSelectionBubble] = useState<{ text: string; x: number; y: number } | null>(null);
+  const [brainMenuOpen, setBrainMenuOpen] = useState(false);
+  const [brainProcessing, setBrainProcessing] = useState(false);
+  const [notionBrainSuggestion, setNotionBrainSuggestion] = useState<{
+    id: string; messageId: string; actionType: 'todo' | 'calendar' | 'important';
+    extractedData: Record<string, unknown>; sourceText: string;
+  } | null>(null);
+  const [notionBrainEdits, setNotionBrainEdits] = useState<Record<string, unknown>>({});
+
   const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // ─── Load initial data ────────────────────────────
@@ -710,6 +728,101 @@ export default function NotionWidget({ context }: { context: WidgetDataContext }
   }, [userId]);
 
   // ─── Child page click handler ─────────────────────
+  // ─── Text selection → Brain AI bubble ───
+  const handleTextSelection = useCallback(() => {
+    const sel = window.getSelection();
+    if (!sel || sel.isCollapsed || !sel.toString().trim()) {
+      setSelectionBubble(null);
+      setBrainMenuOpen(false);
+      return;
+    }
+    const range = sel.getRangeAt(0);
+    const rect = range.getBoundingClientRect();
+    setSelectionBubble({ text: sel.toString().trim(), x: rect.left + rect.width / 2, y: rect.top - 8 });
+  }, []);
+
+  useEffect(() => {
+    document.addEventListener('selectionchange', handleTextSelection);
+    return () => document.removeEventListener('selectionchange', handleTextSelection);
+  }, [handleTextSelection]);
+
+  const handleNotionBrainAction = useCallback(async (actionType: 'todo' | 'calendar' | 'important') => {
+    if (!selectionBubble || !userId) return;
+    setBrainMenuOpen(false);
+    setBrainProcessing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('brain-slack-action', {
+        body: {
+          userId,
+          channelId: selectedPageId || '',
+          channelName: selectedPageTitle || 'Notion',
+          messageText: selectionBubble.text,
+          messageTs: `notion-${Date.now()}`,
+          senderName: 'Notion',
+          actionType,
+          projectId,
+        },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      if (data?.suggestion) {
+        setNotionBrainSuggestion({
+          id: data.suggestion.id,
+          messageId: data.suggestion.messageId,
+          actionType,
+          extractedData: data.suggestion.extractedData,
+          sourceText: selectionBubble.text,
+        });
+        setNotionBrainEdits(data.suggestion.extractedData);
+      }
+      setSelectionBubble(null);
+      window.getSelection()?.removeAllRanges();
+    } catch (e) {
+      console.error('[NotionWidget] brain action:', e);
+      toast.error('Brain AI 처리에 실패했습니다');
+    } finally {
+      setBrainProcessing(false);
+    }
+  }, [selectionBubble, userId, selectedPageId, selectedPageTitle, projectId]);
+
+  const handleNotionBrainConfirm = useCallback(async () => {
+    if (!notionBrainSuggestion || !userId) return;
+    try {
+      await supabase.from('brain_actions').update({
+        extracted_data: notionBrainEdits, status: 'confirmed',
+      }).eq('id', notionBrainSuggestion.id);
+
+      const { data, error } = await supabase.functions.invoke('brain-execute', {
+        body: { actionId: notionBrainSuggestion.id, userId },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      await supabase.from('brain_preference_log').update({ outcome: 'confirmed' })
+        .eq('brain_action_id', notionBrainSuggestion.id);
+
+      const labels = { todo: 'TODO', calendar: '캘린더', important: '중요기록' };
+      toast.success(`${labels[notionBrainSuggestion.actionType]}에 추가되었습니다 ✨`);
+      setNotionBrainSuggestion(null);
+      setNotionBrainEdits({});
+    } catch (e) {
+      console.error('[NotionWidget] brain confirm:', e);
+      toast.error('실행에 실패했습니다');
+    }
+  }, [notionBrainSuggestion, notionBrainEdits, userId]);
+
+  const handleNotionBrainReject = useCallback(async () => {
+    if (!notionBrainSuggestion) return;
+    try {
+      await supabase.from('brain_actions').update({ status: 'rejected' }).eq('id', notionBrainSuggestion.id);
+      await supabase.from('brain_preference_log').update({ outcome: 'rejected' })
+        .eq('brain_action_id', notionBrainSuggestion.id);
+    } catch { /* non-fatal */ }
+    setNotionBrainSuggestion(null);
+    setNotionBrainEdits({});
+  }, [notionBrainSuggestion]);
+
   const handleContentClick = useCallback((e: React.MouseEvent) => {
     const target = (e.target as HTMLElement).closest('[data-child-page-id]');
     if (target) {
@@ -938,6 +1051,132 @@ export default function NotionWidget({ context }: { context: WidgetDataContext }
                 <p className="text-sm text-muted-foreground text-center py-8">빈 페이지입니다</p>
               )}
             </div>
+
+            {/* Brain AI text selection bubble menu */}
+            {selectionBubble && !brainMenuOpen && !brainProcessing && createPortal(
+              <button
+                onClick={(e) => { e.stopPropagation(); setBrainMenuOpen(true); }}
+                className="fixed z-[9999] flex items-center gap-1 px-2 py-1 bg-primary text-primary-foreground rounded-full shadow-lg text-xs font-medium hover:bg-primary/90 transition-all animate-in fade-in zoom-in-95"
+                style={{ top: selectionBubble.y - 32, left: selectionBubble.x, transform: 'translateX(-50%)' }}
+              >
+                <Sparkles className="w-3 h-3" /> Brain AI
+              </button>,
+              document.body
+            )}
+
+            {/* Brain AI action menu */}
+            {selectionBubble && brainMenuOpen && createPortal(
+              <>
+                <div className="fixed inset-0 z-[9998]" onClick={() => { setBrainMenuOpen(false); setSelectionBubble(null); }} />
+                <div className="fixed z-[9999] bg-white dark:bg-zinc-800 border border-black/10 dark:border-white/10 rounded-lg shadow-lg py-1 min-w-[160px] animate-in fade-in zoom-in-95"
+                  style={{ top: selectionBubble.y - 8, left: selectionBubble.x, transform: 'translate(-50%, -100%)' }}>
+                  <div className="px-3 py-1 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Brain AI</div>
+                  <button onClick={() => handleNotionBrainAction('todo')}
+                    className="w-full flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-gray-100 dark:hover:bg-zinc-700 transition">
+                    <ListChecks className="w-3.5 h-3.5 text-blue-500" /> TODO 만들기
+                  </button>
+                  <button onClick={() => handleNotionBrainAction('calendar')}
+                    className="w-full flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-gray-100 dark:hover:bg-zinc-700 transition">
+                    <CalendarPlus className="w-3.5 h-3.5 text-green-500" /> 캘린더에 추가
+                  </button>
+                  <button onClick={() => handleNotionBrainAction('important')}
+                    className="w-full flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-gray-100 dark:hover:bg-zinc-700 transition">
+                    <Star className="w-3.5 h-3.5 text-amber-500" /> 중요기록 저장
+                  </button>
+                </div>
+              </>,
+              document.body
+            )}
+
+            {/* Brain processing indicator */}
+            {brainProcessing && createPortal(
+              <div className="fixed z-[9999] flex items-center gap-1.5 px-3 py-1.5 bg-primary/90 text-primary-foreground rounded-full shadow-lg text-xs animate-pulse"
+                style={{ top: (selectionBubble?.y || 100) - 32, left: (selectionBubble?.x || 200), transform: 'translateX(-50%)' }}>
+                <Loader2 className="w-3 h-3 animate-spin" /> 분석 중...
+              </div>,
+              document.body
+            )}
+
+            {/* Brain AI Review Panel */}
+            {notionBrainSuggestion && (
+              <div className="border-t border-primary/30 bg-primary/5 px-3 py-2.5 space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-primary" />
+                    <span className="text-xs font-semibold text-primary">Brain 제안 검토</span>
+                    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary">
+                      {notionBrainSuggestion.actionType === 'todo' ? '📋 TODO' : notionBrainSuggestion.actionType === 'calendar' ? '📅 캘린더' : '⭐ 중요기록'}
+                    </span>
+                  </div>
+                  <button onClick={handleNotionBrainReject} className="p-0.5 hover:bg-red-500/10 rounded"><X className="w-3.5 h-3.5 text-muted-foreground" /></button>
+                </div>
+                <div className="text-[10px] text-muted-foreground/70 bg-muted/20 rounded px-2 py-1 truncate">
+                  원본: &quot;{notionBrainSuggestion.sourceText.substring(0, 80)}{notionBrainSuggestion.sourceText.length > 80 ? '...' : ''}&quot;
+                </div>
+
+                {notionBrainSuggestion.actionType === 'todo' && (
+                  <div className="space-y-1.5">
+                    <input type="text" value={(notionBrainEdits.title as string) || ''}
+                      onChange={e => setNotionBrainEdits(prev => ({ ...prev, title: e.target.value }))}
+                      placeholder="할 일 제목"
+                      className="w-full text-xs bg-muted/20 border border-border/30 rounded px-2 py-1 focus:outline-none focus:border-primary/50" />
+                    <div className="flex gap-1.5">
+                      <input type="date" value={(notionBrainEdits.dueDate as string)?.substring(0, 10) || ''}
+                        onChange={e => setNotionBrainEdits(prev => ({ ...prev, dueDate: e.target.value }))}
+                        className="flex-1 text-xs bg-muted/20 border border-border/30 rounded px-2 py-1 focus:outline-none" />
+                      <select value={(notionBrainEdits.priority as string) || 'NORMAL'}
+                        onChange={e => setNotionBrainEdits(prev => ({ ...prev, priority: e.target.value }))}
+                        className="text-xs bg-muted/20 border border-border/30 rounded px-2 py-1 focus:outline-none">
+                        <option value="LOW">낮음</option>
+                        <option value="NORMAL">보통</option>
+                        <option value="HIGH">높음</option>
+                      </select>
+                    </div>
+                  </div>
+                )}
+
+                {notionBrainSuggestion.actionType === 'calendar' && (
+                  <div className="space-y-1.5">
+                    <input type="text" value={(notionBrainEdits.title as string) || ''}
+                      onChange={e => setNotionBrainEdits(prev => ({ ...prev, title: e.target.value }))}
+                      placeholder="일정 제목"
+                      className="w-full text-xs bg-muted/20 border border-border/30 rounded px-2 py-1 focus:outline-none focus:border-primary/50" />
+                    <div className="flex gap-1.5">
+                      <input type="datetime-local" value={(notionBrainEdits.startAt as string)?.substring(0, 16) || ''}
+                        onChange={e => setNotionBrainEdits(prev => ({ ...prev, startAt: e.target.value + ':00+09:00' }))}
+                        className="flex-1 text-xs bg-muted/20 border border-border/30 rounded px-2 py-1 focus:outline-none" />
+                      <input type="datetime-local" value={(notionBrainEdits.endAt as string)?.substring(0, 16) || ''}
+                        onChange={e => setNotionBrainEdits(prev => ({ ...prev, endAt: e.target.value + ':00+09:00' }))}
+                        className="flex-1 text-xs bg-muted/20 border border-border/30 rounded px-2 py-1 focus:outline-none" />
+                    </div>
+                  </div>
+                )}
+
+                {notionBrainSuggestion.actionType === 'important' && (
+                  <div className="space-y-1.5">
+                    <input type="text" value={(notionBrainEdits.title as string) || ''}
+                      onChange={e => setNotionBrainEdits(prev => ({ ...prev, title: e.target.value }))}
+                      placeholder="기록 제목"
+                      className="w-full text-xs bg-muted/20 border border-border/30 rounded px-2 py-1 focus:outline-none focus:border-primary/50" />
+                    <textarea value={(notionBrainEdits.content as string) || ''}
+                      onChange={e => setNotionBrainEdits(prev => ({ ...prev, content: e.target.value }))}
+                      placeholder="기록 내용" rows={2}
+                      className="w-full text-xs bg-muted/20 border border-border/30 rounded px-2 py-1 focus:outline-none resize-none" />
+                  </div>
+                )}
+
+                <div className="flex items-center gap-2 pt-0.5">
+                  <button onClick={handleNotionBrainConfirm}
+                    className="flex-1 flex items-center justify-center gap-1 px-3 py-1.5 bg-primary text-primary-foreground rounded-md text-xs font-medium hover:bg-primary/90 transition-colors">
+                    <Check className="w-3 h-3" /> 확인
+                  </button>
+                  <button onClick={handleNotionBrainReject}
+                    className="px-3 py-1.5 border border-border/50 rounded-md text-xs text-muted-foreground hover:bg-muted/30 transition-colors">
+                    취소
+                  </button>
+                </div>
+              </div>
+            )}
 
             {/* Append block input */}
             {showAppendInput ? (
