@@ -251,6 +251,9 @@ export async function createCall(targetUserId: string | string[], projectId?: st
       }
     });
 
+    // Start recording BEFORE connecting (getUserMedia can be slow, avoid race with disconnect)
+    await startMicRecording();
+
     // Auto-connect caller
     await connectToRoom(wsUrl, token);
 
@@ -275,6 +278,10 @@ export async function joinCall(roomId: string): Promise<void> {
     const { token, wsUrl, room } = response.data;
 
     setState({ room, token, wsUrl });
+
+    // Start recording BEFORE connecting
+    await startMicRecording();
+
     await connectToRoom(wsUrl, token);
 
   } catch (err: any) {
@@ -435,36 +442,13 @@ async function connectToRoom(wsUrl: string, token: string): Promise<void> {
       new Promise((_, reject) => setTimeout(() => reject(new Error('연결 시간 초과')), 15000)),
     ]);
     console.log('[Call] Connected successfully');
+    setState({ status: 'active' });
+    startDurationTimer();
 
-    // Start recording here (Connected event may not fire if connect() resolves after connection)
-    if (!mediaRecorder || mediaRecorder.state !== 'recording') {
-      setState({ status: 'active' });
-      startDurationTimer();
-      try {
-        await room.localParticipant.setMicrophoneEnabled(true);
-        console.log('[Call] Microphone enabled (post-connect)');
-      } catch (err) {
-        console.warn('[Call] Mic enable failed:', err);
-      }
-      try {
-        const micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        console.log('[Call] Got mic stream for recording');
-        audioChunks = [];
-        mediaRecorder = new MediaRecorder(micStream, {
-          mimeType: MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
-            ? 'audio/webm;codecs=opus'
-            : 'audio/webm',
-        });
-        mediaRecorder.ondataavailable = (e) => {
-          if (e.data.size > 0) audioChunks.push(e.data);
-        };
-        mediaRecorder.start(1000);
-        callStartTime = Date.now();
-        console.log('[Call] ✅ Recording started (post-connect)');
-      } catch (err) {
-        console.error('[Call] Recording setup failed:', err);
-      }
-    }
+    // Enable microphone (non-blocking — don't let this delay anything)
+    room.localParticipant.setMicrophoneEnabled(true)
+      .then(() => console.log('[Call] Microphone enabled'))
+      .catch((err: any) => console.warn('[Call] Mic enable failed:', err));
   } catch (err: any) {
     console.error('[Call] Connection failed:', err);
     try { room.disconnect(); } catch { /* ignore */ }
@@ -531,6 +515,32 @@ async function connectToRoom(wsUrl: string, token: string): Promise<void> {
 }
 
 // ─── Client-side Recording (MVP) ─────────────────────
+
+// ─── Simple mic recording (called BEFORE room.connect) ──────
+async function startMicRecording(): Promise<void> {
+  if (mediaRecorder && mediaRecorder.state === 'recording') {
+    console.log('[Call] Recording already active, skipping');
+    return;
+  }
+  try {
+    const micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    console.log('[Call] ✅ Got mic stream for recording');
+    audioChunks = [];
+    mediaRecorder = new MediaRecorder(micStream, {
+      mimeType: MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+        ? 'audio/webm;codecs=opus'
+        : 'audio/webm',
+    });
+    mediaRecorder.ondataavailable = (e) => {
+      if (e.data.size > 0) audioChunks.push(e.data);
+    };
+    mediaRecorder.start(1000);
+    callStartTime = Date.now();
+    console.log('[Call] ✅ MediaRecorder started, state:', mediaRecorder.state);
+  } catch (err) {
+    console.error('[Call] ❌ Mic recording setup failed:', err);
+  }
+}
 
 function getMediaStreamFromTrack(track: any): MediaStream | null {
   // LiveKit v2: track.mediaStream may not exist; use track.mediaStreamTrack instead
