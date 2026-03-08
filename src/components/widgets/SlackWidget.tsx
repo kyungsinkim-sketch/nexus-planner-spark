@@ -13,6 +13,7 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useAppStore } from '@/stores/appStore';
 import { useTranslation } from '@/hooks/useTranslation';
 import {
@@ -461,7 +462,7 @@ function SlackWidget({ context }: { context: WidgetDataContext }) {
     const hasThread = (msg.reply_count || 0) > 0 && !isThread;
 
     return (
-      <div key={msg.ts} className="flex gap-2 group relative">
+      <div key={msg.ts} data-slack-msg={msg.ts} className="flex gap-2 group relative">
         {user?.avatar ? (
           <img src={user.avatar} alt="" className="w-7 h-7 rounded-full mt-0.5 shrink-0" />
         ) : (
@@ -523,7 +524,7 @@ function SlackWidget({ context }: { context: WidgetDataContext }) {
         </div>
 
         {/* Hover actions — inline right, not absolute to avoid overflow clipping */}
-        <div className={`absolute top-0 right-0 flex items-center gap-0.5 bg-background/95 border border-border/30 rounded-md shadow-sm px-0.5 py-0.5 transition-opacity ${
+        <div className={`slack-action-bar absolute top-0 right-0 flex items-center gap-0.5 bg-white dark:bg-zinc-800 border border-black/10 dark:border-white/10 rounded-md shadow-sm px-0.5 py-0.5 transition-opacity ${
           isMenuOpen || isEmojiOpen ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
         }`}>
           <button onClick={e => { e.stopPropagation(); setEmojiPickerTs(isEmojiOpen ? null : msg.ts); setActiveMenu(null); }}
@@ -541,37 +542,57 @@ function SlackWidget({ context }: { context: WidgetDataContext }) {
           </button>
         </div>
 
-        {/* Emoji quick picker */}
-        {isEmojiOpen && (
-          <div className="absolute top-6 right-0 flex items-center gap-0.5 bg-background border border-border/40 rounded-lg shadow-lg px-1 py-0.5 z-20" onClick={e => e.stopPropagation()}>
-            {QUICK_EMOJIS.map(emoji => (
-              <button key={emoji} onClick={() => handleReaction(msg, emoji)} className="text-base hover:scale-125 transition-transform px-0.5">{emoji}</button>
-            ))}
-          </div>
-        )}
+        {/* Emoji quick picker — Portal to body */}
+        {isEmojiOpen && (() => {
+          const actionBar = document.querySelector(`[data-slack-msg="${msg.ts}"] .slack-action-bar`);
+          if (!actionBar) return null;
+          const r = actionBar.getBoundingClientRect();
+          return createPortal(
+            <>
+              <div className="fixed inset-0 z-[9998]" onClick={() => setEmojiPickerTs(null)} />
+              <div className="fixed z-[9999] flex items-center gap-0.5 bg-white dark:bg-zinc-800 border border-black/10 dark:border-white/10 rounded-lg shadow-lg px-1.5 py-1"
+                style={{ top: r.bottom + 2, left: Math.max(8, r.left) }} onClick={e => e.stopPropagation()}>
+                {QUICK_EMOJIS.map(emoji => (
+                  <button key={emoji} onClick={() => handleReaction(msg, emoji)} className="w-6 h-6 flex items-center justify-center rounded hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors text-sm">{emoji}</button>
+                ))}
+              </div>
+            </>,
+            document.body
+          );
+        })()}
 
-        {/* Context menu */}
-        {isMenuOpen && (
-          <div className="absolute top-6 right-0 bg-background border border-border/40 rounded-lg shadow-lg py-1 z-20 min-w-[120px]" onClick={e => e.stopPropagation()}>
-            <button onClick={() => { setEditingMsg(msg); setEditText(msg.text); setActiveMenu(null); }}
-              className="w-full flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-white/5">
-              <Pencil className="w-3 h-3" /> 수정
-            </button>
-            <button onClick={() => handlePin(msg, true)}
-              className="w-full flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-white/5">
-              <Pin className="w-3 h-3" /> 고정
-            </button>
-            <button onClick={() => handlePin(msg, false)}
-              className="w-full flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-white/5">
-              <PinOff className="w-3 h-3" /> 고정 해제
-            </button>
-            <div className="border-t border-border/20 my-0.5" />
-            <button onClick={() => handleDelete(msg)}
-              className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-red-400 hover:bg-red-500/10">
-              <Trash2 className="w-3 h-3" /> 삭제
-            </button>
-          </div>
-        )}
+        {/* Context menu — Portal to body */}
+        {isMenuOpen && (() => {
+          const actionBar = document.querySelector(`[data-slack-msg="${msg.ts}"] .slack-action-bar`);
+          if (!actionBar) return null;
+          const r = actionBar.getBoundingClientRect();
+          return createPortal(
+            <>
+              <div className="fixed inset-0 z-[9998]" onClick={() => setActiveMenu(null)} />
+              <div className="fixed z-[9999] bg-white dark:bg-zinc-800 border border-black/10 dark:border-white/10 rounded-lg shadow-lg py-1 min-w-[120px]"
+                style={{ top: r.bottom + 2, left: Math.max(8, r.right - 140) }} onClick={e => e.stopPropagation()}>
+                <button onClick={() => { setEditingMsg(msg); setEditText(msg.text); setActiveMenu(null); }}
+                  className="w-full flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-gray-100 dark:hover:bg-zinc-700 transition">
+                  <Pencil className="w-3 h-3" /> 수정
+                </button>
+                <button onClick={() => handlePin(msg, true)}
+                  className="w-full flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-gray-100 dark:hover:bg-zinc-700 transition">
+                  <Pin className="w-3 h-3" /> 고정
+                </button>
+                <button onClick={() => handlePin(msg, false)}
+                  className="w-full flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-gray-100 dark:hover:bg-zinc-700 transition">
+                  <PinOff className="w-3 h-3" /> 고정 해제
+                </button>
+                <div className="border-t border-gray-100 dark:border-zinc-700 my-0.5" />
+                <button onClick={() => handleDelete(msg)}
+                  className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition">
+                  <Trash2 className="w-3 h-3" /> 삭제
+                </button>
+              </div>
+            </>,
+            document.body
+          );
+        })()}
       </div>
     );
   };
