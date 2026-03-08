@@ -14,6 +14,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
+import { supabase } from '@/lib/supabase';
 import { useAppStore } from '@/stores/appStore';
 import { useTranslation } from '@/hooks/useTranslation';
 import {
@@ -161,6 +162,34 @@ function SlackWidget({ context }: { context: WidgetDataContext }) {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, threadMessages]);
+
+  // ─── Realtime: auto-refresh on new Slack webhook messages ───
+  useEffect(() => {
+    if (!selectedChannel || !status.teamId) return;
+
+    const channel = supabase
+      .channel(`slack-msgs-${selectedChannel.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'slack_messages',
+          filter: `channel_id=eq.${selectedChannel.id}`,
+        },
+        () => {
+          // New/edited/deleted message from webhook — reload from Slack API
+          if (selectedChannel) {
+            loadMessages(selectedChannel);
+          }
+        },
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [selectedChannel, status.teamId, loadMessages]);
 
   // ─── Send message (optimistic) ───
   const handleSend = useCallback(async () => {
