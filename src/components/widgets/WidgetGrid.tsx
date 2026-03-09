@@ -307,13 +307,13 @@ export function WidgetGrid({ context, projectKeyColor }: WidgetGridProps) {
                   // Uses opaque gray background (not glass transparency)
                   <div
                     className={cn(
-                      "h-full widget-drag-handle group/barless relative rounded-[var(--widget-radius)] overflow-hidden",
+                      "h-full widget-drag-handle group/barless relative overflow-hidden",
                       isDarkCardWidget
-                        ? 'border-0'
-                        : 'border border-border/60',
+                        ? 'border-0 rounded-[var(--widget-radius)] shadow-none'
+                        : 'border border-border/60 rounded-[var(--widget-radius)]',
                     )}
                     data-widget-id={item.i}
-                    style={isDarkCardWidget ? undefined : activeGlassStyle}
+                    style={isDarkCardWidget ? { background: 'transparent', boxShadow: 'none', border: 'none' } : activeGlassStyle}
                     onMouseDown={() => setActiveWidgetId(item.i)}
                   >
                     {/* Hover-reveal action buttons */}
@@ -347,7 +347,7 @@ export function WidgetGrid({ context, projectKeyColor }: WidgetGridProps) {
                   </div>
                 ) : isFramelessWidget(widgetType) ? (
                   // Frameless: no WidgetContainer, direct embed with minimal drag handle
-                  <div className="glass-widget flex flex-col h-full" data-widget-id={item.i} style={activeGlassStyle}>
+                  <div className="glass-widget glass-widget-opaque flex flex-col h-full" data-widget-id={item.i} style={activeGlassStyle}>
                     <div
                       className="widget-drag-handle chat-widget-handle"
                       onMouseDown={() => setActiveWidgetId(item.i)}

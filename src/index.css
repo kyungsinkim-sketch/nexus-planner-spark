@@ -714,6 +714,20 @@
   background: transparent !important;
   box-shadow: none !important;
 }
+/* Frameless widgets (chat, calendar): keep original bg in idle state */
+.widget-item-idle .glass-widget.glass-widget-opaque {
+  background: hsl(var(--glass-bg)) !important;
+}
+.dark .widget-item-idle .glass-widget.glass-widget-opaque {
+  background: hsl(var(--glass-bg)) !important;
+}
+.widget-item-idle:hover .glass-widget.glass-widget-opaque {
+  background: hsl(var(--glass-bg-hover)) !important;
+}
+.dark .widget-item-idle:hover .glass-widget.glass-widget-opaque {
+  background: hsl(var(--glass-bg-hover)) !important;
+}
+
 .widget-item-active .glass-widget.glass-widget-dark {
   background: transparent !important;
   border-color: transparent !important;
