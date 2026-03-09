@@ -490,6 +490,8 @@
     border-radius: var(--widget-radius);
     color: white;
     overflow: hidden;
+    /* Hide anti-aliasing fringe between dark card edge and light background */
+    box-shadow: 0 0 0 0.5px hsl(222 47% 8%);
   }
 
 
