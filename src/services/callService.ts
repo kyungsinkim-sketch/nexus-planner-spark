@@ -677,18 +677,46 @@ export async function endCall(): Promise<void> {
 
   // Stop recording BEFORE disconnect (tracks get detached on disconnect)
   let audioBase64: string | null = null;
+  console.log('[Call] Recording state check:', {
+    hasMediaRecorder: !!mediaRecorder,
+    state: mediaRecorder?.state ?? 'null',
+    chunks: audioChunks.length,
+    chunksSize: audioChunks.reduce((sum, c) => sum + c.size, 0),
+  });
+
   if (mediaRecorder && mediaRecorder.state !== 'inactive') {
     try {
       audioBase64 = await Promise.race([
         stopAndCollectRecording(),
-        new Promise<null>(resolve => setTimeout(() => resolve(null), 3000)), // 3s timeout
+        new Promise<null>(resolve => setTimeout(() => {
+          console.warn('[Call] ⚠️ Recording collection TIMED OUT after 8s');
+          resolve(null);
+        }, 8000)), // 8s timeout (was 3s — too aggressive for large recordings)
       ]);
-      console.log('[Call] Recording collected:', audioBase64 ? `${Math.round(audioBase64.length / 1024)}KB base64 (${audioChunks.length} chunks)` : 'null');
+      console.log('[Call] Recording collected:', audioBase64 ? `${Math.round(audioBase64.length / 1024)}KB base64 (${audioChunks.length} chunks)` : 'null (timeout or empty)');
     } catch (err) {
       console.warn('[Call] Recording collection failed:', err);
     }
+  } else if (mediaRecorder && mediaRecorder.state === 'inactive' && audioChunks.length > 0) {
+    // MediaRecorder already stopped (e.g. track ended) but we have chunks — collect them
+    console.log('[Call] MediaRecorder inactive but has', audioChunks.length, 'chunks, collecting...');
+    try {
+      const blob = new Blob(audioChunks, { type: 'audio/webm' });
+      if (blob.size > 0 && blob.size < 5 * 1024 * 1024) {
+        const buffer = await blob.arrayBuffer();
+        const bytes = new Uint8Array(buffer);
+        let binary = '';
+        for (let i = 0; i < bytes.length; i++) {
+          binary += String.fromCharCode(bytes[i]);
+        }
+        audioBase64 = btoa(binary);
+        console.log('[Call] Collected from inactive recorder:', Math.round(audioBase64.length / 1024), 'KB');
+      }
+    } catch (err) {
+      console.warn('[Call] Inactive chunk collection failed:', err);
+    }
   } else {
-    console.warn('[Call] No active mediaRecorder at endCall. state:', mediaRecorder?.state ?? 'null');
+    console.warn('[Call] No active mediaRecorder at endCall. state:', mediaRecorder?.state ?? 'null', 'chunks:', audioChunks.length);
   }
 
   // Disconnect from LiveKit
@@ -735,6 +763,7 @@ export async function endCall(): Promise<void> {
 
   // Send end signal to backend (non-blocking, after UI reset)
   if (roomInfo) {
+    console.log('[Call] Sending end signal to backend. roomId:', roomInfo.id, 'hasAudio:', !!audioBase64, 'audioSize:', audioBase64 ? Math.round(audioBase64.length / 1024) + 'KB' : '0');
     try {
       supabase.functions.invoke('call-room-end', {
         body: {
@@ -754,14 +783,36 @@ export async function endCall(): Promise<void> {
 async function stopAndCollectRecording(): Promise<string | null> {
   return new Promise((resolve) => {
     if (!mediaRecorder || mediaRecorder.state === 'inactive') {
+      console.log('[Call] stopAndCollect: recorder inactive/null, trying chunks directly');
+      // Even if inactive, try to collect existing chunks
+      if (audioChunks.length > 0) {
+        try {
+          const blob = new Blob(audioChunks, { type: 'audio/webm' });
+          if (blob.size > 0 && blob.size < 5 * 1024 * 1024) {
+            blob.arrayBuffer().then(buffer => {
+              const bytes = new Uint8Array(buffer);
+              let binary = '';
+              for (let i = 0; i < bytes.length; i++) {
+                binary += String.fromCharCode(bytes[i]);
+              }
+              resolve(btoa(binary));
+            }).catch(() => resolve(null));
+            return;
+          }
+        } catch { /* fall through */ }
+      }
       resolve(null);
       return;
     }
 
+    console.log('[Call] stopAndCollect: stopping recorder, state:', mediaRecorder.state, 'chunks:', audioChunks.length);
+
     mediaRecorder.onstop = async () => {
+      console.log('[Call] stopAndCollect: onstop fired, chunks:', audioChunks.length);
       try {
         if (audioChunks.length > 0) {
           const blob = new Blob(audioChunks, { type: 'audio/webm' });
+          console.log('[Call] stopAndCollect: blob size:', blob.size);
           // Only encode if under 5MB to avoid blocking
           if (blob.size < 5 * 1024 * 1024) {
             const buffer = await blob.arrayBuffer();
@@ -770,15 +821,19 @@ async function stopAndCollectRecording(): Promise<string | null> {
             for (let i = 0; i < bytes.length; i++) {
               binary += String.fromCharCode(bytes[i]);
             }
-            resolve(btoa(binary));
+            const result = btoa(binary);
+            console.log('[Call] stopAndCollect: base64 size:', Math.round(result.length / 1024), 'KB');
+            resolve(result);
           } else {
             console.warn('[Call] Recording too large for base64:', blob.size);
             resolve(null);
           }
         } else {
+          console.warn('[Call] stopAndCollect: no chunks collected');
           resolve(null);
         }
-      } catch {
+      } catch (err) {
+        console.error('[Call] stopAndCollect error:', err);
         resolve(null);
       }
     };
