@@ -435,10 +435,22 @@ export function MobileCalendarView() {
     });
   }, [currentMonth]);
 
-  // Scroll strip to start when month changes
+  // Scroll strip: on month change → start; on initial load → today at leftmost
+  const initialScrollDone = useRef(false);
   useEffect(() => {
     if (!stripRef.current) return;
-    stripRef.current.scrollLeft = 0;
+    if (!initialScrollDone.current) {
+      // Initial load: scroll so today is at the leftmost
+      const todayBtn = stripRef.current.querySelector('[data-today="true"]');
+      if (todayBtn) {
+        const container = stripRef.current;
+        const btnLeft = (todayBtn as HTMLElement).offsetLeft - container.offsetLeft;
+        container.scrollLeft = btnLeft;
+      }
+      initialScrollDone.current = true;
+    } else {
+      stripRef.current.scrollLeft = 0;
+    }
   }, [currentMonth]);
 
   const goToPrevMonth = useCallback(() => {
@@ -528,6 +540,7 @@ export function MobileCalendarView() {
               <button
                 key={day.toISOString()}
                 data-selected={isSelected}
+                data-today={isToday || undefined}
                 onClick={() => setSelectedDate(day)}
                 className={cn(
                   'flex flex-col items-center min-w-[42px] py-2 px-1 rounded-2xl transition-all',
