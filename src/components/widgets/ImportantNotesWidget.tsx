@@ -75,8 +75,8 @@ function ImportantNotesWidget({ context }: { context: WidgetDataContext }) {
     const content = editContent.trim();
     if (!title && !content) return;
     updateImportantNote(editingNoteId, {
-      title: title || undefined,
-      content: content || title,
+      title: title || '',
+      content: content || title || '',
     });
     setEditingNoteId(null);
     setEditTitle('');

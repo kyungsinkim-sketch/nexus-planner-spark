@@ -73,8 +73,10 @@ export async function createNote(note: Omit<ImportantNote, 'id' | 'createdAt'>):
 export async function updateNote(noteId: string, updates: { title?: string; content?: string }): Promise<ImportantNote | null> {
   if (!isSupabaseConfigured()) return null;
 
-  const payload: Record<string, unknown> = {};
-  if (updates.title !== undefined) payload.title = updates.title || null;
+  const payload: Record<string, unknown> = {
+    updated_at: new Date().toISOString(),
+  };
+  if (updates.title !== undefined) payload.title = updates.title;
   if (updates.content !== undefined) payload.content = updates.content;
 
   const { data, error } = await supabase

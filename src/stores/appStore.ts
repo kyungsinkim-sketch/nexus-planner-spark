@@ -1743,11 +1743,12 @@ export const useAppStore = create<AppState>()(
         if (isSupabaseConfigured()) {
           const { updateNote } = await import('@/services/importantNoteService');
           const updated = await updateNote(noteId, updates);
-          if (updated) {
-            set((state) => ({
-              importantNotes: state.importantNotes.map((n) => n.id === noteId ? updated : n),
-            }));
-          }
+          // Always update local state (even if server returns null, apply optimistically)
+          set((state) => ({
+            importantNotes: state.importantNotes.map((n) =>
+              n.id === noteId ? (updated || { ...n, ...updates }) : n
+            ),
+          }));
         } else {
           set((state) => ({
             importantNotes: state.importantNotes.map((n) =>
