@@ -437,7 +437,7 @@ export interface DecisionShare {
 
 export interface ChatRoom {
   id: string;
-  projectId: string;
+  projectId: string | null;
   name: string;
   description?: string;
   isDefault: boolean;

@@ -62,11 +62,11 @@ import * as personaService from '@/services/personaService';
 import { isSupabaseConfigured } from '@/lib/supabase';
 import { toast } from 'sonner';
 
-type ChatType = 'project' | 'direct';
+type ChatType = 'project' | 'direct' | 'group';
 
 interface SelectedChat {
   type: ChatType;
-  id: string; // projectId or userId
+  id: string; // projectId or userId or roomId (for group)
   roomId?: string; // selected room within project
 }
 
@@ -81,7 +81,7 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
   const {
     projects, users, currentUser, messages, chatRooms,
     sendProjectMessage, sendDirectMessage, sendRoomMessage,
-    loadChatRooms, createChatRoom, getChatRoomsByProject,
+    loadChatRooms, loadGroupRooms, createChatRoom, getChatRoomsByProject, getGroupRooms,
     getUserById, addMessage,
     addFileGroup, addFile, getFileGroupsByProject,
     brainIntelligenceEnabled,
@@ -94,7 +94,11 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
     setPendingChatNavigation,
   } = useAppStore();
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedTab, setSelectedTab] = useState<'projects' | 'direct'>('projects');
+  const [selectedTab, setSelectedTab] = useState<'projects' | 'direct' | 'groups'>('projects');
+  const [showCreateGroupRoom, setShowCreateGroupRoom] = useState(false);
+  const [newGroupRoomName, setNewGroupRoomName] = useState('');
+  const [newGroupRoomDescription, setNewGroupRoomDescription] = useState('');
+  const [selectedGroupMemberIds, setSelectedGroupMemberIds] = useState<string[]>([]);
   const [selectedChat, setSelectedChat] = useState<SelectedChat | null>(null);
   const [newMessage, setNewMessage] = useState('');
   const [expandedProjectId, setExpandedProjectId] = useState<string | null>(null);
@@ -141,6 +145,16 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
       }
     })();
   }, [defaultProjectId, loadChatRooms, getChatRoomsByProject]);
+
+  // Load group rooms on mount
+  useEffect(() => {
+    if (currentUser) {
+      loadGroupRooms();
+    }
+  }, [currentUser, loadGroupRooms]);
+
+  // Group rooms list
+  const groupRooms = useMemo(() => getGroupRooms(), [chatRooms, getGroupRooms]);
 
   // Filter all projects
   const allProjects = useMemo(() => {
@@ -214,6 +228,10 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
   // Get messages for selected chat
   const chatMessages = useMemo(() => {
     if (!selectedChat) return [];
+
+    if (selectedChat.type === 'group') {
+      return messages.filter(m => m.roomId === selectedChat.roomId);
+    }
 
     if (selectedChat.type === 'project') {
       if (selectedChat.roomId) {
@@ -400,7 +418,9 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
       roomId: selectedChat.roomId,
     });
     // Auto-clear existing notifications for this chat
-    if (selectedChat.type === 'project') {
+    if (selectedChat.type === 'group') {
+      clearChatNotificationsForRoom(selectedChat.roomId);
+    } else if (selectedChat.type === 'project') {
       clearChatNotificationsForRoom(selectedChat.roomId, selectedChat.id);
     } else if (selectedChat.type === 'direct') {
       clearChatNotificationsForRoom(undefined, undefined, selectedChat.id);
@@ -426,7 +446,9 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
       }));
     };
 
-    if (selectedChat.type === 'project' && selectedChat.roomId) {
+    if (selectedChat.type === 'group' && selectedChat.roomId) {
+      unsubscribe = chatService.subscribeToRoomMessages(selectedChat.roomId, onInsertNoop, onRemoteDelete);
+    } else if (selectedChat.type === 'project' && selectedChat.roomId) {
       unsubscribe = chatService.subscribeToRoomMessages(selectedChat.roomId, onInsertNoop, onRemoteDelete);
     } else if (selectedChat.type === 'project') {
       unsubscribe = chatService.subscribeToProjectMessages(selectedChat.id, onInsertNoop, onRemoteDelete);
@@ -456,7 +478,9 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
     // Send the user's message first
     const replyId = replyingTo?.id;
     try {
-      if (selectedChat.type === 'project') {
+      if (selectedChat.type === 'group') {
+        await sendRoomMessage(selectedChat.roomId!, null, trimmed, replyId ? { replyToMessageId: replyId } : undefined);
+      } else if (selectedChat.type === 'project') {
         if (selectedChat.roomId) {
           await sendRoomMessage(selectedChat.roomId, selectedChat.id, trimmed, replyId ? { replyToMessageId: replyId } : undefined);
         } else {
@@ -1192,7 +1216,8 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
     if (!currentUser || !selectedChat) return;
 
     const isDM = selectedChat.type === 'direct';
-    const projectId = isDM ? '' : selectedChat.id;
+    const isGroup = selectedChat.type === 'group';
+    const projectId = (isDM || isGroup) ? '' : selectedChat.id;
     const categoryTitles: Record<FileCategory, string> = {
       DECK: 'Presentations',
       FINAL: 'Final Deliverables',
@@ -1279,7 +1304,7 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
         if (isDM) {
           await sendDirectMessage(selectedChat.id, `📎 Uploaded file: ${file.name}`, fileItemId);
         } else if (selectedChat.roomId) {
-          await sendRoomMessage(selectedChat.roomId, projectId, `📎 Uploaded file: ${file.name}`, {
+          await sendRoomMessage(selectedChat.roomId, isGroup ? null : projectId, `📎 Uploaded file: ${file.name}`, {
             messageType: 'file',
             attachmentId: fileItemId,
           });
@@ -1379,6 +1404,29 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
     setShowCreateRoom(false);
   };
 
+  const handleCreateGroupRoom = async () => {
+    if (!newGroupRoomName.trim() || !currentUser) return;
+    if (selectedGroupMemberIds.length === 0) {
+      toast.error(t('selectAtLeastOneMember') || '최소 1명을 선택해주세요');
+      return;
+    }
+
+    // Include creator in member list
+    const allMemberIds = [...new Set([currentUser.id, ...selectedGroupMemberIds])];
+    const room = await createChatRoom(null, newGroupRoomName.trim(), allMemberIds, newGroupRoomDescription.trim() || undefined);
+
+    if (room) {
+      // Select the newly created group room
+      setSelectedChat({ type: 'group', id: room.id, roomId: room.id });
+      await loadGroupRooms();
+    }
+
+    setNewGroupRoomName('');
+    setNewGroupRoomDescription('');
+    setSelectedGroupMemberIds([]);
+    setShowCreateGroupRoom(false);
+  };
+
   const expandedProjectMembers = useMemo(() => {
     if (!expandedProjectId) return [];
     const project = projects.find(p => p.id === expandedProjectId);
@@ -1388,6 +1436,15 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
 
   const selectedChatInfo = useMemo(() => {
     if (!selectedChat) return null;
+
+    if (selectedChat.type === 'group') {
+      const room = chatRooms.find(r => r.id === selectedChat.roomId);
+      if (!room) return null;
+      return {
+        name: room.name,
+        subtitle: room.description || t('groupChat') || '그룹 채팅',
+      };
+    }
 
     if (selectedChat.type === 'project') {
       const project = projects.find(p => p.id === selectedChat.id);
@@ -1465,7 +1522,7 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
           </div>
 
           {/* Tabs */}
-          <Tabs value={selectedTab} onValueChange={(v) => setSelectedTab(v as 'projects' | 'direct')} className="flex-1 flex flex-col min-h-0">
+          <Tabs value={selectedTab} onValueChange={(v) => setSelectedTab(v as 'projects' | 'direct' | 'groups')} className="flex-1 flex flex-col min-h-0">
             <TabsList className="w-full rounded-none border-b border-border bg-transparent p-0 shrink-0">
               <TabsTrigger
                 value="projects"
@@ -1473,6 +1530,13 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
               >
                 <FolderKanban className="w-3.5 h-3.5" />
                 {t('projects')}
+              </TabsTrigger>
+              <TabsTrigger
+                value="groups"
+                className="flex-1 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent gap-1.5 text-xs py-2"
+              >
+                <Hash className="w-3.5 h-3.5" />
+                {t('groups') || '그룹'}
               </TabsTrigger>
               <TabsTrigger
                 value="direct"
@@ -1579,6 +1643,60 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
                             </div>
                           )}
                         </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </TabsContent>
+
+              <TabsContent value="groups" className="m-0">
+                {/* + New Group Room button */}
+                <button
+                  onClick={() => setShowCreateGroupRoom(true)}
+                  className="w-full flex items-center gap-2 p-3 hover:bg-muted/50 transition-colors text-left text-xs text-primary border-b border-border"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span className="font-medium">{t('newGroupChat') || '새 그룹 채팅'}</span>
+                </button>
+                {groupRooms.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-12 text-center">
+                    <Hash className="w-8 h-8 text-muted-foreground mb-2" />
+                    <p className="text-xs text-muted-foreground">{t('noGroupChats') || '그룹 채팅이 없습니다'}</p>
+                    <p className="text-xs text-muted-foreground mt-1">{t('createGroupChatHint') || '+ 버튼으로 새 그룹을 만들어보세요'}</p>
+                  </div>
+                ) : (
+                  <div className="divide-y divide-border">
+                    {groupRooms.map((room) => {
+                      const isSelected = selectedChat?.type === 'group' && selectedChat?.roomId === room.id;
+                      const lastMsg = messages.filter(m => m.roomId === room.id).slice(-1)[0];
+                      return (
+                        <button
+                          key={room.id}
+                          onClick={() => {
+                            setSelectedChat({ type: 'group', id: room.id, roomId: room.id });
+                          }}
+                          className={`w-full flex items-start gap-2.5 p-3 hover:bg-muted/50 transition-colors group text-left ${isSelected ? 'bg-muted' : ''}`}
+                        >
+                          <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                            <Hash className="w-4 h-4 text-primary" />
+                          </div>
+                          <div className="flex-1 min-w-0 overflow-hidden">
+                            <div className="flex items-center justify-between gap-1">
+                              <h3 className="font-medium text-foreground text-xs line-clamp-1">{room.name}</h3>
+                              {lastMsg && (
+                                <span className="text-xs font-medium text-muted-foreground shrink-0">
+                                  {formatTime(lastMsg.createdAt)}
+                                </span>
+                              )}
+                            </div>
+                            {room.description && (
+                              <p className="text-xs text-muted-foreground truncate mt-0.5">{room.description}</p>
+                            )}
+                            {lastMsg && (
+                              <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">{lastMsg.content}</p>
+                            )}
+                          </div>
+                        </button>
                       );
                     })}
                   </div>
@@ -2075,6 +2193,79 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
       </Dialog>
 
       {/* Call Start Dialog */}
+      {/* Create Group Room Dialog */}
+      <Dialog open={showCreateGroupRoom} onOpenChange={setShowCreateGroupRoom}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>{t('createGroupChat') || '새 그룹 채팅 만들기'}</DialogTitle>
+            <DialogDescription className="sr-only">{t('createGroupChat') || '새 그룹 채팅 만들기'}</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="groupRoomName">{t('chatRoomName') || '채팅방 이름'}</Label>
+              <Input
+                id="groupRoomName"
+                value={newGroupRoomName}
+                onChange={(e) => setNewGroupRoomName(e.target.value)}
+                placeholder={t('groupRoomNamePlaceholder') || '그룹 채팅방 이름을 입력하세요'}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="groupRoomDesc">{t('descriptionOptional') || '설명 (선택사항)'}</Label>
+              <Input
+                id="groupRoomDesc"
+                value={newGroupRoomDescription}
+                onChange={(e) => setNewGroupRoomDescription(e.target.value)}
+                placeholder={t('chatRoomDescriptionPlaceholder') || '채팅방 설명을 입력하세요'}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>{t('inviteMembers') || '멤버 초대'} <span className="text-muted-foreground text-xs">({selectedGroupMemberIds.length}{t('selected') || '명 선택'})</span></Label>
+              <div className="relative mb-2">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                <Input
+                  placeholder={t('searchMembers') || '멤버 검색...'}
+                  className="pl-8 h-8 text-xs"
+                  id="groupMemberSearch"
+                />
+              </div>
+              <div className="space-y-1 max-h-[200px] overflow-y-auto">
+                {users.filter(u => u.id !== currentUser?.id).map((user) => (
+                  <div key={user.id} className="flex items-center gap-2 py-1">
+                    <Checkbox
+                      id={`group-member-${user.id}`}
+                      checked={selectedGroupMemberIds.includes(user.id)}
+                      onCheckedChange={(checked) => {
+                        if (checked) {
+                          setSelectedGroupMemberIds(prev => [...prev, user.id]);
+                        } else {
+                          setSelectedGroupMemberIds(prev => prev.filter(id => id !== user.id));
+                        }
+                      }}
+                    />
+                    <Avatar className="w-5 h-5">
+                      {user.avatar && <AvatarImage src={user.avatar} />}
+                      <AvatarFallback className="text-xs">{user.name?.[0]}</AvatarFallback>
+                    </Avatar>
+                    <Label htmlFor={`group-member-${user.id}`} className="text-sm font-normal cursor-pointer flex-1">
+                      {user.name} {user.department && <span className="text-muted-foreground">({user.department})</span>}
+                    </Label>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setShowCreateGroupRoom(false); setSelectedGroupMemberIds([]); setNewGroupRoomName(''); setNewGroupRoomDescription(''); }}>
+              {t('cancel')}
+            </Button>
+            <Button onClick={handleCreateGroupRoom} disabled={!newGroupRoomName.trim() || selectedGroupMemberIds.length === 0}>
+              {t('create') || '만들기'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <CallStartDialog
         open={showCallDialog}
         onOpenChange={setShowCallDialog}

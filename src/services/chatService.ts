@@ -80,9 +80,43 @@ export const getRoomsByProject = async (projectId: string): Promise<ChatRoom[]> 
     return (data as RoomRow[]).map(transformRoom);
 };
 
-// Create a new chat room in a project
+// Get all group chat rooms (not tied to any project) that current user is a member of
+export const getGroupRooms = async (userId: string): Promise<ChatRoom[]> => {
+    if (!isSupabaseConfigured()) {
+        throw new Error('Supabase not configured');
+    }
+
+    // Get room IDs where user is a member
+    const { data: memberData, error: memberError } = await supabase
+        .from('chat_room_members')
+        .select('room_id')
+        .eq('user_id', userId);
+
+    if (memberError) {
+        throw new Error(handleSupabaseError(memberError));
+    }
+
+    const roomIds = (memberData || []).map(m => m.room_id);
+    if (roomIds.length === 0) return [];
+
+    // Get rooms that have no project_id and are in the user's membership list
+    const { data, error } = await supabase
+        .from('chat_rooms')
+        .select('*')
+        .is('project_id', null)
+        .in('id', roomIds)
+        .order('created_at', { ascending: false });
+
+    if (error) {
+        throw new Error(handleSupabaseError(error));
+    }
+
+    return (data as RoomRow[]).map(transformRoom);
+};
+
+// Create a new chat room (optionally tied to a project)
 export const createRoom = async (
-    projectId: string,
+    projectId: string | null,
     name: string,
     createdBy: string,
     description?: string,
@@ -210,7 +244,7 @@ export const getMessagesByRoom = async (roomId: string): Promise<ChatMessage[]> 
 // Send message to a room (supports rich message types)
 export const sendRoomMessage = async (
     roomId: string,
-    projectId: string,
+    projectId: string | null,
     userId: string,
     content: string,
     options?: {

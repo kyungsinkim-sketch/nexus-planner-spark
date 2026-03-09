@@ -225,10 +225,11 @@ interface AppState {
 
   // Chat Room Actions
   loadChatRooms: (projectId: string) => Promise<void>;
+  loadGroupRooms: () => Promise<void>;
   loadMessages: () => Promise<void>;
   loadRoomMessages: (roomId: string) => Promise<void>;
-  createChatRoom: (projectId: string, name: string, memberIds: string[], description?: string) => Promise<ChatRoom | null>;
-  sendRoomMessage: (roomId: string, projectId: string, content: string, options?: {
+  createChatRoom: (projectId: string | null, name: string, memberIds: string[], description?: string) => Promise<ChatRoom | null>;
+  sendRoomMessage: (roomId: string, projectId: string | null, content: string, options?: {
     attachmentId?: string;
     messageType?: ChatMessageType;
     locationData?: LocationShare;
@@ -316,6 +317,7 @@ interface AppState {
   getMessagesByProject: (projectId: string) => ChatMessage[];
   getMessagesByRoom: (roomId: string) => ChatMessage[];
   getChatRoomsByProject: (projectId: string) => ChatRoom[];
+  getGroupRooms: () => ChatRoom[];
   getFileGroupsByProject: (projectId: string) => FileGroup[];
   getFilesByGroup: (groupId: string) => FileItem[];
   getUserById: (id: string) => User | undefined;
@@ -1395,6 +1397,36 @@ export const useAppStore = create<AppState>()(
             }
             return state;
           });
+        }
+      },
+
+      loadGroupRooms: async () => {
+        const { currentUser } = get();
+        if (!currentUser || !isSupabaseConfigured()) return;
+
+        try {
+          const rooms = await chatService.getGroupRooms(currentUser.id);
+          set((state) => {
+            // Remove old group rooms (project_id is null/empty), add fresh ones
+            const otherRooms = state.chatRooms.filter(r => r.projectId);
+            return { chatRooms: [...otherRooms, ...rooms] };
+          });
+
+          // Load messages for each group room
+          for (const room of rooms) {
+            try {
+              const msgs = await chatService.getMessagesByRoom(room.id);
+              set((state) => {
+                const existingIds = new Set(state.messages.map(m => m.id));
+                const newMsgs = msgs.filter(m => !existingIds.has(m.id));
+                return { messages: [...state.messages, ...newMsgs] };
+              });
+            } catch (e) {
+              console.error(`Failed to load messages for group room ${room.id}:`, e);
+            }
+          }
+        } catch (error) {
+          console.error('Failed to load group rooms:', error);
         }
       },
 
@@ -2541,6 +2573,7 @@ export const useAppStore = create<AppState>()(
       getMessagesByProject: (projectId) => get().messages.filter((m) => m.projectId === projectId),
       getMessagesByRoom: (roomId) => get().messages.filter((m) => m.roomId === roomId),
       getChatRoomsByProject: (projectId) => get().chatRooms.filter((r) => r.projectId === projectId),
+      getGroupRooms: () => get().chatRooms.filter((r) => !r.projectId),
       getFileGroupsByProject: (projectId) => get().fileGroups.filter((fg) => fg.projectId === projectId),
       getFilesByGroup: (groupId) => get().files.filter((f) => f.fileGroupId === groupId),
       getUserById: (id) => get().users.find((u) => u.id === id),
