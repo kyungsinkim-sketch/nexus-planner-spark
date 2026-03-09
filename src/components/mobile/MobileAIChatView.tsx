@@ -99,13 +99,20 @@ function ProfileCard({
 
   return (
     <div className="rounded-2xl overflow-hidden" style={{ background: 'linear-gradient(145deg, #0C0A1E 0%, #1a1535 50%, #0C0A1E 100%)' }}>
-      {/* Company logo top-left */}
-      <div className="flex items-center gap-2 px-4 pt-4 pb-2">
-        <img src="/loading-star.png" alt="Re-Be" className="w-7 h-7" />
-        <div>
-          <p className="text-[10px] text-[#C5C0E8]/60 tracking-wide">Re-Be.io</p>
-          <p className="text-xs font-semibold text-white/90">Creative Identity</p>
+      {/* Header: logo left, company name right */}
+      <div className="flex items-center justify-between px-4 pt-4 pb-2">
+        <div className="flex items-center gap-2">
+          <img src="/loading-star.png" alt="Re-Be" className="w-7 h-7" />
+          <div>
+            <p className="text-[10px] text-[#C5C0E8]/60 tracking-wide">Re-Be.io</p>
+            <p className="text-xs font-semibold text-white/90">Creative Identity</p>
+          </div>
         </div>
+        {user?.organizationName && (
+          <span className="text-[11px] font-semibold text-[#C5C0E8]/50 tracking-widest uppercase" style={{ fontFamily: 'Pretendard Variable, Pretendard, sans-serif' }}>
+            {user.organizationName.replace(/\s*(Co\.,?\s*Ltd\.?|Inc\.?|Corp\.?|LLC)\s*/i, '').trim().toUpperCase()}
+          </span>
+        )}
       </div>
 
       {/* User photo center */}
@@ -123,7 +130,7 @@ function ProfileCard({
 
         {/* Title */}
         <p className="text-sm text-[#C5C0E8]/70 mt-0.5">
-          {user?.position || user?.role || ''}
+          {user?.position || ''}
         </p>
 
         {/* Department */}
@@ -138,12 +145,12 @@ function ProfileCard({
           <span className="text-[10px] text-white/40">📁</span>
           <span className="text-xs font-medium text-white/70">{activeProjectCount} Projects</span>
         </button>
-        <div className="flex items-center gap-1.5">
-          <span className="text-[10px] text-white/40">✦</span>
-          <span className="text-xs font-medium text-[#C5C0E8]/70">
-            {user?.role === 'ADMIN' ? 'Admin' : 'Member'}
-          </span>
-        </div>
+        {user?.department && (
+          <div className="flex items-center gap-1.5">
+            <span className="text-[10px] text-white/40">✦</span>
+            <span className="text-xs font-medium text-[#C5C0E8]/70">{user.department}</span>
+          </div>
+        )}
       </div>
     </div>
   );

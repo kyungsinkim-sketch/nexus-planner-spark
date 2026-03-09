@@ -128,6 +128,34 @@ export const getCurrentUser = async (): Promise<User | null> => {
     const profile = await getUserProfile(user.id);
     if (profile && user.email) {
         profile.email = user.email;
+        // Enrich with org chart data (position, department, team)
+        const { data: emp } = await supabase
+            .from('nexus_employees')
+            .select('position,department,team')
+            .eq('email', user.email.toLowerCase())
+            .single();
+        if (emp) {
+            profile.position = emp.position || profile.position;
+            profile.department = emp.department || profile.department;
+            profile.team = emp.team || profile.team;
+        }
+        // Load organization name via memberships
+        const { data: membership } = await supabase
+            .from('memberships')
+            .select('org_id')
+            .eq('user_id', user.id)
+            .limit(1)
+            .single();
+        if (membership?.org_id) {
+            const { data: org } = await supabase
+                .from('organizations')
+                .select('name')
+                .eq('id', membership.org_id)
+                .single();
+            if (org?.name) {
+                profile.organizationName = org.name;
+            }
+        }
     }
     return profile;
 };

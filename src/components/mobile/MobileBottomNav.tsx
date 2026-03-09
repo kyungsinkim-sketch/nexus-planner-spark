@@ -132,7 +132,7 @@ export function MobileBottomNav() {
           }}
           onTouchMove={(e) => e.preventDefault()}
         >
-          <div className="flex items-center justify-around px-2 h-14">
+          <div className="mobile-bottom-nav flex items-center justify-around px-2 h-14">
           {tabs.map(tab => {
             const Icon = tab.icon;
             const active = !isSubRoute && mobileView === tab.id;

@@ -108,7 +108,7 @@ export function TabLayout() {
   const isProjectTab = activeTab?.type === 'project' && activeTab?.projectId;
 
   return (
-    <div className="h-screen flex flex-col bg-background overflow-hidden">
+    <div className="h-dvh flex flex-col bg-background overflow-hidden">
       {isSubRoute ? (
         /* Sub-routes (admin, settings) render via Outlet */
         <div className="flex-1 overflow-auto">

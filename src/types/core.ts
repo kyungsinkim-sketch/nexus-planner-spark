@@ -20,6 +20,8 @@ export interface User {
   position?: string;
   /** Team name from Organization Chart (nexus_employees.team) */
   team?: string;
+  /** Organization name the user belongs to */
+  organizationName?: string;
 }
 
 // Creative role for project team members
