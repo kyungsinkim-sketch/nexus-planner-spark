@@ -93,14 +93,14 @@
     --shadow-card: 0 2px 8px -2px hsl(220 14% 10% / 0.05), 0 1px 3px -1px hsl(220 14% 10% / 0.04);
 
     /* Liquid Glass — enhanced */
-    --glass-bg: 0 0% 100% / 0.45;
+    --glass-bg: 0 0% 100% / 0.6;
     --glass-bg-hover: 0 0% 100% / 0.75;
-    --glass-border: 0 0% 100% / 0.12;
-    --glass-border-subtle: 220 14% 80% / 0.08;
+    --glass-border: 0 0% 100% / 0.35;
+    --glass-border-subtle: 220 14% 80% / 0.3;
     --glass-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.1), 0 2px 8px 0 rgba(31, 38, 135, 0.06);
     --glass-shadow-hover: 0 12px 40px 0 rgba(31, 38, 135, 0.14), 0 4px 12px 0 rgba(31, 38, 135, 0.08);
     --glass-blur: 24px;
-    --glass-inner-glow: inset 0 1px 0 0 rgba(255, 255, 255, 0.15);
+    --glass-inner-glow: inset 0 1px 0 0 rgba(255, 255, 255, 0.4);
     --widget-radius: 1.25rem;
     --widget-gap: 12px;
   }
@@ -156,8 +156,8 @@
     /* Liquid Glass (dark) — enhanced */
     --glass-bg: 222 47% 10% / 0.6;
     --glass-bg-hover: 222 47% 12% / 0.75;
-    --glass-border: 0 0% 100% / 0.05;
-    --glass-border-subtle: 0 0% 100% / 0.03;
+    --glass-border: 0 0% 100% / 0.08;
+    --glass-border-subtle: 0 0% 100% / 0.05;
     --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3), 0 2px 8px 0 rgba(0, 0, 0, 0.15);
     --glass-shadow-hover: 0 12px 40px 0 rgba(0, 0, 0, 0.35), 0 4px 12px 0 rgba(0, 0, 0, 0.2);
     --glass-inner-glow: inset 0 1px 0 0 rgba(255, 255, 255, 0.06);
@@ -195,8 +195,8 @@
       /* Glass — monochrome, ultra-subtle */
       --glass-bg: 0 0% 6% / 0.7;
       --glass-bg-hover: 0 0% 8% / 0.8;
-      --glass-border: 0 0% 100% / 0.04;
-      --glass-border-subtle: 0 0% 100% / 0.02;
+      --glass-border: 0 0% 100% / 0.06;
+      --glass-border-subtle: 0 0% 100% / 0.03;
       --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
       --glass-shadow-hover: 0 12px 40px 0 rgba(0, 0, 0, 0.5);
       --glass-inner-glow: inset 0 1px 0 0 rgba(255, 255, 255, 0.04);
@@ -490,8 +490,6 @@
     border-radius: var(--widget-radius);
     color: white;
     overflow: hidden;
-    /* Hide anti-aliasing fringe between dark card edge and light background */
-    box-shadow: 0 0 0 0.5px hsl(222 47% 8%);
   }
 
 
@@ -668,66 +666,24 @@
 
 /* Widget idle: semi-transparent BACKGROUND only (liquid glass).
    Content (text, icons, buttons) stays fully opaque. */
-/* ── Idle widgets: liquid glass transparency on ALL inner elements ── */
 .widget-item-idle {
   height: 100%;
 }
-.widget-item-idle .glass-widget .widget-content {
-  opacity: 0.55;
-  transition: opacity 0.3s ease;
-}
-.widget-item-idle:hover .glass-widget .widget-content {
-  opacity: 0.85;
-}
-.widget-item-active .glass-widget .widget-content {
-  opacity: 1;
-}
 .widget-item-idle .glass-widget {
-  background: hsl(var(--glass-bg)) !important;
+  background: hsl(0 0% 100% / 0.5) !important;
   backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
   -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
-  box-shadow: none !important;
-  border-color: transparent !important;
+  box-shadow: var(--glass-shadow), var(--glass-inner-glow) !important;
 }
 .dark .widget-item-idle .glass-widget {
-  background: hsl(var(--glass-bg)) !important;
+  background: hsl(222 47% 10% / 0.5) !important;
 }
 .widget-item-idle:hover .glass-widget {
-  background: hsl(var(--glass-bg-hover)) !important;
-  box-shadow: var(--glass-shadow), var(--glass-inner-glow) !important;
-  border-color: hsl(var(--glass-border)) !important;
+  background: hsl(0 0% 100% / 0.7) !important;
+  box-shadow: var(--glass-shadow-hover), var(--glass-inner-glow) !important;
 }
 .dark .widget-item-idle:hover .glass-widget {
-  background: hsl(var(--glass-bg-hover)) !important;
-}
-
-/* Frameless widgets (chat, calendar): same idle treatment as normal widgets.
-   No special override — they follow the standard .widget-item-idle .glass-widget rules. */
-
-/* Barless dark-card wrapper: data-dark-card attribute nukes ALL decoration */
-[data-dark-card],
-[data-dark-card] *:not(.widget-dark-card):not(.date-gradient-bg):not(.weather-gradient-bg):not(.progress-gradient-bg):not(.health-gradient-bg) {
-  border-color: transparent !important;
-}
-[data-dark-card] {
-  background: transparent !important;
-  border: none !important;
-  box-shadow: none !important;
-  outline: none !important;
-  -webkit-appearance: none !important;
-}
-.widget-item-idle [data-dark-card],
-.widget-item-idle:hover [data-dark-card],
-.widget-item-active [data-dark-card] {
-  background: transparent !important;
-  border: none !important;
-  box-shadow: none !important;
-  outline: none !important;
-}
-/* Dark-card widgets: content always fully opaque (no idle fade) */
-.widget-item-idle [data-dark-card] .widget-content,
-.widget-item-idle:hover [data-dark-card] .widget-content {
-  opacity: 1 !important;
+  background: hsl(222 47% 12% / 0.7) !important;
 }
 
 /* Widget active (drag/resize): solid opaque background, no glass effect */

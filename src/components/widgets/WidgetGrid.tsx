@@ -273,7 +273,6 @@ export function WidgetGrid({ context, projectKeyColor }: WidgetGridProps) {
 
             const title = t(def.titleKey as Parameters<typeof t>[0]) || def.titleKey;
             const isActive = activeWidgetId === item.i;
-            const isDarkCardWidget = ['worldClock','weather','todayWeather','todayDate','activityChart','progressChart','health','budget','inspiration'].includes(widgetType);
 
             // When active: apply solid opaque background via inline style
             // This guarantees no transparency regardless of CSS specificity
@@ -304,17 +303,16 @@ export function WidgetGrid({ context, projectKeyColor }: WidgetGridProps) {
                   </div>
                 ) : isBarlessWidget(widgetType) ? (
                   // Barless: no title bar, hover-reveal settings/remove buttons at top-right
-                  // Uses opaque gray background (not glass transparency)
                   <div
                     className={cn(
-                      "h-full widget-drag-handle group/barless relative overflow-hidden",
-                      isDarkCardWidget
-                        ? 'border-0 rounded-[var(--widget-radius)] shadow-none'
-                        : 'border border-border/20 rounded-[var(--widget-radius)]',
+                      "h-full widget-drag-handle group/barless relative rounded-[var(--widget-radius)] overflow-hidden",
+                      // Dark-card widgets have their own bg — no border needed
+                      ['worldClock','weather','todayWeather','todayDate','activityChart','progressChart','health','budget','inspiration'].includes(widgetType)
+                        ? 'border-0'
+                        : 'border border-border/60',
                     )}
                     data-widget-id={item.i}
-                    {...(isDarkCardWidget ? { 'data-dark-card': '' } : {})}
-                    style={isDarkCardWidget ? undefined : activeGlassStyle}
+                    style={activeGlassStyle}
                     onMouseDown={() => setActiveWidgetId(item.i)}
                   >
                     {/* Hover-reveal action buttons */}
