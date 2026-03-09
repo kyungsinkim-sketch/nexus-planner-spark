@@ -1,33 +1,54 @@
 /**
  * TeamLoadWidget — 전체 대시보드용 팀 부하 위젯
- * 모든 active 프로젝트를 통합적으로 계산
- * 가중 비율: 채팅(25%) + 파일(20%) + Todo(40%) + 캘린더(15%)
- * 횡 바 그래프로 표시
+ *
+ * 가중 비율 (2026-03-09):
+ * - Todo 할당: 30%
+ * - 캘린더 이벤트: 30%
+ * - 보드 업무(Gantt): 40%
+ *
+ * 이번 주(월~일) 기준으로 계산
  */
 
 import { useMemo } from 'react';
 import { useAppStore } from '@/stores/appStore';
 import { calculateTeamLoad, WEIGHTS } from '@/utils/teamLoadCalculation';
 import { useTranslation } from '@/hooks/useTranslation';
+import { startOfWeek, endOfWeek, parseISO, isWithinInterval } from 'date-fns';
 import type { WidgetDataContext } from '@/types/widget';
 
 const CATEGORY_COLORS = {
-  chat:     { bg: 'bg-blue-500',   light: 'bg-blue-500/20' },
-  file:     { bg: 'bg-emerald-500', light: 'bg-emerald-500/20' },
   todo:     { bg: 'bg-amber-500',  light: 'bg-amber-500/20' },
   calendar: { bg: 'bg-purple-500', light: 'bg-purple-500/20' },
+  board:    { bg: 'bg-blue-500',   light: 'bg-blue-500/20' },
 };
 
 function TeamLoadWidget({ context }: { context: WidgetDataContext }) {
   const { t, language } = useTranslation();
-  const { projects, getUserById, users, messages, files, personalTodos, events } = useAppStore();
+  const { projects, getUserById, users, personalTodos, events, boardTasks } = useAppStore();
+
+  // This week range (Mon-Sun)
+  const weekRange = useMemo(() => {
+    const now = new Date();
+    return {
+      start: startOfWeek(now, { weekStartsOn: 1 }),
+      end: endOfWeek(now, { weekStartsOn: 1 }),
+    };
+  }, []);
+
+  const isInWeek = (dateStr?: string) => {
+    if (!dateStr) return false;
+    try {
+      return isWithinInterval(parseISO(dateStr), weekRange);
+    } catch { return false; }
+  };
 
   const activeProjects = useMemo(
-    () => projects.filter(p => p.status === 'IN_PROGRESS'),
+    () => projects.filter(p => p.status === 'ACTIVE' || p.status === 'IN_PROGRESS' as any),
     [projects]
   );
 
   const loadData = useMemo(() => {
+    // Collect all team members across active projects
     const memberProjectMap = new Map<string, string[]>();
     activeProjects.forEach(project => {
       (project.teamMemberIds || []).forEach(userId => {
@@ -40,24 +61,43 @@ function TeamLoadWidget({ context }: { context: WidgetDataContext }) {
     if (memberProjectMap.size === 0) return [];
 
     const inputs = Array.from(memberProjectMap.entries()).map(([userId, projectIds]) => {
-      const chatMessages = messages.filter(
-        m => projectIds.includes(m.projectId || '') && m.userId === userId && !m.directChatUserId
-      ).length;
-      const fileUploads = files.filter(
-        f => f.uploadedBy === userId
-      ).length;
-      const todosCompleted = personalTodos.filter(
-        td => projectIds.includes(td.projectId || '') && td.assigneeIds?.includes(userId)
-      ).length;
-      const calendarEvents = events.filter(
-        e => projectIds.includes(e.projectId || '') && e.ownerId === userId
+      const projectIdSet = new Set(projectIds);
+
+      // Todos assigned this week
+      const todosAssigned = personalTodos.filter(td =>
+        td.assigneeIds?.includes(userId) &&
+        projectIdSet.has(td.projectId || '') &&
+        (isInWeek(td.createdAt) || isInWeek(td.dueDate))
       ).length;
 
-      return { userId, chatMessages, fileUploads, todosCompleted, calendarEvents };
+      // Calendar events this week
+      const calendarEvents = events.filter(e =>
+        (e.ownerId === userId || e.attendeeIds?.includes(userId)) &&
+        isInWeek(e.startAt)
+      ).length;
+
+      // Board tasks with dates (Gantt items) overlapping this week
+      const boardTaskCount = boardTasks.filter(bt =>
+        bt.ownerId === userId &&
+        bt.startDate && bt.endDate &&
+        bt.status !== 'done' && (
+          isInWeek(bt.startDate) || isInWeek(bt.endDate) ||
+          // Task spans the entire week
+          ((() => {
+            try {
+              const s = parseISO(bt.startDate!);
+              const e = parseISO(bt.endDate!);
+              return s <= weekRange.start && e >= weekRange.end;
+            } catch { return false; }
+          })())
+        )
+      ).length;
+
+      return { userId, todosAssigned, calendarEvents, boardTasks: boardTaskCount };
     });
 
     return calculateTeamLoad(inputs);
-  }, [activeProjects, messages, files, personalTodos, events]);
+  }, [activeProjects, personalTodos, events, boardTasks, weekRange]);
 
   if (loadData.length === 0) {
     return (
@@ -70,10 +110,9 @@ function TeamLoadWidget({ context }: { context: WidgetDataContext }) {
   const sorted = [...loadData].sort((a, b) => b.loadScore - a.loadScore);
   const maxScore = Math.max(...sorted.map(d => d.loadScore), 1);
 
-  // Category labels
   const catLabels = language === 'ko'
-    ? { chat: '채팅', file: '파일', todo: '할일', calendar: '일정' }
-    : { chat: 'Chat', file: 'Files', todo: 'Todo', calendar: 'Calendar' };
+    ? { todo: '할일', calendar: '일정', board: '보드 업무' }
+    : { todo: 'Todos', calendar: 'Events', board: 'Board Tasks' };
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
@@ -96,18 +135,15 @@ function TeamLoadWidget({ context }: { context: WidgetDataContext }) {
           const normalizedPercent = (member.loadScore / maxScore) * 100;
           const isOverloaded = normalizedPercent > 85;
 
-          // Per-category ratios for stacked bar
-          const total = member.chatMessages + member.fileUploads + member.todosCompleted + member.calendarEvents;
+          const total = member.todosAssigned + member.calendarEvents + member.boardTasks;
           const segments = total > 0 ? {
-            chat:     (member.chatMessages / total) * 100,
-            file:     (member.fileUploads / total) * 100,
-            todo:     (member.todosCompleted / total) * 100,
+            todo:     (member.todosAssigned / total) * 100,
             calendar: (member.calendarEvents / total) * 100,
-          } : { chat: 25, file: 25, todo: 25, calendar: 25 };
+            board:    (member.boardTasks / total) * 100,
+          } : { todo: 33, calendar: 33, board: 34 };
 
           return (
             <div key={member.userId} className="space-y-0.5">
-              {/* Name + score row */}
               <div className="flex items-center justify-between px-1">
                 <div className="flex items-center gap-1.5 min-w-0">
                   {user?.avatar ? (
@@ -128,7 +164,6 @@ function TeamLoadWidget({ context }: { context: WidgetDataContext }) {
                 </span>
               </div>
 
-              {/* Stacked horizontal bar */}
               <div className="h-3 bg-muted/40 rounded-full overflow-hidden flex mx-1"
                    style={{ width: `${Math.max(normalizedPercent, 8)}%` }}>
                 {(Object.keys(segments) as Array<keyof typeof segments>).map(key => (

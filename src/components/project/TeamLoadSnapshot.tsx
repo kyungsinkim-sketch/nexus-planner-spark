@@ -1,49 +1,65 @@
 import { useMemo } from 'react';
-import { Project, User } from '@/types/core';
+import { Project } from '@/types/core';
 import { useAppStore } from '@/stores/appStore';
 import { Card } from '@/components/ui/card';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Progress } from '@/components/ui/progress';
-import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { calculateTeamLoad, WEIGHTS } from '@/utils/teamLoadCalculation';
-import { MessageSquare, FileUp, CheckSquare, CalendarDays } from 'lucide-react';
+import { CheckSquare, CalendarDays, LayoutList } from 'lucide-react';
+import { startOfWeek, endOfWeek, parseISO, isWithinInterval } from 'date-fns';
 
 interface TeamLoadSnapshotProps {
   project: Project;
 }
 
 export function TeamLoadSnapshot({ project }: TeamLoadSnapshotProps) {
-  const { getUserById, messages, files, events, personalTodos } = useAppStore();
+  const { getUserById, events, personalTodos, boardTasks } = useAppStore();
 
   const teamMemberIds = project.teamMemberIds || [];
 
-  // Calculate real data per user for THIS project only
+  const weekRange = useMemo(() => {
+    const now = new Date();
+    return {
+      start: startOfWeek(now, { weekStartsOn: 1 }),
+      end: endOfWeek(now, { weekStartsOn: 1 }),
+    };
+  }, []);
+
+  const isInWeek = (dateStr?: string) => {
+    if (!dateStr) return false;
+    try { return isWithinInterval(parseISO(dateStr), weekRange); } catch { return false; }
+  };
+
   const loadData = useMemo(() => {
     if (teamMemberIds.length === 0) return [];
     const inputs = teamMemberIds.map(userId => {
-      // Chat messages in this project
-      const chatMessages = messages.filter(
-        m => m.projectId === project.id && m.userId === userId
-      ).length;
-      // Files uploaded by user (project-scoped if fileGroupId matches)
-      const fileUploads = files.filter(
-        f => f.uploadedBy === userId
-      ).length;
-      // Todos assigned to user IN this project (both pending and completed count as load)
       const todosAssigned = personalTodos.filter(
-        t => t.projectId === project.id && t.assigneeIds?.includes(userId)
-      ).length;
-      // Calendar events owned by user IN this project
-      const calendarEventsCount = events.filter(
-        e => e.projectId === project.id && e.ownerId === userId
+        t => t.projectId === project.id && t.assigneeIds?.includes(userId) &&
+        (isInWeek(t.createdAt) || isInWeek(t.dueDate))
       ).length;
 
-      return { userId, chatMessages, fileUploads, todosCompleted: todosAssigned, calendarEvents: calendarEventsCount };
+      const calendarEvents = events.filter(
+        e => e.projectId === project.id &&
+        (e.ownerId === userId || e.attendeeIds?.includes(userId)) &&
+        isInWeek(e.startAt)
+      ).length;
+
+      const boardTaskCount = boardTasks.filter(bt =>
+        bt.projectId === project.id &&
+        bt.ownerId === userId &&
+        bt.startDate && bt.endDate &&
+        bt.status !== 'done' && (
+          isInWeek(bt.startDate) || isInWeek(bt.endDate) ||
+          (() => { try { const s = parseISO(bt.startDate!); const e = parseISO(bt.endDate!); return s <= weekRange.start && e >= weekRange.end; } catch { return false; } })()
+        )
+      ).length;
+
+      return { userId, todosAssigned, calendarEvents, boardTasks: boardTaskCount };
     });
 
     return calculateTeamLoad(inputs);
-  }, [teamMemberIds, project.id, messages, files, events, personalTodos]);
+  }, [teamMemberIds, project.id, events, personalTodos, boardTasks, weekRange]);
 
   const maxScore = Math.max(...loadData.map(d => d.loadScore), 1);
 
@@ -55,10 +71,9 @@ export function TeamLoadSnapshot({ project }: TeamLoadSnapshotProps) {
         <h3 className="text-lg font-semibold text-foreground">Team Load Snapshot</h3>
       </div>
       <p className="text-xs text-muted-foreground mb-4 flex items-center gap-3 flex-wrap">
-        <span className="flex items-center gap-1"><MessageSquare className="w-3 h-3" /> 채팅 {WEIGHTS.chat * 100}%</span>
-        <span className="flex items-center gap-1"><FileUp className="w-3 h-3" /> 파일 {WEIGHTS.file * 100}%</span>
         <span className="flex items-center gap-1"><CheckSquare className="w-3 h-3" /> 할일 {WEIGHTS.todo * 100}%</span>
         <span className="flex items-center gap-1"><CalendarDays className="w-3 h-3" /> 일정 {WEIGHTS.calendar * 100}%</span>
+        <span className="flex items-center gap-1"><LayoutList className="w-3 h-3" /> 보드 {WEIGHTS.board * 100}%</span>
       </p>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -91,8 +106,7 @@ export function TeamLoadSnapshot({ project }: TeamLoadSnapshotProps) {
                   <TooltipContent>
                     <div className="space-y-1 text-xs">
                       <p className="font-medium">{user.name}</p>
-                      <p>Chat: {member.chatMessages} | File: {member.fileUploads}</p>
-                      <p>Todo: {member.todosCompleted} | Calendar: {member.calendarEvents}</p>
+                      <p>할일: {member.todosAssigned} | 일정: {member.calendarEvents} | 보드: {member.boardTasks}</p>
                       <p className="font-medium">Load: {member.loadScore.toFixed(1)}%</p>
                     </div>
                   </TooltipContent>
