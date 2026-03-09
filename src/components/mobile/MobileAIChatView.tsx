@@ -13,6 +13,7 @@
 
 import { useState, useMemo, useRef, useCallback, useEffect } from 'react';
 import { useAppStore } from '@/stores/appStore';
+import { useWidgetStore } from '@/stores/widgetStore';
 import { useTranslation } from '@/hooks/useTranslation';
 import { format, parseISO, startOfDay, endOfDay, isBefore, isAfter } from 'date-fns';
 import { ko, enUS } from 'date-fns/locale';
@@ -87,10 +88,12 @@ function ProfileCard({
   user,
   language,
   projects,
+  onProjectsClick,
 }: {
   user: ReturnType<typeof useAppStore>['currentUser'];
   language: string;
   projects: ReturnType<typeof useAppStore>['projects'];
+  onProjectsClick?: () => void;
 }) {
   const activeProjectCount = projects.filter(p => p.status === 'ACTIVE').length;
 
@@ -120,7 +123,7 @@ function ProfileCard({
 
         {/* Title */}
         <p className="text-sm text-[#C5C0E8]/70 mt-0.5">
-          {user?.position || (language === 'ko' ? '크리에이티브 전문가' : 'Creative Professional')}
+          {user?.position || user?.role || ''}
         </p>
 
         {/* Department */}
@@ -131,10 +134,10 @@ function ProfileCard({
 
       {/* Stats bar */}
       <div className="flex items-center justify-around px-4 py-3 border-t border-white/5">
-        <div className="flex items-center gap-1.5">
+        <button onClick={onProjectsClick} className="flex items-center gap-1.5 active:opacity-60 transition-opacity">
           <span className="text-[10px] text-white/40">📁</span>
           <span className="text-xs font-medium text-white/70">{activeProjectCount} Projects</span>
-        </div>
+        </button>
         <div className="flex items-center gap-1.5">
           <span className="text-[10px] text-white/40">✦</span>
           <span className="text-xs font-medium text-[#C5C0E8]/70">
@@ -317,7 +320,7 @@ export function MobileAIChatView() {
       <div className="flex-1 min-h-0 overflow-y-auto flex flex-col" style={{ paddingBottom: 'calc(3.5rem + env(safe-area-inset-bottom, 0px) + 60px)' }}>
         {/* ── Sticky header zone: Profile Card + Briefing ── */}
         <div className="shrink-0 px-4 pt-6 pb-2">
-          <ProfileCard user={currentUser} language={language} projects={projects} />
+          <ProfileCard user={currentUser} language={language} projects={projects} onProjectsClick={() => useWidgetStore.getState().setMobileView('projects')} />
           <div className="mt-4">
             <MorningBriefing greeting={greeting} todayEvents={todayEvents} language={language} locale={locale} />
           </div>
