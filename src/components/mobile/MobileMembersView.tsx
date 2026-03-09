@@ -6,8 +6,8 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ArrowLeft, Search, MessageCircle, Phone, Video, ChevronLeft, ChevronRight } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, getDay, isSameDay, addMonths, subMonths } from 'date-fns';
 import { ko, enUS } from 'date-fns/locale';
-import { toast } from 'sonner';
 import { createCall } from '@/services/callService';
+import { useWidgetStore } from '@/stores/widgetStore';
 import type { User } from '@/types/core';
 
 function formatUserInfo(user: User, _language: string): { position: string; team: string } {
@@ -19,6 +19,7 @@ function formatUserInfo(user: User, _language: string): { position: string; team
 
 export function MobileMembersView() {
   const { users, projects, events, boardTasks, currentUser } = useAppStore();
+  const { openMobileDm } = useWidgetStore();
   const { t, language } = useTranslation();
   const locale = language === 'ko' ? ko : enUS;
 
@@ -82,8 +83,8 @@ export function MobileMembersView() {
     return dates;
   }, [userEvents, userTasks]);
 
-  const handleChat = () => {
-    toast.info('Coming soon');
+  const handleChat = (user: User) => {
+    openMobileDm(user.id);
   };
 
   const handleVoiceCall = (user: User) => {
@@ -131,7 +132,7 @@ export function MobileMembersView() {
           {/* Action buttons */}
           <div className="flex justify-center gap-3 mb-8">
             {[
-              { icon: MessageCircle, label: 'Chat', action: handleChat },
+              { icon: MessageCircle, label: 'Chat', action: () => handleChat(selectedUser) },
               { icon: Phone, label: language === 'ko' ? '음성' : 'Call', action: () => handleVoiceCall(selectedUser) },
               { icon: Video, label: 'Video', action: () => handleVideoCall(selectedUser) },
             ].map(({ icon: Icon, label, action }) => (

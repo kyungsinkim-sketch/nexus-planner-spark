@@ -43,6 +43,7 @@ const MobileAIChatView = lazy(() => import('@/components/mobile/MobileAIChatView
 const MobileProjectsView = lazy(() => import('@/components/mobile/MobileProjectsView'));
 const MobileMembersView = lazy(() => import('@/components/mobile/MobileMembersView'));
 const MobileCalendarView = lazy(() => import('@/components/mobile/MobileCalendarView'));
+const MobileDmChatView = lazy(() => import('@/components/mobile/MobileDmChatView'));
 const MobileBottomNav = lazy(() => import('@/components/mobile/MobileBottomNav'));
 
 export function TabLayout() {
@@ -96,6 +97,8 @@ export function TabLayout() {
               <MobileMembersView />
             ) : mobileView === 'calendar' ? (
               <MobileCalendarView />
+            ) : mobileView === 'dm-chat' ? (
+              <MobileDmChatView />
             ) : (
               <MobileAIChatView />
             )}

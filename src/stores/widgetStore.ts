@@ -92,7 +92,7 @@ function debouncedSaveToDB() {
 
 // ─── Store ───────────────────────────────────────────────────────
 
-export type MobileView = 'ai-chat' | 'projects' | 'members' | 'calendar';
+export type MobileView = 'ai-chat' | 'projects' | 'members' | 'calendar' | 'dm-chat';
 
 interface WidgetState {
   // Tab management
@@ -101,6 +101,7 @@ interface WidgetState {
 
   // Mobile navigation
   mobileView: MobileView;
+  mobileDmTargetUserId: string | null;
 
   // Layout configuration
   dashboardWidgetLayout: WidgetLayoutItem[];
@@ -116,6 +117,7 @@ interface WidgetState {
 
   // Mobile navigation
   setMobileView: (view: MobileView) => void;
+  openMobileDm: (userId: string) => void;
 
   // Layout actions
   updateDashboardLayout: (layout: WidgetLayoutItem[]) => void;
@@ -140,12 +142,14 @@ export const useWidgetStore = create<WidgetState>()(
       openTabs: [DASHBOARD_TAB],
       activeTabId: 'dashboard',
       mobileView: 'ai-chat' as MobileView,
+      mobileDmTargetUserId: null,
       dashboardWidgetLayout: DEFAULT_DASHBOARD_LAYOUT,
       projectWidgetLayout: DEFAULT_PROJECT_LAYOUT,
       _layoutLoadedFromDB: false,
 
       // --- Mobile navigation ---
       setMobileView: (view) => set({ mobileView: view }),
+      openMobileDm: (userId) => set({ mobileView: 'dm-chat', mobileDmTargetUserId: userId }),
 
       // --- Tab actions ---
 

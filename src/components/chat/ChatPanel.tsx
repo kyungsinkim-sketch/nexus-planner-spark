@@ -73,9 +73,11 @@ interface SelectedChat {
 interface ChatPanelProps {
   /** When provided (project tab), auto-select the project's default chat room on mount */
   defaultProjectId?: string;
+  /** When provided (mobile DM), auto-select 1:1 chat with this user */
+  defaultDmUserId?: string;
 }
 
-export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
+export function ChatPanel({ defaultProjectId, defaultDmUserId }: ChatPanelProps = {}) {
   const { t, language } = useTranslation();
   const isMobile = useIsMobile();
   const {
@@ -146,6 +148,13 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
       }
     })();
   }, [defaultProjectId, loadChatRooms, getChatRoomsByProject]);
+
+  // Auto-select DM when defaultDmUserId is provided (mobile member → chat)
+  useEffect(() => {
+    if (!defaultDmUserId) return;
+    setSelectedChat({ type: 'dm', id: defaultDmUserId });
+    setSelectedTab('direct');
+  }, [defaultDmUserId]);
 
   // Load group rooms on mount
   useEffect(() => {
