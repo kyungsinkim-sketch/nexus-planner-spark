@@ -436,12 +436,32 @@ export function MobileCalendarView() {
 
   // Events for selected day
   const dayEvents = useMemo(() => {
-    return events
+    const filtered = events
       .filter((ev) => {
         try { return isSameDay(parseISO(ev.startAt), selectedDate); }
         catch { return false; }
       })
       .sort((a, b) => a.startAt.localeCompare(b.startAt));
+
+    // Deduplicate: same title + startAt → merge attendeeIds into first occurrence
+    const seen = new Map<string, typeof filtered[number]>();
+    for (const ev of filtered) {
+      const key = `${ev.title}||${ev.startAt}`;
+      const existing = seen.get(key);
+      if (existing) {
+        // Merge attendeeIds
+        const merged = new Set([
+          ...(existing.attendeeIds || []),
+          existing.ownerId,
+          ...(ev.attendeeIds || []),
+          ev.ownerId,
+        ]);
+        existing.attendeeIds = [...merged];
+      } else {
+        seen.set(key, { ...ev });
+      }
+    }
+    return [...seen.values()];
   }, [events, selectedDate]);
 
   return (
