@@ -558,6 +558,7 @@ export const useAppStore = create<AppState>()(
             await get().loadMessages();
             await get().loadTodos();
             await get().loadImportantNotes();
+            await get().loadGroupRooms();
             useWidgetStore.getState().loadLayoutFromDB();
 
             // Initialize push notifications & cross-device sync
