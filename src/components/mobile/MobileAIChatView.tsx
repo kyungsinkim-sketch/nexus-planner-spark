@@ -295,7 +295,7 @@ export function MobileAIChatView() {
   return (
     <div className="flex flex-col h-full widget-area-bg">
       {/* Scrollable content */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 pt-6 pb-2">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 pt-6 pb-16">
         {/* Widget row: Date + Weather */}
         <div className="flex gap-3 mb-4">
           <DateWidget locale={locale} language={language} />
@@ -401,8 +401,8 @@ export function MobileAIChatView() {
         </div>
       </div>
 
-      {/* ── Input bar (fixed at bottom, above nav) ── */}
-      <div className="shrink-0 px-4 pb-2 pt-2">
+      {/* ── Input bar (fixed just above bottom nav) ── */}
+      <div className="fixed left-0 right-0 z-40 px-4 pb-2 pt-2" style={{ bottom: 'calc(3.5rem + env(safe-area-inset-bottom, 0px) + 8px)' }}>
         <div className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-white/60 dark:bg-white/5 backdrop-blur-xl border border-white/20 dark:border-white/10 shadow-sm">
           <Brain className="w-4 h-4 text-violet-500 shrink-0" />
           <input
