@@ -13,7 +13,7 @@
 
   <!-- PWA Meta Tags -->
   <link rel="manifest" href="/manifest.json" />
-  <meta name="theme-color" content="#0d0d2b" />
+  <meta name="theme-color" content="#0C0A1E" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -88,10 +88,10 @@
 <body>
   <div id="root">
     <!-- Loading screen (replaced by React once hydrated) -->
-    <div style="display:flex;align-items:center;justify-content:center;height:100vh;background:#0d0d2b;">
-      <img src="/icons/rebe-star-original.png" alt="Re-Be" width="80" height="80" style="opacity:0.8;animation:pulse 1.5s ease-in-out infinite" />
+    <div style="display:flex;align-items:center;justify-content:center;height:100vh;background:#0C0A1E;">
+      <img src="/loading-star.png" alt="Re-Be" width="80" height="80" style="animation:spin 3s linear infinite" />
     </div>
-    <style>@keyframes pulse{0%,100%{transform:scale(1);opacity:.8}50%{transform:scale(1.08);opacity:1}}</style>
+    <style>@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}</style>
   </div>
   <script type="module" src="/src/main.tsx"></script>
 
