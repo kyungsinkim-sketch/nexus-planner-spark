@@ -3,8 +3,8 @@ import { useAppStore } from '@/stores/appStore';
 import { useTranslation } from '@/hooks/useTranslation';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { ArrowLeft, Search, MessageCircle, Phone, Video, ChevronLeft, ChevronRight } from 'lucide-react';
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, getDay, isSameDay, addMonths, subMonths } from 'date-fns';
+import { ArrowLeft, Search, MessageCircle, Phone, Video, ChevronLeft, ChevronRight, Clock, CheckSquare } from 'lucide-react';
+import { format, parseISO, startOfMonth, endOfMonth, eachDayOfInterval, getDay, isSameDay, addMonths, subMonths } from 'date-fns';
 import { ko, enUS } from 'date-fns/locale';
 import { createCall } from '@/services/callService';
 import { useWidgetStore } from '@/stores/widgetStore';
@@ -28,6 +28,7 @@ export function MobileMembersView() {
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [calendarMonth, setCalendarMonth] = useState(new Date());
+  const [selectedDay, setSelectedDay] = useState<string | null>(null);
 
   // Filter users by project & search
   const filteredUsers = useMemo(() => {
@@ -94,6 +95,23 @@ export function MobileMembersView() {
   const handleVideoCall = (user: User) => {
     createCall(user.id, undefined, undefined, true);
   };
+
+  // Events & tasks for selected day
+  const selectedDayEvents = useMemo(() => {
+    if (!selectedDay || !selectedUser) return [];
+    return userEvents.filter(e => {
+      try { return e.startAt.slice(0, 10) === selectedDay; } catch { return false; }
+    });
+  }, [selectedDay, userEvents, selectedUser]);
+
+  const selectedDayTasks = useMemo(() => {
+    if (!selectedDay || !selectedUser) return [];
+    return userTasks.filter(t => {
+      if (t.dueDate?.slice(0, 10) === selectedDay) return true;
+      if (t.startDate?.slice(0, 10) === selectedDay) return true;
+      return false;
+    });
+  }, [selectedDay, userTasks, selectedUser]);
 
   // ─── Detail View ─────────────────────────────────────────
   if (selectedUser) {
@@ -184,12 +202,18 @@ export function MobileMembersView() {
                 const dateStr = format(day, 'yyyy-MM-dd');
                 const isToday = isSameDay(day, today);
                 const hasActivity = daysWithActivity.has(dateStr);
+                const isSelected = selectedDay === dateStr;
                 return (
-                  <div key={dateStr} className="flex flex-col items-center py-0.5">
+                  <button
+                    key={dateStr}
+                    onClick={() => setSelectedDay(isSelected ? null : dateStr)}
+                    className="flex flex-col items-center py-0.5"
+                  >
                     <span
                       className={cn(
-                        'w-7 h-7 flex items-center justify-center rounded-full text-xs',
-                        isToday && 'bg-primary text-primary-foreground font-bold',
+                        'w-7 h-7 flex items-center justify-center rounded-full text-xs transition-colors',
+                        isSelected && 'bg-primary text-primary-foreground font-bold',
+                        !isSelected && isToday && 'bg-primary/20 text-primary font-bold',
                       )}
                     >
                       {day.getDate()}
@@ -197,11 +221,48 @@ export function MobileMembersView() {
                     {hasActivity && (
                       <span className="w-1 h-1 rounded-full bg-primary mt-0.5" />
                     )}
-                  </div>
+                  </button>
                 );
               })}
             </div>
           </div>
+
+          {/* Selected day events & tasks */}
+          {selectedDay && (selectedDayEvents.length > 0 || selectedDayTasks.length > 0) && (
+            <div className="mt-4 space-y-3">
+              <h4 className="typo-label font-semibold text-foreground">
+                {format(new Date(selectedDay + 'T00:00:00'), language === 'ko' ? 'M월 d일' : 'MMM d', { locale })}
+              </h4>
+
+              {selectedDayEvents.map(ev => (
+                <div key={ev.id} className="mobile-glass rounded-xl p-3 flex items-start gap-3">
+                  <Clock className="w-4 h-4 text-primary mt-0.5 shrink-0" />
+                  <div className="min-w-0">
+                    <p className="typo-widget-body font-medium text-foreground line-clamp-1">{ev.title}</p>
+                    <p className="typo-micro text-muted-foreground mt-0.5">
+                      {format(parseISO(ev.startAt), 'HH:mm')} – {format(parseISO(ev.endAt), 'HH:mm')}
+                    </p>
+                  </div>
+                </div>
+              ))}
+
+              {selectedDayTasks.map(task => (
+                <div key={task.id} className="mobile-glass rounded-xl p-3 flex items-start gap-3">
+                  <CheckSquare className="w-4 h-4 text-primary mt-0.5 shrink-0" />
+                  <div className="min-w-0">
+                    <p className="typo-widget-body font-medium text-foreground line-clamp-1">{task.title}</p>
+                    <p className="typo-micro text-muted-foreground mt-0.5">{task.status}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {selectedDay && selectedDayEvents.length === 0 && selectedDayTasks.length === 0 && (
+            <p className="mt-4 typo-caption text-muted-foreground text-center">
+              {language === 'ko' ? '이 날에는 일정이 없어요' : 'No events for this day'}
+            </p>
+          )}
         </div>
       </div>
     );
