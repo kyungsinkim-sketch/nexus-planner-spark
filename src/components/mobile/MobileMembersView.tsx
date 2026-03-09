@@ -4,7 +4,7 @@ import { useTranslation } from '@/hooks/useTranslation';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ArrowLeft, Search, MessageCircle, Phone, Video, ChevronLeft, ChevronRight, Clock, CheckSquare, Hash, Users2 } from 'lucide-react';
-import { format, parseISO, startOfMonth, endOfMonth, eachDayOfInterval, getDay, isSameDay, addMonths, subMonths } from 'date-fns';
+import { format, parseISO, startOfMonth, endOfMonth, startOfWeek, addDays, eachDayOfInterval, getDay, isSameDay, isBefore, isAfter, addMonths, subMonths } from 'date-fns';
 import { ko, enUS } from 'date-fns/locale';
 import { createCall } from '@/services/callService';
 import { useWidgetStore } from '@/stores/widgetStore';
@@ -292,6 +292,85 @@ export function MobileMembersView() {
               {language === 'ko' ? '이 날에는 일정이 없어요' : 'No events for this day'}
             </p>
           )}
+
+          {/* ── Weekly Gantt Chart ── */}
+          {(() => {
+            const memberProjects = projects.filter(
+              p => p.status === 'ACTIVE' && selectedUser && p.teamMemberIds?.includes(selectedUser.id)
+            );
+            if (memberProjects.length === 0) return null;
+
+            const weekStart = startOfWeek(new Date(), { weekStartsOn: 1 }); // Monday
+            const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
+
+            return (
+              <div className="mobile-glass rounded-2xl p-4 mt-4">
+                <h4 className="typo-label font-semibold text-foreground mb-3">
+                  {language === 'ko' ? '주간 프로젝트' : 'Weekly Projects'}
+                </h4>
+
+                {/* Week day headers */}
+                <div className="grid grid-cols-[100px_repeat(7,1fr)] gap-0.5 mb-2">
+                  <div />
+                  {weekDays.map(day => (
+                    <div key={day.toISOString()} className="text-center">
+                      <span className={cn(
+                        'text-[9px] font-medium',
+                        isSameDay(day, new Date()) ? 'text-primary font-bold' : 'text-muted-foreground'
+                      )}>
+                        {format(day, 'EEE', { locale })}
+                      </span>
+                      <br />
+                      <span className={cn(
+                        'text-[10px]',
+                        isSameDay(day, new Date()) ? 'text-primary font-bold' : 'text-muted-foreground/70'
+                      )}>
+                        {format(day, 'd')}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Project bars */}
+                <div className="space-y-1.5">
+                  {memberProjects.slice(0, 6).map(proj => {
+                    const projStart = proj.startDate ? parseISO(proj.startDate) : null;
+                    const projEnd = proj.endDate ? parseISO(proj.endDate) : null;
+
+                    return (
+                      <div key={proj.id} className="grid grid-cols-[100px_repeat(7,1fr)] gap-0.5 items-center">
+                        <span className="text-[10px] font-medium text-foreground truncate pr-1">
+                          {proj.title}
+                        </span>
+                        {weekDays.map(day => {
+                          const inRange = projStart && projEnd
+                            && !isBefore(day, projStart) && !isAfter(day, projEnd);
+                          return (
+                            <div key={day.toISOString()} className="h-5 flex items-center justify-center">
+                              {inRange ? (
+                                <div
+                                  className="w-full h-3 rounded-sm"
+                                  style={{ backgroundColor: proj.keyColor || 'hsl(var(--primary))', opacity: 0.7 }}
+                                />
+                              ) : (
+                                <div className="w-full h-3 rounded-sm bg-muted/30" />
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {memberProjects.length > 6 && (
+                  <p className="text-[10px] text-muted-foreground text-center mt-2">
+                    +{memberProjects.length - 6} {language === 'ko' ? '개 더' : 'more'}
+                  </p>
+                )}
+              </div>
+            );
+          })()}
         </div>
       </div>
     );

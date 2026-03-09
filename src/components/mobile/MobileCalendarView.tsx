@@ -435,22 +435,23 @@ export function MobileCalendarView() {
     });
   }, [currentMonth]);
 
-  // Scroll selected date into view when month changes
+  // Scroll strip to start when month changes
   useEffect(() => {
     if (!stripRef.current) return;
-    const selectedBtn = stripRef.current.querySelector('[data-selected="true"]');
-    if (selectedBtn) {
-      selectedBtn.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
-    }
+    stripRef.current.scrollLeft = 0;
   }, [currentMonth]);
 
   const goToPrevMonth = useCallback(() => {
-    setCurrentMonth(m => subMonths(m, 1));
-  }, []);
+    const prev = subMonths(currentMonth, 1);
+    setCurrentMonth(prev);
+    setSelectedDate(startOfMonth(prev));
+  }, [currentMonth]);
 
   const goToNextMonth = useCallback(() => {
-    setCurrentMonth(m => addMonths(m, 1));
-  }, []);
+    const next = addMonths(currentMonth, 1);
+    setCurrentMonth(next);
+    setSelectedDate(startOfMonth(next));
+  }, [currentMonth]);
 
   // Events for selected day
   const dayEvents = useMemo(() => {

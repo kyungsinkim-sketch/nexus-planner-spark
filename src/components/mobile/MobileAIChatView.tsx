@@ -257,7 +257,24 @@ export function MobileAIChatView() {
   const { events, currentUser, users, projects, loadEvents, loadTodos, addTodo } = useAppStore();
   const { language } = useTranslation();
   const locale = language === 'ko' ? ko : enUS;
+  // Seed messages — visual continuity (faded at top via CSS mask)
+  const seedMessages = useMemo<ChatMessage[]>(() => {
+    const now = new Date();
+    const name = currentUser?.name?.split(' ')[0] || '';
+    if (language === 'ko') {
+      return [
+        { id: 'seed_1', role: 'user', content: '오늘 일정 알려줘', timestamp: new Date(now.getTime() - 3600000) },
+        { id: 'seed_2', role: 'assistant', content: `${name}님, 오늘 일정이 정리되었어요. 언제든 물어봐 주세요!`, timestamp: new Date(now.getTime() - 3500000), revealed: undefined },
+      ];
+    }
+    return [
+      { id: 'seed_1', role: 'user', content: "What's on my schedule today?", timestamp: new Date(now.getTime() - 3600000) },
+      { id: 'seed_2', role: 'assistant', content: `${name}, your schedule is all set. Feel free to ask anytime!`, timestamp: new Date(now.getTime() - 3500000), revealed: undefined },
+    ];
+  }, [currentUser, language]);
+
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const allMessages = useMemo(() => [...seedMessages, ...messages], [seedMessages, messages]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -268,7 +285,7 @@ export function MobileAIChatView() {
   // Auto-scroll to bottom on new messages
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, loading]);
+  }, [allMessages, loading]);
 
   const todayEvents = useMemo(() => {
     const now = new Date();
@@ -329,21 +346,14 @@ export function MobileAIChatView() {
         {/* ── Chat messages: flex-1 pushes them to the bottom ── */}
         {/* CSS mask: messages fade to transparent at the top */}
         <div
-          className={cn('flex-1 flex flex-col px-4 relative', messages.length === 0 && !loading ? 'justify-center' : 'justify-end')}
+          className={cn('flex-1 flex flex-col px-4 relative', 'justify-end')}
           style={{
             maskImage: 'linear-gradient(to bottom, transparent 0%, black 48px)',
             WebkitMaskImage: 'linear-gradient(to bottom, transparent 0%, black 48px)',
           }}
         >
           <div className="space-y-2.5">
-            {messages.length === 0 && !loading && (
-              <div className="flex flex-col items-center justify-center h-full min-h-[120px] text-muted-foreground/40 gap-2">
-                <Brain className="w-10 h-10 text-violet-400/30" />
-                <span className="text-xs font-medium text-muted-foreground/40">Brain AI</span>
-              </div>
-            )}
-
-            {messages.map((msg) => {
+            {allMessages.map((msg) => {
               const displayContent = msg.revealed !== undefined ? msg.content.slice(0, msg.revealed) : msg.content;
               const isTyping = msg.revealed !== undefined && msg.revealed < msg.content.length;
 
