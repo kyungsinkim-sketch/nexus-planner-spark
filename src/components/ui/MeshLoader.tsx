@@ -15,7 +15,7 @@ export function MeshLoader({ size = 200, message }: MeshLoaderProps) {
         src="/loading-star.png"
         alt="Loading"
         style={{ width: size, height: size }}
-        className="animate-[spin_30s_linear_infinite]"
+        className="animate-[spin_3000s_linear_infinite]"
       />
       {message && (
         <p className="text-[#C5C0E8]/70 text-sm animate-pulse">{message}</p>
