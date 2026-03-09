@@ -8,23 +8,11 @@ import { format, startOfMonth, endOfMonth, eachDayOfInterval, getDay, isSameDay,
 import { ko, enUS } from 'date-fns/locale';
 import { toast } from 'sonner';
 import { createCall } from '@/services/callService';
-import type { User, UserRole } from '@/types/core';
+import type { User } from '@/types/core';
 
-const ROLE_LABELS_KO: Record<UserRole, string> = {
-  ADMIN: '관리자',
-  MANAGER: '매니저',
-  PRODUCER: '프로듀서',
-  MEMBER: '멤버',
-};
-const ROLE_LABELS_EN: Record<UserRole, string> = {
-  ADMIN: 'Administrator',
-  MANAGER: 'Manager',
-  PRODUCER: 'Producer',
-  MEMBER: 'Member',
-};
-function formatUserInfo(user: User, language: string): string {
-  const roleLabel = language === 'ko' ? ROLE_LABELS_KO[user.role] : ROLE_LABELS_EN[user.role];
-  const parts = [roleLabel, user.department].filter(Boolean);
+function formatUserInfo(user: User, _language: string): string {
+  // Show position (job title) and team from Organization Chart
+  const parts = [user.position, user.team].filter(Boolean);
   return parts.join(' · ');
 }
 

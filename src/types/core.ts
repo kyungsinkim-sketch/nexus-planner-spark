@@ -16,6 +16,10 @@ export interface User {
   lastActiveAt?: string; // ISO timestamp — heartbeat for stale detection
   accessType?: UserAccessType; // 'company' = same domain, 'freelancer' = external
   companyDomain?: string; // e.g. 'paulus.pro' — extracted from email
+  /** Job title from Organization Chart (nexus_employees.position) */
+  position?: string;
+  /** Team name from Organization Chart (nexus_employees.team) */
+  team?: string;
 }
 
 // Creative role for project team members

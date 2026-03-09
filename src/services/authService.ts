@@ -160,16 +160,43 @@ export const getAllUsers = async (): Promise<User[]> => {
         throw new Error('Supabase not configured');
     }
 
-    const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .order('name', { ascending: true });
+    // Load profiles and org chart employees in parallel
+    const [profilesResult, employeesResult] = await Promise.all([
+        supabase.from('profiles').select('*').order('name', { ascending: true }),
+        supabase.from('nexus_employees').select('email,position,department,team'),
+    ]);
 
-    if (error) {
-        throw new Error(handleSupabaseError(error));
+    if (profilesResult.error) {
+        throw new Error(handleSupabaseError(profilesResult.error));
     }
 
-    return data.map(transformUser);
+    // Build email→employee lookup for org chart data
+    const empByEmail = new Map<string, { position: string; department: string; team?: string }>();
+    if (employeesResult.data) {
+        for (const emp of employeesResult.data) {
+            if (emp.email) {
+                empByEmail.set(emp.email.toLowerCase(), {
+                    position: emp.position,
+                    department: emp.department,
+                    team: emp.team || undefined,
+                });
+            }
+        }
+    }
+
+    return profilesResult.data.map(row => {
+        const user = transformUser(row);
+        // Enrich with org chart data via email match
+        if (user.email) {
+            const emp = empByEmail.get(user.email.toLowerCase());
+            if (emp) {
+                user.position = emp.position;
+                user.department = emp.department;
+                user.team = emp.team;
+            }
+        }
+        return user;
+    });
 };
 
 // Update user profile
