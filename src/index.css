@@ -725,6 +725,11 @@
   border: none !important;
   box-shadow: none !important;
 }
+/* Dark-card widgets: content always fully opaque (no idle fade) */
+.widget-item-idle [data-dark-card] .widget-content,
+.widget-item-idle:hover [data-dark-card] .widget-content {
+  opacity: 1 !important;
+}
 
 /* Widget active (drag/resize): solid opaque background, no glass effect */
 .widget-item-active {

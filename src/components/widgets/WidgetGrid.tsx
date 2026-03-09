@@ -141,8 +141,8 @@ export function WidgetGrid({ context, projectKeyColor }: WidgetGridProps) {
   const TARGET_ROWS = 10;
   const computedRowHeight = useMemo(() => {
     if (!containerHeight) return 60;
-    const pad = 16 * 2; // containerPadding top+bottom
-    const gaps = 12 * (TARGET_ROWS - 1); // margin between rows
+    const pad = 12 * 2; // containerPadding top+bottom
+    const gaps = 8 * (TARGET_ROWS - 1); // margin between rows
     return Math.max(30, Math.floor((containerHeight - pad - gaps) / TARGET_ROWS));
   }, [containerHeight]);
 
@@ -237,7 +237,7 @@ export function WidgetGrid({ context, projectKeyColor }: WidgetGridProps) {
           cols={GRID_COLS}
           rowHeight={computedRowHeight}
           margin={GRID_MARGIN}
-          containerPadding={[16, 16]}
+          containerPadding={[12, 12]}
           compactor={verticalCompactor}
           dragConfig={{
             enabled: true,
