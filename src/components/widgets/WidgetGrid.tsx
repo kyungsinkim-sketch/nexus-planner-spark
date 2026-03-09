@@ -273,6 +273,7 @@ export function WidgetGrid({ context, projectKeyColor }: WidgetGridProps) {
 
             const title = t(def.titleKey as Parameters<typeof t>[0]) || def.titleKey;
             const isActive = activeWidgetId === item.i;
+            const isDarkCardWidget = ['worldClock','weather','todayWeather','todayDate','activityChart','progressChart','health','budget','inspiration'].includes(widgetType);
 
             // When active: apply solid opaque background via inline style
             // This guarantees no transparency regardless of CSS specificity
@@ -307,13 +308,12 @@ export function WidgetGrid({ context, projectKeyColor }: WidgetGridProps) {
                   <div
                     className={cn(
                       "h-full widget-drag-handle group/barless relative rounded-[var(--widget-radius)] overflow-hidden",
-                      // Dark-card widgets have their own bg — no border needed
-                      ['worldClock','weather','todayWeather','activityChart','progressChart','health','budget','inspiration'].includes(widgetType)
+                      isDarkCardWidget
                         ? 'border-0'
                         : 'border border-border/60',
                     )}
                     data-widget-id={item.i}
-                    style={activeGlassStyle}
+                    style={isDarkCardWidget ? undefined : activeGlassStyle}
                     onMouseDown={() => setActiveWidgetId(item.i)}
                   >
                     {/* Hover-reveal action buttons */}

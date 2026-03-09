@@ -683,21 +683,24 @@
   background: hsl(222 47% 12% / 0.7) !important;
 }
 
-/* Dark-card widgets (date, weather, world clock, quotes) must NOT get idle glass overlay */
-.widget-item-idle .glass-widget:has(.widget-dark-card),
-.widget-item-idle .glass-widget:has(.date-gradient-bg),
-.widget-item-idle .glass-widget:has(.weather-gradient-bg),
-.widget-item-idle .glass-widget:has(.progress-gradient-bg),
-.widget-item-idle .glass-widget:has(.health-gradient-bg) {
+/* Dark-card widgets: glass-widget wrapper must be invisible (no border/bg/shadow) */
+.glass-widget.glass-widget-dark {
+  background: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+.widget-item-idle .glass-widget.glass-widget-dark {
   background: transparent !important;
   border-color: transparent !important;
   box-shadow: none !important;
 }
-.dark .widget-item-idle .glass-widget:has(.widget-dark-card),
-.dark .widget-item-idle .glass-widget:has(.date-gradient-bg),
-.dark .widget-item-idle .glass-widget:has(.weather-gradient-bg),
-.dark .widget-item-idle .glass-widget:has(.progress-gradient-bg),
-.dark .widget-item-idle .glass-widget:has(.health-gradient-bg) {
+.widget-item-idle:hover .glass-widget.glass-widget-dark {
+  background: transparent !important;
+  box-shadow: none !important;
+}
+.widget-item-active .glass-widget.glass-widget-dark {
   background: transparent !important;
   border-color: transparent !important;
   box-shadow: none !important;
