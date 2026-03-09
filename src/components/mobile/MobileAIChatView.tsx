@@ -280,6 +280,24 @@ export function MobileAIChatView() {
     ];
   }, [currentUser, language]);
 
+  // iOS keyboard offset: track how much the viewport shrinks
+  const [keyboardOffset, setKeyboardOffset] = useState(0);
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const onResize = () => {
+      // Keyboard height = full window height - visual viewport height - viewport offset
+      const offset = window.innerHeight - vv.height - vv.offsetTop;
+      setKeyboardOffset(Math.max(0, offset));
+    };
+    vv.addEventListener('resize', onResize);
+    vv.addEventListener('scroll', onResize);
+    return () => {
+      vv.removeEventListener('resize', onResize);
+      vv.removeEventListener('scroll', onResize);
+    };
+  }, []);
+
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const allMessages = useMemo(() => [...seedMessages, ...messages], [seedMessages, messages]);
   const [input, setInput] = useState('');
@@ -341,7 +359,7 @@ export function MobileAIChatView() {
   return (
     <div className="relative flex flex-col h-full widget-area-bg">
       {/* ═══ Scrollable area: briefing at top, messages grow from bottom ═══ */}
-      <div className="flex-1 min-h-0 overflow-y-auto flex flex-col" style={{ paddingBottom: 'calc(3.5rem + env(safe-area-inset-bottom, 0px) + 60px)' }}>
+      <div className="flex-1 min-h-0 overflow-y-auto flex flex-col" style={{ paddingBottom: keyboardOffset > 0 ? `${keyboardOffset + 60}px` : 'calc(3.5rem + env(safe-area-inset-bottom, 0px) + 60px)' }}>
         {/* ── Sticky header zone: Profile Card + Briefing ── */}
         <div className="shrink-0 px-4 pt-6 pb-2">
           <ProfileCard user={currentUser} language={language} projects={projects} onProjectsClick={() => useWidgetStore.getState().setMobileView('projects')} />
@@ -418,10 +436,10 @@ export function MobileAIChatView() {
         </div>
       </div>
 
-      {/* ═══ Input bar — fixed above bottom nav ═══ */}
+      {/* ═══ Input bar — fixed above bottom nav (or above keyboard) ═══ */}
       <div
-        className="fixed left-0 right-0 z-40 px-4 pb-2 pt-2"
-        style={{ bottom: 'calc(3.5rem + env(safe-area-inset-bottom, 0px) + 8px)' }}
+        className="fixed left-0 right-0 z-40 px-4 pb-2 pt-2 transition-[bottom] duration-100"
+        style={{ bottom: keyboardOffset > 0 ? `${keyboardOffset}px` : 'calc(3.5rem + env(safe-area-inset-bottom, 0px) + 8px)' }}
       >
         <div className="flex items-center gap-2 px-4 py-2.5 rounded-full mobile-glass shadow-lg">
           <Brain className="w-4 h-4 text-violet-500 shrink-0" />
