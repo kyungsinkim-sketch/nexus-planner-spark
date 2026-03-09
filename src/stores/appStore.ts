@@ -548,6 +548,11 @@ export const useAppStore = create<AppState>()(
             set({ currentUser: user, isAuthenticated: true });
             // Load users FIRST so loadProjects can do domain-based filtering
             await get().loadUsers();
+            // Re-enrich currentUser with data from getAllUsers (org name, position, etc.)
+            const enrichedUser = get().users.find(u => u.id === user.id);
+            if (enrichedUser) {
+              set({ currentUser: { ...user, ...enrichedUser } });
+            }
             await get().loadProjects();
             await get().loadEvents();
             await get().loadMessages();

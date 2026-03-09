@@ -139,22 +139,22 @@ export const getCurrentUser = async (): Promise<User | null> => {
             profile.department = emp.department || profile.department;
             profile.team = emp.team || profile.team;
         }
-        // Load organization name via memberships (error-safe)
+        // Load organization name via memberships (error-safe, RLS may block)
         try {
-            const { data: membership } = await supabase
+            const { data: membershipRows } = await supabase
                 .from('memberships')
                 .select('org_id')
                 .eq('user_id', user.id)
-                .limit(1)
-                .single();
-            if (membership?.org_id) {
-                const { data: org } = await supabase
+                .limit(1);
+            const orgId = membershipRows?.[0]?.org_id;
+            if (orgId) {
+                const { data: orgRows } = await supabase
                     .from('organizations')
                     .select('name')
-                    .eq('id', membership.org_id)
-                    .single();
-                if (org?.name) {
-                    profile.organizationName = org.name;
+                    .eq('id', orgId)
+                    .limit(1);
+                if (orgRows?.[0]?.name) {
+                    profile.organizationName = orgRows[0].name;
                 }
             }
         } catch {
