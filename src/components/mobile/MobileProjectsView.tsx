@@ -115,7 +115,7 @@ export function MobileProjectsView() {
   // ═══════════════════════════════════════
   if (step === 'list') {
     return (
-      <div className="h-full overflow-y-auto widget-area-bg">
+      <div className="h-full overflow-y-auto overscroll-none widget-area-bg">
         {/* Header */}
         <div className="flex items-center justify-between px-4 pt-6 pb-3">
           <h1 className="typo-h2 text-foreground font-bold">
@@ -209,7 +209,7 @@ export function MobileProjectsView() {
   // ═══════════════════════════════════════
   if (step === 'detail' && project) {
     return (
-      <div className="h-full overflow-y-auto widget-area-bg">
+      <div className="h-full overflow-y-auto overscroll-none widget-area-bg">
         {/* Back button */}
         <div className="px-4 pt-4 pb-2">
           <button

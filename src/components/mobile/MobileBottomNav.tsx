@@ -143,7 +143,7 @@ export function MobileBottomNav() {
                 className={cn(
                   'flex items-center justify-center gap-2 rounded-full transition-all duration-200',
                   active
-                    ? 'bg-white/90 shadow-sm py-2.5 px-5 flex-1'
+                    ? 'bg-white/90 shadow-sm py-2 px-5'
                     : 'py-2 px-3'
                 )}
               >

@@ -217,6 +217,7 @@
 
   body {
     @apply bg-background text-foreground antialiased;
+    overscroll-behavior: none;
     font-family: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
     font-size: 15px;
     line-height: 1.6;
