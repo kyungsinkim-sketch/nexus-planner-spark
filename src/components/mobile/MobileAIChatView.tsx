@@ -93,7 +93,7 @@ function MorningBriefing({
 }) {
   const topEvent = todayEvents[0];
   return (
-    <div className="bg-white/70 dark:bg-white/5 backdrop-blur-xl border border-white/20 dark:border-white/10 rounded-2xl p-5">
+    <div className="mobile-glass rounded-2xl p-5">
       <h2 className="typo-h2 font-bold text-foreground mb-1">{greeting} ✋</h2>
       <h3 className="typo-h4 font-bold text-foreground mt-5 mb-3">
         {language === 'ko' ? '오늘의 일정' : "Today's Schedule"}
@@ -339,7 +339,7 @@ export function MobileAIChatView() {
         className="fixed left-0 right-0 z-40 px-4 pb-2 pt-2"
         style={{ bottom: 'calc(3.5rem + env(safe-area-inset-bottom, 0px) + 8px)' }}
       >
-        <div className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-white/60 dark:bg-white/5 backdrop-blur-xl border border-white/20 dark:border-white/10 shadow-lg">
+        <div className="flex items-center gap-2 px-4 py-2.5 rounded-full mobile-glass shadow-lg">
           <Brain className="w-4 h-4 text-violet-500 shrink-0" />
           <input
             ref={inputRef}

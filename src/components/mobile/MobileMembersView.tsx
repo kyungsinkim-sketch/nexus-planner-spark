@@ -139,7 +139,7 @@ export function MobileMembersView() {
           </div>
 
           {/* Tasks Schedule / Mini Calendar */}
-          <div className="bg-white/60 dark:bg-white/5 backdrop-blur-xl border border-white/20 dark:border-white/10 rounded-2xl p-4">
+          <div className="mobile-glass rounded-2xl p-4">
             <h4 className="typo-label font-semibold text-foreground mb-3">
               {language === 'ko' ? '일정 & 업무' : 'Tasks Schedule'}
             </h4>
@@ -224,7 +224,7 @@ export function MobileMembersView() {
           value={searchQuery}
           onChange={e => setSearchQuery(e.target.value)}
           placeholder={language === 'ko' ? '이름 검색...' : 'Search name...'}
-          className="w-full rounded-xl bg-white/60 dark:bg-white/5 backdrop-blur-xl border border-white/20 dark:border-white/10 px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-primary"
+          className="w-full rounded-xl mobile-glass px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-primary"
           autoFocus={showSearch}
         />
       </div>
@@ -237,7 +237,7 @@ export function MobileMembersView() {
             'flex-shrink-0 rounded-full px-4 py-1.5 text-xs font-medium transition-colors',
             !filterProjectId
               ? 'bg-primary text-primary-foreground'
-              : 'border border-white/20 dark:border-white/10 text-muted-foreground',
+              : 'mobile-glass text-muted-foreground',
           )}
         >
           All
@@ -250,7 +250,7 @@ export function MobileMembersView() {
               'flex-shrink-0 rounded-full px-4 py-1.5 text-xs font-medium transition-colors whitespace-nowrap',
               filterProjectId === p.id
                 ? 'bg-primary text-primary-foreground'
-                : 'border border-white/20 dark:border-white/10 text-muted-foreground',
+                : 'mobile-glass text-muted-foreground',
             )}
           >
             {p.title}
@@ -265,7 +265,7 @@ export function MobileMembersView() {
             <button
               key={user.id}
               onClick={() => setSelectedUserId(user.id)}
-              className="bg-white/60 dark:bg-white/5 backdrop-blur-xl border border-white/20 dark:border-white/10 rounded-2xl p-4 flex flex-col items-start gap-2 active:scale-[0.98] transition-transform text-left min-h-[140px]"
+              className="mobile-glass rounded-2xl p-4 flex flex-col items-start gap-2 active:scale-[0.98] transition-transform text-left min-h-[140px]"
             >
               <Avatar className="w-12 h-12">
                 <AvatarImage src={user.avatar} />

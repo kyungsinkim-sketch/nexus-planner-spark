@@ -454,6 +454,20 @@
   /* Liquid Glass — Widget cards.
      Background is semi-transparent (via color alpha), but content stays fully opaque.
      NEVER use `opacity` on this element — it would make ALL children transparent. */
+  /* Mobile glass card — uses the same CSS variables as desktop glass-widget
+     but without font-size override. Use on mobile cards, sheets, inputs. */
+  .mobile-glass {
+    background: hsl(var(--glass-bg));
+    backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
+    border: 1px solid hsl(var(--glass-border));
+    box-shadow: var(--glass-shadow), var(--glass-inner-glow);
+    transition: box-shadow 0.2s ease, border-color 0.2s ease;
+  }
+  .mobile-glass:active {
+    box-shadow: var(--glass-shadow-hover), var(--glass-inner-glow);
+  }
+
   .glass-widget {
     background: hsl(var(--glass-bg));
     backdrop-filter: blur(var(--glass-blur)) saturate(1.4);

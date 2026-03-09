@@ -547,8 +547,7 @@ export function MobileCalendarView() {
                   onClick={() => { setEditingEvent(ev); setShowSheet(true); }}
                   className={cn(
                     'relative rounded-2xl p-4 cursor-pointer active:scale-[0.98] transition-transform',
-                    'bg-white/60 dark:bg-white/5 backdrop-blur-xl',
-                    'border border-white/20 dark:border-white/10',
+                    'mobile-glass',
                     'shadow-sm',
                   )}
                 >

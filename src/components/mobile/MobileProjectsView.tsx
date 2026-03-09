@@ -122,7 +122,7 @@ export function MobileProjectsView() {
             {language === 'ko' ? '프로젝트' : 'Projects'}
           </h1>
           {/* Active / Completed toggle */}
-          <div className="flex rounded-full bg-white/50 dark:bg-white/10 backdrop-blur-md border border-white/20 dark:border-white/10 p-0.5">
+          <div className="flex rounded-full mobile-glass p-0.5">
             <button
               onClick={() => setStatusFilter('ACTIVE')}
               className={cn(
@@ -263,8 +263,7 @@ export function MobileProjectsView() {
                 onClick={() => { setWidgetKey(w.key); setStep('widget'); }}
                 className={cn(
                   'relative flex flex-col items-center justify-center gap-3 rounded-2xl',
-                  'bg-white/60 dark:bg-white/5 backdrop-blur-xl',
-                  'border border-white/20 dark:border-white/10',
+                  'mobile-glass',
                   'active:scale-[0.96] transition-transform',
                   'shadow-sm',
                   isTall ? 'py-8' : 'py-5',
@@ -301,7 +300,7 @@ export function MobileProjectsView() {
     return (
       <div className="flex flex-col h-full widget-area-bg">
         {/* Header */}
-        <div className="flex items-center gap-3 px-4 py-3 border-b border-white/10 shrink-0">
+        <div className="flex items-center gap-3 px-4 py-3 border-b border-border/30 shrink-0">
           <button
             onClick={() => { setWidgetKey(null); setStep('detail'); }}
             className="p-1.5 rounded-lg bg-muted hover:bg-muted/80 transition-colors"
