@@ -310,7 +310,7 @@ export function WidgetGrid({ context, projectKeyColor }: WidgetGridProps) {
                       "h-full widget-drag-handle group/barless relative overflow-hidden",
                       isDarkCardWidget
                         ? 'border-0 rounded-[var(--widget-radius)] shadow-none'
-                        : 'border border-border/60 rounded-[var(--widget-radius)]',
+                        : 'border border-border/20 rounded-[var(--widget-radius)]',
                     )}
                     data-widget-id={item.i}
                     {...(isDarkCardWidget ? { 'data-dark-card': '' } : {})}

@@ -95,12 +95,12 @@
     /* Liquid Glass — enhanced */
     --glass-bg: 0 0% 100% / 0.6;
     --glass-bg-hover: 0 0% 100% / 0.75;
-    --glass-border: 0 0% 100% / 0.35;
-    --glass-border-subtle: 220 14% 80% / 0.3;
+    --glass-border: 0 0% 100% / 0.12;
+    --glass-border-subtle: 220 14% 80% / 0.08;
     --glass-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.1), 0 2px 8px 0 rgba(31, 38, 135, 0.06);
     --glass-shadow-hover: 0 12px 40px 0 rgba(31, 38, 135, 0.14), 0 4px 12px 0 rgba(31, 38, 135, 0.08);
     --glass-blur: 24px;
-    --glass-inner-glow: inset 0 1px 0 0 rgba(255, 255, 255, 0.4);
+    --glass-inner-glow: inset 0 1px 0 0 rgba(255, 255, 255, 0.15);
     --widget-radius: 1.25rem;
     --widget-gap: 12px;
   }
@@ -156,8 +156,8 @@
     /* Liquid Glass (dark) — enhanced */
     --glass-bg: 222 47% 10% / 0.6;
     --glass-bg-hover: 222 47% 12% / 0.75;
-    --glass-border: 0 0% 100% / 0.08;
-    --glass-border-subtle: 0 0% 100% / 0.05;
+    --glass-border: 0 0% 100% / 0.05;
+    --glass-border-subtle: 0 0% 100% / 0.03;
     --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3), 0 2px 8px 0 rgba(0, 0, 0, 0.15);
     --glass-shadow-hover: 0 12px 40px 0 rgba(0, 0, 0, 0.35), 0 4px 12px 0 rgba(0, 0, 0, 0.2);
     --glass-inner-glow: inset 0 1px 0 0 rgba(255, 255, 255, 0.06);
@@ -195,8 +195,8 @@
       /* Glass — monochrome, ultra-subtle */
       --glass-bg: 0 0% 6% / 0.7;
       --glass-bg-hover: 0 0% 8% / 0.8;
-      --glass-border: 0 0% 100% / 0.06;
-      --glass-border-subtle: 0 0% 100% / 0.03;
+      --glass-border: 0 0% 100% / 0.04;
+      --glass-border-subtle: 0 0% 100% / 0.02;
       --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
       --glass-shadow-hover: 0 12px 40px 0 rgba(0, 0, 0, 0.5);
       --glass-inner-glow: inset 0 1px 0 0 rgba(255, 255, 255, 0.04);
