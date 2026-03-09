@@ -99,6 +99,7 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
   const [newGroupRoomName, setNewGroupRoomName] = useState('');
   const [newGroupRoomDescription, setNewGroupRoomDescription] = useState('');
   const [selectedGroupMemberIds, setSelectedGroupMemberIds] = useState<string[]>([]);
+  const [groupMemberSearch, setGroupMemberSearch] = useState('');
   const [selectedChat, setSelectedChat] = useState<SelectedChat | null>(null);
   const [newMessage, setNewMessage] = useState('');
   const [expandedProjectId, setExpandedProjectId] = useState<string | null>(null);
@@ -1424,6 +1425,7 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
     setNewGroupRoomName('');
     setNewGroupRoomDescription('');
     setSelectedGroupMemberIds([]);
+    setGroupMemberSearch('');
     setShowCreateGroupRoom(false);
   };
 
@@ -2220,17 +2222,33 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
               />
             </div>
             <div className="space-y-2">
-              <Label>{t('inviteMembers') || '멤버 초대'} <span className="text-muted-foreground text-xs">({selectedGroupMemberIds.length}{t('selected') || '명 선택'})</span></Label>
+              <Label>{t('inviteMembers')} <span className="text-muted-foreground text-xs">({selectedGroupMemberIds.length}{t('selected')})</span></Label>
               <div className="relative mb-2">
                 <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
                 <Input
-                  placeholder={t('searchMembers') || '멤버 검색...'}
+                  placeholder={t('searchMembers')}
                   className="pl-8 h-8 text-xs"
-                  id="groupMemberSearch"
+                  value={groupMemberSearch}
+                  onChange={(e) => setGroupMemberSearch(e.target.value)}
                 />
               </div>
               <div className="space-y-1 max-h-[200px] overflow-y-auto">
-                {users.filter(u => u.id !== currentUser?.id).map((user) => (
+                {users
+                  .filter(u => u.id !== currentUser?.id)
+                  .filter(u => {
+                    if (!groupMemberSearch.trim()) return true;
+                    const q = groupMemberSearch.toLowerCase();
+                    return u.name?.toLowerCase().includes(q) || u.department?.toLowerCase().includes(q) || u.email?.toLowerCase().includes(q);
+                  })
+                  .sort((a, b) => {
+                    // Korean names first, then English
+                    const aIsKorean = /^[\uAC00-\uD7AF]/.test(a.name || '');
+                    const bIsKorean = /^[\uAC00-\uD7AF]/.test(b.name || '');
+                    if (aIsKorean && !bIsKorean) return -1;
+                    if (!aIsKorean && bIsKorean) return 1;
+                    return (a.name || '').localeCompare(b.name || '', 'ko');
+                  })
+                  .map((user) => (
                   <div key={user.id} className="flex items-center gap-2 py-1">
                     <Checkbox
                       id={`group-member-${user.id}`}
@@ -2245,7 +2263,7 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
                     />
                     <Avatar className="w-5 h-5">
                       {user.avatar && <AvatarImage src={user.avatar} />}
-                      <AvatarFallback className="text-xs">{user.name?.[0]}</AvatarFallback>
+                      <AvatarFallback className="text-xs bg-primary text-primary-foreground">{user.name?.[0]}</AvatarFallback>
                     </Avatar>
                     <Label htmlFor={`group-member-${user.id}`} className="text-sm font-normal cursor-pointer flex-1">
                       {user.name} {user.department && <span className="text-muted-foreground">({user.department})</span>}
@@ -2256,7 +2274,7 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => { setShowCreateGroupRoom(false); setSelectedGroupMemberIds([]); setNewGroupRoomName(''); setNewGroupRoomDescription(''); }}>
+            <Button variant="outline" onClick={() => { setShowCreateGroupRoom(false); setSelectedGroupMemberIds([]); setNewGroupRoomName(''); setNewGroupRoomDescription(''); setGroupMemberSearch(''); }}>
               {t('cancel')}
             </Button>
             <Button onClick={handleCreateGroupRoom} disabled={!newGroupRoomName.trim() || selectedGroupMemberIds.length === 0}>
