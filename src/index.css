@@ -93,7 +93,7 @@
     --shadow-card: 0 2px 8px -2px hsl(220 14% 10% / 0.05), 0 1px 3px -1px hsl(220 14% 10% / 0.04);
 
     /* Liquid Glass — enhanced */
-    --glass-bg: 0 0% 100% / 0.6;
+    --glass-bg: 0 0% 100% / 0.45;
     --glass-bg-hover: 0 0% 100% / 0.75;
     --glass-border: 0 0% 100% / 0.12;
     --glass-border-subtle: 220 14% 80% / 0.08;
@@ -683,20 +683,22 @@
   opacity: 1;
 }
 .widget-item-idle .glass-widget {
-  background: hsl(0 0% 100% / 0.5) !important;
+  background: hsl(var(--glass-bg)) !important;
   backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
   -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
-  box-shadow: var(--glass-shadow), var(--glass-inner-glow) !important;
+  box-shadow: none !important;
+  border-color: transparent !important;
 }
 .dark .widget-item-idle .glass-widget {
-  background: hsl(222 47% 10% / 0.5) !important;
+  background: hsl(var(--glass-bg)) !important;
 }
 .widget-item-idle:hover .glass-widget {
-  background: hsl(0 0% 100% / 0.7) !important;
-  box-shadow: var(--glass-shadow-hover), var(--glass-inner-glow) !important;
+  background: hsl(var(--glass-bg-hover)) !important;
+  box-shadow: var(--glass-shadow), var(--glass-inner-glow) !important;
+  border-color: hsl(var(--glass-border)) !important;
 }
 .dark .widget-item-idle:hover .glass-widget {
-  background: hsl(222 47% 12% / 0.7) !important;
+  background: hsl(var(--glass-bg-hover)) !important;
 }
 
 /* Frameless widgets (chat, calendar): same idle treatment as normal widgets.
