@@ -119,10 +119,12 @@ export function ChatPanel({ defaultProjectId }: ChatPanelProps = {}) {
   }, [currentUser?.email]);
 
   // Auto-select project chat room when defaultProjectId is provided (widget on project tab)
-  const hasAutoSelectedRef = useRef(false);
+  const prevDefaultProjectIdRef = useRef<string | undefined>(undefined);
   useEffect(() => {
-    if (!defaultProjectId || hasAutoSelectedRef.current) return;
-    hasAutoSelectedRef.current = true;
+    if (!defaultProjectId) return;
+    // Skip if already selected for this project
+    if (prevDefaultProjectIdRef.current === defaultProjectId) return;
+    prevDefaultProjectIdRef.current = defaultProjectId;
 
     // Load chat rooms for the project, then auto-select the default room
     (async () => {
