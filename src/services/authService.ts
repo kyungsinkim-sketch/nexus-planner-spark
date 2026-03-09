@@ -139,22 +139,26 @@ export const getCurrentUser = async (): Promise<User | null> => {
             profile.department = emp.department || profile.department;
             profile.team = emp.team || profile.team;
         }
-        // Load organization name via memberships
-        const { data: membership } = await supabase
-            .from('memberships')
-            .select('org_id')
-            .eq('user_id', user.id)
-            .limit(1)
-            .single();
-        if (membership?.org_id) {
-            const { data: org } = await supabase
-                .from('organizations')
-                .select('name')
-                .eq('id', membership.org_id)
+        // Load organization name via memberships (error-safe)
+        try {
+            const { data: membership } = await supabase
+                .from('memberships')
+                .select('org_id')
+                .eq('user_id', user.id)
+                .limit(1)
                 .single();
-            if (org?.name) {
-                profile.organizationName = org.name;
+            if (membership?.org_id) {
+                const { data: org } = await supabase
+                    .from('organizations')
+                    .select('name')
+                    .eq('id', membership.org_id)
+                    .single();
+                if (org?.name) {
+                    profile.organizationName = org.name;
+                }
             }
+        } catch {
+            // RLS may block — silently skip
         }
     }
     return profile;
@@ -188,10 +192,12 @@ export const getAllUsers = async (): Promise<User[]> => {
         throw new Error('Supabase not configured');
     }
 
-    // Load profiles and org chart employees in parallel
-    const [profilesResult, employeesResult] = await Promise.all([
+    // Load profiles, org chart employees, and org memberships in parallel
+    const [profilesResult, employeesResult, membershipsResult, orgsResult] = await Promise.all([
         supabase.from('profiles').select('*').order('name', { ascending: true }),
         supabase.from('nexus_employees').select('email,position,department,team'),
+        supabase.from('memberships').select('user_id,org_id'),
+        supabase.from('organizations').select('id,name'),
     ]);
 
     if (profilesResult.error) {
@@ -212,6 +218,18 @@ export const getAllUsers = async (): Promise<User[]> => {
         }
     }
 
+    // Build org lookup: orgId → name, userId → orgId
+    const orgNameMap = new Map<string, string>();
+    if (orgsResult.data) {
+        for (const org of orgsResult.data) orgNameMap.set(org.id, org.name);
+    }
+    const userOrgMap = new Map<string, string>();
+    if (membershipsResult.data) {
+        for (const m of membershipsResult.data) {
+            if (!userOrgMap.has(m.user_id)) userOrgMap.set(m.user_id, m.org_id);
+        }
+    }
+
     return profilesResult.data.map(row => {
         const user = transformUser(row);
         // Enrich with org chart data via email match
@@ -223,6 +241,9 @@ export const getAllUsers = async (): Promise<User[]> => {
                 user.team = emp.team;
             }
         }
+        // Enrich with organization name
+        const orgId = userOrgMap.get(user.id);
+        if (orgId) user.organizationName = orgNameMap.get(orgId);
         return user;
     });
 };
