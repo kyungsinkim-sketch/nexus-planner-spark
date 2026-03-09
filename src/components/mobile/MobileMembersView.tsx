@@ -93,12 +93,12 @@ export function MobileMembersView() {
     const startDay = getDay(startOfMonth(calendarMonth)); // 0=Sun
 
     return (
-      <div className="flex flex-col h-full bg-background">
+      <div className="flex flex-col h-full widget-area-bg">
         {/* Header */}
         <div className="flex items-center gap-3 px-4 pt-4 pb-2">
           <button
             onClick={() => setSelectedUserId(null)}
-            className="p-2 -ml-2 rounded-lg bg-muted hover:bg-muted/80 transition-colors"
+            className="p-2 -ml-2 rounded-lg bg-white/40 dark:bg-white/10 hover:bg-white/60 dark:hover:bg-white/15 transition-colors"
           >
             <ArrowLeft className="w-5 h-5 text-foreground" />
           </button>
@@ -200,7 +200,7 @@ export function MobileMembersView() {
 
   // ─── List View ───────────────────────────────────────────
   return (
-    <div className="flex flex-col h-full bg-background">
+    <div className="flex flex-col h-full widget-area-bg">
       {/* Header */}
       <div className="flex items-center justify-between px-4 pt-4 pb-2">
         <h2 className="typo-h2">Members</h2>

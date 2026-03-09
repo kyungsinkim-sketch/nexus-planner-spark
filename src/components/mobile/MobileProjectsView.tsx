@@ -53,6 +53,12 @@ export function MobileProjectsView() {
   const [step, setStep] = useState<ViewStep>('list');
   const [projectId, setProjectId] = useState<string | null>(null);
   const [widgetKey, setWidgetKey] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<'ACTIVE' | 'COMPLETED'>('ACTIVE');
+
+  const filteredProjects = useMemo(
+    () => projects.filter((p) => p.status === statusFilter),
+    [projects, statusFilter],
+  );
 
   const project = useMemo(() => projects.find((p) => p.id === projectId), [projects, projectId]);
 
@@ -109,27 +115,54 @@ export function MobileProjectsView() {
   // ═══════════════════════════════════════
   if (step === 'list') {
     return (
-      <div className="h-full overflow-y-auto bg-background">
+      <div className="h-full overflow-y-auto widget-area-bg">
         {/* Header */}
-        <div className="px-4 pt-6 pb-3">
+        <div className="flex items-center justify-between px-4 pt-6 pb-3">
           <h1 className="typo-h2 text-foreground font-bold">
             {language === 'ko' ? '프로젝트' : 'Projects'}
           </h1>
+          {/* Active / Completed toggle */}
+          <div className="flex rounded-full bg-white/50 dark:bg-white/10 backdrop-blur-md border border-white/20 dark:border-white/10 p-0.5">
+            <button
+              onClick={() => setStatusFilter('ACTIVE')}
+              className={cn(
+                'px-3 py-1 rounded-full text-xs font-semibold transition-all',
+                statusFilter === 'ACTIVE'
+                  ? 'bg-primary text-primary-foreground shadow-sm'
+                  : 'text-muted-foreground',
+              )}
+            >
+              {language === 'ko' ? '활성' : 'Active'}
+            </button>
+            <button
+              onClick={() => setStatusFilter('COMPLETED')}
+              className={cn(
+                'px-3 py-1 rounded-full text-xs font-semibold transition-all',
+                statusFilter === 'COMPLETED'
+                  ? 'bg-primary text-primary-foreground shadow-sm'
+                  : 'text-muted-foreground',
+              )}
+            >
+              {language === 'ko' ? '완료' : 'Done'}
+            </button>
+          </div>
         </div>
 
         {/* Project cards */}
         <div className="flex flex-col gap-3 px-4 pb-24">
-          {projects.length === 0 ? (
+          {filteredProjects.length === 0 ? (
             <div className="flex items-center justify-center py-20">
               <p className="typo-widget-sub text-muted-foreground">
-                {language === 'ko' ? '프로젝트가 없습니다' : 'No projects'}
+                {statusFilter === 'ACTIVE'
+                  ? (language === 'ko' ? '활성 프로젝트가 없습니다' : 'No active projects')
+                  : (language === 'ko' ? '완료된 프로젝트가 없습니다' : 'No completed projects')}
               </p>
             </div>
           ) : (
-            projects.map((p, idx) => (
-              <div key={p.id} className="relative" style={{ marginBottom: idx < projects.length - 1 ? -8 : 0 }}>
+            filteredProjects.map((p, idx) => (
+              <div key={p.id} className="relative" style={{ marginBottom: idx < filteredProjects.length - 1 ? -8 : 0 }}>
                 {/* Stacked card shadow layers behind */}
-                {idx < projects.length - 1 && (
+                {idx < filteredProjects.length - 1 && (
                   <>
                     <div
                       className="absolute left-2 right-2 rounded-2xl"
@@ -176,7 +209,7 @@ export function MobileProjectsView() {
   // ═══════════════════════════════════════
   if (step === 'detail' && project) {
     return (
-      <div className="h-full overflow-y-auto bg-background">
+      <div className="h-full overflow-y-auto widget-area-bg">
         {/* Back button */}
         <div className="px-4 pt-4 pb-2">
           <button
@@ -266,9 +299,9 @@ export function MobileProjectsView() {
     const wDef = WIDGET_DEFS.find((w) => w.key === widgetKey);
 
     return (
-      <div className="flex flex-col h-full bg-background">
+      <div className="flex flex-col h-full widget-area-bg">
         {/* Header */}
-        <div className="flex items-center gap-3 px-4 py-3 border-b border-border shrink-0">
+        <div className="flex items-center gap-3 px-4 py-3 border-b border-white/10 shrink-0">
           <button
             onClick={() => { setWidgetKey(null); setStep('detail'); }}
             className="p-1.5 rounded-lg bg-muted hover:bg-muted/80 transition-colors"

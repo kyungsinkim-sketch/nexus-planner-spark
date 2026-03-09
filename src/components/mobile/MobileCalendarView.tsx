@@ -233,7 +233,7 @@ function NewEventSheet({ date, onClose }: { date: Date; onClose: () => void }) {
     <div className="fixed inset-0 z-50 flex items-end" onClick={onClose}>
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
       <div
-        className="relative w-full bg-card rounded-t-3xl p-5 pb-8 max-h-[85vh] overflow-y-auto border-t border-border"
+        className="relative w-full bg-card rounded-t-3xl p-5 pb-24 max-h-[85vh] overflow-y-auto border-t border-border"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -339,21 +339,21 @@ export function MobileCalendarView() {
   }, [events, selectedDate]);
 
   return (
-    <div className="flex flex-col h-full bg-background">
+    <div className="flex flex-col h-full widget-area-bg">
       {/* ── Top bar ── */}
       <div className="shrink-0 flex items-center justify-between px-4 pt-5 pb-2">
+        <div>
+          <h1 className="typo-h3 font-bold text-foreground">
+            {format(selectedDate, 'MMMM', { locale })}
+          </h1>
+          <p className="typo-caption text-muted-foreground">{format(selectedDate, 'yyyy')}</p>
+        </div>
         <button
           onClick={() => setShowNew(true)}
           className="w-10 h-10 flex items-center justify-center rounded-full bg-primary text-primary-foreground shadow-md active:scale-95 transition-transform"
         >
           <Plus className="w-5 h-5" strokeWidth={2.5} />
         </button>
-        <div className="text-right">
-          <h1 className="typo-h3 font-bold text-foreground">
-            {format(selectedDate, 'MMMM', { locale })}
-          </h1>
-          <p className="typo-caption text-muted-foreground">{format(selectedDate, 'yyyy')}</p>
-        </div>
       </div>
 
       {/* ── Date strip ── */}

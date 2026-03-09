@@ -226,7 +226,7 @@ export function MobileAIChatView() {
   }, [input, loading, currentUser, language]);
 
   return (
-    <div className="relative flex flex-col h-full bg-background">
+    <div className="relative flex flex-col h-full widget-area-bg">
       {/* Scrollable content */}
       <div className="flex-1 overflow-y-auto px-4 pt-6 pb-20">
         {/* Widget row: Date + Weather */}
