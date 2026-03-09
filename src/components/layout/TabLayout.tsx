@@ -28,7 +28,7 @@
  * the project's thumbnail as a full background image.
  */
 
-import { useMemo, lazy, Suspense } from 'react';
+import { useMemo, useEffect, useRef, lazy, Suspense } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { TabBar } from './TabBar';
 import { WidgetGrid } from '@/components/widgets/WidgetGrid';
@@ -51,6 +51,19 @@ export function TabLayout() {
   const { projects, projectCreateDialogOpen, setProjectCreateDialogOpen } = useAppStore();
   const location = useLocation();
   const isMobile = useIsMobile();
+
+  // Scroll mobile container to top on view change / initial load
+  const mobileContainerRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (isMobile && mobileContainerRef.current) {
+      mobileContainerRef.current.scrollTop = 0;
+    }
+  }, [isMobile, mobileView]);
+
+  // Also scroll window to top on mobile load
+  useEffect(() => {
+    if (isMobile) window.scrollTo(0, 0);
+  }, [isMobile, mobileView]);
 
   // If we're on a sub-route (admin, settings), show Outlet instead of widget grid
   const isSubRoute = location.pathname !== '/';
@@ -83,7 +96,7 @@ export function TabLayout() {
       ) : isMobile ? (
         /* ====== MOBILE LAYOUT ====== */
         /* pb-14 accounts for fixed bottom nav bar height */
-        <div className="flex-1 min-h-0 overflow-hidden pb-14">
+        <div ref={mobileContainerRef} className="flex-1 min-h-0 overflow-hidden pb-14">
           <Suspense fallback={
             <div className="flex items-center justify-center h-full">
               <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
