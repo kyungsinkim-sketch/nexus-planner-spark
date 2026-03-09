@@ -14,11 +14,11 @@ import { useState, useMemo, useRef, useCallback, useEffect } from 'react';
 import { useAppStore } from '@/stores/appStore';
 import { useTranslation } from '@/hooks/useTranslation';
 import { cn } from '@/lib/utils';
-import { Plus, MoreHorizontal, X, Clock, Trash2 } from 'lucide-react';
+import { Plus, MoreHorizontal, X, Clock, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
-  format, parseISO, startOfDay, endOfDay, addDays, subDays,
-  startOfWeek, eachDayOfInterval, isSameDay,
+  format, parseISO, startOfDay, endOfDay, addDays, subDays, addMonths, subMonths,
+  startOfMonth, endOfMonth, eachDayOfInterval, isSameDay,
 } from 'date-fns';
 import { ko, enUS } from 'date-fns/locale';
 import { toast } from 'sonner';
@@ -419,39 +419,37 @@ export function MobileCalendarView() {
   const { language } = useTranslation();
 
   const [selectedDate, setSelectedDate] = useState(() => new Date());
+  const [currentMonth, setCurrentMonth] = useState(() => new Date());
   const [showSheet, setShowSheet] = useState(false);
   const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
   const stripRef = useRef<HTMLDivElement>(null);
-  const touchStartX = useRef<number | null>(null);
 
   const locale = language === 'ko' ? ko : enUS;
   const today = useMemo(() => new Date(), []);
 
-  // Show days starting from selected date (selected = leftmost)
+  // Days of current month
   const visibleDays = useMemo(() => {
     return eachDayOfInterval({
-      start: selectedDate,
-      end: addDays(selectedDate, 30),
+      start: startOfMonth(currentMonth),
+      end: endOfMonth(currentMonth),
     });
-  }, [selectedDate]);
+  }, [currentMonth]);
 
-  // Swipe gesture handlers for month navigation
-  const handleTouchStart = useCallback((e: React.TouchEvent) => {
-    touchStartX.current = e.touches[0].clientX;
+  // Scroll selected date into view when month changes
+  useEffect(() => {
+    if (!stripRef.current) return;
+    const selectedBtn = stripRef.current.querySelector('[data-selected="true"]');
+    if (selectedBtn) {
+      selectedBtn.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+    }
+  }, [currentMonth]);
+
+  const goToPrevMonth = useCallback(() => {
+    setCurrentMonth(m => subMonths(m, 1));
   }, []);
 
-  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
-    if (touchStartX.current === null) return;
-    const diff = e.changedTouches[0].clientX - touchStartX.current;
-    touchStartX.current = null;
-    if (Math.abs(diff) < 60) return; // minimum swipe distance
-    if (diff > 0) {
-      // Swipe right → go 1 month back
-      setSelectedDate(d => subDays(d, 30));
-    } else {
-      // Swipe left → go 1 month forward
-      setSelectedDate(d => addDays(d, 30));
-    }
+  const goToNextMonth = useCallback(() => {
+    setCurrentMonth(m => addMonths(m, 1));
   }, []);
 
   // Events for selected day
@@ -497,28 +495,30 @@ export function MobileCalendarView() {
 
   return (
     <div className="flex flex-col h-full widget-area-bg">
-      {/* ── Top bar ── */}
-      <div className="shrink-0 flex items-center justify-between px-4 pt-5 pb-2">
-        <div>
+      {/* ── Top bar: ← Month Year → centered ── */}
+      <div className="shrink-0 flex items-center justify-center gap-3 px-4 pt-5 pb-2">
+        <button
+          onClick={goToPrevMonth}
+          className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-accent active:scale-95 transition-all"
+        >
+          <ChevronLeft className="w-5 h-5 text-muted-foreground" />
+        </button>
+        <div className="text-center min-w-[140px]">
           <h1 className="typo-h3 font-bold text-foreground">
-            {format(selectedDate, 'MMMM', { locale })}
+            {format(currentMonth, 'MMMM', { locale })}
           </h1>
-          <p className="typo-caption text-muted-foreground">{format(selectedDate, 'yyyy')}</p>
+          <p className="typo-caption text-muted-foreground">{format(currentMonth, 'yyyy')}</p>
         </div>
         <button
-          onClick={() => { setEditingEvent(null); setShowSheet(true); }}
-          className="w-10 h-10 flex items-center justify-center rounded-full bg-primary text-primary-foreground shadow-md active:scale-95 transition-transform"
+          onClick={goToNextMonth}
+          className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-accent active:scale-95 transition-all"
         >
-          <Plus className="w-5 h-5" strokeWidth={2.5} />
+          <ChevronRight className="w-5 h-5 text-muted-foreground" />
         </button>
       </div>
 
-      {/* ── Date strip (swipe left/right for month) ── */}
-      <div
-        className="shrink-0 px-2 py-2"
-        onTouchStart={handleTouchStart}
-        onTouchEnd={handleTouchEnd}
-      >
+      {/* ── Date strip (horizontal scroll within month) ── */}
+      <div className="shrink-0 px-2 py-2">
         <div ref={stripRef} className="flex gap-0.5 overflow-x-auto scrollbar-none py-1">
           {visibleDays.map((day) => {
             const isSelected = isSameDay(day, selectedDate);
@@ -526,6 +526,7 @@ export function MobileCalendarView() {
             return (
               <button
                 key={day.toISOString()}
+                data-selected={isSelected}
                 onClick={() => setSelectedDate(day)}
                 className={cn(
                   'flex flex-col items-center min-w-[42px] py-2 px-1 rounded-2xl transition-all',
@@ -620,6 +621,15 @@ export function MobileCalendarView() {
           </div>
         )}
       </div>
+
+      {/* ── FAB: + button bottom-right above nav ── */}
+      <button
+        onClick={() => { setEditingEvent(null); setShowSheet(true); }}
+        className="fixed right-4 z-40 w-14 h-14 flex items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg active:scale-90 transition-transform"
+        style={{ bottom: 'calc(4.5rem + env(safe-area-inset-bottom, 0px))' }}
+      >
+        <Plus className="w-6 h-6" strokeWidth={2.5} />
+      </button>
 
       {/* ── Event Sheet (create / view+edit) ── */}
       {showSheet && (
