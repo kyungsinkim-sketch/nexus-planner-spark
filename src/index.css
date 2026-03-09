@@ -701,11 +701,16 @@
    No special override — they follow the standard .widget-item-idle .glass-widget rules. */
 
 /* Barless dark-card wrapper: data-dark-card attribute nukes ALL decoration */
+[data-dark-card],
+[data-dark-card] *:not(.widget-dark-card):not(.date-gradient-bg):not(.weather-gradient-bg):not(.progress-gradient-bg):not(.health-gradient-bg) {
+  border-color: transparent !important;
+}
 [data-dark-card] {
   background: transparent !important;
   border: none !important;
   box-shadow: none !important;
   outline: none !important;
+  -webkit-appearance: none !important;
 }
 .widget-item-idle [data-dark-card],
 .widget-item-idle:hover [data-dark-card],
@@ -713,6 +718,7 @@
   background: transparent !important;
   border: none !important;
   box-shadow: none !important;
+  outline: none !important;
 }
 /* Dark-card widgets: content always fully opaque (no idle fade) */
 .widget-item-idle [data-dark-card] .widget-content,
