@@ -9,7 +9,6 @@ import { TabLayout } from "@/components/layout";
 import { useAppStore } from "@/stores/appStore";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import { Loader2 } from "lucide-react";
-import { MeshLoader } from "@/components/ui/MeshLoader";
 import { playNotificationSound } from "@/services/notificationSoundService";
 import { useChatNotifications } from "@/hooks/useChatNotifications";
 import { useTodoSync } from "@/hooks/useTodoSync";
@@ -60,11 +59,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   }, [currentUser?.id]);
 
   if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-[#0C0A1E]">
-        <MeshLoader size={140} />
-      </div>
-    );
+    return null; // global-loader in index.html stays visible
   }
 
   if (!isAuthenticated) {
@@ -179,12 +174,20 @@ const App = () => {
     return () => window.removeEventListener('storage', handleStorageChange);
   }, []);
 
+  // Hide global loader once initialization is complete
+  useEffect(() => {
+    if (!isInitializing) {
+      const loader = document.getElementById('global-loader');
+      if (loader) {
+        loader.style.transition = 'opacity 0.4s ease';
+        loader.style.opacity = '0';
+        setTimeout(() => loader.remove(), 400);
+      }
+    }
+  }, [isInitializing]);
+
   if (isInitializing && isSupabaseConfigured()) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-[#0C0A1E]">
-        <MeshLoader size={180} message="Loading Re-Be.io..." />
-      </div>
-    );
+    return null; // global-loader in index.html stays visible
   }
 
   return (
@@ -193,11 +196,7 @@ const App = () => {
         <TooltipProvider>
           <Toaster />
           <Sonner />
-          <Suspense fallback={
-            <div className="min-h-screen flex items-center justify-center bg-[#0C0A1E]">
-              <MeshLoader size={140} />
-            </div>
-          }>
+          <Suspense fallback={null}>
             <ErrorBoundary>
               <ActiveCallOverlay />
               <IncomingCallDialog />
