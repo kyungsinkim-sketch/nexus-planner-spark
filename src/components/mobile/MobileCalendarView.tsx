@@ -14,7 +14,8 @@ import { useState, useMemo, useRef, useCallback, useEffect } from 'react';
 import { useAppStore } from '@/stores/appStore';
 import { useTranslation } from '@/hooks/useTranslation';
 import { cn } from '@/lib/utils';
-import { Plus, MoreHorizontal, X, Clock } from 'lucide-react';
+import { Plus, MoreHorizontal, X, Clock, Trash2 } from 'lucide-react';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   format, parseISO, startOfDay, endOfDay, addDays, subDays,
   startOfWeek, eachDayOfInterval, isSameDay,
@@ -220,7 +221,7 @@ function EventSheet({
   event?: CalendarEvent | null;
   onClose: () => void;
 }) {
-  const { projects, currentUser, updateEvent, deleteEvent } = useAppStore();
+  const { projects, users, currentUser, updateEvent, deleteEvent } = useAppStore();
   const { language } = useTranslation();
   const isEdit = !!event;
 
@@ -341,6 +342,39 @@ function EventSheet({
           rows={2}
           className="w-full bg-muted rounded-xl px-4 py-3 typo-body outline-none focus:ring-2 focus:ring-primary/30 placeholder:text-muted-foreground resize-none mb-4"
         />
+
+        {/* Attendees (edit mode only) */}
+        {isEdit && event && (() => {
+          const attendeeList = [
+            ...(event.ownerId ? [event.ownerId] : []),
+            ...(event.attendeeIds || []),
+          ].filter((id, i, arr) => arr.indexOf(id) === i) // dedupe
+            .map(id => users.find(u => u.id === id))
+            .filter(Boolean) as typeof users;
+
+          if (attendeeList.length === 0) return null;
+
+          return (
+            <div className="mb-4">
+              <p className="typo-caption text-muted-foreground mb-2 uppercase tracking-wide">
+                {language === 'ko' ? '참석자' : 'Attendees'}
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {attendeeList.map(u => (
+                  <div key={u.id} className="flex items-center gap-2 bg-muted rounded-full pl-1 pr-3 py-1">
+                    <Avatar className="w-6 h-6">
+                      <AvatarImage src={u.avatar} />
+                      <AvatarFallback className="text-[10px] bg-primary/10 text-primary font-medium">
+                        {u.name?.slice(-2) || '?'}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span className="text-xs font-medium text-foreground">{u.name}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })()}
 
         {/* Clock Dial */}
         <ClockDialPicker startHour={startH} endHour={endH} onStartChange={setStartH} onEndChange={setEndH} />
