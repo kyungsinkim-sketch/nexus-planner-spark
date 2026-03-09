@@ -697,19 +697,8 @@
   background: hsl(222 47% 12% / 0.7) !important;
 }
 
-/* Frameless widgets (chat, calendar): keep original glass bg in idle state */
-.widget-item-idle .glass-widget.glass-widget-opaque {
-  background: hsl(var(--glass-bg)) !important;
-}
-.dark .widget-item-idle .glass-widget.glass-widget-opaque {
-  background: hsl(var(--glass-bg)) !important;
-}
-.widget-item-idle:hover .glass-widget.glass-widget-opaque {
-  background: hsl(var(--glass-bg-hover)) !important;
-}
-.dark .widget-item-idle:hover .glass-widget.glass-widget-opaque {
-  background: hsl(var(--glass-bg-hover)) !important;
-}
+/* Frameless widgets (chat, calendar): same idle treatment as normal widgets.
+   No special override — they follow the standard .widget-item-idle .glass-widget rules. */
 
 /* Barless dark-card wrapper: data-dark-card attribute nukes ALL decoration */
 [data-dark-card] {
