@@ -313,7 +313,8 @@ export function WidgetGrid({ context, projectKeyColor }: WidgetGridProps) {
                         : 'border border-border/60 rounded-[var(--widget-radius)]',
                     )}
                     data-widget-id={item.i}
-                    style={isDarkCardWidget ? { background: 'transparent', boxShadow: 'none', border: 'none' } : activeGlassStyle}
+                    {...(isDarkCardWidget ? { 'data-dark-card': '' } : {})}
+                    style={isDarkCardWidget ? undefined : activeGlassStyle}
                     onMouseDown={() => setActiveWidgetId(item.i)}
                   >
                     {/* Hover-reveal action buttons */}

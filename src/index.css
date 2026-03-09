@@ -697,24 +697,7 @@
   background: hsl(222 47% 12% / 0.7) !important;
 }
 
-/* Dark-card widgets: glass-widget wrapper must be invisible (no border/bg/shadow) */
-.glass-widget.glass-widget-dark {
-  background: transparent !important;
-  border-color: transparent !important;
-  box-shadow: none !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-}
-.widget-item-idle .glass-widget.glass-widget-dark {
-  background: transparent !important;
-  border-color: transparent !important;
-  box-shadow: none !important;
-}
-.widget-item-idle:hover .glass-widget.glass-widget-dark {
-  background: transparent !important;
-  box-shadow: none !important;
-}
-/* Frameless widgets (chat, calendar): keep original bg in idle state */
+/* Frameless widgets (chat, calendar): keep original glass bg in idle state */
 .widget-item-idle .glass-widget.glass-widget-opaque {
   background: hsl(var(--glass-bg)) !important;
 }
@@ -728,9 +711,18 @@
   background: hsl(var(--glass-bg-hover)) !important;
 }
 
-.widget-item-active .glass-widget.glass-widget-dark {
+/* Barless dark-card wrapper: data-dark-card attribute nukes ALL decoration */
+[data-dark-card] {
   background: transparent !important;
-  border-color: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+.widget-item-idle [data-dark-card],
+.widget-item-idle:hover [data-dark-card],
+.widget-item-active [data-dark-card] {
+  background: transparent !important;
+  border: none !important;
   box-shadow: none !important;
 }
 
