@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useCallback } from 'react';
 import { useAppStore } from '@/stores/appStore';
 import { useTranslation } from '@/hooks/useTranslation';
 import { cn } from '@/lib/utils';
@@ -51,6 +51,30 @@ export function MobileMembersView() {
     () => (selectedUserId ? users.find(u => u.id === selectedUserId) ?? null : null),
     [selectedUserId, users],
   );
+
+  // Sorted users for swipe navigation (가나다순)
+  const sortedUsers = useMemo(() => [...users].sort((a, b) => a.name.localeCompare(b.name, 'ko')), [users]);
+
+  // Swipe gesture for member navigation
+  const memberTouchStartX = useRef<number | null>(null);
+  const handleMemberTouchStart = useCallback((e: React.TouchEvent) => {
+    memberTouchStartX.current = e.touches[0].clientX;
+  }, []);
+  const handleMemberTouchEnd = useCallback((e: React.TouchEvent) => {
+    if (memberTouchStartX.current === null || !selectedUserId) return;
+    const diff = e.changedTouches[0].clientX - memberTouchStartX.current;
+    memberTouchStartX.current = null;
+    if (Math.abs(diff) < 60) return;
+    const idx = sortedUsers.findIndex(u => u.id === selectedUserId);
+    if (idx === -1) return;
+    if (diff > 0 && idx > 0) {
+      // Swipe right → previous member
+      setSelectedUserId(sortedUsers[idx - 1].id);
+    } else if (diff < 0 && idx < sortedUsers.length - 1) {
+      // Swipe left → next member
+      setSelectedUserId(sortedUsers[idx + 1].id);
+    }
+  }, [selectedUserId, sortedUsers]);
 
   // Events & tasks for selected user
   const userEvents = useMemo(() => {
@@ -119,7 +143,11 @@ export function MobileMembersView() {
     const startDay = getDay(startOfMonth(calendarMonth)); // 0=Sun
 
     return (
-      <div className="flex flex-col h-full widget-area-bg overflow-y-auto">
+      <div
+        className="flex flex-col h-full widget-area-bg overflow-y-auto"
+        onTouchStart={handleMemberTouchStart}
+        onTouchEnd={handleMemberTouchEnd}
+      >
         {/* Header */}
         <div className="flex items-center gap-3 px-4 pt-4 pb-2">
           <button

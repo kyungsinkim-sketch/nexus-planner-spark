@@ -85,6 +85,14 @@ export function useChatNotifications() {
           // conversation pair. This prevents cross-user AI response leakage.
           if (msg.user_id === BRAIN_BOT_USER_ID && msg.direct_chat_user_id) return;
 
+          // Skip group chat messages if user is not a member of the room
+          if (msg.room_id && !msg.project_id) {
+            const state = useAppStore.getState();
+            const groupRooms = state.getGroupRooms();
+            const isMember = groupRooms.some(r => r.id === msg.room_id);
+            if (!isMember) return; // Not in this group chat — skip notification
+          }
+
           // Add to global store (creates appNotification for bell icon if not in active chat)
           // addMessage() handles duplicate prevention and active-chat suppression internally
           const chatMessage = rowToChatMessage(msg);

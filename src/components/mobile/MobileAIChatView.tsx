@@ -81,6 +81,71 @@ function WeatherWidget({ language }: { language: string }) {
   );
 }
 
+// ── Profile Card (replaces Date/Weather widgets) ─────────────
+
+function ProfileCard({
+  user,
+  language,
+  projects,
+}: {
+  user: ReturnType<typeof useAppStore>['currentUser'];
+  language: string;
+  projects: ReturnType<typeof useAppStore>['projects'];
+}) {
+  const activeProjectCount = projects.filter(p => p.status === 'ACTIVE').length;
+
+  return (
+    <div className="rounded-2xl overflow-hidden" style={{ background: 'linear-gradient(145deg, #0C0A1E 0%, #1a1535 50%, #0C0A1E 100%)' }}>
+      {/* Company logo top-left */}
+      <div className="flex items-center gap-2 px-4 pt-4 pb-2">
+        <img src="/loading-star.png" alt="Re-Be" className="w-7 h-7" />
+        <div>
+          <p className="text-[10px] text-[#C5C0E8]/60 tracking-wide">Re-Be.io</p>
+          <p className="text-xs font-semibold text-white/90">Creative Identity</p>
+        </div>
+      </div>
+
+      {/* User photo center */}
+      <div className="flex flex-col items-center py-4">
+        <div className="w-20 h-20 rounded-full overflow-hidden border-2 border-[#C5C0E8]/20 bg-white/10 flex items-center justify-center">
+          {user?.avatar ? (
+            <img src={user.avatar} alt={user?.name} className="w-full h-full object-cover" />
+          ) : (
+            <span className="text-3xl text-white/60">{user?.name?.[0] || '?'}</span>
+          )}
+        </div>
+
+        {/* Name */}
+        <h3 className="text-lg font-bold text-white mt-3">{user?.name || 'User'}</h3>
+
+        {/* Title */}
+        <p className="text-sm text-[#C5C0E8]/70 mt-0.5">
+          {user?.position || (language === 'ko' ? '크리에이티브 전문가' : 'Creative Professional')}
+        </p>
+
+        {/* Department */}
+        {user?.team && (
+          <p className="text-xs text-[#C5C0E8]/50 mt-0.5">{user.team}</p>
+        )}
+      </div>
+
+      {/* Stats bar */}
+      <div className="flex items-center justify-around px-4 py-3 border-t border-white/5">
+        <div className="flex items-center gap-1.5">
+          <span className="text-[10px] text-white/40">📁</span>
+          <span className="text-xs font-medium text-white/70">{activeProjectCount} Projects</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="text-[10px] text-white/40">✦</span>
+          <span className="text-xs font-medium text-[#C5C0E8]/70">
+            {user?.role === 'ADMIN' ? 'Admin' : 'Member'}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Morning Briefing ─────────────────────────────────────────
 
 function MorningBriefing({
@@ -250,13 +315,12 @@ export function MobileAIChatView() {
     <div className="relative flex flex-col h-full widget-area-bg">
       {/* ═══ Scrollable area: briefing at top, messages grow from bottom ═══ */}
       <div className="flex-1 min-h-0 overflow-y-auto flex flex-col" style={{ paddingBottom: 'calc(3.5rem + env(safe-area-inset-bottom, 0px) + 60px)' }}>
-        {/* ── Sticky header zone: Date + Weather + Briefing ── */}
+        {/* ── Sticky header zone: Profile Card + Briefing ── */}
         <div className="shrink-0 px-4 pt-6 pb-2">
-          <div className="flex gap-3 mb-4">
-            <DateWidget language={language} />
-            <WeatherWidget language={language} />
+          <ProfileCard user={currentUser} language={language} projects={projects} />
+          <div className="mt-4">
+            <MorningBriefing greeting={greeting} todayEvents={todayEvents} language={language} locale={locale} />
           </div>
-          <MorningBriefing greeting={greeting} todayEvents={todayEvents} language={language} locale={locale} />
         </div>
 
         {/* ── Chat messages: flex-1 pushes them to the bottom ── */}

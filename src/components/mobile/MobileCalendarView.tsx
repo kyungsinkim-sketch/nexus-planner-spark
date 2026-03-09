@@ -419,20 +419,40 @@ export function MobileCalendarView() {
   const { language } = useTranslation();
 
   const [selectedDate, setSelectedDate] = useState(() => new Date());
-  const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date(), { weekStartsOn: 0 }));
   const [showSheet, setShowSheet] = useState(false);
   const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
+  const stripRef = useRef<HTMLDivElement>(null);
+  const touchStartX = useRef<number | null>(null);
 
   const locale = language === 'ko' ? ko : enUS;
   const today = useMemo(() => new Date(), []);
 
-  // Show 3 weeks of days for horizontal scroll
+  // Show days starting from selected date (selected = leftmost)
   const visibleDays = useMemo(() => {
     return eachDayOfInterval({
-      start: subDays(weekStart, 7),
-      end: addDays(weekStart, 20),
+      start: selectedDate,
+      end: addDays(selectedDate, 30),
     });
-  }, [weekStart]);
+  }, [selectedDate]);
+
+  // Swipe gesture handlers for month navigation
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+  }, []);
+
+  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
+    if (touchStartX.current === null) return;
+    const diff = e.changedTouches[0].clientX - touchStartX.current;
+    touchStartX.current = null;
+    if (Math.abs(diff) < 60) return; // minimum swipe distance
+    if (diff > 0) {
+      // Swipe right → go 1 month back
+      setSelectedDate(d => subDays(d, 30));
+    } else {
+      // Swipe left → go 1 month forward
+      setSelectedDate(d => addDays(d, 30));
+    }
+  }, []);
 
   // Events for selected day
   const dayEvents = useMemo(() => {
@@ -493,9 +513,13 @@ export function MobileCalendarView() {
         </button>
       </div>
 
-      {/* ── Date strip ── */}
-      <div className="shrink-0 px-2 py-2">
-        <div className="flex gap-0.5 overflow-x-auto scrollbar-none py-1">
+      {/* ── Date strip (swipe left/right for month) ── */}
+      <div
+        className="shrink-0 px-2 py-2"
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+      >
+        <div ref={stripRef} className="flex gap-0.5 overflow-x-auto scrollbar-none py-1">
           {visibleDays.map((day) => {
             const isSelected = isSameDay(day, selectedDate);
             const isToday = isSameDay(day, today);
