@@ -13,7 +13,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Sparkles, FolderKanban, Users, Calendar, Sun, Moon, Languages, Settings } from 'lucide-react';
 
 const tabs: { id: MobileView; icon: typeof Sparkles; labelKo: string; labelEn: string }[] = [
-  { id: 'ai-chat', icon: Sparkles, labelKo: 'RE-BE AI', labelEn: 'RE-BE AI' },
+  { id: 'ai-chat', icon: Sparkles, labelKo: 'My Agent', labelEn: 'My Agent' },
   { id: 'projects', icon: FolderKanban, labelKo: '프로젝트', labelEn: 'Projects' },
   { id: 'members', icon: Users, labelKo: '멤버', labelEn: 'Members' },
   { id: 'calendar', icon: Calendar, labelKo: '캘린더', labelEn: 'Calendar' },
