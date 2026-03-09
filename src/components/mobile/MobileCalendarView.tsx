@@ -199,19 +199,45 @@ function ClockDialPicker({
 }
 
 // ════════════════════════════════════════
-// New Event Bottom Sheet
+// Event Bottom Sheet (Create + View/Edit)
 // ════════════════════════════════════════
 
-function NewEventSheet({ date, onClose }: { date: Date; onClose: () => void }) {
-  const { projects, currentUser } = useAppStore();
+function dateToHour(iso: string): number {
+  try {
+    const d = parseISO(iso);
+    return snap15(d.getHours() + d.getMinutes() / 60);
+  } catch { return 9; }
+}
+
+import type { CalendarEvent } from '@/types/core';
+
+function EventSheet({
+  date,
+  event,
+  onClose,
+}: {
+  date: Date;
+  event?: CalendarEvent | null;
+  onClose: () => void;
+}) {
+  const { projects, currentUser, updateEvent, deleteEvent } = useAppStore();
   const { language } = useTranslation();
-  const [title, setTitle] = useState('');
-  const [desc, setDesc] = useState('');
-  const [projId, setProjId] = useState<string | null>(null);
-  const [startH, setStartH] = useState(9);
-  const [endH, setEndH] = useState(10);
+  const isEdit = !!event;
+
+  const [title, setTitle] = useState(event?.title || '');
+  const [desc, setDesc] = useState((event as any)?.description || '');
+  const [projId, setProjId] = useState<string | null>(event?.projectId || null);
+  const [startH, setStartH] = useState(event ? dateToHour(event.startAt) : 9);
+  const [endH, setEndH] = useState(event ? dateToHour(event.endAt) : 10);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const locale = language === 'ko' ? ko : enUS;
+
+  const buildDatetime = (h: number) => {
+    const d = new Date(date);
+    d.setHours(Math.floor(h), Math.round((h % 1) * 60), 0, 0);
+    return d.toISOString();
+  };
 
   const handleSave = async () => {
     if (!title.trim()) {
@@ -220,12 +246,37 @@ function NewEventSheet({ date, onClose }: { date: Date; onClose: () => void }) {
     }
     setSaving(true);
     try {
-      toast.success(language === 'ko' ? '일정이 생성되었습니다' : 'Event created');
+      if (isEdit && event) {
+        await updateEvent(event.id, {
+          title: title.trim(),
+          startAt: buildDatetime(startH),
+          endAt: buildDatetime(endH),
+          projectId: projId || undefined,
+        });
+        toast.success(language === 'ko' ? '일정이 수정되었습니다' : 'Event updated');
+      } else {
+        // Create — currently placeholder (same as before)
+        toast.success(language === 'ko' ? '일정이 생성되었습니다' : 'Event created');
+      }
       onClose();
     } catch {
       toast.error(language === 'ko' ? '저장 실패' : 'Failed');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!event) return;
+    setDeleting(true);
+    try {
+      await deleteEvent(event.id);
+      toast.success(language === 'ko' ? '일정이 삭제되었습니다' : 'Event deleted');
+      onClose();
+    } catch {
+      toast.error(language === 'ko' ? '삭제 실패' : 'Delete failed');
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -239,7 +290,9 @@ function NewEventSheet({ date, onClose }: { date: Date; onClose: () => void }) {
         {/* Header */}
         <div className="flex items-center justify-between mb-3">
           <h2 className="typo-h3 font-semibold">
-            {language === 'ko' ? '새 일정' : 'New Event'}
+            {isEdit
+              ? (language === 'ko' ? '일정 상세' : 'Event Detail')
+              : (language === 'ko' ? '새 일정' : 'New Event')}
           </h2>
           <button onClick={onClose} className="p-1.5 rounded-full hover:bg-muted transition-colors">
             <X className="w-5 h-5 text-muted-foreground" />
@@ -292,14 +345,32 @@ function NewEventSheet({ date, onClose }: { date: Date; onClose: () => void }) {
         {/* Clock Dial */}
         <ClockDialPicker startHour={startH} endHour={endH} onStartChange={setStartH} onEndChange={setEndH} />
 
-        {/* Save button */}
-        <button
-          onClick={handleSave}
-          disabled={saving}
-          className="w-full mt-4 py-3 rounded-2xl bg-primary text-primary-foreground font-semibold typo-body disabled:opacity-50 active:scale-[0.98] transition-transform"
-        >
-          {saving ? (language === 'ko' ? '저장 중...' : 'Saving...') : (language === 'ko' ? '저장' : 'Save')}
-        </button>
+        {/* Action buttons */}
+        <div className="flex gap-3 mt-4">
+          {isEdit && (
+            <button
+              onClick={handleDelete}
+              disabled={deleting || saving}
+              className="flex-1 py-3 rounded-2xl border border-destructive/30 text-destructive font-semibold typo-body disabled:opacity-50 active:scale-[0.98] transition-transform"
+            >
+              {deleting ? (language === 'ko' ? '삭제 중...' : 'Deleting...') : (language === 'ko' ? '삭제' : 'Delete')}
+            </button>
+          )}
+          <button
+            onClick={handleSave}
+            disabled={saving || deleting}
+            className={cn(
+              'py-3 rounded-2xl bg-primary text-primary-foreground font-semibold typo-body disabled:opacity-50 active:scale-[0.98] transition-transform',
+              isEdit ? 'flex-1' : 'w-full',
+            )}
+          >
+            {saving
+              ? (language === 'ko' ? '저장 중...' : 'Saving...')
+              : isEdit
+                ? (language === 'ko' ? '수정' : 'Update')
+                : (language === 'ko' ? '저장' : 'Save')}
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -315,7 +386,8 @@ export function MobileCalendarView() {
 
   const [selectedDate, setSelectedDate] = useState(() => new Date());
   const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date(), { weekStartsOn: 0 }));
-  const [showNew, setShowNew] = useState(false);
+  const [showSheet, setShowSheet] = useState(false);
+  const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
 
   const locale = language === 'ko' ? ko : enUS;
   const today = useMemo(() => new Date(), []);
@@ -349,7 +421,7 @@ export function MobileCalendarView() {
           <p className="typo-caption text-muted-foreground">{format(selectedDate, 'yyyy')}</p>
         </div>
         <button
-          onClick={() => setShowNew(true)}
+          onClick={() => { setEditingEvent(null); setShowSheet(true); }}
           className="w-10 h-10 flex items-center justify-center rounded-full bg-primary text-primary-foreground shadow-md active:scale-95 transition-transform"
         >
           <Plus className="w-5 h-5" strokeWidth={2.5} />
@@ -405,7 +477,7 @@ export function MobileCalendarView() {
               {language === 'ko' ? '이 날에는 일정이 없어요' : 'No events for this day'}
             </p>
             <button
-              onClick={() => setShowNew(true)}
+              onClick={() => { setEditingEvent(null); setShowSheet(true); }}
               className="mt-3 typo-caption text-primary font-medium"
             >
               {language === 'ko' ? '+ 새 일정 추가' : '+ Add new event'}
@@ -418,8 +490,9 @@ export function MobileCalendarView() {
               return (
                 <div
                   key={ev.id}
+                  onClick={() => { setEditingEvent(ev); setShowSheet(true); }}
                   className={cn(
-                    'relative rounded-2xl p-4',
+                    'relative rounded-2xl p-4 cursor-pointer active:scale-[0.98] transition-transform',
                     'bg-white/60 dark:bg-white/5 backdrop-blur-xl',
                     'border border-white/20 dark:border-white/10',
                     'shadow-sm',
@@ -460,8 +533,14 @@ export function MobileCalendarView() {
         )}
       </div>
 
-      {/* ── New Event Sheet ── */}
-      {showNew && <NewEventSheet date={selectedDate} onClose={() => setShowNew(false)} />}
+      {/* ── Event Sheet (create / view+edit) ── */}
+      {showSheet && (
+        <EventSheet
+          date={selectedDate}
+          event={editingEvent}
+          onClose={() => { setShowSheet(false); setEditingEvent(null); }}
+        />
+      )}
     </div>
   );
 }
