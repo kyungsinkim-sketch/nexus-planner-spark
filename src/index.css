@@ -451,11 +451,7 @@
     box-shadow: var(--glass-inner-glow), 0 4px 12px 0 color-mix(in srgb, var(--project-accent, hsl(var(--primary))) 35%, transparent);
   }
 
-  /* Liquid Glass — Widget cards.
-     Background is semi-transparent (via color alpha), but content stays fully opaque.
-     NEVER use `opacity` on this element — it would make ALL children transparent. */
-  /* Mobile glass card — uses the same CSS variables as desktop glass-widget
-     but without font-size override. Use on mobile cards, sheets, inputs. */
+  /* Mobile glass card */
   .mobile-glass {
     background: hsl(var(--glass-bg));
     backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
@@ -468,6 +464,9 @@
     box-shadow: var(--glass-shadow-hover), var(--glass-inner-glow);
   }
 
+  /* Liquid Glass — Widget cards.
+     Background is semi-transparent (via color alpha), but content stays fully opaque.
+     NEVER use `opacity` on this element — it would make ALL children transparent. */
   .glass-widget {
     background: hsl(var(--glass-bg));
     backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
