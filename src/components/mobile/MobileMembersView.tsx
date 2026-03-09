@@ -343,10 +343,11 @@ export function MobileMembersView() {
                     const barColor = group?.color || project?.keyColor || 'hsl(var(--primary))';
 
                     return (
-                      <div key={task.id} className="grid grid-cols-[100px_repeat(7,1fr)] gap-0.5 items-center">
-                        <span className="text-[10px] font-medium text-foreground truncate pr-1" title={task.title}>
-                          {task.title}
-                        </span>
+                      <div key={task.id} className="grid grid-cols-[100px_repeat(7,1fr)] gap-0.5 items-center min-h-[32px]">
+                        <div className="truncate pr-1" title={`${project?.title || ''} — ${task.title}`}>
+                          <span className="text-[9px] text-muted-foreground truncate block leading-tight">{project?.title || ''}</span>
+                          <span className="text-[10px] font-medium text-foreground truncate block leading-tight">{task.title}</span>
+                        </div>
                         {weekDays.map(day => {
                           const inRange = !isBefore(day, taskStart) && !isAfter(day, taskEnd);
                           return (
