@@ -28,7 +28,7 @@
  * the project's thumbnail as a full background image.
  */
 
-import { useMemo, useEffect, useRef, lazy, Suspense } from 'react';
+import { useMemo, useEffect, useRef, useState, lazy, Suspense } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { TabBar } from './TabBar';
 import { WidgetGrid } from '@/components/widgets/WidgetGrid';
@@ -65,24 +65,36 @@ export function TabLayout() {
     if (isMobile) window.scrollTo(0, 0);
   }, [isMobile, mobileView]);
 
-  // iOS Safari: keyboard dismiss leaves white space — force scroll back
+  // iOS Safari: resize layout to match visual viewport (keyboard push-up)
+  const [viewportHeight, setViewportHeight] = useState<number | null>(null);
   useEffect(() => {
     if (!isMobile) return;
-    const handleFocusOut = () => {
-      // Small delay to let keyboard animation finish
-      setTimeout(() => window.scrollTo(0, 0), 100);
-    };
-    // visualViewport resize fires when keyboard opens/closes on iOS
     const vv = window.visualViewport;
-    const handleResize = () => {
-      // When viewport height returns to full → keyboard closed
-      setTimeout(() => window.scrollTo(0, 0), 50);
+    if (!vv) return;
+
+    const onResize = () => {
+      // Set container height to visual viewport height so keyboard pushes content up
+      setViewportHeight(vv.height);
+      // Scroll to keep focused element visible
+      window.scrollTo(0, vv.offsetTop);
+    };
+
+    vv.addEventListener('resize', onResize);
+    vv.addEventListener('scroll', onResize);
+
+    // Also handle focus out — reset to full height
+    const handleFocusOut = () => {
+      setTimeout(() => {
+        setViewportHeight(null);
+        window.scrollTo(0, 0);
+      }, 100);
     };
     document.addEventListener('focusout', handleFocusOut);
-    vv?.addEventListener('resize', handleResize);
+
     return () => {
+      vv.removeEventListener('resize', onResize);
+      vv.removeEventListener('scroll', onResize);
       document.removeEventListener('focusout', handleFocusOut);
-      vv?.removeEventListener('resize', handleResize);
     };
   }, [isMobile]);
 
@@ -108,7 +120,7 @@ export function TabLayout() {
   const isProjectTab = activeTab?.type === 'project' && activeTab?.projectId;
 
   return (
-    <div className="h-dvh flex flex-col bg-background overflow-hidden">
+    <div className="flex flex-col bg-background overflow-hidden" style={{ height: viewportHeight ? `${viewportHeight}px` : '100dvh' }}>
       {isSubRoute ? (
         /* Sub-routes (admin, settings) render via Outlet */
         <div className="flex-1 overflow-auto">
