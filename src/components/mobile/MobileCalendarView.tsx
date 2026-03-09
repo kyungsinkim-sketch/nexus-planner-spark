@@ -415,7 +415,7 @@ function EventSheet({
 // ════════════════════════════════════════
 
 export function MobileCalendarView() {
-  const { events, projects } = useAppStore();
+  const { events, projects, currentUser } = useAppStore();
   const { language } = useTranslation();
 
   const [selectedDate, setSelectedDate] = useState(() => new Date());
@@ -436,8 +436,19 @@ export function MobileCalendarView() {
 
   // Events for selected day
   const dayEvents = useMemo(() => {
+    const userId = currentUser?.id;
+    const myProjectIds = new Set(
+      projects.filter(p => userId && p.teamMemberIds?.includes(userId)).map(p => p.id)
+    );
     const filtered = events
       .filter((ev) => {
+        // Only show events relevant to current user (same as PC web)
+        if (userId) {
+          const isOwner = ev.ownerId === userId;
+          const isAttendee = ev.attendeeIds?.includes(userId);
+          const isTeamProject = ev.projectId ? myProjectIds.has(ev.projectId) : false;
+          if (!isOwner && !isAttendee && !isTeamProject) return false;
+        }
         try { return isSameDay(parseISO(ev.startAt), selectedDate); }
         catch { return false; }
       })
@@ -462,7 +473,7 @@ export function MobileCalendarView() {
       }
     }
     return [...seen.values()];
-  }, [events, selectedDate]);
+  }, [events, selectedDate, currentUser, projects]);
 
   return (
     <div className="flex flex-col h-full widget-area-bg">
