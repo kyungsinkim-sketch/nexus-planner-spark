@@ -278,7 +278,7 @@ function FilesWidget({ context }: { context: WidgetDataContext }) {
 
   if (allFiles.length === 0) {
     return (
-      <div className="flex items-center justify-center h-full text-muted-foreground/60 text-sm">
+      <div className="flex items-center justify-center h-full text-muted-foreground/60 typo-widget-body">
         {t('noFiles')}
       </div>
     );

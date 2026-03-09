@@ -8,7 +8,7 @@ import type { WidgetDataContext } from '@/types/widget';
 function BrainInsightsWidget({ context }: { context: WidgetDataContext }) {
   if (!context.projectId) {
     return (
-      <div className="flex items-center justify-center h-full text-muted-foreground/60 text-sm">
+      <div className="flex items-center justify-center h-full text-muted-foreground/60 typo-widget-body">
         No project selected
       </div>
     );

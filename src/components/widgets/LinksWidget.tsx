@@ -58,8 +58,8 @@ function LinksWidget({ context }: { context: WidgetDataContext }) {
     return (
       <div className="flex flex-col items-center justify-center h-full text-muted-foreground/50 gap-2 py-8">
         <Link2 className="w-8 h-8" />
-        <p className="text-xs text-center">공유된 링크가 없습니다</p>
-        <p className="text-xs font-medium text-center max-w-[200px]">채팅에서 공유된 URL이 여기에 모입니다</p>
+        <p className="typo-widget-body text-center">공유된 링크가 없습니다</p>
+        <p className="typo-widget-sub text-center max-w-[200px]">채팅에서 공유된 URL이 여기에 모입니다</p>
       </div>
     );
   }
@@ -79,9 +79,9 @@ function LinksWidget({ context }: { context: WidgetDataContext }) {
             >
               <Link2 className="w-4 h-4 text-blue-500 shrink-0" />
               <div className="flex-1 min-w-0">
-                <p className="text-xs font-medium text-foreground truncate">{link.domain}</p>
-                <p className="text-xs font-medium text-muted-foreground truncate">{link.url}</p>
-                <p className="text-xs font-medium text-muted-foreground/60">
+                <p className="typo-widget-body text-foreground truncate">{link.domain}</p>
+                <p className="typo-widget-sub truncate">{link.url}</p>
+                <p className="typo-micro text-muted-foreground/60">
                   {creator?.name || 'Unknown'} · {new Date(link.sharedAt).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })}
                 </p>
               </div>
