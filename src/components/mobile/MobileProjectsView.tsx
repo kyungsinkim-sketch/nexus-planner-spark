@@ -247,41 +247,45 @@ export function MobileProjectsView() {
           </div>
         )}
 
-        {/* Widget bento grid — asymmetric layout like reference */}
-        <div className="grid grid-cols-2 gap-3 px-4 mt-5 pb-24"
-          style={{ gridTemplateRows: 'auto auto auto' }}
-        >
-          {WIDGET_DEFS.map((w, i) => {
+        {/* Widget bento grid — mini widget preview cards */}
+        <div className="grid grid-cols-2 gap-3 px-4 mt-5 pb-24">
+          {WIDGET_DEFS.map((w) => {
             const Icon = w.icon;
-            // Row 1: Notifications (tall) + Files (tall)
-            // Row 2: ToDos (short) + Chat (short)
-            // Row 3: Notes (short) + Board (short)
-            const isTall = i < 2; // first 2 are tall
+            const WidgetComp = WIDGET_MAP[w.key];
             return (
               <button
                 key={w.key}
                 onClick={() => { setWidgetKey(w.key); setStep('widget'); }}
                 className={cn(
-                  'relative flex flex-col items-center justify-center gap-3 rounded-2xl',
+                  'relative flex flex-col rounded-2xl overflow-hidden text-left',
                   'mobile-glass',
-                  'active:scale-[0.96] transition-transform',
-                  'shadow-sm',
-                  isTall ? 'py-8' : 'py-5',
+                  'active:scale-[0.97] transition-transform',
                 )}
               >
-                {/* Badge */}
-                {w.badge && (
-                  <span className="absolute top-2.5 right-2.5 min-w-[20px] h-5 flex items-center justify-center rounded-full bg-destructive text-destructive-foreground text-[11px] font-bold px-1.5">
-                    {w.badge}
+                {/* Header with icon + label */}
+                <div className="flex items-center gap-2 px-3 pt-3 pb-1.5">
+                  <Icon size={16} strokeWidth={1.5} className="text-primary/70 shrink-0" />
+                  <span className="typo-caption font-semibold text-foreground/80 truncate">
+                    {language === 'ko' ? w.labelKo : w.labelEn}
                   </span>
-                )}
-                <Icon size={isTall ? 32 : 26} strokeWidth={1.5} className="text-foreground/60" />
-                <span className={cn(
-                  'font-medium text-foreground/70',
-                  isTall ? 'typo-widget-body' : 'typo-caption',
-                )}>
-                  {language === 'ko' ? w.labelKo : w.labelEn}
-                </span>
+                  {w.badge > 0 && (
+                    <span className="ml-auto min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold px-1">
+                      {w.badge}
+                    </span>
+                  )}
+                </div>
+                {/* Mini preview — render actual widget in compact mode */}
+                <div className="px-3 pb-3 h-[100px] overflow-hidden opacity-60 pointer-events-none">
+                  {WidgetComp ? (
+                    <div className="transform scale-[0.65] origin-top-left w-[154%]">
+                      <WidgetComp context={{ type: 'project', projectId: project.id }} />
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-center h-full text-muted-foreground/30">
+                      <Icon size={40} strokeWidth={1} />
+                    </div>
+                  )}
+                </div>
               </button>
             );
           })}

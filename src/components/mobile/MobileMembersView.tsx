@@ -10,10 +10,11 @@ import { toast } from 'sonner';
 import { createCall } from '@/services/callService';
 import type { User } from '@/types/core';
 
-function formatUserInfo(user: User, _language: string): string {
-  // Show position (job title) and team from Organization Chart
-  const parts = [user.position, user.team].filter(Boolean);
-  return parts.join(' · ');
+function formatUserInfo(user: User, _language: string): { position: string; team: string } {
+  return {
+    position: user.position || '',
+    team: user.team || '',
+  };
 }
 
 export function MobileMembersView() {
@@ -121,9 +122,10 @@ export function MobileMembersView() {
               <AvatarFallback className="text-2xl">{selectedUser.name[0]}</AvatarFallback>
             </Avatar>
             <h3 className="typo-h3 font-bold">{selectedUser.name}</h3>
-            <span className="typo-widget-sub text-muted-foreground">
-              {formatUserInfo(selectedUser, language)}
-            </span>
+            {(() => { const info = formatUserInfo(selectedUser, language); return (<>
+              {info.position && <span className="typo-widget-sub text-muted-foreground">{info.position}</span>}
+              {info.team && <span className="typo-micro text-muted-foreground/70">{info.team}</span>}
+            </>); })()}
           </div>
 
           {/* Action buttons */}
@@ -279,9 +281,10 @@ export function MobileMembersView() {
               </Avatar>
               <div className="flex-1 min-w-0">
                 <p className="typo-widget-body font-bold leading-tight line-clamp-1">{user.name}</p>
-                <p className="typo-caption text-muted-foreground leading-tight line-clamp-2 mt-0.5">
-                  {formatUserInfo(user, language)}
-                </p>
+                {(() => { const info = formatUserInfo(user, language); return (<>
+                  {info.position && <p className="typo-caption text-muted-foreground leading-tight line-clamp-1 mt-0.5">{info.position}</p>}
+                  {info.team && <p className="typo-micro text-muted-foreground/70 leading-tight line-clamp-1">{info.team}</p>}
+                </>); })()}
               </div>
             </button>
           ))}

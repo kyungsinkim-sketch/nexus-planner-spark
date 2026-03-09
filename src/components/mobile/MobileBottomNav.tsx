@@ -141,23 +141,23 @@ export function MobileBottomNav() {
                 key={tab.id}
                 onClick={() => handleNav(tab.id)}
                 className={cn(
-                  'flex items-center gap-1.5 py-2 px-3.5 rounded-full transition-all duration-200',
+                  'flex items-center justify-center gap-2 rounded-full transition-all duration-200',
                   active
-                    ? 'bg-white/90 shadow-sm'
-                    : ''
+                    ? 'bg-white/90 shadow-sm py-2.5 px-5 flex-1'
+                    : 'py-2 px-3'
                 )}
               >
                 <Icon
                   className={cn(
-                    'w-[18px] h-[18px] transition-colors shrink-0',
+                    'transition-colors shrink-0',
                     active
-                      ? 'text-black/80'
-                      : 'text-white/40'
+                      ? 'w-5 h-5 text-black/80'
+                      : 'w-[18px] h-[18px] text-white/40'
                   )}
                   strokeWidth={active ? 2 : 1.5}
                 />
                 {active && (
-                  <span className="text-xs font-semibold whitespace-nowrap text-black/80">
+                  <span className="text-sm font-semibold whitespace-nowrap text-black/80">
                     {language === 'ko' ? tab.labelKo : tab.labelEn}
                   </span>
                 )}

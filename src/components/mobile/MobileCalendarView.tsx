@@ -401,7 +401,7 @@ function EventSheet({
             {saving
               ? (language === 'ko' ? '저장 중...' : 'Saving...')
               : isEdit
-                ? (language === 'ko' ? '수정' : 'Update')
+                ? (language === 'ko' ? '저장' : 'Save')
                 : (language === 'ko' ? '저장' : 'Save')}
           </button>
         </div>
