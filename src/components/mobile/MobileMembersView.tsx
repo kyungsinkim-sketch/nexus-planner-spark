@@ -119,7 +119,7 @@ export function MobileMembersView() {
     const startDay = getDay(startOfMonth(calendarMonth)); // 0=Sun
 
     return (
-      <div className="flex flex-col h-full widget-area-bg">
+      <div className="flex flex-col h-full widget-area-bg overflow-y-auto">
         {/* Header */}
         <div className="flex items-center gap-3 px-4 pt-4 pb-2">
           <button
@@ -133,7 +133,7 @@ export function MobileMembersView() {
           </span>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-4 pb-8">
+        <div className="px-4 pb-8">
           {/* Profile */}
           <div className="flex flex-col items-center gap-2 mt-2 mb-6">
             <Avatar className="w-20 h-20">
