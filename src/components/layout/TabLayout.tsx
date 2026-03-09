@@ -65,6 +65,27 @@ export function TabLayout() {
     if (isMobile) window.scrollTo(0, 0);
   }, [isMobile, mobileView]);
 
+  // iOS Safari: keyboard dismiss leaves white space — force scroll back
+  useEffect(() => {
+    if (!isMobile) return;
+    const handleFocusOut = () => {
+      // Small delay to let keyboard animation finish
+      setTimeout(() => window.scrollTo(0, 0), 100);
+    };
+    // visualViewport resize fires when keyboard opens/closes on iOS
+    const vv = window.visualViewport;
+    const handleResize = () => {
+      // When viewport height returns to full → keyboard closed
+      setTimeout(() => window.scrollTo(0, 0), 50);
+    };
+    document.addEventListener('focusout', handleFocusOut);
+    vv?.addEventListener('resize', handleResize);
+    return () => {
+      document.removeEventListener('focusout', handleFocusOut);
+      vv?.removeEventListener('resize', handleResize);
+    };
+  }, [isMobile]);
+
   // If we're on a sub-route (admin, settings), show Outlet instead of widget grid
   const isSubRoute = location.pathname !== '/';
 
