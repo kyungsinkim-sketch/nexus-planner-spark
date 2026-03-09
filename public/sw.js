@@ -3,11 +3,12 @@
  * Provides offline support and caching for PWA functionality
  */
 
-const CACHE_NAME = 're-be-v3';
+const CACHE_NAME = 're-be-v4';
 const STATIC_ASSETS = [
     '/',
     '/index.html',
     '/manifest.json',
+    '/loading-star.png',
 ];
 
 // Install event - cache static assets
