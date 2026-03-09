@@ -18,7 +18,7 @@ function formatUserInfo(user: User, _language: string): { position: string; team
 }
 
 export function MobileMembersView() {
-  const { users, projects, events, boardTasks, currentUser, getGroupRooms } = useAppStore();
+  const { users, projects, events, boardTasks, boardGroups, currentUser, getGroupRooms } = useAppStore();
   const { openMobileDm, setMobileView } = useWidgetStore();
   const { t, language } = useTranslation();
   const locale = language === 'ko' ? ko : enUS;
@@ -293,20 +293,22 @@ export function MobileMembersView() {
             </p>
           )}
 
-          {/* ── Weekly Gantt Chart ── */}
+          {/* ── Weekly Gantt Chart (board tasks with dates) ── */}
           {(() => {
-            const memberProjects = projects.filter(
-              p => p.status === 'ACTIVE' && selectedUser && p.teamMemberIds?.includes(selectedUser.id)
+            // Only show tasks that have start/end dates (actual Gantt items)
+            const memberTasks = boardTasks.filter(
+              t => t.ownerId === selectedUser?.id && t.startDate && t.endDate && t.status !== 'done'
             );
-            if (memberProjects.length === 0) return null;
+            if (memberTasks.length === 0) return null;
 
-            const weekStart = startOfWeek(new Date(), { weekStartsOn: 1 }); // Monday
+            const groupMap = new Map(boardGroups.map(g => [g.id, g]));
+            const weekStart = startOfWeek(new Date(), { weekStartsOn: 1 });
             const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
 
             return (
               <div className="mobile-glass rounded-2xl p-4 mt-4">
                 <h4 className="typo-label font-semibold text-foreground mb-3">
-                  {language === 'ko' ? '주간 프로젝트' : 'Weekly Projects'}
+                  {language === 'ko' ? '주간 업무' : 'Weekly Tasks'}
                 </h4>
 
                 {/* Week day headers */}
@@ -331,26 +333,28 @@ export function MobileMembersView() {
                   ))}
                 </div>
 
-                {/* Project bars */}
+                {/* Task bars */}
                 <div className="space-y-1.5">
-                  {memberProjects.slice(0, 6).map(proj => {
-                    const projStart = proj.startDate ? parseISO(proj.startDate) : null;
-                    const projEnd = proj.endDate ? parseISO(proj.endDate) : null;
+                  {memberTasks.slice(0, 8).map(task => {
+                    const taskStart = parseISO(task.startDate!);
+                    const taskEnd = parseISO(task.endDate!);
+                    const group = groupMap.get(task.boardGroupId);
+                    const project = projects.find(p => p.id === task.projectId);
+                    const barColor = group?.color || project?.keyColor || 'hsl(var(--primary))';
 
                     return (
-                      <div key={proj.id} className="grid grid-cols-[100px_repeat(7,1fr)] gap-0.5 items-center">
-                        <span className="text-[10px] font-medium text-foreground truncate pr-1">
-                          {proj.title}
+                      <div key={task.id} className="grid grid-cols-[100px_repeat(7,1fr)] gap-0.5 items-center">
+                        <span className="text-[10px] font-medium text-foreground truncate pr-1" title={task.title}>
+                          {task.title}
                         </span>
                         {weekDays.map(day => {
-                          const inRange = projStart && projEnd
-                            && !isBefore(day, projStart) && !isAfter(day, projEnd);
+                          const inRange = !isBefore(day, taskStart) && !isAfter(day, taskEnd);
                           return (
                             <div key={day.toISOString()} className="h-5 flex items-center justify-center">
                               {inRange ? (
                                 <div
                                   className="w-full h-3 rounded-sm"
-                                  style={{ backgroundColor: proj.keyColor || 'hsl(var(--primary))', opacity: 0.7 }}
+                                  style={{ backgroundColor: barColor, opacity: 0.7 }}
                                 />
                               ) : (
                                 <div className="w-full h-3 rounded-sm bg-muted/30" />
@@ -363,9 +367,9 @@ export function MobileMembersView() {
                   })}
                 </div>
 
-                {memberProjects.length > 6 && (
+                {memberTasks.length > 8 && (
                   <p className="text-[10px] text-muted-foreground text-center mt-2">
-                    +{memberProjects.length - 6} {language === 'ko' ? '개 더' : 'more'}
+                    +{memberTasks.length - 8} {language === 'ko' ? '개 더' : 'more'}
                   </p>
                 )}
               </div>
