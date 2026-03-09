@@ -259,18 +259,20 @@ export function MobileAIChatView() {
           <MorningBriefing greeting={greeting} todayEvents={todayEvents} language={language} locale={locale} />
         </div>
 
-        {/* ── Fade gradient mask between briefing and messages ── */}
-        <div className="shrink-0 h-8 pointer-events-none" style={{
-          background: 'linear-gradient(to bottom, hsl(var(--background) / 0.9), transparent)',
-        }} />
-
         {/* ── Chat messages: flex-1 pushes them to the bottom ── */}
-        <div className="flex-1 flex flex-col justify-end px-4">
+        {/* CSS mask: messages fade to transparent at the top */}
+        <div
+          className={cn('flex-1 flex flex-col px-4 relative', messages.length === 0 && !loading ? 'justify-center' : 'justify-end')}
+          style={{
+            maskImage: 'linear-gradient(to bottom, transparent 0%, black 48px)',
+            WebkitMaskImage: 'linear-gradient(to bottom, transparent 0%, black 48px)',
+          }}
+        >
           <div className="space-y-2.5">
             {messages.length === 0 && !loading && (
-              <div className="flex flex-col items-center justify-center py-12 text-muted-foreground/40 gap-2">
-                <Brain className="w-8 h-8 text-violet-400/40" />
-                <span className="text-xs font-medium text-muted-foreground/50">Brain AI</span>
+              <div className="flex flex-col items-center justify-center h-full min-h-[120px] text-muted-foreground/40 gap-2">
+                <Brain className="w-10 h-10 text-violet-400/30" />
+                <span className="text-xs font-medium text-muted-foreground/40">Brain AI</span>
               </div>
             )}
 

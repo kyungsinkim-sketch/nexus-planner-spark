@@ -117,19 +117,20 @@ export function MobileBottomNav() {
         </div>
       )}
 
-      {/* Nav bar — rounded liquid glass */}
-      <div className="px-3 pb-1">
+      {/* Nav bar — pill-shaped liquid glass, drag-proof */}
+      <div className="px-4 pb-1.5">
         <div
-          className="rounded-2xl border"
+          className="rounded-full border"
           style={{
-            background: isDark ? 'rgba(20,20,30,0.65)' : 'rgba(255,255,255,0.70)',
+            background: 'rgba(80, 80, 90, 0.55)',
             backdropFilter: 'blur(24px) saturate(1.4)',
             WebkitBackdropFilter: 'blur(24px) saturate(1.4)',
-            borderColor: isDark ? 'rgba(255,255,255,0.10)' : 'rgba(0,0,0,0.08)',
-            boxShadow: isDark
-              ? '0 4px 20px rgba(0,0,0,0.4), inset 0 0.5px 0 rgba(255,255,255,0.06)'
-              : '0 4px 20px rgba(0,0,0,0.08), inset 0 0.5px 0 rgba(255,255,255,0.8)',
+            borderColor: 'rgba(255,255,255,0.08)',
+            boxShadow: '0 4px 24px rgba(0,0,0,0.25), inset 0 0.5px 0 rgba(255,255,255,0.08)',
+            touchAction: 'none',
+            overscrollBehavior: 'none',
           }}
+          onTouchMove={(e) => e.preventDefault()}
         >
           <div className="flex items-center justify-around px-2 h-14">
           {tabs.map(tab => {
@@ -140,11 +141,9 @@ export function MobileBottomNav() {
                 key={tab.id}
                 onClick={() => handleNav(tab.id)}
                 className={cn(
-                  'flex items-center gap-1.5 py-1.5 px-3 rounded-full transition-all duration-200',
+                  'flex items-center gap-1.5 py-2 px-3.5 rounded-full transition-all duration-200',
                   active
-                    ? isDark
-                      ? 'bg-white/[0.12]'
-                      : 'bg-primary/[0.12]'
+                    ? 'bg-white/90 shadow-sm'
                     : ''
                 )}
               >
@@ -152,18 +151,13 @@ export function MobileBottomNav() {
                   className={cn(
                     'w-[18px] h-[18px] transition-colors shrink-0',
                     active
-                      ? isDark ? 'text-white' : 'text-primary'
-                      : isDark ? 'text-white/30' : 'text-black/30'
+                      ? 'text-black/80'
+                      : 'text-white/40'
                   )}
                   strokeWidth={active ? 2 : 1.5}
                 />
                 {active && (
-                  <span
-                    className={cn(
-                      'text-xs font-semibold whitespace-nowrap',
-                      isDark ? 'text-white' : 'text-primary'
-                    )}
-                  >
+                  <span className="text-xs font-semibold whitespace-nowrap text-black/80">
                     {language === 'ko' ? tab.labelKo : tab.labelEn}
                   </span>
                 )}
@@ -179,12 +173,7 @@ export function MobileBottomNav() {
           >
             <Avatar className="w-8 h-8 ring-2 ring-transparent hover:ring-primary/30 transition-all">
               <AvatarImage src={currentUser?.avatar} />
-              <AvatarFallback
-                className={cn(
-                  'text-xs font-semibold',
-                  isDark ? 'bg-white/10 text-white' : 'bg-primary/10 text-primary'
-                )}
-              >
+              <AvatarFallback className="text-xs font-semibold bg-white/20 text-white">
                 {currentUser?.name?.charAt(0) || '?'}
               </AvatarFallback>
             </Avatar>
