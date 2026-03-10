@@ -676,13 +676,13 @@ export function ActiveCallOverlay() {
       )}
 
       {/* ─── Bottom controls ─── */}
-      <div className="absolute bottom-0 inset-x-0 z-20 pb-8 pt-4 bg-gray-950">
-        <div className="flex items-center justify-center gap-6">
+      <div className="absolute bottom-0 inset-x-0 z-20 pb-8 pt-3 bg-gray-950">
+        <div className="flex items-center justify-center gap-4 flex-wrap max-w-md mx-auto px-4">
           {/* Mute */}
           <div className="flex flex-col items-center gap-1">
             <button
               onClick={() => toggleMute()}
-              className={`w-14 h-14 rounded-full flex items-center justify-center transition-all ${
+              className={`w-12 h-12 rounded-full flex items-center justify-center transition-all ${
                 callState.isMuted
                   ? 'bg-red-500/30 text-red-400 ring-2 ring-red-500/50'
                   : 'bg-white/10 text-white hover:bg-white/20'
@@ -697,7 +697,7 @@ export function ActiveCallOverlay() {
           <div className="flex flex-col items-center gap-1">
             <button
               onClick={() => toggleCamera()}
-              className={`w-14 h-14 rounded-full flex items-center justify-center transition-all ${
+              className={`w-12 h-12 rounded-full flex items-center justify-center transition-all ${
                 callState.isCameraOn
                   ? 'bg-blue-500/30 text-blue-400 ring-2 ring-blue-500/50'
                   : 'bg-white/10 text-white hover:bg-white/20'
@@ -712,7 +712,7 @@ export function ActiveCallOverlay() {
           <div className="flex flex-col items-center gap-1">
             <button
               onClick={() => toggleScreenShare()}
-                className={`w-14 h-14 rounded-full flex items-center justify-center transition-all ${
+                className={`w-12 h-12 rounded-full flex items-center justify-center transition-all ${
                   callState.isScreenSharing
                     ? 'bg-green-500/30 text-green-400 ring-2 ring-green-500/50'
                     : 'bg-white/10 text-white hover:bg-white/20'
@@ -733,7 +733,7 @@ export function ActiveCallOverlay() {
                   useWidgetStore.getState().openMobileDm(targetId);
                 }
               }}
-              className="w-14 h-14 rounded-full flex items-center justify-center transition-all bg-white/10 text-white hover:bg-white/20"
+              className="w-12 h-12 rounded-full flex items-center justify-center transition-all bg-white/10 text-white hover:bg-white/20"
             >
               <MessageSquare className="w-6 h-6" />
             </button>
@@ -744,7 +744,7 @@ export function ActiveCallOverlay() {
           <div className="flex flex-col items-center gap-1">
             <button
               onClick={toggleCaptions}
-              className={`w-14 h-14 rounded-full flex items-center justify-center transition-all ${
+              className={`w-12 h-12 rounded-full flex items-center justify-center transition-all ${
                 captionsOn
                   ? 'bg-purple-500/30 text-purple-400 ring-2 ring-purple-500/50'
                   : 'bg-white/10 text-white hover:bg-white/20'
@@ -759,7 +759,7 @@ export function ActiveCallOverlay() {
           <div className="flex flex-col items-center gap-1">
             <button
               onClick={toggleTranslate}
-              className={`w-14 h-14 rounded-full flex items-center justify-center transition-all ${
+              className={`w-12 h-12 rounded-full flex items-center justify-center transition-all ${
                 translateOn
                   ? 'bg-blue-500/30 text-blue-400 ring-2 ring-blue-500/50'
                   : 'bg-white/10 text-white hover:bg-white/20'
@@ -782,7 +782,7 @@ export function ActiveCallOverlay() {
           <div className="flex flex-col items-center gap-1">
             <button
               onClick={() => toggleSpeaker()}
-              className={`w-14 h-14 rounded-full flex items-center justify-center transition-all ${
+              className={`w-12 h-12 rounded-full flex items-center justify-center transition-all ${
                 !callState.isSpeakerOn
                   ? 'bg-amber-500/30 text-amber-400 ring-2 ring-amber-500/50'
                   : 'bg-white/10 text-white hover:bg-white/20'
