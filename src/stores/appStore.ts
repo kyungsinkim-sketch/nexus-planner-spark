@@ -578,16 +578,10 @@ export const useAppStore = create<AppState>()(
         try {
           const allProjects = await projectService.getProjects();
           const { currentUser, users: allUsers } = get();
-          // ADMIN sees all projects; others only see projects they're a team member of
-          // Domain-based sharing: users with same email domain share the project dashboard
+          // All users (including ADMIN) only see projects where they're a team member
           let projects = allProjects;
-          if (currentUser && currentUser.role !== 'ADMIN') {
-            const userDomain = currentUser.email ? extractEmailDomain(currentUser.email) : '';
-            const isFreelancer = !userDomain || isFreelancerDomain(userDomain);
-
-            // All non-admin users: only see projects where they're explicitly a team member
-          // (Previously domain-based sharing was too permissive — uninvited users could see projects)
-          projects = allProjects.filter(p => p.teamMemberIds?.includes(currentUser.id));
+          if (currentUser) {
+            projects = allProjects.filter(p => p.teamMemberIds?.includes(currentUser.id));
           }
           set({ projects });
         } catch (error) {
