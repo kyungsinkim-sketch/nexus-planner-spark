@@ -1140,7 +1140,7 @@ export async function acceptAllSuggestions(roomId: string): Promise<void> {
 // ─── Live Transcript (STT) ───────────────────────────
 
 let speechRecognition: any = null;
-let transcriptListeners = new Set<(lines: TranscriptLine[]) => void>();
+const transcriptListeners = new Set<(lines: TranscriptLine[]) => void>();
 let transcriptLines: TranscriptLine[] = [];
 
 export interface TranscriptLine {
