@@ -721,6 +721,7 @@ export async function endCall(): Promise<void> {
 
   // Immediately disconnect and reset UI
   stopRingbackTone();
+  stopLiveTranscript();
 
   if (durationTimer) {
     clearInterval(durationTimer);
@@ -1039,6 +1040,124 @@ export async function acceptAllSuggestions(roomId: string): Promise<void> {
   for (const s of pending) {
     await acceptSuggestion(s.id);
   }
+}
+
+// ─── Live Transcript (STT) ───────────────────────────
+
+let speechRecognition: any = null;
+let transcriptListeners = new Set<(lines: TranscriptLine[]) => void>();
+let transcriptLines: TranscriptLine[] = [];
+
+export interface TranscriptLine {
+  id: number;
+  text: string;
+  isFinal: boolean;
+  timestamp: number;
+}
+
+let transcriptIdCounter = 0;
+
+export function subscribeTranscript(fn: (lines: TranscriptLine[]) => void): () => void {
+  transcriptListeners.add(fn);
+  fn(transcriptLines);
+  return () => transcriptListeners.delete(fn);
+}
+
+function notifyTranscript() {
+  transcriptListeners.forEach(fn => fn([...transcriptLines]));
+}
+
+export function startLiveTranscript(lang: string = 'ko-KR'): boolean {
+  const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+  if (!SpeechRecognition) {
+    console.warn('[STT] SpeechRecognition not supported');
+    return false;
+  }
+
+  if (speechRecognition) {
+    console.log('[STT] Already running');
+    return true;
+  }
+
+  const recognition = new SpeechRecognition();
+  recognition.continuous = true;
+  recognition.interimResults = true;
+  recognition.lang = lang;
+  recognition.maxAlternatives = 1;
+
+  let interimLineId: number | null = null;
+
+  recognition.onresult = (event: any) => {
+    for (let i = event.resultIndex; i < event.results.length; i++) {
+      const result = event.results[i];
+      const text = result[0].transcript.trim();
+      if (!text) continue;
+
+      if (result.isFinal) {
+        // Remove interim line if exists
+        if (interimLineId !== null) {
+          transcriptLines = transcriptLines.filter(l => l.id !== interimLineId);
+          interimLineId = null;
+        }
+        const id = ++transcriptIdCounter;
+        transcriptLines.push({ id, text, isFinal: true, timestamp: Date.now() });
+        // Keep last 50 lines
+        if (transcriptLines.length > 50) transcriptLines = transcriptLines.slice(-50);
+      } else {
+        // Update or create interim line
+        if (interimLineId !== null) {
+          transcriptLines = transcriptLines.map(l => l.id === interimLineId ? { ...l, text } : l);
+        } else {
+          interimLineId = ++transcriptIdCounter;
+          transcriptLines.push({ id: interimLineId, text, isFinal: false, timestamp: Date.now() });
+        }
+      }
+    }
+    notifyTranscript();
+  };
+
+  recognition.onerror = (event: any) => {
+    console.warn('[STT] Error:', event.error);
+    // Auto-restart on non-fatal errors
+    if (event.error === 'no-speech' || event.error === 'aborted') {
+      try { recognition.start(); } catch { /* ignore */ }
+    }
+  };
+
+  recognition.onend = () => {
+    // Auto-restart if still in a call
+    if (speechRecognition === recognition && currentState.status === 'active') {
+      console.log('[STT] Restarting...');
+      try { recognition.start(); } catch { /* ignore */ }
+    }
+  };
+
+  try {
+    recognition.start();
+    speechRecognition = recognition;
+    console.log('[STT] Started, lang:', lang);
+    return true;
+  } catch (err) {
+    console.error('[STT] Start failed:', err);
+    return false;
+  }
+}
+
+export function stopLiveTranscript() {
+  if (speechRecognition) {
+    try { speechRecognition.stop(); } catch { /* ignore */ }
+    speechRecognition = null;
+    console.log('[STT] Stopped');
+  }
+}
+
+export function clearTranscript() {
+  transcriptLines = [];
+  notifyTranscript();
+}
+
+export function getTranscriptText(): string {
+  return transcriptLines.filter(l => l.isFinal).map(l => l.text).join('\n');
 }
 
 // ─── Format Duration ─────────────────────────────────

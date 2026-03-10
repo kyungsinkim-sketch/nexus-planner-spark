@@ -29,6 +29,7 @@ import {
   ScreenShare,
   ScreenShareOff,
   MessageSquare,
+  Subtitles,
 } from 'lucide-react';
 import {
   subscribeCallState,
@@ -39,7 +40,11 @@ import {
   toggleScreenShare,
   formatDuration,
   getCurrentRoom,
+  startLiveTranscript,
+  stopLiveTranscript,
+  subscribeTranscript,
   type CallState,
+  type TranscriptLine,
 } from '@/services/callService';
 import { CallSuggestionsPanel } from './CallSuggestionsPanel';
 import { useWidgetStore } from '@/stores/widgetStore';
@@ -165,6 +170,31 @@ export function ActiveCallOverlay() {
   const lastRoomId = useRef<string | null>(null);
   const endHandled = useRef(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const [captionsOn, setCaptionsOn] = useState(false);
+  const [transcriptLines, setTranscriptLines] = useState<TranscriptLine[]>([]);
+  const transcriptEndRef = useRef<HTMLDivElement>(null);
+
+  // Subscribe to transcript lines
+  useEffect(() => {
+    if (!captionsOn) return;
+    return subscribeTranscript(setTranscriptLines);
+  }, [captionsOn]);
+
+  // Auto-scroll transcript
+  useEffect(() => {
+    transcriptEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [transcriptLines]);
+
+  // Toggle captions
+  const toggleCaptions = useCallback(() => {
+    if (captionsOn) {
+      stopLiveTranscript();
+      setCaptionsOn(false);
+    } else {
+      const started = startLiveTranscript('ko-KR');
+      if (started) setCaptionsOn(true);
+    }
+  }, [captionsOn]);
 
   /* ─── PiP drag state ─── */
   const pipRef = useRef<HTMLDivElement>(null);
@@ -599,6 +629,27 @@ export function ActiveCallOverlay() {
         )}
       </div>
 
+      {/* ─── Live transcript overlay ─── */}
+      {captionsOn && status === 'active' && (
+        <div className="absolute bottom-[160px] inset-x-0 z-20 px-4 max-h-[30vh] overflow-y-auto pointer-events-none">
+          <div className="max-w-xl mx-auto space-y-1">
+            {transcriptLines.slice(-8).map(line => (
+              <div
+                key={line.id}
+                className={`text-center px-3 py-1.5 rounded-lg inline-block w-full ${
+                  line.isFinal
+                    ? 'bg-black/70 text-white text-sm'
+                    : 'bg-black/40 text-white/70 text-sm italic'
+                }`}
+              >
+                {line.text}
+              </div>
+            ))}
+            <div ref={transcriptEndRef} />
+          </div>
+        </div>
+      )}
+
       {/* ─── Bottom controls ─── */}
       <div className="absolute bottom-0 inset-x-0 z-20 pb-8 pt-4 bg-gray-950">
         <div className="flex items-center justify-center gap-6">
@@ -662,6 +713,21 @@ export function ActiveCallOverlay() {
               <MessageSquare className="w-6 h-6" />
             </button>
             <span className="text-xs font-medium text-white/50">채팅</span>
+          </div>
+
+          {/* Live Captions (STT) */}
+          <div className="flex flex-col items-center gap-1">
+            <button
+              onClick={toggleCaptions}
+              className={`w-14 h-14 rounded-full flex items-center justify-center transition-all ${
+                captionsOn
+                  ? 'bg-purple-500/30 text-purple-400 ring-2 ring-purple-500/50'
+                  : 'bg-white/10 text-white hover:bg-white/20'
+              }`}
+            >
+              <Subtitles className="w-6 h-6" />
+            </button>
+            <span className="text-xs font-medium text-white/50">{captionsOn ? '자막 끄기' : '자막'}</span>
           </div>
 
           {/* End call */}
