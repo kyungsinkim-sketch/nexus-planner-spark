@@ -128,8 +128,8 @@ export function TabLayout() {
         </div>
       ) : isMobile ? (
         /* ====== MOBILE LAYOUT ====== */
-        /* pb-14 accounts for fixed bottom nav bar height */
-        <div ref={mobileContainerRef} className="flex-1 min-h-0 overflow-hidden pb-14">
+        /* No bottom padding — content extends behind floating nav */
+        <div ref={mobileContainerRef} className="flex-1 min-h-0 overflow-hidden">
           <Suspense fallback={
             <div className="flex items-center justify-center h-full">
               <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />

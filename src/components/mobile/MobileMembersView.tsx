@@ -485,7 +485,7 @@ export function MobileMembersView() {
       </div>
 
       {/* 2-column grid */}
-      <div className="flex-1 overflow-y-auto px-4 pb-8">
+      <div className="flex-1 overflow-y-auto px-4 pb-24">
         <div className="grid grid-cols-2 gap-3">
           {filteredUsers.map(user => (
             <button
