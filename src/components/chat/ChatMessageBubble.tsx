@@ -419,9 +419,7 @@ function HoverActionBar({ messageId, content, canEdit, canDelete, canPin, isCurr
   return (
     <>
       {/* Floating action bar — for own messages: bottom-right; for others: right side vertically centered */}
-      <div className={`absolute flex items-center rounded-lg shadow-md z-20 transition-opacity bg-white dark:bg-zinc-800 border border-black/10 dark:border-white/10 ${
-        isCurrentUser ? '-bottom-4 right-0' : 'top-1/2 -translate-y-1/2 -right-1 translate-x-full'
-      } ${showMenu || showEmoji ? 'opacity-100' : 'opacity-0 group-hover/msg:opacity-100'}`}
+      <div className={`absolute flex items-center rounded-lg shadow-md z-20 transition-opacity bg-white dark:bg-zinc-800 border border-black/10 dark:border-white/10 -bottom-4 right-0 ${showMenu || showEmoji ? 'opacity-100' : 'opacity-0 group-hover/msg:opacity-100'}`}
       >
         {/* Emoji */}
         <button ref={emojiRef} onClick={(e) => {
