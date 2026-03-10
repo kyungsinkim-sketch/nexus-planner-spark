@@ -288,15 +288,25 @@ export function MobileAIChatView() {
   const inputRef = useRef<HTMLInputElement>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
-  // Detect keyboard via input focus/blur
+  // Detect keyboard via input focus/blur — also hide nav bar
   useEffect(() => {
     const el = inputRef.current;
     if (!el) return;
-    const onFocus = () => setKeyboardOpen(true);
-    const onBlur = () => setTimeout(() => setKeyboardOpen(false), 100);
+    const onFocus = () => {
+      setKeyboardOpen(true);
+      document.body.classList.add('keyboard-open');
+    };
+    const onBlur = () => setTimeout(() => {
+      setKeyboardOpen(false);
+      document.body.classList.remove('keyboard-open');
+    }, 100);
     el.addEventListener('focus', onFocus);
     el.addEventListener('blur', onBlur);
-    return () => { el.removeEventListener('focus', onFocus); el.removeEventListener('blur', onBlur); };
+    return () => {
+      el.removeEventListener('focus', onFocus);
+      el.removeEventListener('blur', onBlur);
+      document.body.classList.remove('keyboard-open');
+    };
   }, []);
 
   useTypingReveal(messages, setMessages);
