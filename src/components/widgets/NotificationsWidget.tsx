@@ -160,10 +160,23 @@ function NotificationsWidget({ context }: { context: WidgetDataContext }) {
 
   const handleDismissAll = useCallback(() => {
     dismissAllNotifications(notifications.map((n) => n.id));
+    // Also mark all underlying app notifications as read
+    const store = useAppStore.getState();
+    notifications.forEach(n => {
+      if (n.id.startsWith('app-')) {
+        store.markAppNotificationRead(n.id.slice(4));
+      }
+    });
   }, [notifications, dismissAllNotifications]);
 
   const handleClick = useCallback((n: typeof notifications[0]) => {
     dismissNotification(n.id);
+
+    // Mark the underlying app notification as read (persisted + synced)
+    if (n.id.startsWith('app-')) {
+      const realId = n.id.slice(4); // strip 'app-' prefix
+      useAppStore.getState().markAppNotificationRead(realId);
+    }
 
     // Navigate based on notification type
     const store = useAppStore.getState();

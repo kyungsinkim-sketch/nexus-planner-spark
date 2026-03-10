@@ -40,6 +40,7 @@ export function startRealtimeNotifications(userId: string): () => void {
           title: project.title,
           message: `📅 새 일정: ${(row.title as string) || '제목 없음'}`,
           projectId: row.project_id as string,
+          sourceId: `cal-${row.id}`,
         });
       }
     )
@@ -61,6 +62,7 @@ export function startRealtimeNotifications(userId: string): () => void {
           title: projectName || 'TODO',
           message: `✅ 새 할 일: ${(row.title as string) || (row.content as string) || ''}`.slice(0, 100),
           projectId: row.project_id as string | undefined,
+          sourceId: `todo-${row.id}`,
         });
       }
     )
@@ -80,6 +82,7 @@ export function startRealtimeNotifications(userId: string): () => void {
           title: project.title,
           message: `📌 새 중요 기록: ${(row.title as string) || (row.content as string)?.slice(0, 60) || ''}`,
           projectId: row.project_id as string,
+          sourceId: `note-${row.id}`,
         });
       }
     )

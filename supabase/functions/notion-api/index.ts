@@ -71,7 +71,10 @@ Deno.serve(async (req) => {
     const userId = jwtUserId || body.userId;
     const { action } = body;
 
+    console.log('[notion-api] action:', action, 'jwtUserId:', jwtUserId, 'bodyUserId:', body.userId, 'resolved:', userId);
+
     if (!userId || !action) {
+      console.error('[notion-api] Missing fields — userId:', userId, 'action:', action, 'body keys:', Object.keys(body));
       return errorResponse('Missing required fields: userId, action');
     }
 
