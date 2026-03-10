@@ -279,7 +279,7 @@ export function ActiveCallOverlay() {
       }
       lastDuration.current = 0;
     }
-  }, [callState?.status, callState?.room?.id]);
+  }, [callState?.status, callState?.room?.id, callState?.durationSeconds]);
 
   useEffect(() => {
     return subscribeCallState(setCallState);

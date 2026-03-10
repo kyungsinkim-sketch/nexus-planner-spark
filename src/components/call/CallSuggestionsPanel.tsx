@@ -18,6 +18,7 @@ import {
   Clock,
   ChevronDown,
   ChevronUp,
+  ScrollText,
 } from 'lucide-react';
 import {
   getCallSuggestions,
@@ -26,6 +27,7 @@ import {
   acceptAllSuggestions,
   type CallSuggestion,
 } from '@/services/callService';
+import { supabase } from '@/lib/supabase';
 
 interface CallSuggestionsPanelProps {
   roomId: string;
@@ -37,6 +39,8 @@ export function CallSuggestionsPanel({ roomId, onClose }: CallSuggestionsPanelPr
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+  const [transcript, setTranscript] = useState<Array<{ speaker: string; text: string }> | null>(null);
+  const [showTranscript, setShowTranscript] = useState(false);
 
   // Poll for suggestions
   useEffect(() => {
@@ -70,6 +74,30 @@ export function CallSuggestionsPanel({ roomId, onClose }: CallSuggestionsPanelPr
 
     poll();
     return () => { active = false; };
+  }, [roomId]);
+
+  // Load transcript from voice_recordings via call_rooms
+  useEffect(() => {
+    (async () => {
+      try {
+        const { data: room } = await supabase
+          .from('call_rooms')
+          .select('voice_recording_id')
+          .eq('id', roomId)
+          .single();
+        if (room?.voice_recording_id) {
+          const { data: rec } = await supabase
+            .from('voice_recordings')
+            .select('transcript')
+            .eq('id', room.voice_recording_id)
+            .single();
+          if (rec?.transcript) {
+            const parsed = typeof rec.transcript === 'string' ? JSON.parse(rec.transcript) : rec.transcript;
+            setTranscript(parsed);
+          }
+        }
+      } catch { /* ignore */ }
+    })();
   }, [roomId]);
 
   const handleAccept = useCallback(async (id: string) => {
@@ -196,7 +224,18 @@ export function CallSuggestionsPanel({ roomId, onClose }: CallSuggestionsPanelPr
           </span>
         </div>
         <div className="flex items-center gap-2">
-          {pending.length > 1 && (
+          {transcript && transcript.length > 0 && (
+            <button
+              onClick={() => setShowTranscript(!showTranscript)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                showTranscript ? 'bg-amber-600 hover:bg-amber-500 text-white' : 'bg-white/10 hover:bg-white/20 text-white/70'
+              }`}
+            >
+              <ScrollText className="w-3 h-3" />
+              녹취록
+            </button>
+          )}
+          {pending.length > 1 && !showTranscript && (
             <button
               onClick={handleAcceptAll}
               disabled={actionLoading === 'all'}
@@ -237,8 +276,22 @@ export function CallSuggestionsPanel({ roomId, onClose }: CallSuggestionsPanelPr
         )}
       </div>
 
+      {/* Transcript view */}
+      {showTranscript && transcript && (
+        <div className="flex-1 overflow-y-auto p-4 space-y-2">
+          {transcript.map((line, i) => (
+            <div key={i} className="flex gap-2">
+              <span className="text-xs font-semibold text-blue-400 shrink-0 w-16 text-right mt-0.5">
+                {line.speaker || `화자 ${i + 1}`}
+              </span>
+              <p className="text-sm text-white/80">{line.text}</p>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Suggestion cards */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-3">
+      {!showTranscript && <div className="flex-1 overflow-y-auto p-4 space-y-3">
         {suggestions.map(s => {
           const isProcessed = s.status !== 'pending';
           const isLoading = actionLoading === s.id;
@@ -340,7 +393,7 @@ export function CallSuggestionsPanel({ roomId, onClose }: CallSuggestionsPanelPr
             </div>
           );
         })}
-      </div>
+      </div>}
 
       {/* Footer — done button when all processed */}
       {pending.length === 0 && suggestions.length > 0 && (
