@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="ko">
+<html lang="ko" class="dark" style="background:#0C0A1E">
 
 <head>
   <meta charset="UTF-8" />
@@ -57,14 +57,10 @@
       text-size-adjust: 100%;
     }
 
-    /* iOS safe area: fill behind notch/home indicator with theme background */
+    /* iOS safe area: body bg must match app theme to fill notch/home indicator */
     html, body {
-      background: hsl(222 47% 5%); /* dark fallback before CSS loads */
       padding: 0;
       margin: 0;
-    }
-    @media (prefers-color-scheme: light) {
-      html, body { background: hsl(220 20% 97%); }
     }
     /* Pass safe area insets as CSS variables for components to use */
     :root {
@@ -97,7 +93,7 @@
   </script>
 </head>
 
-<body>
+<body style="background:#0C0A1E;margin:0;padding:0">
   <div id="root"></div>
   <!-- Global loading screen — visible until React app hides it -->
   <div id="global-loader" style="position:fixed;top:0;left:0;right:0;bottom:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:#0C0A1E;">
