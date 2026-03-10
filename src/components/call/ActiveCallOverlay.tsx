@@ -50,6 +50,22 @@ function VideoRenderer({ track, className, mirror }: { track: any; className?: s
   );
 }
 
+/* ─── Local screen share preview ─── */
+function LocalScreenPreview({ className }: { className?: string }) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  useEffect(() => {
+    const room = getCurrentRoom();
+    if (!room?.localParticipant || !videoRef.current) return;
+    const screenPubs = Array.from(room.localParticipant.trackPublications.values()) as any[];
+    const screenPub = screenPubs.find((p: any) => p.source === 'screen_share' && p.track);
+    if (screenPub?.track) {
+      screenPub.track.attach(videoRef.current);
+      return () => { if (videoRef.current) screenPub.track.detach(videoRef.current); };
+    }
+  }, []);
+  return <video ref={videoRef} autoPlay playsInline muted className={className || ''} />;
+}
+
 /* ─── Local camera preview ─── */
 function LocalVideoPreview({ callState, className }: { callState: CallState; className?: string }) {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -285,12 +301,7 @@ export function ActiveCallOverlay() {
                   {remoteScreenTrack ? (
                     <VideoRenderer track={remoteScreenTrack} className="w-full h-full object-contain" />
                   ) : localScreenSharing ? (
-                    <div className="flex items-center justify-center h-full">
-                      <div className="flex flex-col items-center gap-3 text-white/60">
-                        <ScreenShare className="w-12 h-12" />
-                        <span className="text-sm font-medium">화면 공유 중</span>
-                      </div>
-                    </div>
+                    <LocalScreenPreview className="w-full h-full object-contain" />
                   ) : null}
                   {/* Screen share label */}
                   <div className="absolute top-2 left-2 bg-green-600/80 backdrop-blur-sm px-2 py-0.5 rounded text-xs text-white font-medium flex items-center gap-1">
@@ -469,11 +480,10 @@ export function ActiveCallOverlay() {
             <span className="text-xs font-medium text-white/50">{callState.isCameraOn ? '카메라 끄기' : '카메라'}</span>
           </div>
 
-          {/* Screen Share (desktop only) */}
-          {!isMobile && (
-            <div className="flex flex-col items-center gap-1">
-              <button
-                onClick={() => toggleScreenShare()}
+          {/* Screen Share */}
+          <div className="flex flex-col items-center gap-1">
+            <button
+              onClick={() => toggleScreenShare()}
                 className={`w-14 h-14 rounded-full flex items-center justify-center transition-all ${
                   callState.isScreenSharing
                     ? 'bg-green-500/30 text-green-400 ring-2 ring-green-500/50'
@@ -482,9 +492,8 @@ export function ActiveCallOverlay() {
               >
                 {callState.isScreenSharing ? <ScreenShareOff className="w-6 h-6" /> : <ScreenShare className="w-6 h-6" />}
               </button>
-              <span className="text-xs font-medium text-white/50">{callState.isScreenSharing ? '공유 중' : '화면공유'}</span>
-            </div>
-          )}
+            <span className="text-xs font-medium text-white/50">{callState.isScreenSharing ? '공유 중' : '화면공유'}</span>
+          </div>
 
           {/* End call */}
           <button
