@@ -1639,7 +1639,11 @@ export const useAppStore = create<AppState>()(
               ...todo,
               requestedById: todo.requestedById || currentUser.id,
             });
-            set((state) => ({ personalTodos: [...state.personalTodos, newTodo] }));
+            set((state) => {
+              // Prevent duplicate if Realtime INSERT already added it
+              if (state.personalTodos.some(t => t.id === newTodo.id)) return state;
+              return { personalTodos: [...state.personalTodos, newTodo] };
+            });
             // Push app notification for assigned todo
             if (newTodo.assigneeIds?.includes(currentUser.id)) {
               get().addAppNotification({

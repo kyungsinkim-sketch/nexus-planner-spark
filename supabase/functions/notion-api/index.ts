@@ -66,10 +66,26 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const body = await req.json();
-    const { userId: jwtUserId } = await authenticateOrFallback(req);
-    const userId = jwtUserId || body.userId;
-    const { action } = body;
+    let body: Record<string, unknown>;
+    try {
+      body = await req.json();
+    } catch (parseErr) {
+      console.error('[notion-api] Body parse error:', parseErr, 'content-type:', req.headers.get('content-type'));
+      return errorResponse('Invalid JSON body');
+    }
+
+    console.log('[notion-api] body keys:', Object.keys(body), 'content-type:', req.headers.get('content-type'));
+
+    let jwtUserId: string | null = null;
+    try {
+      const authResult = await authenticateOrFallback(req);
+      jwtUserId = authResult.userId;
+    } catch (authErr) {
+      console.error('[notion-api] Auth error:', authErr);
+    }
+
+    const userId = jwtUserId || (body.userId as string);
+    const action = body.action as string;
 
     console.log('[notion-api] action:', action, 'jwtUserId:', jwtUserId, 'bodyUserId:', body.userId, 'resolved:', userId);
 

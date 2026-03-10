@@ -13,7 +13,7 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useAppStore } from '@/stores/appStore';
 import { useTranslation } from '@/hooks/useTranslation';
-import { CheckCircle2, Circle } from 'lucide-react';
+import { CheckCircle2, Circle, Trash2 } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -41,7 +41,7 @@ const PRIORITIES = ['HIGH', 'NORMAL', 'LOW'] as const;
 function TodosWidget({ context }: { context: WidgetDataContext }) {
   const {
     personalTodos, currentUser, users, projects,
-    addTodo, completeTodo, updateTodo, addEvent,
+    addTodo, completeTodo, updateTodo, deleteTodo, addEvent,
     todoCreateDialogOpen, setTodoCreateDialogOpen,
   } = useAppStore();
   const { t, language } = useTranslation();
@@ -188,6 +188,20 @@ function TodosWidget({ context }: { context: WidgetDataContext }) {
       priority: editPriority,
     });
     toast.success(t('saved') || 'Saved');
+    setEditDialogOpen(false);
+    setEditingTodo(null);
+  };
+
+  // Delete todo
+  const handleDeleteTodo = async () => {
+    if (!editingTodo) return;
+    try {
+      await deleteTodo(editingTodo.id);
+      toast.success(t('deleted') || '삭제됨');
+    } catch (err) {
+      console.error('Failed to delete todo:', err);
+      toast.error(t('deleteFailed') || '삭제 실패');
+    }
     setEditDialogOpen(false);
     setEditingTodo(null);
   };
@@ -346,13 +360,19 @@ function TodosWidget({ context }: { context: WidgetDataContext }) {
               </div>
             )}
           </div>
-          <DialogFooter>
-            <Button variant="outline" size="sm" onClick={() => setEditDialogOpen(false)}>
-              {t('cancel')}
+          <DialogFooter className="flex justify-between sm:justify-between">
+            <Button variant="destructive" size="sm" onClick={handleDeleteTodo} className="mr-auto">
+              <Trash2 className="w-3.5 h-3.5 mr-1" />
+              {t('delete') || '삭제'}
             </Button>
-            <Button size="sm" onClick={handleSaveEdit} disabled={!editTitle.trim()}>
-              {t('save') || '저장'}
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={() => setEditDialogOpen(false)}>
+                {t('cancel')}
+              </Button>
+              <Button size="sm" onClick={handleSaveEdit} disabled={!editTitle.trim()}>
+                {t('save') || '저장'}
+              </Button>
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -46,30 +46,51 @@ import { Separator } from '@/components/ui/separator';
  * Detects @Name patterns and wraps them in a styled <span>.
  */
 function renderContentWithMentions(content: string, isCurrentUser: boolean) {
-  // Match @followed-by-name (Korean/English/numbers, 1-20 chars)
-  const mentionRegex = /@([\w가-힣\u3131-\u318E\u3200-\u321E\uFFA0-\uFFDC]+(?:\s[\w가-힣\u3131-\u318E\u3200-\u321E\uFFA0-\uFFDC]+)?)/g;
+  // Combined regex: match URLs or @mentions in a single pass
+  const combinedRegex = /(https?:\/\/[^\s<>"{}|\\^`[\]]+)|(@[\w가-힣\u3131-\u318E\u3200-\u321E\uFFA0-\uFFDC]+(?:\s[\w가-힣\u3131-\u318E\u3200-\u321E\uFFA0-\uFFDC]+)?)/g;
   const parts: (string | JSX.Element)[] = [];
   let lastIndex = 0;
   let match: RegExpExecArray | null;
 
-  while ((match = mentionRegex.exec(content)) !== null) {
+  while ((match = combinedRegex.exec(content)) !== null) {
     // Add text before the match
     if (match.index > lastIndex) {
       parts.push(content.slice(lastIndex, match.index));
     }
-    // Add highlighted mention
-    parts.push(
-      <span
-        key={match.index}
-        className={`font-semibold ${
-          isCurrentUser
-            ? 'text-blue-200 bg-blue-500/20'
-            : 'text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-500/20'
-        } rounded px-0.5`}
-      >
-        {match[0]}
-      </span>
-    );
+
+    if (match[1]) {
+      // URL match
+      parts.push(
+        <a
+          key={`url-${match.index}`}
+          href={match[1]}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={`underline break-all ${
+            isCurrentUser
+              ? 'text-blue-200 hover:text-blue-100'
+              : 'text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300'
+          }`}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {match[1]}
+        </a>
+      );
+    } else if (match[2]) {
+      // @mention match
+      parts.push(
+        <span
+          key={`mention-${match.index}`}
+          className={`font-semibold ${
+            isCurrentUser
+              ? 'text-blue-200 bg-blue-500/20'
+              : 'text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-500/20'
+          } rounded px-0.5`}
+        >
+          {match[2]}
+        </span>
+      );
+    }
     lastIndex = match.index + match[0].length;
   }
 
