@@ -218,14 +218,11 @@
   html {
     @apply bg-background;
     overscroll-behavior: none;
-    height: 100%;
   }
 
   body {
     @apply bg-background text-foreground antialiased;
     overscroll-behavior: none;
-    height: 100%;
-    min-height: 100dvh;
     font-family: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
     font-size: 15px;
     line-height: 1.6;
@@ -233,11 +230,6 @@
     font-weight: 400;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-  }
-
-  #root {
-    @apply bg-background;
-    min-height: 100dvh;
   }
 
   h1, h2, h3, h4, h5, h6 {
@@ -552,7 +544,6 @@
         hsl(210 100% 96%) 0%,
         hsl(234 89% 95%) 50%,
         hsl(262 83% 96%) 100%);
-    background-size: 100% 100vh;
   }
   .dark .widget-area-bg {
     background: 
@@ -563,7 +554,6 @@
         hsl(222 47% 5%) 0%,
         hsl(234 50% 8%) 50%,
         hsl(262 40% 8%) 100%);
-    background-size: 100% 100vh;
   }
 
   /* Project background area — when project has a thumbnail */

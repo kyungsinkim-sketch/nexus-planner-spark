@@ -52,13 +52,6 @@ export function TabLayout() {
   const location = useLocation();
   const isMobile = useIsMobile();
 
-  // Disable browser scroll restoration on mobile
-  useEffect(() => {
-    if (isMobile && 'scrollRestoration' in history) {
-      history.scrollRestoration = 'manual';
-    }
-  }, [isMobile]);
-
   // Scroll mobile container to top on view change / initial load
   const mobileContainerRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -69,12 +62,7 @@ export function TabLayout() {
 
   // Also scroll window to top on mobile load
   useEffect(() => {
-    if (isMobile) {
-      window.scrollTo(0, 0);
-      // Delayed scroll to override browser scroll restoration after render
-      const t = setTimeout(() => window.scrollTo(0, 0), 100);
-      return () => clearTimeout(t);
-    }
+    if (isMobile) window.scrollTo(0, 0);
   }, [isMobile, mobileView]);
 
   // iOS Safari: resize layout to match visual viewport (keyboard push-up)
