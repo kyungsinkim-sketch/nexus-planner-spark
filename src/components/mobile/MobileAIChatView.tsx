@@ -284,8 +284,19 @@ export function MobileAIChatView() {
   const allMessages = useMemo(() => [...seedMessages, ...messages], [seedMessages, messages]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [keyboardOpen, setKeyboardOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
+
+  // Detect keyboard open/close via visualViewport
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const threshold = window.innerHeight * 0.75;
+    const onResize = () => setKeyboardOpen(vv.height < threshold);
+    vv.addEventListener('resize', onResize);
+    return () => vv.removeEventListener('resize', onResize);
+  }, []);
 
   useTypingReveal(messages, setMessages);
 
@@ -418,10 +429,10 @@ export function MobileAIChatView() {
         </div>
       </div>
 
-      {/* ═══ Input bar — fixed above floating nav ═══ */}
+      {/* ═══ Input bar — fixed above floating nav (or just above keyboard) ═══ */}
       <div
         className="fixed left-0 right-0 z-40 px-4 py-2"
-        style={{ bottom: 'calc(64px + env(safe-area-inset-bottom, 0px))' }}
+        style={{ bottom: keyboardOpen ? '0px' : 'calc(64px + env(safe-area-inset-bottom, 0px))' }}
       >
         <div className="flex items-center gap-2 px-4 py-2.5 rounded-full mobile-glass shadow-lg">
           <Brain className="w-4 h-4 text-violet-500 shrink-0" />
