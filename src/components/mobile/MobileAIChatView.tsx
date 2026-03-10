@@ -341,7 +341,7 @@ export function MobileAIChatView() {
   return (
     <div className="relative flex flex-col h-full widget-area-bg">
       {/* ═══ Scrollable area: briefing at top, messages grow from bottom ═══ */}
-      <div className="flex-1 min-h-0 overflow-y-auto flex flex-col" style={{ paddingBottom: '60px' }}>
+      <div className="flex-1 min-h-0 overflow-y-auto flex flex-col" style={{ paddingBottom: '140px' }}>
         {/* ── Sticky header zone: Profile Card + Briefing ── */}
         <div className="shrink-0 px-4 pt-6 pb-2">
           <ProfileCard user={currentUser} language={language} projects={projects} onProjectsClick={() => useWidgetStore.getState().setMobileView('projects')} />
@@ -418,10 +418,10 @@ export function MobileAIChatView() {
         </div>
       </div>
 
-      {/* ═══ Input bar — stays above floating nav ═══ */}
+      {/* ═══ Input bar — fixed above floating nav ═══ */}
       <div
-        className="shrink-0 px-4 pt-2"
-        style={{ paddingBottom: 'calc(70px + env(safe-area-inset-bottom, 0px))' }}
+        className="fixed left-0 right-0 z-40 px-4 py-2"
+        style={{ bottom: 'calc(64px + env(safe-area-inset-bottom, 0px))' }}
       >
         <div className="flex items-center gap-2 px-4 py-2.5 rounded-full mobile-glass shadow-lg">
           <Brain className="w-4 h-4 text-violet-500 shrink-0" />
