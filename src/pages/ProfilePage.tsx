@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import { useAppStore } from '@/stores/appStore';
-import { Camera } from 'lucide-react';
+import { Camera, Pencil, Check, X } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
@@ -20,6 +20,20 @@ export default function ProfilePage() {
   const portfolioItems = currentUser ? getPortfolioByUser(currentUser.id) : [];
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [editName, setEditName] = useState('');
+
+  const handleNameSave = async () => {
+    if (!currentUser || !editName.trim()) return;
+    try {
+      await authService.updateUserProfile(currentUser.id, { name: editName.trim() });
+      setCurrentUser({ ...currentUser, name: editName.trim() });
+      setIsEditingName(false);
+      toast.success('이름이 변경되었습니다');
+    } catch (err) {
+      toast.error('이름 변경 실패');
+    }
+  };
 
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -130,9 +144,32 @@ export default function ProfilePage() {
                 )}
               </button>
             </div>
-            <h2 className="font-semibold text-lg text-foreground mt-4">
-              {currentUser.name}
-            </h2>
+            <div className="flex items-center gap-2 mt-4">
+              {isEditingName ? (
+                <>
+                  <input
+                    type="text"
+                    value={editName}
+                    onChange={(e) => setEditName(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') handleNameSave(); if (e.key === 'Escape') setIsEditingName(false); }}
+                    className="font-semibold text-lg text-foreground bg-transparent border-b-2 border-primary outline-none text-center w-40"
+                    autoFocus
+                  />
+                  <button onClick={handleNameSave} className="p-1 rounded hover:bg-muted text-green-500"><Check className="w-4 h-4" /></button>
+                  <button onClick={() => setIsEditingName(false)} className="p-1 rounded hover:bg-muted text-muted-foreground"><X className="w-4 h-4" /></button>
+                </>
+              ) : (
+                <>
+                  <h2 className="font-semibold text-lg text-foreground">{currentUser.name}</h2>
+                  <button
+                    onClick={() => { setEditName(currentUser.name); setIsEditingName(true); }}
+                    className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    <Pencil className="w-3.5 h-3.5" />
+                  </button>
+                </>
+              )}
+            </div>
             <Badge variant="secondary" className="mt-2">
               {currentUser.role}
             </Badge>

@@ -545,7 +545,24 @@ function FilesWidget({ context }: { context: WidgetDataContext }) {
                 </div>
 
                 <DialogFooter className="gap-2">
-                  <Button variant="outline" size="sm" className="gap-1.5">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-1.5"
+                    onClick={() => {
+                      const url = getFileUrl(selectedFile.storagePath);
+                      if (url) {
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = selectedFile.name;
+                        a.target = '_blank';
+                        a.rel = 'noopener noreferrer';
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                      }
+                    }}
+                  >
                     <Download className="w-3.5 h-3.5" /> {t('download')}
                   </Button>
                   <Button variant="destructive" size="sm" className="gap-1.5" onClick={() => handleDeleteFile(selectedFile.id)}>

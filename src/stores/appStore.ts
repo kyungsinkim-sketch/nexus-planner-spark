@@ -1407,9 +1407,11 @@ export const useAppStore = create<AppState>()(
 
         try {
           const rooms = await chatService.getGroupRooms(currentUser.id);
+          console.log('[GroupRooms] Loaded', rooms.length, 'group rooms:', rooms.map(r => r.name));
           set((state) => {
             // Remove old group rooms (project_id is null/empty), add fresh ones
             const otherRooms = state.chatRooms.filter(r => r.projectId);
+            console.log('[GroupRooms] Keeping', otherRooms.length, 'project rooms, adding', rooms.length, 'group rooms');
             return { chatRooms: [...otherRooms, ...rooms] };
           });
 
