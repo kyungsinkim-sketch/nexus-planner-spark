@@ -54,8 +54,7 @@ export function MobileBottomNav() {
 
   return (
     <div
-      className="md:hidden fixed bottom-0 left-0 right-0 z-50 widget-area-bg"
-      style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+      className="md:hidden fixed bottom-0 left-0 right-0 z-50"
     >
       {/* Popup menu */}
       {popupOpen && (
@@ -118,7 +117,7 @@ export function MobileBottomNav() {
       )}
 
       {/* Nav bar — pill-shaped liquid glass, drag-proof */}
-      <div className="px-4 pb-1.5">
+      <div className="px-4" style={{ paddingBottom: 'max(6px, env(safe-area-inset-bottom, 6px))' }}>
         <div
           className="rounded-full border"
           style={{
