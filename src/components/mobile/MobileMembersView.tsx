@@ -383,8 +383,9 @@ export function MobileMembersView() {
 
   // ─── List View ───────────────────────────────────────────
   return (
-    <div className="flex flex-col h-full widget-area-bg">
-      {/* Header */}
+    <div className="h-full widget-area-bg overflow-y-auto">
+      {/* Header + filters — sticky transparent */}
+      <div className="sticky top-0 z-10 backdrop-blur-md pt-1" style={{ WebkitBackdropFilter: 'blur(12px)' }}>
       <div className="flex items-center justify-between px-4 pt-4 pb-2">
         <h2 className="typo-h2">Members</h2>
         <button
@@ -484,8 +485,10 @@ export function MobileMembersView() {
         })()}
       </div>
 
+      </div>{/* end sticky header */}
+
       {/* 2-column grid */}
-      <div className="flex-1 overflow-y-auto px-4 pb-24">
+      <div className="px-4 pb-24">
         <div className="grid grid-cols-2 gap-3">
           {filteredUsers.map(user => (
             <button

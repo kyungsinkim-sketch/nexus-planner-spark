@@ -297,7 +297,9 @@ export function MobileAIChatView() {
         const { getDirectMessages } = await import('@/services/chatService');
         const history = await getDirectMessages(currentUser.id, BRAIN_BOT_ID);
         if (history.length > 0) {
-          setMessages(history.map(m => ({
+          // Show only the last 2 messages (1 user + 1 assistant typically)
+          const recent = history.slice(-2);
+          setMessages(recent.map(m => ({
             id: m.id,
             role: m.userId === BRAIN_BOT_ID ? 'assistant' as const : 'user' as const,
             content: m.content,
@@ -400,7 +402,7 @@ export function MobileAIChatView() {
   const formatTime = (d: Date) => d.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
 
   return (
-    <div className="relative flex flex-col h-full widget-area-bg">
+    <div className="relative flex flex-col h-full widget-area-bg overflow-hidden">
       {/* ═══ Scrollable area: briefing at top, messages grow from bottom ═══ */}
       <div className="flex-1 min-h-0 overflow-y-auto flex flex-col" style={{ paddingBottom: '140px' }}>
         {/* ── Sticky header zone: Profile Card + Briefing ── */}

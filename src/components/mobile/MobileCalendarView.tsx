@@ -221,7 +221,7 @@ function EventSheet({
   event?: CalendarEvent | null;
   onClose: () => void;
 }) {
-  const { projects, users, currentUser, updateEvent, deleteEvent } = useAppStore();
+  const { projects, users, currentUser, addEvent, updateEvent, deleteEvent } = useAppStore();
   const { language } = useTranslation();
   const isEdit = !!event;
 
@@ -256,7 +256,13 @@ function EventSheet({
         });
         toast.success(language === 'ko' ? '일정이 수정되었습니다' : 'Event updated');
       } else {
-        // Create — currently placeholder (same as before)
+        await addEvent({
+          title: title.trim(),
+          startAt: buildDatetime(startH),
+          endAt: buildDatetime(endH),
+          projectId: projId || undefined,
+          ownerId: currentUser?.id,
+        });
         toast.success(language === 'ko' ? '일정이 생성되었습니다' : 'Event created');
       }
       onClose();
