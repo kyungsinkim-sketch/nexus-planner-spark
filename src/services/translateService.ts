@@ -34,31 +34,37 @@ export async function translate(text: string): Promise<string | null> {
   const sourceLang = detectLanguage(text);
   const targetLang = sourceLang === 'ko' ? 'en' : 'ko';
 
+  console.log('[Translate]', sourceLang, '→', targetLang, ':', text.slice(0, 50));
+
   for (const instance of LINGVA_INSTANCES) {
     try {
       const encoded = encodeURIComponent(text);
       const url = `${instance}/api/v1/${sourceLang}/${targetLang}/${encoded}`;
 
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 3000); // 3s timeout for real-time
+      const timeout = setTimeout(() => controller.abort(), 5000);
 
       const res = await fetch(url, { signal: controller.signal });
       clearTimeout(timeout);
 
-      if (!res.ok) continue;
+      if (!res.ok) {
+        console.warn('[Translate] Instance returned', res.status, instance);
+        continue;
+      }
 
       const data = await res.json();
       if (data.translation) {
-        activeInstance = instance; // Remember working instance
+        activeInstance = instance;
+        console.log('[Translate] ✅', data.translation.slice(0, 50));
         return data.translation;
       }
-    } catch {
-      // Try next instance
+    } catch (err: any) {
+      console.warn('[Translate] Instance failed:', instance, err?.message || err);
       continue;
     }
   }
 
-  console.warn('[Translate] All instances failed');
+  console.warn('[Translate] All instances failed for:', text.slice(0, 50));
   return null;
 }
 

@@ -1225,8 +1225,11 @@ export function startLiveTranscript(lang: string = 'ko-KR'): boolean {
         // Auto-translate if enabled
         if (translationEnabled) {
           const lineId = id;
-          import('@/services/translateService').then(({ translateDebounced }) => {
-            translateDebounced(text).then(result => {
+          const finalText = text;
+          console.log('[STT] Translating final line:', lineId, finalText.slice(0, 30));
+          import('@/services/translateService').then(({ translate }) => {
+            translate(finalText).then(result => {
+              console.log('[STT] Translation result for', lineId, ':', result?.slice(0, 30) || 'null');
               if (result) {
                 const line = transcriptLines.find(l => l.id === lineId);
                 if (line) {
@@ -1234,8 +1237,8 @@ export function startLiveTranscript(lang: string = 'ko-KR'): boolean {
                   notifyTranscript();
                 }
               }
-            });
-          });
+            }).catch(err => console.error('[STT] Translation error:', err));
+          }).catch(err => console.error('[STT] Import error:', err));
         }
       } else {
         // Update or create interim line
@@ -1271,9 +1274,21 @@ export function startLiveTranscript(lang: string = 'ko-KR'): boolean {
     speechRecognition = recognition;
     console.log('[STT] Started, lang:', lang);
     return true;
-  } catch (err) {
-    console.error('[STT] Start failed:', err);
-    return false;
+  } catch (err: any) {
+    console.error('[STT] Start failed:', err?.message || err);
+    // Retry after a short delay (mic might be temporarily locked by LiveKit)
+    setTimeout(() => {
+      try {
+        recognition.start();
+        speechRecognition = recognition;
+        console.log('[STT] Started on retry, lang:', lang);
+      } catch (retryErr: any) {
+        console.error('[STT] Retry also failed:', retryErr?.message || retryErr);
+      }
+    }, 500);
+    // Return true optimistically since retry may succeed
+    speechRecognition = recognition;
+    return true;
   }
 }
 
@@ -1299,17 +1314,17 @@ export function setTranslationEnabled(enabled: boolean) {
   console.log('[STT] Translation:', enabled ? 'ON' : 'OFF');
   if (enabled) {
     // Translate existing final lines that don't have translations yet
-    transcriptLines.forEach(line => {
-      if (line.isFinal && !line.translation) {
-        import('@/services/translateService').then(({ translateDebounced }) => {
-          translateDebounced(line.text).then(result => {
+    import('@/services/translateService').then(({ translate }) => {
+      transcriptLines.forEach(line => {
+        if (line.isFinal && !line.translation) {
+          translate(line.text).then(result => {
             if (result) {
               line.translation = result;
               notifyTranscript();
             }
           });
-        });
-      }
+        }
+      });
     });
   }
 }
