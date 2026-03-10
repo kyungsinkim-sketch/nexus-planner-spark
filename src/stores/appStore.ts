@@ -2045,25 +2045,37 @@ export const useAppStore = create<AppState>()(
             state.currentUser.id,
             needsFullFetch,
           );
-          if (newMessages.length === 0) {
-            set({ gmailSyncing: false, gmailLastSyncAt: new Date().toISOString() });
-            return;
-          }
-          // Merge new messages — replace existing by ID (to fix stale/garbled cache)
-          const existingById = new Map(state.gmailMessages.map(m => [m.id, m]));
-          const trulyNew: typeof newMessages = [];
-          for (const msg of newMessages) {
-            if (!existingById.has(msg.id)) {
-              trulyNew.push(msg);
-            }
-            existingById.set(msg.id, msg); // always update with fresh data
-          }
           // Filter out locally-trashed messages so they don't reappear
           const trashedSet = new Set(get().trashedGmailMessageIds);
-          const allMessages = Array.from(existingById.values())
-            .filter(m => !trashedSet.has(m.id))
-            .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-            .slice(0, 50); // keep max 50
+
+          let allMessages: typeof newMessages;
+
+          if (needsFullFetch) {
+            // Full sync: server response is source of truth — replace all
+            // Messages not in server response (deleted in Gmail) are dropped
+            allMessages = newMessages
+              .filter(m => !trashedSet.has(m.id))
+              .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+              .slice(0, 50);
+          } else {
+            // Incremental sync: merge new messages into existing
+            if (newMessages.length === 0) {
+              set({ gmailSyncing: false, gmailLastSyncAt: new Date().toISOString() });
+              return;
+            }
+            const existingById = new Map(state.gmailMessages.map(m => [m.id, m]));
+            const trulyNew: typeof newMessages = [];
+            for (const msg of newMessages) {
+              if (!existingById.has(msg.id)) {
+                trulyNew.push(msg);
+              }
+              existingById.set(msg.id, msg);
+            }
+            allMessages = Array.from(existingById.values())
+              .filter(m => !trashedSet.has(m.id))
+              .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+              .slice(0, 50);
+          }
 
           // Analyze new messages with Brain AI — include project/user context
           const brainCtx = {

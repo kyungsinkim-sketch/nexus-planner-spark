@@ -386,7 +386,7 @@ function EmailWidget({ context: _context }: { context: WidgetDataContext }) {
   }, [currentUser]);
 
   const handleRefresh = useCallback(() => {
-    syncGmail();
+    syncGmail(true); // Force full sync to remove deleted emails
   }, [syncGmail]);
 
   const handleReply = useCallback((suggestionId: string) => {
