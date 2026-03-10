@@ -33,7 +33,7 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
     );
 
-    const { roomId, audioBlob, userId: bodyUserId } = await req.json();
+    const { roomId, audioBlob, liveTranscript, userId: bodyUserId } = await req.json();
     const { userId: authUserId } = await authenticateOrFallback(req);
 
     if (!roomId) {
@@ -160,13 +160,112 @@ Deno.serve(async (req) => {
       }
     }
 
+    // ── Fallback: If no audio recording but live transcript exists ──
+    // Use browser STT text to trigger Brain analysis directly (skip server STT)
+    if (!audioBlob && liveTranscript && liveTranscript.trim().length > 10) {
+      console.log('[call-room-end] No audio, using live transcript for analysis. Length:', liveTranscript.length);
+
+      // Create a voice_recording entry with pre-filled transcript
+      const transcript = liveTranscript.split('\n').filter((l: string) => l.trim()).map((line: string, i: number) => ({
+        speaker: '화자 1',
+        text: line.trim(),
+        startTime: i * 10,
+        endTime: (i + 1) * 10,
+      }));
+
+      const { data: voiceRec } = await supabase
+        .from('voice_recordings')
+        .insert({
+          user_id: user.id,
+          title: room.title || 'In-App Call',
+          audio_storage_path: null,
+          file_size: 0,
+          duration: durationSeconds,
+          status: 'analyzing',
+          recording_type: 'online_meeting',
+          participants: participantNames,
+          transcript: JSON.stringify(transcript),
+        })
+        .select()
+        .single();
+
+      if (voiceRec) {
+        await supabase.from('call_rooms').update({
+          voice_recording_id: voiceRec.id,
+          analysis_status: 'analyzing',
+        }).eq('id', roomId);
+
+        // Skip STT, go straight to Brain analysis
+        const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+        const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+
+        fetch(`${supabaseUrl}/functions/v1/voice-brain-analyze`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${serviceKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            recordingId: voiceRec.id,
+            userId: user.id,
+            transcript,
+          }),
+        }).then(async (resp) => {
+          if (resp.ok) {
+            const { analysis } = await resp.json();
+            // Create suggestions (same logic as call-analyze-pipeline)
+            const suggestions: any[] = [];
+
+            if (analysis?.suggestedEvents?.length) {
+              for (const evt of analysis.suggestedEvents) {
+                suggestions.push({
+                  room_id: roomId, user_id: user.id, suggestion_type: 'event',
+                  title: evt.title || '새 일정', description: evt.description || null,
+                  event_start: evt.startTime || null, event_end: evt.endTime || null,
+                  confidence: evt.confidence || 0.8, source_quote: evt.sourceQuote || null,
+                  status: 'pending',
+                });
+              }
+            }
+            if (analysis?.actionItems?.length) {
+              for (const item of analysis.actionItems) {
+                suggestions.push({
+                  room_id: roomId, user_id: user.id, suggestion_type: 'todo',
+                  title: item.title || '새 할 일', description: item.description || null,
+                  todo_due_date: item.dueDate || null, todo_priority: item.priority || 'MEDIUM',
+                  confidence: item.confidence || 0.8, source_quote: item.sourceQuote || null,
+                  status: 'pending',
+                });
+              }
+            }
+            if (analysis?.decisions?.length) {
+              for (const dec of analysis.decisions) {
+                suggestions.push({
+                  room_id: roomId, user_id: user.id, suggestion_type: 'note',
+                  title: dec.content || '결정 사항', description: dec.reasoning || null,
+                  note_category: 'decision', confidence: dec.confidence || 0.85,
+                  source_quote: dec.sourceQuote || null, status: 'pending',
+                });
+              }
+            }
+
+            if (suggestions.length > 0) {
+              await supabase.from('call_suggestions').insert(suggestions);
+            }
+            await supabase.from('call_rooms').update({ analysis_status: 'completed', status: 'completed' }).eq('id', roomId);
+            console.log(`[call-room-end] Live transcript analysis done. ${suggestions.length} suggestions created.`);
+          }
+        }).catch(err => console.error('[call-room-end] Live transcript analysis failed:', err));
+      }
+    }
+
     return new Response(JSON.stringify({
       success: true,
       room: {
         id: room.id,
         status: 'processing',
         durationSeconds,
-        analysisStatus: audioBlob ? 'transcribing' : 'pending',
+        analysisStatus: audioBlob ? 'transcribing' : (liveTranscript ? 'analyzing' : 'pending'),
       },
     }), {
       status: 200,

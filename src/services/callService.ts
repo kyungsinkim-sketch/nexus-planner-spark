@@ -719,9 +719,13 @@ export async function endCall(): Promise<void> {
   }
   endCallInProgress = true;
 
+  // Capture live transcript text before stopping
+  const liveTranscriptText = getTranscriptText();
+
   // Immediately disconnect and reset UI
   stopRingbackTone();
   stopLiveTranscript();
+  clearTranscript();
 
   if (durationTimer) {
     clearInterval(durationTimer);
@@ -823,12 +827,13 @@ export async function endCall(): Promise<void> {
 
   // Send end signal to backend (non-blocking, after UI reset)
   if (roomInfo) {
-    console.log('[Call] Sending end signal to backend. roomId:', roomInfo.id, 'hasAudio:', !!audioBase64, 'audioSize:', audioBase64 ? Math.round(audioBase64.length / 1024) + 'KB' : '0');
+    console.log('[Call] Sending end signal to backend. roomId:', roomInfo.id, 'hasAudio:', !!audioBase64, 'audioSize:', audioBase64 ? Math.round(audioBase64.length / 1024) + 'KB' : '0', 'hasLiveTranscript:', !!liveTranscriptText);
     try {
       supabase.functions.invoke('call-room-end', {
         body: {
           roomId: roomInfo.id,
           audioBlob: audioBase64,
+          liveTranscript: liveTranscriptText || null,
         },
       }).then((resp) => {
         console.log('[Call] End signal sent to backend:', JSON.stringify(resp.data));
