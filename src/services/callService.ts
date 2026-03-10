@@ -508,8 +508,25 @@ async function connectToRoom(wsUrl: string, token: string): Promise<void> {
 
   currentRoom = room;
 
-  // Start mixed recording AFTER connection (captures both local + remote audio)
-  startMixedRecording(room);
+  // Start mixed recording AFTER mic is ready (ensures local audio track exists)
+  // Wait a bit for mic to publish, then start recording
+  const startRecordingWhenReady = () => {
+    const maxWait = 5000; // 5s max wait
+    const interval = 300;
+    let waited = 0;
+    const check = () => {
+      const hasLocalAudio = Array.from(room.localParticipant.audioTrackPublications.values()).some((p: any) => p.track);
+      if (hasLocalAudio || waited >= maxWait) {
+        if (!hasLocalAudio) console.warn('[Call] Starting recording without local audio (mic not ready after 5s)');
+        startMixedRecording(room);
+        return;
+      }
+      waited += interval;
+      setTimeout(check, interval);
+    };
+    check();
+  };
+  startRecordingWhenReady();
 }
 
 // ─── Client-side Recording (MVP) ─────────────────────
@@ -527,6 +544,10 @@ function startMixedRecording(room: Room): void {
 
   try {
     recordingAudioContext = new AudioContext();
+    // Resume if suspended (browser requires user gesture)
+    if (recordingAudioContext.state === 'suspended') {
+      recordingAudioContext.resume().catch(() => {});
+    }
     recordingDestination = recordingAudioContext.createMediaStreamDestination();
 
     // Add local mic audio
