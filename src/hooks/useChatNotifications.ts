@@ -85,12 +85,27 @@ export function useChatNotifications() {
           // conversation pair. This prevents cross-user AI response leakage.
           if (msg.user_id === BRAIN_BOT_USER_ID && msg.direct_chat_user_id) return;
 
-          // Skip group chat messages if user is not a member of the room
-          if (msg.room_id && !msg.project_id) {
-            const state = useAppStore.getState();
+          const state = useAppStore.getState();
+
+          // ── DM: only notify if I'm part of this conversation ──
+          if (msg.direct_chat_user_id) {
+            // DM is between msg.user_id and msg.direct_chat_user_id
+            const myId = currentUser.id;
+            const isMyDm = msg.user_id === myId || msg.direct_chat_user_id === myId;
+            if (!isMyDm) return; // Not my DM — skip
+          }
+
+          // ── Project chat: only notify if I'm a member of this project ──
+          if (msg.project_id) {
+            const project = state.projects.find(p => p.id === msg.project_id);
+            if (!project) return; // Not in this project — skip
+          }
+
+          // ── Group chat: only notify if I'm a member of this room ──
+          if (msg.room_id && !msg.project_id && !msg.direct_chat_user_id) {
             const groupRooms = state.getGroupRooms();
             const isMember = groupRooms.some(r => r.id === msg.room_id);
-            if (!isMember) return; // Not in this group chat — skip notification
+            if (!isMember) return; // Not in this group chat — skip
           }
 
           // Add to global store (creates appNotification for bell icon if not in active chat)
