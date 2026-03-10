@@ -451,7 +451,7 @@ export function MobileAIChatView() {
             value={input}
             onChange={e => setInput(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && handleSubmit()}
-            onFocus={() => setTimeout(() => inputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 300)}
+            onFocus={() => { window.scrollTo(0, 0); setTimeout(() => window.scrollTo(0, 0), 150); }}
             placeholder={language === 'ko' ? 'Brain AI에게 물어보세요...' : 'Ask Brain AI...'}
             className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none"
             disabled={loading}
