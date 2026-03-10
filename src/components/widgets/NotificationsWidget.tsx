@@ -181,6 +181,11 @@ function NotificationsWidget({ context }: { context: WidgetDataContext }) {
         store.setPendingChatNavigation({ type: 'project', id: n.projectId, roomId: n.roomId });
         store.setChatPanelCollapsed(false);
       }
+    } else if (n.type === 'chat' && n.roomId && !n.projectId && !n.directUserId) {
+      // Group chat navigation
+      store.setPendingChatNavigation({ type: 'group', id: n.roomId, roomId: n.roomId });
+      store.setChatPanelCollapsed(false);
+      widgetStore.setActiveTab('dashboard');
     } else if (n.type === 'chat' && n.directUserId) {
       // DM navigation
       store.setPendingChatNavigation({ type: 'direct', id: n.directUserId });

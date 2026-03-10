@@ -98,6 +98,8 @@ export function ChatPanel({ defaultProjectId, defaultDmUserId }: ChatPanelProps 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTab, setSelectedTab] = useState<'projects' | 'direct' | 'groups'>('projects');
   const [showCreateGroupRoom, setShowCreateGroupRoom] = useState(false);
+  const [groupMemberUsers, setGroupMemberUsers] = useState<Record<string, typeof users>>({});
+  const [showGroupMembers, setShowGroupMembers] = useState(false);
   const [newGroupRoomName, setNewGroupRoomName] = useState('');
   const [newGroupRoomDescription, setNewGroupRoomDescription] = useState('');
   const [selectedGroupMemberIds, setSelectedGroupMemberIds] = useState<string[]>([]);
@@ -162,6 +164,16 @@ export function ChatPanel({ defaultProjectId, defaultDmUserId }: ChatPanelProps 
       loadGroupRooms();
     }
   }, [currentUser, loadGroupRooms]);
+
+  // Load group members when a group chat is selected
+  useEffect(() => {
+    if (selectedChat?.type === 'group' && selectedChat.roomId && !groupMemberUsers[selectedChat.roomId]) {
+      chatService.getRoomMembers(selectedChat.roomId).then(members => {
+        const memberUsers = members.map(m => users.find(u => u.id === m.userId)).filter(Boolean) as typeof users;
+        setGroupMemberUsers(prev => ({ ...prev, [selectedChat.roomId!]: memberUsers }));
+      }).catch(() => {});
+    }
+  }, [selectedChat?.roomId, selectedChat?.type, users]);
 
   // Group rooms list
   const groupRooms = useMemo(() => getGroupRooms(), [chatRooms, getGroupRooms]);
@@ -404,6 +416,9 @@ export function ChatPanel({ defaultProjectId, defaultDmUserId }: ChatPanelProps 
     if (nav.type === 'direct') {
       setSelectedTab('direct');
       handleSelectDirectChat(nav.id);
+    } else if (nav.type === 'group') {
+      setSelectedTab('groups');
+      setSelectedChat({ type: 'group', id: nav.id, roomId: nav.roomId || nav.id });
     } else if (nav.type === 'project') {
       setSelectedTab('projects');
       if (nav.roomId) {
@@ -413,6 +428,10 @@ export function ChatPanel({ defaultProjectId, defaultDmUserId }: ChatPanelProps 
         setExpandedProjectId(nav.id);
       }
     }
+
+    // Scroll to bottom after navigation + render
+    setTimeout(() => scrollToBottom(true), 300);
+    setTimeout(() => scrollToBottom(false), 600);
   }, [pendingChatNavigation]);
 
   // Track active chat context globally (for notification suppression) + auto-clear notifications
@@ -1451,9 +1470,13 @@ export function ChatPanel({ defaultProjectId, defaultDmUserId }: ChatPanelProps 
     if (selectedChat.type === 'group') {
       const room = chatRooms.find(r => r.id === selectedChat.roomId);
       if (!room) return null;
+      // Use groupMemberUsers state if available for this room
+      const members = groupMemberUsers[room.id] || [];
+      const memberNames = members.map(m => m.name).join(', ');
       return {
         name: room.name,
-        subtitle: room.description || t('groupChat') || '그룹 채팅',
+        subtitle: members.length > 0 ? `${members.length}명 · ${memberNames}` : (room.description || t('groupChat') || '그룹 채팅'),
+        groupMembers: members,
       };
     }
 
@@ -1855,7 +1878,10 @@ export function ChatPanel({ defaultProjectId, defaultDmUserId }: ChatPanelProps 
                   </Badge>
                 )}
               </div>
-              <p className="text-xs font-medium text-muted-foreground truncate">
+              <p
+                className={`text-xs font-medium text-muted-foreground truncate ${selectedChat?.type === 'group' ? 'cursor-pointer hover:text-foreground transition-colors' : ''}`}
+                onClick={() => { if (selectedChat?.type === 'group') setShowGroupMembers(prev => !prev); }}
+              >
                 {selectedChatInfo?.subtitle}
               </p>
             </div>
@@ -1911,6 +1937,27 @@ export function ChatPanel({ defaultProjectId, defaultDmUserId }: ChatPanelProps 
               <Trash2 className="w-4 h-4" />
             </Button>
           </div>
+
+          {/* Group Members Panel */}
+          {showGroupMembers && selectedChat?.type === 'group' && selectedChatInfo?.groupMembers && (
+            <div className="border-b border-border bg-muted/30 px-3 py-2 shrink-0">
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-xs font-medium text-muted-foreground">멤버 ({selectedChatInfo.groupMembers.length}명)</span>
+                <button onClick={() => setShowGroupMembers(false)} className="p-0.5 rounded hover:bg-muted"><X className="w-3 h-3" /></button>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {selectedChatInfo.groupMembers.map(member => (
+                  <div key={member.id} className="flex items-center gap-1.5 bg-background rounded-full px-2 py-1 border border-border">
+                    <Avatar className="w-5 h-5">
+                      {member.avatar && <AvatarImage src={member.avatar} />}
+                      <AvatarFallback className="text-[9px] bg-primary/10 text-primary">{member.name?.charAt(0)}</AvatarFallback>
+                    </Avatar>
+                    <span className="text-xs text-foreground">{member.name}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Pinned Announcement Banner */}
           {pinnedAnnouncement && (

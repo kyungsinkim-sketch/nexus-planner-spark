@@ -117,7 +117,7 @@ interface AppState {
   activeChatContext: { type: 'project' | 'direct'; id: string; roomId?: string } | null;
 
   // Pending chat navigation target — set by notification click, consumed by ChatPanel
-  pendingChatNavigation: { type: 'project' | 'direct'; id: string; roomId?: string } | null;
+  pendingChatNavigation: { type: 'project' | 'direct' | 'group'; id: string; roomId?: string } | null;
 
   // Notification Sound
   notificationSoundEnabled: boolean;
@@ -2440,7 +2440,7 @@ export const useAppStore = create<AppState>()(
       setProjectSearchOpen: (open) => set({ projectSearchOpen: open }),
       setShowAutoCheckInDialog: (open) => set({ showAutoCheckInDialog: open }),
       setActiveChatContext: (ctx: { type: 'project' | 'direct'; id: string; roomId?: string } | null) => set({ activeChatContext: ctx }),
-      setPendingChatNavigation: (nav: { type: 'project' | 'direct'; id: string; roomId?: string } | null) => set({ pendingChatNavigation: nav }),
+      setPendingChatNavigation: (nav: { type: 'project' | 'direct' | 'group'; id: string; roomId?: string } | null) => set({ pendingChatNavigation: nav }),
       setWorldClockSettingsOpen: (open) => set({ worldClockSettingsOpen: open }),
       setWeatherSettingsOpen: (open) => set({ weatherSettingsOpen: open }),
       setNotificationSoundEnabled: (enabled) => set({ notificationSoundEnabled: enabled }),
