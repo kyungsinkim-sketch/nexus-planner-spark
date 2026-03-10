@@ -261,10 +261,7 @@ export async function createCall(targetUserId: string | string[], projectId?: st
       }
     });
 
-    // Start recording BEFORE connecting (getUserMedia can be slow, avoid race with disconnect)
-    await startMicRecording();
-
-    // Auto-connect caller
+    // Auto-connect caller (recording starts inside connectToRoom after connection)
     await connectToRoom(wsUrl, token);
 
   } catch (err: any) {
@@ -289,9 +286,7 @@ export async function joinCall(roomId: string): Promise<void> {
 
     setState({ room, token, wsUrl });
 
-    // Start recording BEFORE connecting
-    await startMicRecording();
-
+    // Recording starts inside connectToRoom after connection
     await connectToRoom(wsUrl, token);
 
   } catch (err: any) {
@@ -315,8 +310,19 @@ async function connectToRoom(wsUrl: string, token: string): Promise<void> {
     console.log('[Call] ✅ Room connected event fired');
   });
 
-  room.on(RoomEvent.LocalTrackPublished, () => {
-    console.log('[Call] LocalTrackPublished');
+  room.on(RoomEvent.LocalTrackPublished, (pub: any) => {
+    console.log('[Call] LocalTrackPublished, kind:', pub?.track?.kind);
+    // Add local audio to recording mix if it wasn't available at recording start
+    if (pub?.track?.kind === Track.Kind.Audio && recordingAudioContext && recordingDestination) {
+      const stream = getMediaStreamFromTrack(pub.track);
+      if (stream) {
+        try {
+          const source = recordingAudioContext.createMediaStreamSource(stream);
+          source.connect(recordingDestination);
+          console.log('[Call] ✅ Local audio added to recording (late publish)');
+        } catch (e) { /* ignore duplicate */ }
+      }
+    }
   });
 
   room.on(RoomEvent.Disconnected, (reason?: any) => {
@@ -399,6 +405,9 @@ async function connectToRoom(wsUrl: string, token: string): Promise<void> {
       } catch (err) {
         console.warn('[Call] Web Audio API not available, using element volume:', err);
       }
+
+      // Add to mixed recording
+      addRemoteTrackToRecording(track);
     }
   });
 
@@ -427,11 +436,7 @@ async function connectToRoom(wsUrl: string, token: string): Promise<void> {
     }
   });
 
-  // Start recording BEFORE connect — prevents race condition where
-  // ParticipantDisconnected fires before recording is initialized
-  await startMicRecording();
-
-  // Connect
+  // Connect first, then start recording (so we can mix remote audio)
   try {
     console.log('[Call] Connecting to', wsUrl);
     // 15s timeout for WebSocket connection (mobile can be slow)
@@ -502,11 +507,91 @@ async function connectToRoom(wsUrl: string, token: string): Promise<void> {
   }
 
   currentRoom = room;
+
+  // Start mixed recording AFTER connection (captures both local + remote audio)
+  startMixedRecording(room);
 }
 
 // ─── Client-side Recording (MVP) ─────────────────────
 
-// ─── Simple mic recording (called BEFORE room.connect) ──────
+let recordingAudioContext: AudioContext | null = null;
+let recordingDestination: MediaStreamAudioDestinationNode | null = null;
+
+// ─── Mixed recording: local mic + remote audio ──────
+function startMixedRecording(room: Room): void {
+  console.log('[Call] startMixedRecording() called, current mediaRecorder:', mediaRecorder?.state ?? 'null');
+  if (mediaRecorder && mediaRecorder.state === 'recording') {
+    console.log('[Call] Recording already active, skipping');
+    return;
+  }
+
+  try {
+    recordingAudioContext = new AudioContext();
+    recordingDestination = recordingAudioContext.createMediaStreamDestination();
+
+    // Add local mic audio
+    const localPubs = Array.from(room.localParticipant.audioTrackPublications.values()) as any[];
+    const localPub = localPubs.find((p: any) => p.track);
+    if (localPub?.track) {
+      const localStream = getMediaStreamFromTrack(localPub.track);
+      if (localStream) {
+        const source = recordingAudioContext.createMediaStreamSource(localStream);
+        source.connect(recordingDestination);
+        console.log('[Call] ✅ Local audio connected to recording');
+      }
+    }
+
+    // Add existing remote audio tracks
+    room.remoteParticipants.forEach(participant => {
+      participant.audioTrackPublications.forEach(pub => {
+        const stream = getMediaStreamFromTrack((pub as any).track);
+        if (stream) {
+          try {
+            const source = recordingAudioContext!.createMediaStreamSource(stream);
+            source.connect(recordingDestination!);
+            console.log('[Call] ✅ Remote audio connected to recording:', participant.identity);
+          } catch (e) {
+            console.warn('[Call] Remote audio source failed:', e);
+          }
+        }
+      });
+    });
+
+    // Start MediaRecorder on mixed stream
+    audioChunks = [];
+    mediaRecorder = new MediaRecorder(recordingDestination.stream, {
+      mimeType: MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+        ? 'audio/webm;codecs=opus'
+        : 'audio/webm',
+    });
+    mediaRecorder.ondataavailable = (e) => {
+      if (e.data.size > 0) audioChunks.push(e.data);
+    };
+    mediaRecorder.start(1000);
+    callStartTime = Date.now();
+    console.log('[Call] ✅ Mixed MediaRecorder started');
+  } catch (err) {
+    console.error('[Call] Mixed recording setup failed, falling back to mic-only:', err);
+    startMicRecording();
+  }
+}
+
+// Add a new remote audio track to the ongoing recording mix
+function addRemoteTrackToRecording(track: RemoteTrack): void {
+  if (!recordingAudioContext || !recordingDestination) return;
+  const stream = getMediaStreamFromTrack(track);
+  if (stream) {
+    try {
+      const source = recordingAudioContext.createMediaStreamSource(stream);
+      source.connect(recordingDestination);
+      console.log('[Call] ✅ Late remote audio track added to recording');
+    } catch (e) {
+      console.warn('[Call] Failed to add late remote track:', e);
+    }
+  }
+}
+
+// ─── Fallback: mic-only recording ──────
 async function startMicRecording(): Promise<void> {
   console.log('[Call] startMicRecording() called, current mediaRecorder:', mediaRecorder?.state ?? 'null');
   if (mediaRecorder && mediaRecorder.state === 'recording') {
@@ -798,6 +883,11 @@ export async function endCall(): Promise<void> {
   mediaRecorder = null;
   audioChunks = [];
   callStartTime = null;
+  if (recordingAudioContext) {
+    try { recordingAudioContext.close(); } catch { /* ignore */ }
+    recordingAudioContext = null;
+    recordingDestination = null;
+  }
 
   setState({
     status: 'idle',
