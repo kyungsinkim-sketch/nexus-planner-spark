@@ -218,11 +218,15 @@
   html {
     @apply bg-background;
     overscroll-behavior: none;
+    min-height: 100%;
   }
 
   body {
     @apply bg-background text-foreground antialiased;
     overscroll-behavior: none;
+    min-height: 100%;
+    /* Extend background into iOS safe area */
+    min-height: -webkit-fill-available;
     font-family: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
     font-size: 15px;
     line-height: 1.6;

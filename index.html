@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="ko" class="dark" style="background:#0C0A1E">
+<html lang="ko">
 
 <head>
   <meta charset="UTF-8" />
@@ -93,10 +93,10 @@
   </script>
 </head>
 
-<body style="background:#0C0A1E;margin:0;padding:0">
+<body style="margin:0;padding:0">
   <div id="root"></div>
   <!-- Global loading screen — visible until React app hides it -->
-  <div id="global-loader" style="position:fixed;top:0;left:0;right:0;bottom:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:#0C0A1E;">
+  <div id="global-loader" style="position:fixed;top:0;left:0;right:0;bottom:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:#0C0A1E;min-height:-webkit-fill-available;">
     <img src="/loading-star.png" alt="Re-Be" width="80" height="80" style="animation:spin 20s linear infinite" />
   </div>
   <style>@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}</style>
