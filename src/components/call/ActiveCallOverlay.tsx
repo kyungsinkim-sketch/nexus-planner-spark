@@ -2,6 +2,11 @@
  * ActiveCallOverlay — Global floating call UI.
  *
  * Shows when a call is active anywhere in the app.
+ * Modes:
+ *   - Full screen: video grid / audio-only with controls
+ *   - PiP (Picture-in-Picture): draggable floating window with mini videos
+ *     User can interact with the rest of the app while in PiP mode.
+ *
  * 1:1 video: side-by-side layout with name badges.
  * Multi-party: responsive grid (2-6+ participants).
  * Audio-only: centered avatar(s) with waveform.
@@ -23,6 +28,7 @@ import {
   VideoOff,
   ScreenShare,
   ScreenShareOff,
+  MessageSquare,
 } from 'lucide-react';
 import {
   subscribeCallState,
@@ -159,6 +165,40 @@ export function ActiveCallOverlay() {
   const endHandled = useRef(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
 
+  /* ─── PiP drag state ─── */
+  const pipRef = useRef<HTMLDivElement>(null);
+  const dragState = useRef<{ dragging: boolean; startX: number; startY: number; origX: number; origY: number }>({
+    dragging: false, startX: 0, startY: 0, origX: 0, origY: 0,
+  });
+  const [pipPos, setPipPos] = useState({ x: -1, y: -1 }); // -1 = not yet positioned
+
+  // Initialize PiP position on first minimize
+  useEffect(() => {
+    if (minimized && pipPos.x === -1) {
+      setPipPos({ x: window.innerWidth - 320, y: 80 });
+    }
+  }, [minimized]);
+
+  const onPipPointerDown = useCallback((e: React.PointerEvent) => {
+    if ((e.target as HTMLElement).closest('button')) return; // Don't drag on buttons
+    e.preventDefault();
+    dragState.current = { dragging: true, startX: e.clientX, startY: e.clientY, origX: pipPos.x, origY: pipPos.y };
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+  }, [pipPos]);
+
+  const onPipPointerMove = useCallback((e: React.PointerEvent) => {
+    if (!dragState.current.dragging) return;
+    const dx = e.clientX - dragState.current.startX;
+    const dy = e.clientY - dragState.current.startY;
+    const newX = Math.max(0, Math.min(window.innerWidth - 300, dragState.current.origX + dx));
+    const newY = Math.max(0, Math.min(window.innerHeight - 200, dragState.current.origY + dy));
+    setPipPos({ x: newX, y: newY });
+  }, []);
+
+  const onPipPointerUp = useCallback(() => {
+    dragState.current.dragging = false;
+  }, []);
+
   useEffect(() => {
     const onResize = () => setIsMobile(window.innerWidth < 768);
     window.addEventListener('resize', onResize);
@@ -214,7 +254,108 @@ export function ActiveCallOverlay() {
   const showOverlay = status === 'connecting' || status === 'ringing' || status === 'active' || status === 'creating' || status === 'ending' || status === 'error' || status === 'processing';
   if (!showOverlay || !callState) return null;
 
-  /* ─── Minimized bar ─── */
+  /* ─── PiP (Picture-in-Picture) floating window ─── */
+  if (minimized && status === 'active') {
+    const remoteParticipants = callState.remoteParticipants || [];
+    const hasRemoteVideo = remoteParticipants.some(p => p.videoTrack);
+    const hasLocalVideo = callState.isCameraOn;
+    const hasAnyVideo = hasRemoteVideo || hasLocalVideo;
+
+    return (
+      <div
+        ref={pipRef}
+        className="fixed z-[9999] select-none animate-in zoom-in-90 duration-200"
+        style={{ left: pipPos.x, top: pipPos.y, width: isMobile ? 180 : 300 }}
+        onPointerDown={onPipPointerDown}
+        onPointerMove={onPipPointerMove}
+        onPointerUp={onPipPointerUp}
+      >
+        <div className="rounded-2xl overflow-hidden shadow-2xl shadow-black/50 border border-white/10 bg-gray-950">
+          {/* Video area */}
+          <div
+            className="relative cursor-grab active:cursor-grabbing"
+            style={{ aspectRatio: hasAnyVideo ? '16/10' : '3/1' }}
+            onDoubleClick={() => setMinimized(false)}
+          >
+            {hasAnyVideo ? (
+              <>
+                {/* Remote video (main) */}
+                {hasRemoteVideo ? (
+                  <VideoRenderer
+                    track={remoteParticipants.find(p => p.videoTrack)?.videoTrack}
+                    className="absolute inset-0 w-full h-full object-cover"
+                    mirror
+                  />
+                ) : (
+                  <div className="absolute inset-0 bg-gray-900 flex items-center justify-center">
+                    <span className="text-white/30 text-2xl font-bold">
+                      {(callState.remoteParticipantName || '?').charAt(0)}
+                    </span>
+                  </div>
+                )}
+                {/* Local video (small overlay, bottom-right) */}
+                {hasLocalVideo && (
+                  <div className="absolute bottom-1.5 right-1.5 w-16 h-12 rounded-lg overflow-hidden border border-white/20 shadow-lg">
+                    <LocalVideoPreview callState={callState} className="w-full h-full object-cover" />
+                  </div>
+                )}
+              </>
+            ) : (
+              /* Audio-only PiP */
+              <div className="absolute inset-0 bg-gray-900 flex items-center justify-center gap-2">
+                <div className="w-8 h-8 rounded-full bg-green-500/20 flex items-center justify-center">
+                  <Phone className="w-4 h-4 text-green-400" />
+                </div>
+                <span className="text-white text-xs font-medium truncate max-w-[60%]">
+                  {callState.remoteParticipantName || '통화 중'}
+                </span>
+              </div>
+            )}
+            {/* Duration badge */}
+            <div className="absolute top-1.5 left-1.5 bg-black/60 backdrop-blur-sm px-2 py-0.5 rounded-md flex items-center gap-1.5">
+              <div className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
+              <span className="text-white text-[10px] font-mono tabular-nums">
+                {formatDuration(callState.durationSeconds)}
+              </span>
+            </div>
+            {/* Expand button */}
+            <button
+              onClick={() => setMinimized(false)}
+              className="absolute top-1.5 right-1.5 p-1 rounded-md bg-black/40 hover:bg-black/60 text-white/70 hover:text-white transition-colors"
+            >
+              <Maximize2 className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
+          {/* Mini controls bar */}
+          <div className="flex items-center justify-between px-2.5 py-1.5 bg-gray-900/95">
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => toggleMute()}
+                className={`p-1.5 rounded-full transition-colors ${callState.isMuted ? 'bg-red-500/30 text-red-400' : 'text-white/60 hover:text-white'}`}
+              >
+                {callState.isMuted ? <MicOff className="w-3.5 h-3.5" /> : <Mic className="w-3.5 h-3.5" />}
+              </button>
+              <button
+                onClick={() => toggleCamera()}
+                className={`p-1.5 rounded-full transition-colors ${callState.isCameraOn ? 'bg-blue-500/30 text-blue-400' : 'text-white/60 hover:text-white'}`}
+              >
+                {callState.isCameraOn ? <Video className="w-3.5 h-3.5" /> : <VideoOff className="w-3.5 h-3.5" />}
+              </button>
+            </div>
+            <button
+              onClick={() => endCall()}
+              className="p-1.5 rounded-full bg-red-600 hover:bg-red-500 text-white transition-colors"
+            >
+              <PhoneOff className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  /* ─── Minimized bar (non-active states: connecting, ringing, etc.) ─── */
   if (minimized) {
     return (
       <div
@@ -223,7 +364,6 @@ export function ActiveCallOverlay() {
       >
         <div className="w-2 h-2 rounded-full bg-white animate-pulse" />
         <span className="text-sm font-medium">{callState.remoteParticipantName || '통화 중'}</span>
-        <span className="text-sm font-mono tabular-nums">{formatDuration(callState.durationSeconds)}</span>
         <Maximize2 className="w-4 h-4" />
       </div>
     );
