@@ -280,12 +280,36 @@ export function MobileAIChatView() {
     ];
   }, [currentUser, language]);
 
+  const BRAIN_BOT_ID = '00000000-0000-0000-0000-000000000099';
   const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const allMessages = useMemo(() => [...seedMessages, ...messages], [seedMessages, messages]);
+  const [historyLoaded, setHistoryLoaded] = useState(false);
+  const allMessages = useMemo(() => historyLoaded ? messages : [...seedMessages, ...messages], [seedMessages, messages, historyLoaded]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
+
+  // Load previous Brain AI conversation from DB
+  useEffect(() => {
+    if (!currentUser?.id) return;
+    (async () => {
+      try {
+        const { getDirectMessages } = await import('@/services/chatService');
+        const history = await getDirectMessages(currentUser.id, BRAIN_BOT_ID);
+        if (history.length > 0) {
+          setMessages(history.map(m => ({
+            id: m.id,
+            role: m.userId === BRAIN_BOT_ID ? 'assistant' as const : 'user' as const,
+            content: m.content,
+            timestamp: new Date(m.createdAt),
+          })));
+          setHistoryLoaded(true);
+        }
+      } catch (err) {
+        console.error('[BrainChat] Failed to load history:', err);
+      }
+    })();
+  }, [currentUser?.id]);
 
   // Track keyboard height via visualViewport
   const [kbBottom, setKbBottom] = useState<number | null>(null);
@@ -330,22 +354,39 @@ export function MobileAIChatView() {
   }, [currentUser, language]);
 
   const handleSubmit = useCallback(async () => {
-    if (!input.trim() || loading) return;
+    if (!input.trim() || loading || !currentUser?.id) return;
     const msg = input.trim();
     setInput('');
 
-    setMessages(prev => [...prev, { id: `user_${Date.now()}`, role: 'user', content: msg, timestamp: new Date() }]);
+    const userMsgId = `user_${Date.now()}`;
+    setMessages(prev => [...prev, { id: userMsgId, role: 'user', content: msg, timestamp: new Date() }]);
     setLoading(true);
+
+    // Save user message to DB
+    try {
+      const { sendDirectMessage } = await import('@/services/chatService');
+      const saved = await sendDirectMessage(currentUser.id, BRAIN_BOT_ID, msg);
+      setMessages(prev => prev.map(m => m.id === userMsgId ? { ...m, id: saved.id } : m));
+    } catch (e) { console.error('[BrainChat] Save user msg failed:', e); }
 
     try {
       const { processMessageWithLLM } = await import('@/services/brainService');
-      const result = await processMessageWithLLM({ messageContent: msg, userId: currentUser?.id || '', chatMembers: [], language });
+      const result = await processMessageWithLLM({ messageContent: msg, userId: currentUser.id, chatMembers: [], language });
       const reply = result.llmResponse?.replyMessage || (language === 'ko' ? '처리 완료' : 'Done');
       const actions: BrainAction[] = (result.llmResponse?.suggestedActions || []).map((a: any) => ({
         type: a.type || 'unknown', title: a.title || a.content || '', status: a.status || 'pending',
       }));
+
+      // Save Brain AI reply to DB
+      let brainMsgId = `brain_${Date.now()}`;
+      try {
+        const { sendDirectMessage } = await import('@/services/chatService');
+        const saved = await sendDirectMessage(BRAIN_BOT_ID, currentUser.id, reply);
+        brainMsgId = saved.id;
+      } catch (e) { console.error('[BrainChat] Save brain msg failed:', e); }
+
       setMessages(prev => [...prev, {
-        id: `brain_${Date.now()}`, role: 'assistant', content: reply, timestamp: new Date(),
+        id: brainMsgId, role: 'assistant', content: reply, timestamp: new Date(),
         actions: actions.length > 0 ? actions : undefined, revealed: 0,
       }]);
     } catch (err: unknown) {
