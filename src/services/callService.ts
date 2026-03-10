@@ -1142,10 +1142,12 @@ export async function acceptAllSuggestions(roomId: string): Promise<void> {
 let speechRecognition: any = null;
 const transcriptListeners = new Set<(lines: TranscriptLine[]) => void>();
 let transcriptLines: TranscriptLine[] = [];
+let translationEnabled = false;
 
 export interface TranscriptLine {
   id: number;
   text: string;
+  translation?: string | null;
   isFinal: boolean;
   timestamp: number;
 }
@@ -1198,6 +1200,22 @@ export function startLiveTranscript(lang: string = 'ko-KR'): boolean {
         transcriptLines.push({ id, text, isFinal: true, timestamp: Date.now() });
         // Keep last 50 lines
         if (transcriptLines.length > 50) transcriptLines = transcriptLines.slice(-50);
+
+        // Auto-translate if enabled
+        if (translationEnabled) {
+          const lineId = id;
+          import('@/services/translateService').then(({ translateDebounced }) => {
+            translateDebounced(text).then(result => {
+              if (result) {
+                const line = transcriptLines.find(l => l.id === lineId);
+                if (line) {
+                  line.translation = result;
+                  notifyTranscript();
+                }
+              }
+            });
+          });
+        }
       } else {
         // Update or create interim line
         if (interimLineId !== null) {
@@ -1253,6 +1271,30 @@ export function clearTranscript() {
 
 export function getTranscriptText(): string {
   return transcriptLines.filter(l => l.isFinal).map(l => l.text).join('\n');
+}
+
+export function setTranslationEnabled(enabled: boolean) {
+  translationEnabled = enabled;
+  console.log('[STT] Translation:', enabled ? 'ON' : 'OFF');
+  if (enabled) {
+    // Translate existing final lines that don't have translations yet
+    transcriptLines.forEach(line => {
+      if (line.isFinal && !line.translation) {
+        import('@/services/translateService').then(({ translateDebounced }) => {
+          translateDebounced(line.text).then(result => {
+            if (result) {
+              line.translation = result;
+              notifyTranscript();
+            }
+          });
+        });
+      }
+    });
+  }
+}
+
+export function isTranslationEnabled(): boolean {
+  return translationEnabled;
 }
 
 // ─── Format Duration ─────────────────────────────────

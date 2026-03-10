@@ -30,6 +30,7 @@ import {
   ScreenShareOff,
   MessageSquare,
   Subtitles,
+  Languages,
 } from 'lucide-react';
 import {
   subscribeCallState,
@@ -43,6 +44,7 @@ import {
   startLiveTranscript,
   stopLiveTranscript,
   subscribeTranscript,
+  setTranslationEnabled,
   type CallState,
   type TranscriptLine,
 } from '@/services/callService';
@@ -171,6 +173,7 @@ export function ActiveCallOverlay() {
   const endHandled = useRef(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [captionsOn, setCaptionsOn] = useState(false);
+  const [translateOn, setTranslateOn] = useState(false);
   const [transcriptLines, setTranscriptLines] = useState<TranscriptLine[]>([]);
   const transcriptEndRef = useRef<HTMLDivElement>(null);
 
@@ -190,11 +193,30 @@ export function ActiveCallOverlay() {
     if (captionsOn) {
       stopLiveTranscript();
       setCaptionsOn(false);
+      setTranslateOn(false);
+      setTranslationEnabled(false);
     } else {
       const started = startLiveTranscript('ko-KR');
       if (started) setCaptionsOn(true);
     }
   }, [captionsOn]);
+
+  // Toggle translation (requires captions to be on)
+  const toggleTranslate = useCallback(() => {
+    if (!captionsOn) {
+      // Auto-enable captions first
+      const started = startLiveTranscript('ko-KR');
+      if (started) {
+        setCaptionsOn(true);
+        setTranslateOn(true);
+        setTranslationEnabled(true);
+      }
+    } else {
+      const next = !translateOn;
+      setTranslateOn(next);
+      setTranslationEnabled(next);
+    }
+  }, [captionsOn, translateOn]);
 
   /* ─── PiP drag state ─── */
   const pipRef = useRef<HTMLDivElement>(null);
@@ -636,13 +658,16 @@ export function ActiveCallOverlay() {
             {transcriptLines.slice(-8).map(line => (
               <div
                 key={line.id}
-                className={`text-center px-3 py-1.5 rounded-lg inline-block w-full ${
+                className={`text-center px-3 py-1.5 rounded-lg w-full ${
                   line.isFinal
                     ? 'bg-black/70 text-white text-sm'
                     : 'bg-black/40 text-white/70 text-sm italic'
                 }`}
               >
-                {line.text}
+                <div>{line.text}</div>
+                {translateOn && line.isFinal && line.translation && (
+                  <div className="text-blue-300/90 text-xs mt-0.5">{line.translation}</div>
+                )}
               </div>
             ))}
             <div ref={transcriptEndRef} />
@@ -728,6 +753,21 @@ export function ActiveCallOverlay() {
               <Subtitles className="w-6 h-6" />
             </button>
             <span className="text-xs font-medium text-white/50">{captionsOn ? '자막 끄기' : '자막'}</span>
+          </div>
+
+          {/* Translate */}
+          <div className="flex flex-col items-center gap-1">
+            <button
+              onClick={toggleTranslate}
+              className={`w-14 h-14 rounded-full flex items-center justify-center transition-all ${
+                translateOn
+                  ? 'bg-blue-500/30 text-blue-400 ring-2 ring-blue-500/50'
+                  : 'bg-white/10 text-white hover:bg-white/20'
+              }`}
+            >
+              <Languages className="w-6 h-6" />
+            </button>
+            <span className="text-xs font-medium text-white/50">{translateOn ? '번역 끄기' : '한↔영'}</span>
           </div>
 
           {/* End call */}
