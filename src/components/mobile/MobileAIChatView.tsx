@@ -288,14 +288,15 @@ export function MobileAIChatView() {
   const inputRef = useRef<HTMLInputElement>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
-  // Detect keyboard open/close via visualViewport
+  // Detect keyboard via input focus/blur
   useEffect(() => {
-    const vv = window.visualViewport;
-    if (!vv) return;
-    const threshold = window.innerHeight * 0.75;
-    const onResize = () => setKeyboardOpen(vv.height < threshold);
-    vv.addEventListener('resize', onResize);
-    return () => vv.removeEventListener('resize', onResize);
+    const el = inputRef.current;
+    if (!el) return;
+    const onFocus = () => setKeyboardOpen(true);
+    const onBlur = () => setTimeout(() => setKeyboardOpen(false), 100);
+    el.addEventListener('focus', onFocus);
+    el.addEventListener('blur', onBlur);
+    return () => { el.removeEventListener('focus', onFocus); el.removeEventListener('blur', onBlur); };
   }, []);
 
   useTypingReveal(messages, setMessages);
