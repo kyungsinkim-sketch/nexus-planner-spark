@@ -124,7 +124,7 @@ Deno.serve(async (req) => {
     if (action === 'getSyncedPages') {
       let query = supabase
         .from('notion_synced_pages')
-        .select('*')
+        .select('id, user_id, notion_page_id, notion_object_type, title, icon, parent_type, parent_id, url, last_edited_at, is_pinned, project_id, created_at, updated_at')
         .eq('user_id', userId)
         .order('is_pinned', { ascending: false })
         .order('last_edited_at', { ascending: false, nullsFirst: false });
