@@ -2049,14 +2049,17 @@ export const useAppStore = create<AppState>()(
           const trashedSet = new Set(get().trashedGmailMessageIds);
 
           let allMessages: typeof newMessages;
+          let trulyNew: typeof newMessages = [];
 
           if (needsFullFetch) {
             // Full sync: server response is source of truth — replace all
             // Messages not in server response (deleted in Gmail) are dropped
+            const existingById = new Map(state.gmailMessages.map(m => [m.id, m]));
             allMessages = newMessages
               .filter(m => !trashedSet.has(m.id))
               .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
               .slice(0, 50);
+            trulyNew = newMessages.filter(m => !existingById.has(m.id));
           } else {
             // Incremental sync: merge new messages into existing
             if (newMessages.length === 0) {
@@ -2064,7 +2067,6 @@ export const useAppStore = create<AppState>()(
               return;
             }
             const existingById = new Map(state.gmailMessages.map(m => [m.id, m]));
-            const trulyNew: typeof newMessages = [];
             for (const msg of newMessages) {
               if (!existingById.has(msg.id)) {
                 trulyNew.push(msg);
