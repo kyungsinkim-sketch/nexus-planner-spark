@@ -57,10 +57,14 @@
       text-size-adjust: 100%;
     }
 
-    /* iOS safe area: use background color to fill notch/home indicator area */
-    body {
-      background: #0C0A1E;
+    /* iOS safe area: fill behind notch/home indicator with theme background */
+    html, body {
+      background: hsl(222 47% 5%); /* dark fallback before CSS loads */
       padding: 0;
+      margin: 0;
+    }
+    @media (prefers-color-scheme: light) {
+      html, body { background: hsl(220 20% 97%); }
     }
     /* Pass safe area insets as CSS variables for components to use */
     :root {
