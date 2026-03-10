@@ -43,8 +43,10 @@ export interface CallState {
   isCameraOn: boolean;
   isVideoCall: boolean;
   remoteParticipantName: string | null;
-  remoteParticipants: Array<{ identity: string; name: string; videoTrack: RemoteTrack | null }>;
+  isScreenSharing: boolean;
+  remoteParticipants: Array<{ identity: string; name: string; videoTrack: RemoteTrack | null; screenTrack: RemoteTrack | null }>;
   remoteVideoTrack: RemoteTrack | null;
+  remoteScreenTrack: RemoteTrack | null;
   localVideoTrack: any | null; // LocalTrackPublication
 }
 
@@ -158,9 +160,11 @@ let currentState: CallState = {
   isSpeakerOn: false, // Default: earpiece mode (low volume)
   isCameraOn: false,
   isVideoCall: false,
+  isScreenSharing: false,
   remoteParticipantName: null,
   remoteParticipants: [],
   remoteVideoTrack: null,
+  remoteScreenTrack: null,
   localVideoTrack: null,
 };
 
@@ -327,7 +331,7 @@ async function connectToRoom(wsUrl: string, token: string): Promise<void> {
     const updated = [...currentState.remoteParticipants, {
       identity: participant.identity,
       name: participant.name || participant.identity,
-      videoTrack: null,
+      videoTrack: null, screenTrack: null,
     }];
     setState({
       remoteParticipantName: updated.map(p => p.name).join(', '),
@@ -350,12 +354,19 @@ async function connectToRoom(wsUrl: string, token: string): Promise<void> {
 
   room.on(RoomEvent.TrackSubscribed, (track: RemoteTrack, pub: RemoteTrackPublication, participant: RemoteParticipant) => {
     if (track.kind === Track.Kind.Video) {
-      console.log('[Call] ✅ Remote video track subscribed from', participant.identity);
-      // Update participant's video track
-      const updated = currentState.remoteParticipants.map(p =>
-        p.identity === participant.identity ? { ...p, videoTrack: track } : p
-      );
-      setState({ remoteVideoTrack: track, remoteParticipants: updated });
+      const isScreenShare = pub.source === Track.Source.ScreenShare;
+      console.log(`[Call] ✅ Remote ${isScreenShare ? 'screen share' : 'video'} track subscribed from`, participant.identity);
+      if (isScreenShare) {
+        const updated = currentState.remoteParticipants.map(p =>
+          p.identity === participant.identity ? { ...p, screenTrack: track } : p
+        );
+        setState({ remoteScreenTrack: track, remoteParticipants: updated });
+      } else {
+        const updated = currentState.remoteParticipants.map(p =>
+          p.identity === participant.identity ? { ...p, videoTrack: track } : p
+        );
+        setState({ remoteVideoTrack: track, remoteParticipants: updated });
+      }
     }
     if (track.kind === Track.Kind.Audio) {
       // Always attach audio element first (ensures playback on all platforms)
@@ -385,13 +396,21 @@ async function connectToRoom(wsUrl: string, token: string): Promise<void> {
     }
   });
 
-  room.on(RoomEvent.TrackUnsubscribed, (track: RemoteTrack, _pub: RemoteTrackPublication, participant: RemoteParticipant) => {
+  room.on(RoomEvent.TrackUnsubscribed, (track: RemoteTrack, pub: RemoteTrackPublication, participant: RemoteParticipant) => {
     if (track.kind === Track.Kind.Video) {
-      const updated = currentState.remoteParticipants.map(p =>
-        p.identity === participant.identity ? { ...p, videoTrack: null } : p
-      );
-      const anyVideo = updated.some(p => p.videoTrack !== null);
-      setState({ remoteVideoTrack: anyVideo ? updated.find(p => p.videoTrack)?.videoTrack || null : null, remoteParticipants: updated });
+      const isScreenShare = pub.source === Track.Source.ScreenShare;
+      if (isScreenShare) {
+        const updated = currentState.remoteParticipants.map(p =>
+          p.identity === participant.identity ? { ...p, screenTrack: null } : p
+        );
+        setState({ remoteScreenTrack: updated.find(p => p.screenTrack)?.screenTrack || null, remoteParticipants: updated });
+      } else {
+        const updated = currentState.remoteParticipants.map(p =>
+          p.identity === participant.identity ? { ...p, videoTrack: null } : p
+        );
+        const anyVideo = updated.some(p => p.videoTrack !== null);
+        setState({ remoteVideoTrack: anyVideo ? updated.find(p => p.videoTrack)?.videoTrack || null : null, remoteParticipants: updated });
+      }
     }
     track.detach().forEach(el => el.remove());
   });
@@ -437,7 +456,7 @@ async function connectToRoom(wsUrl: string, token: string): Promise<void> {
     const entry: (typeof existingRemote)[0] = {
       identity: participant.identity,
       name: participant.name || participant.identity,
-      videoTrack: null,
+      videoTrack: null, screenTrack: null,
     };
     // Check for existing video tracks
     participant.videoTrackPublications.forEach((pub) => {
@@ -624,6 +643,21 @@ export async function toggleCamera(): Promise<boolean> {
   return newCameraOn;
 }
 
+export async function toggleScreenShare(): Promise<boolean> {
+  if (!currentRoom) return false;
+  const newSharing = !currentState.isScreenSharing;
+  try {
+    await currentRoom.localParticipant.setScreenShareEnabled(newSharing);
+    setState({ isScreenSharing: newSharing });
+    console.log('[Call] Screen share toggled:', newSharing);
+  } catch (err: any) {
+    // User cancelled the screen share picker
+    console.warn('[Call] Screen share toggle failed:', err);
+    setState({ isScreenSharing: false });
+  }
+  return currentState.isScreenSharing;
+}
+
 export function toggleSpeaker(): boolean {
   const newSpeakerOn = !currentState.isSpeakerOn;
   const targetVolume = newSpeakerOn ? 1.0 : 0.1;
@@ -749,9 +783,11 @@ export async function endCall(): Promise<void> {
     isSpeakerOn: true,
     isCameraOn: false,
     isVideoCall: false,
+    isScreenSharing: false,
     remoteParticipantName: null,
     remoteParticipants: [],
     remoteVideoTrack: null,
+    remoteScreenTrack: null,
     localVideoTrack: null,
     error: null,
   });

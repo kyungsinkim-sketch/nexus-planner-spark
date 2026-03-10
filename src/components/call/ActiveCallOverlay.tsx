@@ -21,6 +21,8 @@ import {
   User as UserIcon,
   Video,
   VideoOff,
+  ScreenShare,
+  ScreenShareOff,
 } from 'lucide-react';
 import {
   subscribeCallState,
@@ -28,6 +30,7 @@ import {
   toggleMute,
   toggleSpeaker,
   toggleCamera,
+  toggleScreenShare,
   formatDuration,
   getCurrentRoom,
   type CallState,
@@ -256,11 +259,11 @@ export function ActiveCallOverlay() {
         {status === 'active' && (() => {
           const remoteParticipants = callState.remoteParticipants || [];
           const hasLocalVideo = callState.isCameraOn;
-          const allParticipants: Array<{ key: string; name: string; videoTrack?: any; isLocal?: boolean }> = [];
+          const allParticipants: Array<{ key: string; name: string; videoTrack?: any; screenTrack?: any; isLocal?: boolean }> = [];
 
           // Add remote participants
           for (const p of remoteParticipants) {
-            allParticipants.push({ key: p.identity, name: p.name, videoTrack: p.videoTrack });
+            allParticipants.push({ key: p.identity, name: p.name, videoTrack: p.videoTrack, screenTrack: p.screenTrack });
           }
           // Add local participant
           allParticipants.push({ key: '__local__', name: '나', isLocal: true });
@@ -268,9 +271,56 @@ export function ActiveCallOverlay() {
           const hasAnyVideo = remoteParticipants.some(p => p.videoTrack) || hasLocalVideo;
           const totalCount = allParticipants.length;
 
+          // Check if anyone is screen sharing
+          const remoteScreenTrack = callState.remoteScreenTrack;
+          const localScreenSharing = callState.isScreenSharing;
+          const hasScreenShare = !!remoteScreenTrack || localScreenSharing;
+
+          if (hasScreenShare) {
+            // ─── Screen share mode: main screen + small video strip ───
+            return (
+              <div className="w-full h-full flex flex-col p-1.5 gap-1.5">
+                {/* Main: screen share content */}
+                <div className="flex-1 rounded-2xl bg-gray-900 overflow-hidden relative">
+                  {remoteScreenTrack ? (
+                    <VideoRenderer track={remoteScreenTrack} className="w-full h-full object-contain" />
+                  ) : localScreenSharing ? (
+                    <div className="flex items-center justify-center h-full">
+                      <div className="flex flex-col items-center gap-3 text-white/60">
+                        <ScreenShare className="w-12 h-12" />
+                        <span className="text-sm font-medium">화면 공유 중</span>
+                      </div>
+                    </div>
+                  ) : null}
+                  {/* Screen share label */}
+                  <div className="absolute top-2 left-2 bg-green-600/80 backdrop-blur-sm px-2 py-0.5 rounded text-xs text-white font-medium flex items-center gap-1">
+                    <ScreenShare className="w-3 h-3" />
+                    {remoteScreenTrack ? `${remoteParticipants.find(p => p.screenTrack)?.name || ''}의 화면` : '내 화면'}
+                  </div>
+                </div>
+                {/* Bottom strip: small participant videos */}
+                <div className="shrink-0 flex gap-1.5 h-24 overflow-x-auto">
+                  {allParticipants.map(p => (
+                    <div key={p.key} className="w-32 shrink-0 rounded-xl overflow-hidden bg-gray-900 relative">
+                      {p.isLocal && callState.isCameraOn ? (
+                        <LocalVideoPreview callState={callState} className="w-full h-full object-cover" />
+                      ) : p.videoTrack ? (
+                        <VideoRenderer track={p.videoTrack} className="w-full h-full object-cover" mirror />
+                      ) : (
+                        <div className="flex items-center justify-center h-full">
+                          <span className="text-white text-lg font-bold">{p.name.charAt(0)}</span>
+                        </div>
+                      )}
+                      <span className="absolute bottom-1 left-1 text-[10px] text-white bg-black/50 px-1 rounded">{p.name}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          }
+
           if (hasAnyVideo) {
             // ─── Video mode: grid layout ───
-            // Uses flex-1 so video area doesn't overlap bottom controls
             return (
               <div className={`w-full h-full grid ${getGridClass(totalCount, isMobile)} gap-1.5 p-1.5`}>
                 {allParticipants.map(p => (
@@ -418,6 +468,23 @@ export function ActiveCallOverlay() {
             </button>
             <span className="text-xs font-medium text-white/50">{callState.isCameraOn ? '카메라 끄기' : '카메라'}</span>
           </div>
+
+          {/* Screen Share (desktop only) */}
+          {!isMobile && (
+            <div className="flex flex-col items-center gap-1">
+              <button
+                onClick={() => toggleScreenShare()}
+                className={`w-14 h-14 rounded-full flex items-center justify-center transition-all ${
+                  callState.isScreenSharing
+                    ? 'bg-green-500/30 text-green-400 ring-2 ring-green-500/50'
+                    : 'bg-white/10 text-white hover:bg-white/20'
+                }`}
+              >
+                {callState.isScreenSharing ? <ScreenShareOff className="w-6 h-6" /> : <ScreenShare className="w-6 h-6" />}
+              </button>
+              <span className="text-xs font-medium text-white/50">{callState.isScreenSharing ? '공유 중' : '화면공유'}</span>
+            </div>
+          )}
 
           {/* End call */}
           <button
