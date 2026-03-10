@@ -637,16 +637,31 @@ export function toggleMute(): boolean {
 }
 
 export async function toggleCamera(): Promise<boolean> {
-  if (!currentRoom) return false;
+  if (!currentRoom) {
+    console.warn('[Call] toggleCamera: no active room');
+    return false;
+  }
   const newCameraOn = !currentState.isCameraOn;
   try {
+    // On mobile, ensure camera permission is available
+    if (newCameraOn) {
+      try {
+        // Pre-check camera access (triggers OS permission dialog on Android)
+        const testStream = await navigator.mediaDevices.getUserMedia({ video: true });
+        testStream.getTracks().forEach(t => t.stop());
+      } catch (permErr: any) {
+        console.error('[Call] Camera permission denied:', permErr);
+        return false;
+      }
+    }
     await currentRoom.localParticipant.setCameraEnabled(newCameraOn);
     setState({ isCameraOn: newCameraOn, isVideoCall: newCameraOn || currentState.isVideoCall });
     console.log('[Call] Camera toggled:', newCameraOn);
   } catch (err: any) {
-    console.warn('[Call] Camera toggle failed:', err);
+    console.error('[Call] Camera toggle failed:', err);
+    setState({ isCameraOn: false });
   }
-  return newCameraOn;
+  return currentState.isCameraOn;
 }
 
 export async function toggleScreenShare(): Promise<boolean> {

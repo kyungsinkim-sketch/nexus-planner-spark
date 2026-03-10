@@ -107,7 +107,7 @@ function ParticipantTile({ name, videoTrack, isLocal, callState, count }: {
       {isLocal && callState.isCameraOn ? (
         <LocalVideoPreview callState={callState} className="w-full h-full object-cover" />
       ) : videoTrack ? (
-        <VideoRenderer track={videoTrack} className="w-full h-full object-cover" mirror />
+        <VideoRenderer track={videoTrack} className="w-full h-full object-cover" />
       ) : (
         /* Audio-only avatar */
         <div className="flex flex-col items-center gap-3">
@@ -285,7 +285,6 @@ export function ActiveCallOverlay() {
                   <VideoRenderer
                     track={remoteParticipants.find(p => p.videoTrack)?.videoTrack}
                     className="absolute inset-0 w-full h-full object-cover"
-                    mirror
                   />
                 ) : (
                   <div className="absolute inset-0 bg-gray-900 flex items-center justify-center">
@@ -469,7 +468,7 @@ export function ActiveCallOverlay() {
                       {p.isLocal && callState.isCameraOn ? (
                         <LocalVideoPreview callState={callState} className="w-full h-full object-cover" />
                       ) : p.videoTrack ? (
-                        <VideoRenderer track={p.videoTrack} className="w-full h-full object-cover" mirror />
+                        <VideoRenderer track={p.videoTrack} className="w-full h-full object-cover" />
                       ) : (
                         <div className="flex items-center justify-center h-full">
                           <span className="text-white text-lg font-bold">{p.name.charAt(0)}</span>
