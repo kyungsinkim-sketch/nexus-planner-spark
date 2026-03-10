@@ -42,6 +42,7 @@ import {
   type CallState,
 } from '@/services/callService';
 import { CallSuggestionsPanel } from './CallSuggestionsPanel';
+import { useWidgetStore } from '@/stores/widgetStore';
 
 /* ─── Video renderer (attaches LiveKit track) ─── */
 function VideoRenderer({ track, className, mirror }: { track: any; className?: string; mirror?: boolean }) {
@@ -342,6 +343,18 @@ export function ActiveCallOverlay() {
               >
                 {callState.isCameraOn ? <Video className="w-3.5 h-3.5" /> : <VideoOff className="w-3.5 h-3.5" />}
               </button>
+              <button
+                onClick={() => {
+                  // Open chat with call target
+                  const targetId = callState.targetUserIds?.[0];
+                  if (targetId) {
+                    useWidgetStore.getState().openMobileDm(targetId);
+                  }
+                }}
+                className="p-1.5 rounded-full transition-colors text-white/60 hover:text-white"
+              >
+                <MessageSquare className="w-3.5 h-3.5" />
+              </button>
             </div>
             <button
               onClick={() => endCall()}
@@ -633,6 +646,23 @@ export function ActiveCallOverlay() {
                 {callState.isScreenSharing ? <ScreenShareOff className="w-6 h-6" /> : <ScreenShare className="w-6 h-6" />}
               </button>
             <span className="text-xs font-medium text-white/50">{callState.isScreenSharing ? '공유 중' : '화면공유'}</span>
+          </div>
+
+          {/* Chat — minimize to PiP & open DM */}
+          <div className="flex flex-col items-center gap-1">
+            <button
+              onClick={() => {
+                const targetId = callState.targetUserIds?.[0];
+                if (targetId) {
+                  setMinimized(true);
+                  useWidgetStore.getState().openMobileDm(targetId);
+                }
+              }}
+              className="w-14 h-14 rounded-full flex items-center justify-center transition-all bg-white/10 text-white hover:bg-white/20"
+            >
+              <MessageSquare className="w-6 h-6" />
+            </button>
+            <span className="text-xs font-medium text-white/50">채팅</span>
           </div>
 
           {/* End call */}

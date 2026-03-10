@@ -48,6 +48,10 @@ export interface CallState {
   remoteVideoTrack: RemoteTrack | null;
   remoteScreenTrack: RemoteTrack | null;
   localVideoTrack: any | null; // LocalTrackPublication
+  /** Target user IDs for this call (for chat navigation) */
+  targetUserIds: string[];
+  /** Project context for this call */
+  callProjectId: string | null;
 }
 
 export interface CallSuggestion {
@@ -166,6 +170,8 @@ let currentState: CallState = {
   remoteVideoTrack: null,
   remoteScreenTrack: null,
   localVideoTrack: null,
+  targetUserIds: [],
+  callProjectId: null,
 };
 
 function setState(partial: Partial<CallState>) {
@@ -188,7 +194,7 @@ export function getCallState(): CallState {
 export async function createCall(targetUserId: string | string[], projectId?: string, title?: string, isVideo?: boolean): Promise<void> {
   const targetUserIds = Array.isArray(targetUserId) ? targetUserId : [targetUserId];
   try {
-    setState({ status: 'creating', error: null, isVideoCall: !!isVideo });
+    setState({ status: 'creating', error: null, isVideoCall: !!isVideo, targetUserIds: targetUserIds, callProjectId: projectId || null });
 
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) throw new Error('Not authenticated');
@@ -789,6 +795,8 @@ export async function endCall(): Promise<void> {
     remoteVideoTrack: null,
     remoteScreenTrack: null,
     localVideoTrack: null,
+    targetUserIds: [],
+    callProjectId: null,
     error: null,
   });
 
