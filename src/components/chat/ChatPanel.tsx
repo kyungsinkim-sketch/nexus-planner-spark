@@ -83,7 +83,7 @@ export function ChatPanel({ defaultProjectId, defaultDmUserId }: ChatPanelProps 
   const {
     projects, users, currentUser, messages, chatRooms,
     sendProjectMessage, sendDirectMessage, sendRoomMessage,
-    loadChatRooms, loadGroupRooms, createChatRoom, getChatRoomsByProject, getGroupRooms,
+    loadChatRooms, loadGroupRooms, createChatRoom, deleteChatRoom, getChatRoomsByProject, getGroupRooms,
     getUserById, addMessage,
     addFileGroup, addFile, getFileGroupsByProject,
     brainIntelligenceEnabled,
@@ -1686,7 +1686,7 @@ export function ChatPanel({ defaultProjectId, defaultDmUserId }: ChatPanelProps 
                           onClick={() => {
                             setSelectedChat({ type: 'group', id: room.id, roomId: room.id });
                           }}
-                          className={`w-full flex items-start gap-2.5 p-3 hover:bg-muted/50 transition-colors group text-left ${isSelected ? 'bg-muted' : ''}`}
+                          className={`w-full flex items-start gap-2.5 p-3 hover:bg-muted/50 transition-colors group/room text-left ${isSelected ? 'bg-muted' : ''}`}
                         >
                           <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
                             <Hash className="w-4 h-4 text-primary" />
@@ -1694,11 +1694,28 @@ export function ChatPanel({ defaultProjectId, defaultDmUserId }: ChatPanelProps 
                           <div className="flex-1 min-w-0 overflow-hidden">
                             <div className="flex items-center justify-between gap-1">
                               <h3 className="font-medium text-foreground text-xs line-clamp-1">{room.name}</h3>
-                              {lastMsg && (
-                                <span className="text-xs font-medium text-muted-foreground shrink-0">
-                                  {formatTime(lastMsg.createdAt)}
-                                </span>
-                              )}
+                              <div className="flex items-center gap-1 shrink-0">
+                                {lastMsg && (
+                                  <span className="text-xs font-medium text-muted-foreground">
+                                    {formatTime(lastMsg.createdAt)}
+                                  </span>
+                                )}
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (window.confirm(`"${room.name}" 그룹 채팅방을 삭제하시겠습니까?\n모든 메시지가 삭제됩니다.`)) {
+                                      deleteChatRoom(room.id);
+                                      if (selectedChat?.roomId === room.id) {
+                                        setSelectedChat(null);
+                                      }
+                                    }
+                                  }}
+                                  className="p-1 rounded opacity-0 group-hover/room:opacity-100 hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-all"
+                                  title="그룹 삭제"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
                             </div>
                             {room.description && (
                               <p className="text-xs text-muted-foreground truncate mt-0.5">{room.description}</p>

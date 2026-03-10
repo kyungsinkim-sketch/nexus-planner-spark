@@ -215,6 +215,23 @@ export const removeRoomMember = async (roomId: string, userId: string): Promise<
     }
 };
 
+// Delete a chat room (and its members/messages via cascade or manual cleanup)
+export const deleteRoom = async (roomId: string): Promise<void> => {
+    if (!isSupabaseConfigured()) {
+        throw new Error('Supabase not configured');
+    }
+
+    // Delete members first
+    await supabase.from('chat_room_members').delete().eq('room_id', roomId);
+    // Delete messages
+    await supabase.from('chat_messages').delete().eq('room_id', roomId);
+    // Delete room
+    const { error } = await supabase.from('chat_rooms').delete().eq('id', roomId);
+    if (error) {
+        throw new Error(handleSupabaseError(error));
+    }
+};
+
 // ============================================================
 // Room-based message functions
 // ============================================================

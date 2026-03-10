@@ -229,6 +229,7 @@ interface AppState {
   loadMessages: () => Promise<void>;
   loadRoomMessages: (roomId: string) => Promise<void>;
   createChatRoom: (projectId: string | null, name: string, memberIds: string[], description?: string) => Promise<ChatRoom | null>;
+  deleteChatRoom: (roomId: string) => Promise<void>;
   sendRoomMessage: (roomId: string, projectId: string | null, content: string, options?: {
     attachmentId?: string;
     messageType?: ChatMessageType;
@@ -1472,6 +1473,18 @@ export const useAppStore = create<AppState>()(
           };
           set((state) => ({ chatRooms: [...state.chatRooms, room] }));
           return room;
+        }
+      },
+
+      deleteChatRoom: async (roomId) => {
+        try {
+          await chatService.deleteRoom(roomId);
+          set((state) => ({
+            chatRooms: state.chatRooms.filter(r => r.id !== roomId),
+            messages: state.messages.filter(m => m.roomId !== roomId),
+          }));
+        } catch (error) {
+          console.error('Failed to delete chat room:', error);
         }
       },
 
