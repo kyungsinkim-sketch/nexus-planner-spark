@@ -418,9 +418,10 @@ export function MobileAIChatView() {
         </div>
       </div>
 
-      {/* ═══ Input bar — stays at bottom of flex container ═══ */}
+      {/* ═══ Input bar — stays above floating nav ═══ */}
       <div
-        className="shrink-0 px-4 pb-2 pt-2"
+        className="shrink-0 px-4 pt-2"
+        style={{ paddingBottom: 'calc(70px + env(safe-area-inset-bottom, 0px))' }}
       >
         <div className="flex items-center gap-2 px-4 py-2.5 rounded-full mobile-glass shadow-lg">
           <Brain className="w-4 h-4 text-violet-500 shrink-0" />
