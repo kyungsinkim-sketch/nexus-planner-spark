@@ -284,29 +284,27 @@ export function MobileAIChatView() {
   const allMessages = useMemo(() => [...seedMessages, ...messages], [seedMessages, messages]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
-  const [keyboardOpen, setKeyboardOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
-  // Detect keyboard via input focus/blur — also hide nav bar
+  // Track keyboard height via visualViewport
+  const [kbBottom, setKbBottom] = useState<number | null>(null);
   useEffect(() => {
     const el = inputRef.current;
     if (!el) return;
-    const onFocus = () => {
-      setKeyboardOpen(true);
-      document.body.classList.add('keyboard-open');
+    const vv = window.visualViewport;
+    const update = () => {
+      if (vv && document.activeElement === el) {
+        const kbHeight = window.innerHeight - vv.height - vv.offsetTop;
+        setKbBottom(kbHeight > 50 ? kbHeight : null);
+        document.body.classList.toggle('keyboard-open', kbHeight > 50);
+      }
     };
-    const onBlur = () => setTimeout(() => {
-      setKeyboardOpen(false);
-      document.body.classList.remove('keyboard-open');
-    }, 100);
+    const onFocus = () => { if (vv) { vv.addEventListener('resize', update); vv.addEventListener('scroll', update); update(); } };
+    const onBlur = () => setTimeout(() => { setKbBottom(null); document.body.classList.remove('keyboard-open'); if (vv) { vv.removeEventListener('resize', update); vv.removeEventListener('scroll', update); } }, 100);
     el.addEventListener('focus', onFocus);
     el.addEventListener('blur', onBlur);
-    return () => {
-      el.removeEventListener('focus', onFocus);
-      el.removeEventListener('blur', onBlur);
-      document.body.classList.remove('keyboard-open');
-    };
+    return () => { el.removeEventListener('focus', onFocus); el.removeEventListener('blur', onBlur); document.body.classList.remove('keyboard-open'); if (vv) { vv.removeEventListener('resize', update); vv.removeEventListener('scroll', update); } };
   }, []);
 
   useTypingReveal(messages, setMessages);
@@ -443,7 +441,7 @@ export function MobileAIChatView() {
       {/* ═══ Input bar — fixed above floating nav (or just above keyboard) ═══ */}
       <div
         className="fixed left-0 right-0 z-40 px-4 py-2"
-        style={{ bottom: keyboardOpen ? '0px' : 'calc(64px + env(safe-area-inset-bottom, 0px))' }}
+        style={{ bottom: kbBottom != null ? `${kbBottom}px` : 'calc(64px + env(safe-area-inset-bottom, 0px))' }}
       >
         <div className="flex items-center gap-2 px-4 py-2.5 rounded-full mobile-glass shadow-lg">
           <Brain className="w-4 h-4 text-violet-500 shrink-0" />
