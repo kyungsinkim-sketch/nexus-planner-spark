@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -18,12 +18,13 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { GripVertical, Plus, Trash2, Check, X, Users } from 'lucide-react';
+import { GripVertical, Plus, Trash2, Check, X, Users, Pencil, Settings2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useTranslation } from '@/hooks/useTranslation';
 import { useAdminEmployees } from '@/hooks/useAdmin';
 import { AdminEmployee } from '@/types/admin';
 import { useCreativeRoles } from '@/hooks/useCreativeRoles';
+import { supabase } from '@/lib/supabase';
 
 interface OrgMember {
   id: string;
@@ -34,24 +35,114 @@ interface OrgMember {
   team: string;
 }
 
-const departments = [
-  'Management',
-  'Creative Solution',
-  'Production',
-  'Renatus',
-];
+interface OrgDepartment {
+  id: string;
+  name: string;
+  sortOrder: number;
+}
 
-const teams: Record<string, string[]> = {
-  'Management': ['Management Planning'],
-  'Creative Solution': ['Team A', 'Team B'],
-  'Production': ['Directing', 'Production', 'NEXT', 'Post Edit'],
-  'Renatus': [],
-};
+interface OrgTeam {
+  id: string;
+  departmentId: string;
+  name: string;
+  sortOrder: number;
+}
+
+// Hook to load departments & teams from DB
+function useOrgStructure() {
+  const [departments, setDepartments] = useState<OrgDepartment[]>([]);
+  const [orgTeams, setOrgTeams] = useState<OrgTeam[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const load = useCallback(async () => {
+    const [{ data: depts }, { data: tms }] = await Promise.all([
+      supabase.from('org_departments').select('*').order('sort_order'),
+      supabase.from('org_teams').select('*').order('sort_order'),
+    ]);
+    setDepartments((depts || []).map((d: any) => ({ id: d.id, name: d.name, sortOrder: d.sort_order })));
+    setOrgTeams((tms || []).map((t: any) => ({ id: t.id, departmentId: t.department_id, name: t.name, sortOrder: t.sort_order })));
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const departmentNames = departments.map(d => d.name);
+
+  const teamsMap: Record<string, string[]> = {};
+  for (const d of departments) {
+    teamsMap[d.name] = orgTeams.filter(t => t.departmentId === d.id).map(t => t.name);
+  }
+
+  const addDepartment = async (name: string) => {
+    const { error } = await supabase.from('org_departments').insert({ name, sort_order: departments.length + 1 });
+    if (error) { toast.error(error.message); return; }
+    await load();
+    toast.success('Department added');
+  };
+
+  const renameDepartment = async (id: string, newName: string) => {
+    const { error } = await supabase.from('org_departments').update({ name: newName }).eq('id', id);
+    if (error) { toast.error(error.message); return; }
+    await load();
+    toast.success('Department renamed');
+  };
+
+  const deleteDepartment = async (id: string) => {
+    const { error } = await supabase.from('org_departments').delete().eq('id', id);
+    if (error) { toast.error(error.message); return; }
+    await load();
+    toast.success('Department deleted');
+  };
+
+  const addTeam = async (deptName: string, teamName: string) => {
+    const dept = departments.find(d => d.name === deptName);
+    if (!dept) return;
+    const count = orgTeams.filter(t => t.departmentId === dept.id).length;
+    const { error } = await supabase.from('org_teams').insert({ department_id: dept.id, name: teamName, sort_order: count + 1 });
+    if (error) { toast.error(error.message); return; }
+    await load();
+    toast.success('Team added');
+  };
+
+  const renameTeam = async (id: string, newName: string) => {
+    const { error } = await supabase.from('org_teams').update({ name: newName }).eq('id', id);
+    if (error) { toast.error(error.message); return; }
+    await load();
+    toast.success('Team renamed');
+  };
+
+  const deleteTeam = async (id: string) => {
+    const { error } = await supabase.from('org_teams').delete().eq('id', id);
+    if (error) { toast.error(error.message); return; }
+    await load();
+    toast.success('Team deleted');
+  };
+
+  return {
+    departments, departmentNames, teamsMap, orgTeams, loading,
+    addDepartment, renameDepartment, deleteDepartment,
+    addTeam, renameTeam, deleteTeam,
+  };
+}
 
 export function OrganizationChart() {
   const { t } = useTranslation();
   const { employees, isLoading, addEmployee, updateEmployee, deleteEmployee } = useAdminEmployees();
   const { grouped: groupedRoles } = useCreativeRoles();
+  const {
+    departments: deptObjects, departmentNames: departments, teamsMap: teams, orgTeams,
+    loading: orgLoading,
+    addDepartment, renameDepartment, deleteDepartment,
+    addTeam, renameTeam, deleteTeam,
+  } = useOrgStructure();
+  const [showOrgSettings, setShowOrgSettings] = useState(false);
+  const [newDeptName, setNewDeptName] = useState('');
+  const [newTeamName, setNewTeamName] = useState('');
+  const [newTeamDept, setNewTeamDept] = useState('');
+  const [editingDeptId, setEditingDeptId] = useState<string | null>(null);
+  const [editingTeamId, setEditingTeamId] = useState<string | null>(null);
+  const [editDeptName, setEditDeptName] = useState('');
+  const [editTeamName, setEditTeamName] = useState('');
 
   const [members, setMembers] = useState<OrgMember[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -183,7 +274,7 @@ export function OrganizationChart() {
     }
   };
 
-  if (isLoading && members.length === 0) {
+  if ((isLoading || orgLoading) && members.length === 0) {
     return <div className="p-8 text-center text-muted-foreground">Loading organization chart...</div>;
   }
 
@@ -206,12 +297,98 @@ export function OrganizationChart() {
               ))}
             </SelectContent>
           </Select>
+          <Button size="sm" variant="outline" className="gap-2" onClick={() => setShowOrgSettings(s => !s)}>
+            <Settings2 className="w-4 h-4" />
+            {showOrgSettings ? 'Close' : 'Departments & Teams'}
+          </Button>
           <Button size="sm" className="gap-2" onClick={() => setIsAdding(true)}>
             <Plus className="w-4 h-4" />
             {t('addMember')}
           </Button>
         </div>
       </div>
+
+      {/* Department & Team Management */}
+      {showOrgSettings && (
+        <Card className="mb-6 p-4 border-2 border-primary/20 bg-primary/5">
+          <h4 className="text-sm font-semibold mb-3">Departments & Teams</h4>
+          <div className="space-y-3">
+            {deptObjects.map(dept => (
+              <div key={dept.id} className="space-y-1.5">
+                <div className="flex items-center gap-2">
+                  {editingDeptId === dept.id ? (
+                    <>
+                      <Input className="h-7 text-sm w-48" value={editDeptName} onChange={e => setEditDeptName(e.target.value)} autoFocus />
+                      <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => { renameDepartment(dept.id, editDeptName); setEditingDeptId(null); }}>
+                        <Check className="w-3.5 h-3.5 text-green-600" />
+                      </Button>
+                      <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setEditingDeptId(null)}>
+                        <X className="w-3.5 h-3.5" />
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <Badge className={getDeptColor(dept.name)}>{dept.name}</Badge>
+                      <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => { setEditingDeptId(dept.id); setEditDeptName(dept.name); }}>
+                        <Pencil className="w-3 h-3" />
+                      </Button>
+                      <Button size="icon" variant="ghost" className="h-6 w-6 text-red-500" onClick={() => { if (confirm(`Delete "${dept.name}" and all its teams?`)) deleteDepartment(dept.id); }}>
+                        <Trash2 className="w-3 h-3" />
+                      </Button>
+                    </>
+                  )}
+                </div>
+                <div className="ml-6 flex flex-wrap gap-1.5 items-center">
+                  {orgTeams.filter(t => t.departmentId === dept.id).map(team => (
+                    <div key={team.id} className="flex items-center gap-1">
+                      {editingTeamId === team.id ? (
+                        <>
+                          <Input className="h-6 text-xs w-32" value={editTeamName} onChange={e => setEditTeamName(e.target.value)} autoFocus />
+                          <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => { renameTeam(team.id, editTeamName); setEditingTeamId(null); }}>
+                            <Check className="w-3 h-3 text-green-600" />
+                          </Button>
+                          <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => setEditingTeamId(null)}>
+                            <X className="w-3 h-3" />
+                          </Button>
+                        </>
+                      ) : (
+                        <Badge variant="outline" className="text-xs cursor-pointer hover:bg-muted gap-1">
+                          {team.name}
+                          <Pencil className="w-2.5 h-2.5 opacity-50 hover:opacity-100" onClick={() => { setEditingTeamId(team.id); setEditTeamName(team.name); }} />
+                          <Trash2 className="w-2.5 h-2.5 opacity-50 hover:opacity-100 text-red-500" onClick={() => { if (confirm(`Delete team "${team.name}"?`)) deleteTeam(team.id); }} />
+                        </Badge>
+                      )}
+                    </div>
+                  ))}
+                  <div className="flex items-center gap-1">
+                    <Input
+                      className="h-6 text-xs w-24"
+                      placeholder="+ New team"
+                      value={newTeamDept === dept.name ? newTeamName : ''}
+                      onFocus={() => setNewTeamDept(dept.name)}
+                      onChange={e => { setNewTeamDept(dept.name); setNewTeamName(e.target.value); }}
+                      onKeyDown={e => { if (e.key === 'Enter' && newTeamName.trim()) { addTeam(dept.name, newTeamName.trim()); setNewTeamName(''); } }}
+                    />
+                  </div>
+                </div>
+              </div>
+            ))}
+            {/* Add Department */}
+            <div className="flex items-center gap-2 pt-2 border-t border-border/50">
+              <Input
+                className="h-7 text-sm w-48"
+                placeholder="New department name"
+                value={newDeptName}
+                onChange={e => setNewDeptName(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter' && newDeptName.trim()) { addDepartment(newDeptName.trim()); setNewDeptName(''); } }}
+              />
+              <Button size="sm" variant="outline" className="h-7" onClick={() => { if (newDeptName.trim()) { addDepartment(newDeptName.trim()); setNewDeptName(''); } }}>
+                <Plus className="w-3.5 h-3.5 mr-1" /> Add Department
+              </Button>
+            </div>
+          </div>
+        </Card>
+      )}
 
       {isAdding && (
         <Card className="mb-6 p-4 border-2 border-primary/20 bg-primary/5">
