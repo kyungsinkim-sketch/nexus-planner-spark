@@ -413,8 +413,9 @@ export function MobileMembersView() {
         />
       </div>
 
-      {/* Project filter chips */}
-      <div className="flex gap-2 overflow-x-auto px-4 pb-3 scrollbar-hide">
+      {/* Project filter + Group chips — single row */}
+      <div className="flex gap-2 overflow-x-auto px-4 pb-3 scrollbar-hide items-center">
+        {/* Project filters (left) */}
         <button
           onClick={() => setFilterProjectId(null)}
           className={cn(
@@ -440,27 +441,22 @@ export function MobileMembersView() {
             {p.title}
           </button>
         ))}
-      </div>
 
-      {/* Group chips — right-aligned row */}
-      {(() => {
-        const myGroups = getGroupRooms();
-        if (myGroups.length === 0) return null;
-        return (
-          <div className="flex gap-2 overflow-x-auto px-4 pb-3 scrollbar-hide justify-end">
-            {myGroups.map(room => (
-              <button
-                key={room.id}
-                onClick={() => setMobileView('dm-chat')}
-                className="flex-shrink-0 flex items-center gap-1.5 rounded-full px-4 py-1.5 text-xs font-medium mobile-glass text-muted-foreground active:scale-[0.97] transition-all whitespace-nowrap"
-              >
-                <Hash className="w-3 h-3" />
-                {room.name || 'Group'}
-              </button>
-            ))}
-          </div>
-        );
-      })()}
+        {/* Spacer */}
+        {getGroupRooms().length > 0 && <div className="flex-1 min-w-2" />}
+
+        {/* Group chips (right) */}
+        {getGroupRooms().map(room => (
+          <button
+            key={room.id}
+            onClick={() => setMobileView('dm-chat')}
+            className="flex-shrink-0 flex items-center gap-1.5 rounded-full px-4 py-1.5 text-xs font-medium mobile-glass text-muted-foreground active:scale-[0.97] transition-all whitespace-nowrap"
+          >
+            <Hash className="w-3 h-3" />
+            {room.name || 'Group'}
+          </button>
+        ))}
+      </div>
 
       </div>{/* end sticky header */}
 
