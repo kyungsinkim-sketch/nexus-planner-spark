@@ -32,8 +32,12 @@ export function startRealtimeNotifications(userId: string): () => void {
         // Skip events created by the current user
         if (row.owner_id === userId) return;
         const store = useAppStore.getState();
+        const attendeeIds = (row.attendee_ids as string[]) || [];
         const project = store.projects.find(p => p.id === row.project_id);
-        if (!project) return; // Only notify for projects user is part of
+        // Notify if user is in the project OR is an attendee
+        const isInProject = !!project;
+        const isAttendee = attendeeIds.includes(userId);
+        if (!isInProject && !isAttendee) return;
 
         store.addAppNotification({
           type: 'event',
@@ -51,8 +55,9 @@ export function startRealtimeNotifications(userId: string): () => void {
       (payload) => {
         const row = payload.new as Record<string, unknown>;
         // Only notify if assigned to the current user by someone else
-        if (row.user_id !== userId) return; // Not assigned to me
-        if (row.created_by === userId) return; // I created it myself
+        const assigneeIds = (row.assignee_ids as string[]) || [];
+        if (!assigneeIds.includes(userId)) return; // Not assigned to me
+        if (row.requested_by_id === userId) return; // I created it myself
         const store = useAppStore.getState();
         const project = store.projects.find(p => p.id === row.project_id);
         const projectName = project?.title || '';

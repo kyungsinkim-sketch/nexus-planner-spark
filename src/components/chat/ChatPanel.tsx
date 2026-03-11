@@ -1259,8 +1259,9 @@ export function ChatPanel({ defaultProjectId, defaultDmUserId }: ChatPanelProps 
       const fileName = file?.name || `Document_${Date.now().toString().slice(-6)}.pdf`;
 
       if (isSupabaseConfigured() && file) {
-        const storageBucket = isDM ? 'dm-files' : projectId;
-        const { path: storagePath } = await fileService.uploadFile(file, storageBucket, currentUser.id);
+        const storageBucket = (isDM || isGroup) ? 'dm-files' : 'project-files';
+        const storageFolder = (isDM || isGroup) ? currentUser.id : projectId;
+        const { path: storagePath } = await fileService.uploadFile(file, storageFolder, currentUser.id, storageBucket);
 
         const fileExt = file.name.split('.').pop() || '';
         const fileSize = file.size < 1024 * 1024

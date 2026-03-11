@@ -272,20 +272,30 @@ function TodosWidget({ context }: { context: WidgetDataContext }) {
                       {todo.title}
                     </p>
                   </div>
-                  {todo.dueDate && (
-                    <p
-                      className={`typo-widget-sub mt-0.5 ml-3 ${
-                        isOverdue
-                          ? 'text-red-500 font-medium'
-                          : ''
-                      }`}
-                    >
-                      {new Date(todo.dueDate).toLocaleDateString(locale, {
-                        month: 'short',
-                        day: 'numeric',
-                      })}
-                    </p>
-                  )}
+                  <div className="flex items-center gap-2 mt-0.5 ml-3">
+                    {todo.requestedById && todo.requestedById !== currentUser?.id && (() => {
+                      const requester = users.find(u => u.id === todo.requestedById);
+                      return requester ? (
+                        <span className="typo-widget-sub text-primary/70">
+                          {language === 'ko' ? `${requester.name} 부여` : `from ${requester.name}`}
+                        </span>
+                      ) : null;
+                    })()}
+                    {todo.dueDate && (
+                      <p
+                        className={`typo-widget-sub ${
+                          isOverdue
+                            ? 'text-red-500 font-medium'
+                            : ''
+                        }`}
+                      >
+                        {new Date(todo.dueDate).toLocaleDateString(locale, {
+                          month: 'short',
+                          day: 'numeric',
+                        })}
+                      </p>
+                    )}
+                  </div>
                 </div>
               </div>
             );

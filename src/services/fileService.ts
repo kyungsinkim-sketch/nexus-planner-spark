@@ -219,7 +219,8 @@ const MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024;
 export const uploadFile = async (
     file: File,
     projectId: string,
-    userId: string
+    userId: string,
+    bucket: string = 'project-files'
 ): Promise<{ path: string; url: string }> => {
     if (!isSupabaseConfigured()) {
         throw new Error('Supabase not configured');
@@ -241,7 +242,7 @@ export const uploadFile = async (
     const filePath = `${projectId}/${fileName}`;
 
     const { error: uploadError } = await supabase.storage
-        .from('project-files')
+        .from(bucket)
         .upload(filePath, file);
 
     if (uploadError) {
@@ -257,7 +258,7 @@ export const uploadFile = async (
     }
 
     const { data: { publicUrl } } = supabase.storage
-        .from('project-files')
+        .from(bucket)
         .getPublicUrl(filePath);
 
     return { path: filePath, url: publicUrl };
