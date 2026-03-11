@@ -75,9 +75,11 @@ interface ChatPanelProps {
   defaultProjectId?: string;
   /** When provided (mobile DM), auto-select 1:1 chat with this user */
   defaultDmUserId?: string;
+  /** When provided (mobile group), auto-select this group room */
+  defaultGroupRoomId?: string;
 }
 
-export function ChatPanel({ defaultProjectId, defaultDmUserId }: ChatPanelProps = {}) {
+export function ChatPanel({ defaultProjectId, defaultDmUserId, defaultGroupRoomId }: ChatPanelProps = {}) {
   const { t, language } = useTranslation();
   const isMobile = useIsMobile();
   const {
@@ -157,6 +159,16 @@ export function ChatPanel({ defaultProjectId, defaultDmUserId }: ChatPanelProps 
     setSelectedChat({ type: 'dm', id: defaultDmUserId });
     setSelectedTab('direct');
   }, [defaultDmUserId]);
+
+  // Auto-select group room when defaultGroupRoomId is provided (mobile group chip)
+  useEffect(() => {
+    if (!defaultGroupRoomId) return;
+    const room = chatRooms.find(r => r.id === defaultGroupRoomId);
+    if (room) {
+      setSelectedChat({ type: 'group', id: defaultGroupRoomId, roomId: defaultGroupRoomId, roomName: room.name || 'Group' });
+      setSelectedTab('groups');
+    }
+  }, [defaultGroupRoomId, chatRooms]);
 
   // Load group rooms on mount
   useEffect(() => {

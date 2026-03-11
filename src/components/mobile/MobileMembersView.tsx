@@ -19,7 +19,7 @@ function formatUserInfo(user: User, _language: string): { position: string; team
 
 export function MobileMembersView() {
   const { users, projects, events, boardTasks, boardGroups, currentUser, getGroupRooms } = useAppStore();
-  const { openMobileDm, setMobileView } = useWidgetStore();
+  const { openMobileDm, openMobileGroupChat, setMobileView } = useWidgetStore();
   const { t, language } = useTranslation();
   const locale = language === 'ko' ? ko : enUS;
 
@@ -445,7 +445,7 @@ export function MobileMembersView() {
           {getGroupRooms().map(room => (
             <button
               key={room.id}
-              onClick={() => setMobileView('dm-chat')}
+              onClick={() => openMobileGroupChat(room.id)}
               className="flex-shrink-0 flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium mobile-glass text-muted-foreground active:scale-[0.97] transition-all whitespace-nowrap"
             >
               <span className="text-primary/70">#</span>

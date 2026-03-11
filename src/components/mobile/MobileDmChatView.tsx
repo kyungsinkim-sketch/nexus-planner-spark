@@ -14,11 +14,15 @@ const ChatPanel = lazy(() =>
 );
 
 export function MobileDmChatView() {
-  const { mobileDmTargetUserId, setMobileView } = useWidgetStore();
-  const { users } = useAppStore();
+  const { mobileDmTargetUserId, mobileGroupRoomId, setMobileView } = useWidgetStore();
+  const { users, chatRooms } = useAppStore();
   const { language } = useTranslation();
 
-  const targetUser = users.find(u => u.id === mobileDmTargetUserId);
+  const targetUser = mobileDmTargetUserId ? users.find(u => u.id === mobileDmTargetUserId) : null;
+  const groupRoom = mobileGroupRoomId ? chatRooms.find(r => r.id === mobileGroupRoomId) : null;
+
+  const isGroup = !!mobileGroupRoomId;
+  const headerTitle = isGroup ? (groupRoom?.name || 'Group') : targetUser?.name || '';
 
   return (
     <div className="flex flex-col h-full bg-background">
@@ -30,7 +34,14 @@ export function MobileDmChatView() {
         >
           <ArrowLeft className="w-5 h-5 text-foreground" />
         </button>
-        {targetUser && (
+        {isGroup ? (
+          <>
+            <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+              <span className="text-sm font-bold text-primary">#</span>
+            </div>
+            <span className="text-sm font-semibold text-foreground">{headerTitle}</span>
+          </>
+        ) : targetUser ? (
           <>
             <Avatar className="w-8 h-8">
               <AvatarImage src={targetUser.avatar} />
@@ -40,10 +51,10 @@ export function MobileDmChatView() {
             </Avatar>
             <span className="text-sm font-semibold text-foreground">{targetUser.name}</span>
           </>
-        )}
+        ) : null}
       </div>
 
-      {/* ChatPanel with pre-selected DM */}
+      {/* ChatPanel */}
       <div className="flex-1 min-h-0 overflow-hidden">
         <Suspense fallback={
           <div className="flex items-center justify-center h-full">
@@ -52,6 +63,9 @@ export function MobileDmChatView() {
         }>
           {mobileDmTargetUserId && (
             <ChatPanel defaultDmUserId={mobileDmTargetUserId} />
+          )}
+          {mobileGroupRoomId && (
+            <ChatPanel defaultGroupRoomId={mobileGroupRoomId} />
           )}
         </Suspense>
       </div>
