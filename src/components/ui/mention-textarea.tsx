@@ -223,7 +223,7 @@ export function MentionTextarea({
     const el = textareaRef.current;
     if (el) {
       el.style.height = 'auto';
-      el.style.height = `${Math.min(el.scrollHeight, 96)}px`;
+      el.style.height = `${Math.min(el.scrollHeight, 160)}px`;
     }
   }, []);
 
@@ -242,8 +242,8 @@ export function MentionTextarea({
         rows={rows}
         className="w-full px-3 py-2 text-sm rounded-md border border-input bg-background
                    placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1
-                   focus-visible:ring-ring resize-none overflow-hidden leading-normal"
-        style={{ ...style, maxHeight: '96px' }}
+                   focus-visible:ring-ring resize-none overflow-y-auto leading-normal"
+        style={{ ...style, maxHeight: '160px' }}
         autoFocus={autoFocus}
       />
 
