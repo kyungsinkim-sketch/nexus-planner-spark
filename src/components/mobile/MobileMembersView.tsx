@@ -385,7 +385,7 @@ export function MobileMembersView() {
   return (
     <div className="h-full widget-area-bg overflow-y-auto">
       {/* Header + filters — sticky with matching background */}
-      <div className="sticky top-0 z-10 backdrop-blur-xl bg-background/70 dark:bg-background/80 pt-1" style={{ WebkitBackdropFilter: 'blur(20px)' }}>
+      <div className="sticky top-0 z-10 backdrop-blur-xl pt-1" style={{ WebkitBackdropFilter: 'blur(20px)' }}>
       <div className="flex items-center justify-between px-4 pt-4 pb-2">
         <h2 className="typo-h2">Members</h2>
         <button
