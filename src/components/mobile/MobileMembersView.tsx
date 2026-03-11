@@ -384,8 +384,8 @@ export function MobileMembersView() {
   // ─── List View ───────────────────────────────────────────
   return (
     <div className="h-full widget-area-bg overflow-y-auto">
-      {/* Header + filters — sticky transparent */}
-      <div className="sticky top-0 z-10 backdrop-blur-md pt-1" style={{ WebkitBackdropFilter: 'blur(12px)' }}>
+      {/* Header + filters — sticky with matching background */}
+      <div className="sticky top-0 z-10 backdrop-blur-xl bg-background/70 dark:bg-background/80 pt-1" style={{ WebkitBackdropFilter: 'blur(20px)' }}>
       <div className="flex items-center justify-between px-4 pt-4 pb-2">
         <h2 className="typo-h2">Members</h2>
         <button
@@ -456,9 +456,8 @@ export function MobileMembersView() {
         </button>
 
         {showGroups && (() => {
-          const myGroups = getGroupRooms().filter(r =>
-            r.memberIds?.includes(currentUser?.id || '')
-          );
+          // getGroupRooms already filters to rooms where current user is a member
+          const myGroups = getGroupRooms();
           if (myGroups.length === 0) return (
             <p className="text-xs text-muted-foreground mt-2 px-1">
               {language === 'ko' ? '참여 중인 그룹이 없어요' : 'No groups'}
