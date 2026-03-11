@@ -396,22 +396,19 @@ export function MobileMembersView() {
         </button>
       </div>
 
-      {/* Search bar (animated) */}
-      <div
-        className={cn(
-          'overflow-hidden transition-all duration-200 px-4',
-          showSearch ? 'max-h-12 opacity-100 mb-2' : 'max-h-0 opacity-0',
-        )}
-      >
-        <input
-          type="text"
-          value={searchQuery}
-          onChange={e => setSearchQuery(e.target.value)}
-          placeholder={language === 'ko' ? '이름 검색...' : 'Search name...'}
-          className="w-full rounded-xl mobile-glass px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-primary"
-          autoFocus={showSearch}
-        />
-      </div>
+      {/* Search bar */}
+      {showSearch && (
+        <div className="px-4 mb-2">
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            placeholder={language === 'ko' ? '이름 검색...' : 'Search name...'}
+            className="w-full rounded-xl mobile-glass px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-primary"
+            autoFocus
+          />
+        </div>
+      )}
 
       {/* Project filter + Group chips — single row */}
       <div className="flex gap-2 overflow-x-auto px-4 pb-3 scrollbar-hide items-center">
