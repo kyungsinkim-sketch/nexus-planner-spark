@@ -2119,7 +2119,7 @@ export function ChatPanel({ defaultProjectId, defaultDmUserId }: ChatPanelProps 
           )}
 
           {/* Message Input — Enter=send, @AiAssistant=Brain AI, @pablo/@cd/@pd=Persona */}
-          <div className={`p-2.5 bg-background shrink-0 min-w-0 ${isMobile ? 'sticky bottom-0 z-20 border-t' : ''}`}>
+          <div className={`p-2.5 bg-background shrink-0 min-w-0 ${isMobile ? 'sticky bottom-0 z-20 border-t pb-20' : ''}`}>
             <div className="flex items-center gap-1.5 min-w-0">
               <Button
                 variant="ghost"
