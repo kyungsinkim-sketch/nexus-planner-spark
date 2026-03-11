@@ -3,7 +3,7 @@ import { useAppStore } from '@/stores/appStore';
 import { useTranslation } from '@/hooks/useTranslation';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { ArrowLeft, Search, MessageCircle, Phone, Video, ChevronLeft, ChevronRight, Clock, CheckSquare, Hash, Users2 } from 'lucide-react';
+import { ArrowLeft, Search, MessageCircle, Phone, Video, ChevronLeft, ChevronRight, Clock, CheckSquare, Hash } from 'lucide-react';
 import { format, parseISO, startOfMonth, endOfMonth, startOfWeek, addDays, eachDayOfInterval, getDay, isSameDay, isBefore, isAfter, addMonths, subMonths } from 'date-fns';
 import { ko, enUS } from 'date-fns/locale';
 import { createCall } from '@/services/callService';
@@ -25,7 +25,7 @@ export function MobileMembersView() {
 
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [filterProjectId, setFilterProjectId] = useState<string | null>(null);
-  const [showGroups, setShowGroups] = useState(false);
+
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [calendarMonth, setCalendarMonth] = useState(new Date());
@@ -442,47 +442,25 @@ export function MobileMembersView() {
         ))}
       </div>
 
-      {/* Groups button + list */}
-      <div className="px-4 pb-3">
-        <button
-          onClick={() => setShowGroups(g => !g)}
-          className={cn(
-            'flex items-center gap-2 rounded-full px-4 py-1.5 text-xs font-medium transition-colors',
-            showGroups ? 'bg-primary text-primary-foreground' : 'mobile-glass text-muted-foreground',
-          )}
-        >
-          <Users2 className="w-3.5 h-3.5" />
-          {language === 'ko' ? '그룹' : 'Groups'}
-        </button>
-
-        {showGroups && (() => {
-          // getGroupRooms already filters to rooms where current user is a member
-          const myGroups = getGroupRooms();
-          if (myGroups.length === 0) return (
-            <p className="text-xs text-muted-foreground mt-2 px-1">
-              {language === 'ko' ? '참여 중인 그룹이 없어요' : 'No groups'}
-            </p>
-          );
-          return (
-            <div className="flex flex-col gap-1.5 mt-2">
-              {myGroups.map(room => (
-                <button
-                  key={room.id}
-                  onClick={() => {
-                    // Navigate to DM chat view with this group room
-                    // For now, switch to ai-chat tab (group chat integration pending)
-                    setMobileView('dm-chat');
-                  }}
-                  className="flex items-center gap-2.5 mobile-glass rounded-xl px-3 py-2.5 text-left active:scale-[0.98] transition-transform"
-                >
-                  <Hash className="w-4 h-4 text-primary shrink-0" />
-                  <span className="text-sm font-medium text-foreground truncate">{room.name || 'Group'}</span>
-                </button>
-              ))}
-            </div>
-          );
-        })()}
-      </div>
+      {/* Group chips — right-aligned row */}
+      {(() => {
+        const myGroups = getGroupRooms();
+        if (myGroups.length === 0) return null;
+        return (
+          <div className="flex gap-2 overflow-x-auto px-4 pb-3 scrollbar-hide justify-end">
+            {myGroups.map(room => (
+              <button
+                key={room.id}
+                onClick={() => setMobileView('dm-chat')}
+                className="flex-shrink-0 flex items-center gap-1.5 rounded-full px-4 py-1.5 text-xs font-medium mobile-glass text-muted-foreground active:scale-[0.97] transition-all whitespace-nowrap"
+              >
+                <Hash className="w-3 h-3" />
+                {room.name || 'Group'}
+              </button>
+            ))}
+          </div>
+        );
+      })()}
 
       </div>{/* end sticky header */}
 
