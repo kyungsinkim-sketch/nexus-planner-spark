@@ -96,6 +96,8 @@ export function ChatPanel({ defaultProjectId, defaultDmUserId, defaultGroupRoomI
     setActiveChatContext,
     pendingChatNavigation,
     setPendingChatNavigation,
+    markChatRead,
+    getUnreadCount,
   } = useAppStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTab, setSelectedTab] = useState<'projects' | 'direct' | 'groups'>('projects');
@@ -169,6 +171,18 @@ export function ChatPanel({ defaultProjectId, defaultDmUserId, defaultGroupRoomI
       setSelectedTab('groups');
     }
   }, [defaultGroupRoomId, chatRooms]);
+
+  // Mark chat as read when selected
+  useEffect(() => {
+    if (!selectedChat) return;
+    if (selectedChat.type === 'direct' || selectedChat.type === 'dm') {
+      markChatRead(`dm:${selectedChat.id}`);
+    } else if (selectedChat.type === 'group' && selectedChat.roomId) {
+      markChatRead(`room:${selectedChat.roomId}`);
+    } else if (selectedChat.type === 'project' && selectedChat.roomId) {
+      markChatRead(`room:${selectedChat.roomId}`);
+    }
+  }, [selectedChat, markChatRead, messages.length]);
 
   // Load group rooms on mount
   useEffect(() => {
@@ -1668,7 +1682,7 @@ export function ChatPanel({ defaultProjectId, defaultDmUserId, defaultGroupRoomI
                                     }`}
                                   >
                                     <Hash className="w-3 h-3 shrink-0" />
-                                    <span className="truncate">{room.name}</span>
+                                    <span className="truncate flex-1">{room.name}</span>
                                     {isDefaultRoom && (
                                       <span className="text-xs font-medium bg-muted px-1 py-0.5 rounded-full shrink-0">{t('defaultRoom')}</span>
                                     )}
@@ -1677,6 +1691,14 @@ export function ChatPanel({ defaultProjectId, defaultDmUserId, defaultGroupRoomI
                                         {t('subChatOnly')}
                                       </span>
                                     )}
+                                    {(() => {
+                                      const rUnread = getUnreadCount(`room:${room.id}`);
+                                      return rUnread > 0 && !isRoomSelected ? (
+                                        <span className="min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-bold px-1 shrink-0">
+                                          {rUnread > 99 ? '99+' : rUnread}
+                                        </span>
+                                      ) : null;
+                                    })()}
                                   </button>
                                 );
                               })}
@@ -1716,6 +1738,7 @@ export function ChatPanel({ defaultProjectId, defaultDmUserId, defaultGroupRoomI
                     {groupRooms.map((room) => {
                       const isSelected = selectedChat?.type === 'group' && selectedChat?.roomId === room.id;
                       const lastMsg = messages.filter(m => m.roomId === room.id).slice(-1)[0];
+                      const roomUnread = getUnreadCount(`room:${room.id}`);
                       return (
                         <button
                           key={room.id}
@@ -1734,6 +1757,11 @@ export function ChatPanel({ defaultProjectId, defaultDmUserId, defaultGroupRoomI
                                 {lastMsg && (
                                   <span className="text-xs font-medium text-muted-foreground">
                                     {formatTime(lastMsg.createdAt)}
+                                  </span>
+                                )}
+                                {roomUnread > 0 && !isSelected && (
+                                  <span className="min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-bold px-1">
+                                    {roomUnread > 99 ? '99+' : roomUnread}
                                   </span>
                                 )}
                                 <button
@@ -1757,7 +1785,7 @@ export function ChatPanel({ defaultProjectId, defaultDmUserId, defaultGroupRoomI
                               <p className="text-xs text-muted-foreground truncate mt-0.5">{room.description}</p>
                             )}
                             {lastMsg && (
-                              <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">{lastMsg.content}</p>
+                              <p className={`text-xs line-clamp-1 mt-0.5 ${roomUnread > 0 && !isSelected ? 'font-semibold text-foreground' : 'text-muted-foreground'}`}>{lastMsg.content}</p>
                             )}
                           </div>
                         </button>
@@ -1778,6 +1806,7 @@ export function ChatPanel({ defaultProjectId, defaultDmUserId, defaultGroupRoomI
                     {filteredUsers.map((user) => {
                       const isSelected = selectedChat?.type === 'direct' && selectedChat?.id === user.id;
                       const lastDM = getLastDirectMessage(user.id);
+                      const dmUnread = getUnreadCount(`dm:${user.id}`);
 
                       return (
                         <button
@@ -1818,17 +1847,24 @@ export function ChatPanel({ defaultProjectId, defaultDmUserId, defaultGroupRoomI
                                   </span>
                                 )}
                               </h3>
-                              {lastDM && (
-                                <span className="text-xs font-medium text-muted-foreground shrink-0">
-                                  {formatTime(lastDM.createdAt)}
-                                </span>
-                              )}
+                              <div className="flex items-center gap-1.5 shrink-0">
+                                {lastDM && (
+                                  <span className="text-xs font-medium text-muted-foreground">
+                                    {formatTime(lastDM.createdAt)}
+                                  </span>
+                                )}
+                                {dmUnread > 0 && !isSelected && (
+                                  <span className="min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-bold px-1">
+                                    {dmUnread > 99 ? '99+' : dmUnread}
+                                  </span>
+                                )}
+                              </div>
                             </div>
                             <p className="text-xs font-medium text-muted-foreground">
                               {user.department}
                             </p>
                             {lastDM && (
-                              <p className="text-xs font-medium text-muted-foreground line-clamp-1 mt-0.5">
+                              <p className={`text-xs line-clamp-1 mt-0.5 ${dmUnread > 0 && !isSelected ? 'font-semibold text-foreground' : 'font-medium text-muted-foreground'}`}>
                                 {lastDM.content}
                               </p>
                             )}

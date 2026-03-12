@@ -116,6 +116,9 @@ interface AppState {
   // Currently active/open chat context — used to suppress notifications for visible chat
   activeChatContext: { type: 'project' | 'direct'; id: string; roomId?: string } | null;
 
+  // Chat unread tracking — key: "room:{roomId}" or "dm:{userId}", value: ISO timestamp
+  chatLastReadTimestamps: Record<string, string>;
+
   // Pending chat navigation target — set by notification click, consumed by ChatPanel
   pendingChatNavigation: { type: 'project' | 'direct' | 'group'; id: string; roomId?: string } | null;
 
@@ -307,6 +310,8 @@ interface AppState {
   markAllAppNotificationsRead: () => void;
   clearAppNotifications: () => void;
   clearChatNotificationsForRoom: (roomId?: string, projectId?: string, directUserId?: string) => void;
+  markChatRead: (key: string) => void;
+  getUnreadCount: (key: string) => number;
   getUnreadAppNotificationCount: () => number;
 
   // Settings Actions
@@ -422,6 +427,7 @@ export const useAppStore = create<AppState>()(
       autoCheckInPosition: null,
       autoCheckInPlatform: null,
       activeChatContext: null,
+      chatLastReadTimestamps: {},
       pendingChatNavigation: null,
       worldClockSettingsOpen: false,
       weatherSettingsOpen: false,
@@ -2596,6 +2602,35 @@ export const useAppStore = create<AppState>()(
       getUnreadAppNotificationCount: () =>
         get().appNotifications.filter(n => !n.read).length,
 
+      markChatRead: (key: string) => set((state) => ({
+        chatLastReadTimestamps: { ...state.chatLastReadTimestamps, [key]: new Date().toISOString() },
+      })),
+
+      getUnreadCount: (key: string) => {
+        const state = get();
+        const lastRead = state.chatLastReadTimestamps[key];
+        const myId = state.currentUser?.id;
+        if (!myId) return 0;
+
+        let msgs: typeof state.messages;
+        if (key.startsWith('dm:')) {
+          const otherUserId = key.slice(3);
+          msgs = state.messages.filter(m =>
+            m.userId !== myId &&
+            ((m.userId === otherUserId && m.directChatUserId === myId) ||
+             (m.directChatUserId === otherUserId && m.userId === otherUserId))
+          );
+        } else if (key.startsWith('room:')) {
+          const roomId = key.slice(5);
+          msgs = state.messages.filter(m => m.roomId === roomId && m.userId !== myId);
+        } else {
+          return 0;
+        }
+
+        if (!lastRead) return msgs.length;
+        return msgs.filter(m => m.createdAt > lastRead).length;
+      },
+
       updateScoreSettings: (settings) => set((state) => ({
         scoreSettings: { ...state.scoreSettings, ...settings }
       })),
@@ -2672,6 +2707,7 @@ export const useAppStore = create<AppState>()(
         appNotifications: state.appNotifications,
         boardGroups: state.boardGroups,
         boardTasks: state.boardTasks,
+        chatLastReadTimestamps: state.chatLastReadTimestamps,
       }),
       merge: (persisted, current) => {
         const merged = { ...current, ...(persisted as Partial<AppState>) };
