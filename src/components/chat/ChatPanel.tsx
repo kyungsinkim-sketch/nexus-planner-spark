@@ -122,6 +122,8 @@ export function ChatPanel({ defaultProjectId, defaultDmUserId, defaultGroupRoomI
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const [showFileUpload, setShowFileUpload] = useState(false);
+  const [isDragOver, setIsDragOver] = useState(false);
+  const dragCounterRef = useRef(0);
   // /analyze command removed — no longer available in chat
 
   // Freelancer detection — freelancers can only access sub-chat rooms, not default/main
@@ -1266,6 +1268,48 @@ export function ChatPanel({ defaultProjectId, defaultDmUserId, defaultGroupRoomI
     }
   };
 
+  // Drag & drop handlers
+  const handleDragEnter = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounterRef.current++;
+    if (e.dataTransfer.types.includes('Files')) {
+      setIsDragOver(true);
+    }
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounterRef.current--;
+    if (dragCounterRef.current === 0) {
+      setIsDragOver(false);
+    }
+  }, []);
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+    dragCounterRef.current = 0;
+
+    const files = Array.from(e.dataTransfer.files);
+    if (files.length === 0 || !selectedChat) return;
+
+    // Upload each file with default category
+    for (const file of files) {
+      handleFileUploadConfirmRef.current?.('ETC', false, '', file);
+    }
+  }, [selectedChat]);
+
+  // Ref to avoid circular dependency with handleDrop → handleFileUploadConfirm
+  const handleFileUploadConfirmRef = useRef<((category: FileCategory, isImportant: boolean, comment: string, file?: File) => Promise<void>) | null>(null);
+
   // File upload handler for chat
   const handleFileUploadConfirm = async (category: FileCategory, isImportant: boolean, comment: string, file?: File) => {
     if (!currentUser || !selectedChat) return;
@@ -1400,6 +1444,9 @@ export function ChatPanel({ defaultProjectId, defaultDmUserId, defaultGroupRoomI
       toast.error(t('failedToUploadFile'));
     }
   };
+
+  // Keep ref in sync for drag-drop handler
+  handleFileUploadConfirmRef.current = handleFileUploadConfirm;
 
   // Project click: expand rooms AND auto-select default room
   const handleExpandProject = useCallback(async (projectId: string) => {
@@ -1880,7 +1927,25 @@ export function ChatPanel({ defaultProjectId, defaultDmUserId, defaultGroupRoomI
         </div>
       ) : (
         /* When chat selected: show messages */
-        <div className="flex flex-col h-full overflow-hidden">
+        <div
+          className="flex flex-col h-full overflow-hidden relative"
+          onDragEnter={handleDragEnter}
+          onDragLeave={handleDragLeave}
+          onDragOver={handleDragOver}
+          onDrop={handleDrop}
+        >
+          {/* Drag overlay */}
+          {isDragOver && (
+            <div className="absolute inset-0 z-50 bg-primary/10 border-2 border-dashed border-primary rounded-lg flex items-center justify-center backdrop-blur-sm">
+              <div className="text-center">
+                <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center mx-auto mb-2">
+                  <Paperclip className="w-6 h-6 text-primary" />
+                </div>
+                <p className="text-sm font-semibold text-primary">파일을 여기에 놓으세요</p>
+                <p className="text-xs text-muted-foreground mt-1">Drop files to upload</p>
+              </div>
+            </div>
+          )}
           {/* Chat Header — sticky on mobile so it never scrolls away */}
           <div className={`p-3 border-b border-border flex items-center gap-2.5 shrink-0 min-w-0 overflow-hidden bg-background ${isMobile ? 'sticky top-0 z-20' : ''}`}>
             <Button
