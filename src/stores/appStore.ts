@@ -148,6 +148,8 @@ interface AppState {
   // Track locally-trashed Gmail message IDs so they don't reappear on sync
   // (server-side trash requires gmail.modify scope which may not be granted yet)
   trashedGmailMessageIds: string[];
+  // Learned spam senders — key: email domain or address, value: dismiss/delete count
+  emailIgnoredSenders: Record<string, number>;
 
   // Board Tasks (Project Board Widget)
   boardGroups: BoardGroup[];
@@ -445,6 +447,7 @@ export const useAppStore = create<AppState>()(
       boardGroups: [],
       boardTasks: [],
       trashedGmailMessageIds: [],
+      emailIgnoredSenders: {},
       deletedMockEventIds: [],
       selectedProjectId: null,
       sidebarCollapsed: false,
@@ -1879,12 +1882,25 @@ export const useAppStore = create<AppState>()(
         const state = get();
         if (!state.currentUser) return;
 
+        // Track sender for spam learning — if user deletes without reading, increment
+        const trashedMsg = state.gmailMessages.find(m => m.id === messageId);
+        const updatedIgnored = { ...state.emailIgnoredSenders };
+        if (trashedMsg) {
+          const senderMatch = trashedMsg.from.match(/<([^>]+)>/) || [null, trashedMsg.from];
+          const senderEmail = (senderMatch[1] || trashedMsg.from).toLowerCase().trim();
+          // Extract domain for broader matching
+          const senderDomain = senderEmail.split('@')[1] || senderEmail;
+          const key = senderDomain;
+          updatedIgnored[key] = (updatedIgnored[key] || 0) + 1;
+        }
+
         // Always remove from local list immediately for better UX
         // Also persist the trashed ID so syncGmail won't re-add it
         set({
           gmailMessages: state.gmailMessages.filter(m => m.id !== messageId),
           emailSuggestions: state.emailSuggestions.filter(s => s.emailId !== messageId),
           trashedGmailMessageIds: [...state.trashedGmailMessageIds, messageId],
+          emailIgnoredSenders: updatedIgnored,
         });
 
         // Try server-side trash (may fail if gmail.modify scope not granted)
@@ -2112,10 +2128,19 @@ export const useAppStore = create<AppState>()(
             /광고/i, /할인/i, /쿠폰/i, /세일/i, /이벤트.*안내/i,
             /\[AD\]/i, /\[광고\]/i,
           ];
+          // Learned ignored senders — domains with 3+ deletes/rejects
+          const ignoredSenders = state.emailIgnoredSenders;
+          const IGNORE_THRESHOLD = 3;
+
           const filteredNew = trulyNew.filter(m => {
             const fromAddr = m.from.toLowerCase();
             if (spamPatterns.some(p => p.test(fromAddr))) return false;
             if (spamSubjectPatterns.some(p => p.test(m.subject))) return false;
+            // Check learned spam senders
+            const senderMatch = fromAddr.match(/<([^>]+)>/) || [null, fromAddr];
+            const senderEmail = (senderMatch[1] || fromAddr).trim();
+            const senderDomain = senderEmail.split('@')[1] || senderEmail;
+            if ((ignoredSenders[senderDomain] || 0) >= IGNORE_THRESHOLD) return false;
             return true;
           });
           console.log(`[Gmail] Brain analysis: ${filteredNew.length}/${trulyNew.length} emails after spam filter`);
@@ -2241,11 +2266,28 @@ export const useAppStore = create<AppState>()(
         }
       },
 
-      rejectEmailSuggestion: (suggestionId) => set((state) => ({
-        emailSuggestions: state.emailSuggestions.map(s =>
-          s.id === suggestionId ? { ...s, status: 'rejected' as const } : s
-        ),
-      })),
+      rejectEmailSuggestion: (suggestionId) => set((state) => {
+        const suggestion = state.emailSuggestions.find(s => s.id === suggestionId);
+        const updatedIgnored = { ...state.emailIgnoredSenders };
+
+        // Track sender domain for spam learning
+        if (suggestion) {
+          const email = state.gmailMessages.find(m => m.id === suggestion.emailId);
+          if (email) {
+            const senderMatch = email.from.match(/<([^>]+)>/) || [null, email.from];
+            const senderEmail = (senderMatch[1] || email.from).toLowerCase().trim();
+            const senderDomain = senderEmail.split('@')[1] || senderEmail;
+            updatedIgnored[senderDomain] = (updatedIgnored[senderDomain] || 0) + 1;
+          }
+        }
+
+        return {
+          emailSuggestions: state.emailSuggestions.map(s =>
+            s.id === suggestionId ? { ...s, status: 'rejected' as const } : s
+          ),
+          emailIgnoredSenders: updatedIgnored,
+        };
+      }),
 
       sendEmailReply: async (suggestionId, editedBody) => {
         const state = get();
@@ -2730,6 +2772,7 @@ export const useAppStore = create<AppState>()(
         boardGroups: state.boardGroups,
         boardTasks: state.boardTasks,
         chatLastReadTimestamps: state.chatLastReadTimestamps,
+        emailIgnoredSenders: state.emailIgnoredSenders,
       }),
       merge: (persisted, current) => {
         const merged = { ...current, ...(persisted as Partial<AppState>) };
