@@ -2099,7 +2099,28 @@ export const useAppStore = create<AppState>()(
               id: u.id, name: u.name, department: u.department, role: u.role,
             })),
           };
-          const suggestions = await gmailService.analyzeWithBrain(state.currentUser!.id, trulyNew, brainCtx, state.brainFeedback);
+          // Filter out spam/promotional emails before Brain AI analysis
+          const spamPatterns = [
+            /noreply@/i, /no-reply@/i, /notification@/i, /notifications@/i,
+            /marketing@/i, /newsletter@/i, /promo@/i, /promotions@/i,
+            /mailer-daemon@/i, /postmaster@/i, /bounce@/i,
+            /unsubscribe/i, /donotreply@/i, /do-not-reply@/i,
+            /billing@.*\.com/i, /support@.*\.zendesk/i,
+          ];
+          const spamSubjectPatterns = [
+            /unsubscribe/i, /구독.*취소/i, /수신.*거부/i,
+            /광고/i, /할인/i, /쿠폰/i, /세일/i, /이벤트.*안내/i,
+            /\[AD\]/i, /\[광고\]/i,
+          ];
+          const filteredNew = trulyNew.filter(m => {
+            const fromAddr = m.from.toLowerCase();
+            if (spamPatterns.some(p => p.test(fromAddr))) return false;
+            if (spamSubjectPatterns.some(p => p.test(m.subject))) return false;
+            return true;
+          });
+          console.log(`[Gmail] Brain analysis: ${filteredNew.length}/${trulyNew.length} emails after spam filter`);
+
+          const suggestions = await gmailService.analyzeWithBrain(state.currentUser!.id, filteredNew, brainCtx, state.brainFeedback);
           const existingSugIds = new Set(state.emailSuggestions.map(s => s.id));
           const newSuggestions = suggestions.filter(s => !existingSugIds.has(s.id));
 
