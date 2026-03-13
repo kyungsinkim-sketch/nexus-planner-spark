@@ -210,13 +210,14 @@ function EmailItem({
   onReject: (id: string) => void;
   onReply: (id: string) => void;
   onTrash: (id: string) => void;
-  onAnalyze: (id: string) => void;
+  onAnalyze: (id: string) => Promise<void> | void;
   onDirectReply: (emailId: string) => void;
   onMarkAsRead: (emailId: string) => void;
 }) {
   const { t } = useTranslation();
   const { gmailMessages } = useAppStore();
   const [isExpanded, setIsExpanded] = useState(false);
+  const [analyzing, setAnalyzing] = useState(false);
   const email = gmailMessages.find(m => m.id === emailId);
   if (!email) return null;
 
@@ -289,11 +290,25 @@ function EmailItem({
               <Reply className="w-3 h-3" /> 답장
             </button>
             <button
-              onClick={(e) => { e.stopPropagation(); onAnalyze(emailId); }}
-              className="flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-md bg-violet-500/10 hover:bg-violet-500/20 text-violet-600 dark:text-violet-400 transition-colors"
+              onClick={async (e) => {
+                e.stopPropagation();
+                if (analyzing) return;
+                setAnalyzing(true);
+                try { await onAnalyze(emailId); } finally { setAnalyzing(false); }
+              }}
+              disabled={analyzing}
+              className={`flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-md transition-colors ${
+                analyzing
+                  ? 'bg-violet-500/20 text-violet-400 cursor-wait'
+                  : 'bg-violet-500/10 hover:bg-violet-500/20 text-violet-600 dark:text-violet-400'
+              }`}
               title="Brain AI 분석"
             >
-              <Brain className="w-3 h-3" /> Brain 분석
+              {analyzing ? (
+                <><Loader2 className="w-3 h-3 animate-spin" /> 분석 중...</>
+              ) : (
+                <><Brain className="w-3 h-3" /> Brain 분석</>
+              )}
             </button>
             <button
               onClick={(e) => { e.stopPropagation(); onTrash(emailId); }}
