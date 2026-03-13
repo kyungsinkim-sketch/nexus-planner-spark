@@ -2627,7 +2627,8 @@ export const useAppStore = create<AppState>()(
           return 0;
         }
 
-        if (!lastRead) return msgs.length;
+        // No lastRead = never tracked yet → treat all existing as read
+        if (!lastRead) return 0;
         return msgs.filter(m => m.createdAt > lastRead).length;
       },
 
