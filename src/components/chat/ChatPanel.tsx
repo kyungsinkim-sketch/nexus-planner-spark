@@ -587,11 +587,16 @@ export function ChatPanel({ defaultProjectId, defaultDmUserId, defaultGroupRoomI
         const weekLater = new Date(now.getTime() + 7 * 86400000).toISOString().slice(0, 10);
         const { events: allEvents, personalTodos: allTodos } = useAppStore.getState();
 
+        console.log(`[BrainDM] Events total: ${allEvents.length}, user: ${currentUser.id}, today: ${todayStr}`);
         const upcomingEvents = allEvents
           .filter(e => {
             const d = e.startAt.slice(0, 10);
-            return d >= todayStr && d <= weekLater &&
-              (e.ownerId === currentUser.id || e.attendeeIds?.includes(currentUser.id));
+            const inRange = d >= todayStr && d <= weekLater;
+            const isMine = e.ownerId === currentUser.id || e.attendeeIds?.includes(currentUser.id) || e.createdBy === currentUser.id;
+            if (inRange && !isMine) {
+              console.log(`[BrainDM] Event filtered out (not mine): "${e.title}" owner=${e.ownerId} attendees=${e.attendeeIds}`);
+            }
+            return inRange && isMine;
           })
           .sort((a, b) => a.startAt.localeCompare(b.startAt))
           .slice(0, 15)
@@ -604,6 +609,8 @@ export function ChatPanel({ defaultProjectId, defaultDmUserId, defaultGroupRoomI
           .slice(0, 10)
           .map(t => `- ${t.title}${t.dueDate ? ` (마감: ${t.dueDate.slice(0, 10)})` : ''}`)
           .join('\n');
+
+        console.log(`[BrainDM] Upcoming events: ${upcomingEvents ? upcomingEvents.split('\n').length : 0}, Pending todos: ${pendingTodos ? pendingTodos.split('\n').length : 0}`);
 
         const dataContext = [
           upcomingEvents ? `[📅 내 일정 (${todayStr} ~ ${weekLater})]\n${upcomingEvents}` : '',
