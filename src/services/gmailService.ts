@@ -24,7 +24,7 @@ function isMockMode(): boolean {
 export async function fetchNewEmails(
   userId: string,
   forceFullSync = false,
-): Promise<{ messages: GmailMessage[]; historyId?: string }> {
+): Promise<{ messages: GmailMessage[]; historyId?: string; readMessageIds?: string[] }> {
   if (isMockMode()) {
     // Return mock data in development
     return { messages: mockGmailMessages };
@@ -48,6 +48,7 @@ export async function fetchNewEmails(
     return {
       messages: data?.newMessages || [],
       historyId: data?.historyId,
+      readMessageIds: data?.readMessageIds || [],
     };
   } catch (err) {
     console.error('[Gmail] Fetch exception:', err);

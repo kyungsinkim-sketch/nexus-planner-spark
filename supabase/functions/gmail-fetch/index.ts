@@ -176,8 +176,9 @@ async function fetchMessageIds(accessToken: string, maxResults = 20): Promise<{ 
   return { ids, historyId: profile.historyId || '' };
 }
 
-async function fetchNewMessageIdsByHistory(accessToken: string, startHistoryId: string): Promise<{ ids: string[]; historyId: string }> {
-  const url = `${GMAIL_API}/users/me/history?startHistoryId=${startHistoryId}&historyTypes=messageAdded&labelId=INBOX`;
+async function fetchNewMessageIdsByHistory(accessToken: string, startHistoryId: string): Promise<{ ids: string[]; historyId: string; readMessageIds: string[] }> {
+  // Fetch both messageAdded and labelRemoved to track read status changes
+  const url = `${GMAIL_API}/users/me/history?startHistoryId=${startHistoryId}&labelId=INBOX`;
   const res = await fetch(url, {
     headers: { Authorization: `Bearer ${accessToken}` },
   });
@@ -190,9 +191,17 @@ async function fetchNewMessageIdsByHistory(accessToken: string, startHistoryId: 
   }
   const data = await res.json();
   const messageIds = new Set<string>();
+  const readMessageIds = new Set<string>();
   for (const history of data.history || []) {
     for (const added of history.messagesAdded || []) {
       messageIds.add(added.message.id);
+    }
+    // Track messages that had UNREAD label removed (= marked as read in Gmail)
+    for (const removed of history.labelsRemoved || []) {
+      const labelIds = (removed.labelIds || []) as string[];
+      if (labelIds.includes('UNREAD')) {
+        readMessageIds.add(removed.message.id);
+      }
     }
   }
   // Get latest historyId from profile
@@ -200,7 +209,7 @@ async function fetchNewMessageIdsByHistory(accessToken: string, startHistoryId: 
     headers: { Authorization: `Bearer ${accessToken}` },
   });
   const profile = await profileRes.json();
-  return { ids: Array.from(messageIds), historyId: profile.historyId || '' };
+  return { ids: Array.from(messageIds), historyId: profile.historyId || '', readMessageIds: Array.from(readMessageIds) };
 }
 
 async function fetchFullMessages(accessToken: string, messageIds: string[]): Promise<GmailMessage[]> {
@@ -278,6 +287,7 @@ Deno.serve(async (req) => {
 
     let messageIds: string[] = [];
     let nextHistoryId = '';
+    let readMessageIds: string[] = [];
 
     if (syncState?.history_id && !forceFullSync) {
       // Incremental sync
@@ -285,6 +295,7 @@ Deno.serve(async (req) => {
         const result = await fetchNewMessageIdsByHistory(accessToken, syncState.history_id);
         messageIds = result.ids;
         nextHistoryId = result.historyId;
+        readMessageIds = result.readMessageIds;
       } catch (err) {
         if ((err as Error).message === 'HISTORY_EXPIRED') {
           // Fallback to full sync
@@ -316,7 +327,7 @@ Deno.serve(async (req) => {
       }, { onConflict: 'user_id' });
 
     return new Response(
-      JSON.stringify({ newMessages, historyId: nextHistoryId }),
+      JSON.stringify({ newMessages, historyId: nextHistoryId, readMessageIds }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
     );
   } catch (err) {

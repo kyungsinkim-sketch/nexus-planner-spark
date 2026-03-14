@@ -2067,12 +2067,14 @@ export const useAppStore = create<AppState>()(
         try {
           // Force full fetch if explicitly requested or cache is empty
           const needsFullFetch = forceFullSync || state.gmailMessages.length === 0;
-          const { messages: newMessages } = await gmailService.fetchNewEmails(
+          const { messages: newMessages, readMessageIds } = await gmailService.fetchNewEmails(
             state.currentUser.id,
             needsFullFetch,
           );
           // Filter out locally-trashed messages so they don't reappear
           const trashedSet = new Set(get().trashedGmailMessageIds);
+          // Mark messages that were read in Gmail as read locally
+          const readSet = new Set(readMessageIds || []);
 
           let allMessages: typeof newMessages;
           let trulyNew: typeof newMessages = [];
@@ -2088,15 +2090,23 @@ export const useAppStore = create<AppState>()(
             trulyNew = newMessages.filter(m => !existingById.has(m.id));
           } else {
             // Incremental sync: merge new messages into existing
-            if (newMessages.length === 0) {
+            if (newMessages.length === 0 && readSet.size === 0) {
               set({ gmailSyncing: false, gmailLastSyncAt: new Date().toISOString() });
               return;
             }
             const existingById = new Map(state.gmailMessages.map(m => [m.id, m]));
+            // Apply read status from Gmail (messages read outside Re-Be)
+            for (const readId of readSet) {
+              const existing = existingById.get(readId);
+              if (existing && existing.isUnread) {
+                existingById.set(readId, { ...existing, isUnread: false });
+              }
+            }
             for (const msg of newMessages) {
               if (!existingById.has(msg.id)) {
                 trulyNew.push(msg);
               }
+              // Always update with server data (preserves read status from Gmail)
               existingById.set(msg.id, msg);
             }
             allMessages = Array.from(existingById.values())
