@@ -70,6 +70,7 @@ Deno.serve(async (req) => {
     }
 
     console.log(`Processing @ai message from user ${userId}: "${messageContent.substring(0, 100)}"`);
+    console.log(`[brain-process] context: projectId=${projectId || 'NONE'}, roomId=${roomId || 'NONE'}, directChatUserId=${directChatUserId || 'NONE'}, projectTitle=${projectTitle || 'NONE'}`);
 
     // 4. Fetch recent chat history for multi-turn context
     //    This allows the LLM to understand references like "그때", "거기", "그 일정"
