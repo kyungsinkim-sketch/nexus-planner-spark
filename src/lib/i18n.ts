@@ -640,7 +640,6 @@ export const translations = {
     failedToGetLocation: '위치 정보를 가져올 수 없습니다',
     gpsLocationRequired: 'GPS 위치 정보가 필요합니다',
     checkInSuccess: '출근 처리되었습니다!',
-    checkInFailed: '출근 처리에 실패했습니다',
     checkOutSuccess: '퇴근 처리되었습니다! 수고하셨습니다',
     checkOutFailed: '퇴근 처리에 실패했습니다',
     todayWorkingHours: '오늘 근무시간',
@@ -1269,7 +1268,6 @@ export const translations = {
     // Profile Page
     pleaseSelectImage: '이미지 파일을 선택해주세요',
     imageSizeLimit: '이미지는 5MB 이하여야 합니다',
-    profilePhotoUpdated: '프로필 사진이 업데이트되었습니다',
     profilePhotoUpdatedMock: '프로필 사진이 업데이트되었습니다 (Mock 모드)',
     uploadPermissionDenied: '업로드 권한이 거부되었습니다. 로그아웃 후 다시 로그인해주세요.',
     failedToUploadPhoto: '사진 업로드 실패',
@@ -2084,7 +2082,6 @@ export const translations = {
     failedToGetLocation: 'Failed to get location',
     gpsLocationRequired: 'GPS location is required',
     checkInSuccess: 'Checked in successfully!',
-    checkInFailed: 'Failed to check in',
     checkOutSuccess: 'Checked out successfully! Great work today',
     checkOutFailed: 'Failed to check out',
     todayWorkingHours: "Today's working hours",
@@ -2713,7 +2710,6 @@ export const translations = {
     // Profile Page
     pleaseSelectImage: 'Please select an image file',
     imageSizeLimit: 'Image must be less than 5MB',
-    profilePhotoUpdated: 'Profile photo updated',
     profilePhotoUpdatedMock: 'Profile photo updated (mock mode)',
     uploadPermissionDenied: 'Upload permission denied. Please sign out and sign back in.',
     failedToUploadPhoto: 'Failed to upload photo',
