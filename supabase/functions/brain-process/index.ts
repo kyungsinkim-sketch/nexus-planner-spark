@@ -256,6 +256,22 @@ Deno.serve(async (req) => {
           }
         }
       }
+
+      // Fallback: if keyword search found nothing but we have a project context,
+      // load recent project notes regardless (handles cross-language queries)
+      if (!importantNotesContext && projectId) {
+        const { data: recentProjectNotes } = await supabase
+          .from('important_notes')
+          .select('id, title, content, category, source, created_at')
+          .eq('project_id', projectId)
+          .order('created_at', { ascending: false })
+          .limit(5);
+
+        if (recentProjectNotes && recentProjectNotes.length > 0) {
+          importantNotesContext = formatImportantNotes(recentProjectNotes);
+          console.log(`Important Notes: fallback loaded ${recentProjectNotes.length} recent project notes`);
+        }
+      }
     } catch (notesErr) {
       console.error('Important notes fetch failed (non-fatal):', notesErr);
     }
