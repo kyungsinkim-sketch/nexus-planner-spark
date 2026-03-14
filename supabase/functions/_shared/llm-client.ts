@@ -47,6 +47,7 @@ ${memberList}
 ${projectId ? `\n## Project: ${projectId}${projectTitle ? ` (${projectTitle})` : ''}` : ''}
 
 ## Rules
+- **CRITICAL: Only process the LAST user message as the current request.** Previous messages in history are REFERENCE CONTEXT ONLY — do NOT extract actions from them. If the user shared a link or article earlier, ignore it unless the current message explicitly asks about it.
 - ENTIRE response = single JSON object, no markdown fences.
 - hasAction=true with actions[] for actionable requests; hasAction=false with helpful reply otherwise.
 - Assignee: strip honorifics (님/씨/선배), partial match ("민규"→"박민규").
