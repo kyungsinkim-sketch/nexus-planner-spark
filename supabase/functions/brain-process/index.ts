@@ -204,8 +204,64 @@ Deno.serve(async (req) => {
       // Continue without RAG — non-fatal error
     }
 
-    // Combine weather + RAG context
-    const combinedContext = [weatherContext, ragContext].filter(Boolean).join('') || undefined;
+    // 5.6. Fetch important_notes — user-saved notes from email/slack/notion/call analysis
+    let importantNotesContext: string | undefined;
+    try {
+      // Text search: find notes whose title or content matches keywords from the message
+      // Split message into keywords (remove common particles/stopwords)
+      const keywords = messageContent
+        .replace(/[?!.,@#]/g, ' ')
+        .split(/\s+/)
+        .filter((w: string) => w.length >= 2)
+        .slice(0, 5); // Top 5 keywords
+
+      if (keywords.length > 0) {
+        // Search by project first, then globally
+        let notesQuery = supabase
+          .from('important_notes')
+          .select('id, title, content, category, source, created_at')
+          .order('created_at', { ascending: false })
+          .limit(5);
+
+        // Build text search: OR across title/content for each keyword
+        const orConditions = keywords
+          .map((kw: string) => `title.ilike.%${kw}%,content.ilike.%${kw}%`)
+          .join(',');
+        notesQuery = notesQuery.or(orConditions);
+
+        // If in project context, prefer project notes
+        if (projectId) {
+          const { data: projectNotes } = await notesQuery.eq('project_id', projectId);
+          if (projectNotes && projectNotes.length > 0) {
+            importantNotesContext = formatImportantNotes(projectNotes);
+            console.log(`Important Notes: found ${projectNotes.length} project-scoped notes`);
+          } else {
+            // Fallback: search all notes for this user
+            const { data: allNotes } = await supabase
+              .from('important_notes')
+              .select('id, title, content, category, source, created_at')
+              .or(orConditions)
+              .order('created_at', { ascending: false })
+              .limit(3);
+            if (allNotes && allNotes.length > 0) {
+              importantNotesContext = formatImportantNotes(allNotes);
+              console.log(`Important Notes: found ${allNotes.length} global notes`);
+            }
+          }
+        } else {
+          const { data: notes } = await notesQuery;
+          if (notes && notes.length > 0) {
+            importantNotesContext = formatImportantNotes(notes);
+            console.log(`Important Notes: found ${notes.length} notes`);
+          }
+        }
+      }
+    } catch (notesErr) {
+      console.error('Important notes fetch failed (non-fatal):', notesErr);
+    }
+
+    // Combine weather + RAG + important notes context
+    const combinedContext = [weatherContext, ragContext, importantNotesContext].filter(Boolean).join('') || undefined;
 
     // 6. Call Claude LLM (with conversation history + optional weather/RAG context)
     let llmResponse;
@@ -389,4 +445,26 @@ function hasWeatherKeyword(text: string): boolean {
     '비 올', '눈 올', '맑', '흐림', '우천',
   ];
   return keywords.some((kw) => text.includes(kw));
+}
+
+/**
+ * Format important_notes into context string for LLM.
+ */
+function formatImportantNotes(
+  notes: Array<{ title?: string; content: string; category?: string; source?: string; created_at?: string }>,
+): string {
+  if (!notes.length) return '';
+
+  let context = '\n\n## 중요 기록 (Important Notes)\n아래는 이전에 저장된 중요 기록입니다. 사용자가 관련 질문을 하면 반드시 이 내용을 바탕으로 답변하세요.\n\n';
+
+  for (const note of notes) {
+    const title = note.title || '(제목 없음)';
+    const source = note.source ? ` [${note.source}]` : '';
+    const category = note.category ? ` (${note.category})` : '';
+    // Truncate long content
+    const content = note.content.length > 500 ? note.content.slice(0, 500) + '...' : note.content;
+    context += `### ${title}${source}${category}\n${content}\n\n`;
+  }
+
+  return context;
 }
