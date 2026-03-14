@@ -211,11 +211,23 @@ Deno.serve(async (req) => {
       // Strip Korean particles (조사) from words to get clean stems for search
       const stripped = stripKoreanParticles(messageContent);
       const keywords = stripped
-        .replace(/[?!.,@#"'()[\]{}]/g, ' ')
+        .replace(/[?!.,@#"()[\]{}]/g, ' ')
+        .replace(/['`']/g, '') // Remove apostrophes: "client's" → "clients"
         .split(/\s+/)
         .filter((w: string) => w.length >= 2)
-        // Remove common stopwords
-        .filter((w: string) => !['어떻게', '대해', '대한', '무엇', '에서', '으로', '그리고', '그래서', '하지만', '그런데'].includes(w))
+        // Remove common stopwords (Korean + English)
+        .filter((w: string) => ![
+          // Korean
+          '어떻게', '대해', '대한', '무엇', '에서', '으로', '그리고', '그래서', '하지만', '그런데',
+          '어떤', '이런', '그런', '저런', '했던', '했는', '했어', '줬었', '줬어', '했지',
+          // English
+          'the', 'was', 'were', 'what', 'how', 'when', 'where', 'who', 'why', 'which',
+          'is', 'are', 'am', 'been', 'be', 'has', 'had', 'have', 'did', 'does', 'do',
+          'on', 'in', 'at', 'to', 'of', 'for', 'from', 'with', 'by', 'an', 'or', 'and',
+          'not', 'no', 'can', 'could', 'would', 'should', 'will', 'shall', 'may', 'might',
+          'this', 'that', 'these', 'those', 'it', 'its', 'my', 'your', 'our', 'their',
+          'about', 'also', 'just', 'like', 'than', 'then', 'very', 'some', 'any',
+        ].includes(w.toLowerCase()))
         .slice(0, 6);
 
       console.log(`[ImportantNotes] keywords: ${JSON.stringify(keywords)}`);
@@ -261,14 +273,17 @@ Deno.serve(async (req) => {
       // Fallback: if keyword search found nothing, load recent notes
       // (handles cross-language queries like English question → Korean notes)
       if (!importantNotesContext) {
+        console.log(`[ImportantNotes] keyword search returned nothing, trying fallback. projectId=${projectId || 'NONE'}`);
         if (projectId) {
           // Try project-scoped recent notes first
-          const { data: recentProjectNotes } = await supabase
+          const { data: recentProjectNotes, error: projErr } = await supabase
             .from('important_notes')
             .select('id, title, content, category, source, created_at')
             .eq('project_id', projectId)
             .order('created_at', { ascending: false })
             .limit(5);
+
+          console.log(`[ImportantNotes] project fallback: ${recentProjectNotes?.length || 0} notes, error=${projErr?.message || 'none'}`);
 
           if (recentProjectNotes && recentProjectNotes.length > 0) {
             importantNotesContext = formatImportantNotes(recentProjectNotes);
@@ -278,11 +293,13 @@ Deno.serve(async (req) => {
 
         // If still nothing, load ALL recent notes (for DM or cross-project queries)
         if (!importantNotesContext) {
-          const { data: recentAllNotes } = await supabase
+          const { data: recentAllNotes, error: allErr } = await supabase
             .from('important_notes')
             .select('id, title, content, category, source, created_at')
             .order('created_at', { ascending: false })
             .limit(5);
+
+          console.log(`[ImportantNotes] global fallback: ${recentAllNotes?.length || 0} notes, error=${allErr?.message || 'none'}`);
 
           if (recentAllNotes && recentAllNotes.length > 0) {
             importantNotesContext = formatImportantNotes(recentAllNotes);
