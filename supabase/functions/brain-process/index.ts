@@ -207,52 +207,52 @@ Deno.serve(async (req) => {
     // 5.6. Fetch important_notes — user-saved notes from email/slack/notion/call analysis
     let importantNotesContext: string | undefined;
     try {
-      // Text search: find notes whose title or content matches keywords from the message
-      // Split message into keywords (remove common particles/stopwords)
-      const keywords = messageContent
-        .replace(/[?!.,@#]/g, ' ')
+      // Strip Korean particles (조사) from words to get clean stems for search
+      const stripped = stripKoreanParticles(messageContent);
+      const keywords = stripped
+        .replace(/[?!.,@#"'()[\]{}]/g, ' ')
         .split(/\s+/)
         .filter((w: string) => w.length >= 2)
-        .slice(0, 5); // Top 5 keywords
+        // Remove common stopwords
+        .filter((w: string) => !['어떻게', '대해', '대한', '무엇', '에서', '으로', '그리고', '그래서', '하지만', '그런데'].includes(w))
+        .slice(0, 6);
+
+      console.log(`[ImportantNotes] keywords: ${JSON.stringify(keywords)}`);
 
       if (keywords.length > 0) {
-        // Search by project first, then globally
-        let notesQuery = supabase
-          .from('important_notes')
-          .select('id, title, content, category, source, created_at')
-          .order('created_at', { ascending: false })
-          .limit(5);
-
         // Build text search: OR across title/content for each keyword
         const orConditions = keywords
           .map((kw: string) => `title.ilike.%${kw}%,content.ilike.%${kw}%`)
           .join(',');
-        notesQuery = notesQuery.or(orConditions);
 
         // If in project context, prefer project notes
         if (projectId) {
-          const { data: projectNotes } = await notesQuery.eq('project_id', projectId);
+          const { data: projectNotes } = await supabase
+            .from('important_notes')
+            .select('id, title, content, category, source, created_at')
+            .eq('project_id', projectId)
+            .or(orConditions)
+            .order('created_at', { ascending: false })
+            .limit(5);
+
           if (projectNotes && projectNotes.length > 0) {
             importantNotesContext = formatImportantNotes(projectNotes);
             console.log(`Important Notes: found ${projectNotes.length} project-scoped notes`);
-          } else {
-            // Fallback: search all notes for this user
-            const { data: allNotes } = await supabase
-              .from('important_notes')
-              .select('id, title, content, category, source, created_at')
-              .or(orConditions)
-              .order('created_at', { ascending: false })
-              .limit(3);
-            if (allNotes && allNotes.length > 0) {
-              importantNotesContext = formatImportantNotes(allNotes);
-              console.log(`Important Notes: found ${allNotes.length} global notes`);
-            }
           }
-        } else {
-          const { data: notes } = await notesQuery;
-          if (notes && notes.length > 0) {
-            importantNotesContext = formatImportantNotes(notes);
-            console.log(`Important Notes: found ${notes.length} notes`);
+        }
+
+        // If no project notes found (or no project context), search globally
+        if (!importantNotesContext) {
+          const { data: allNotes } = await supabase
+            .from('important_notes')
+            .select('id, title, content, category, source, created_at')
+            .or(orConditions)
+            .order('created_at', { ascending: false })
+            .limit(5);
+
+          if (allNotes && allNotes.length > 0) {
+            importantNotesContext = formatImportantNotes(allNotes);
+            console.log(`Important Notes: found ${allNotes.length} global notes`);
           }
         }
       }
@@ -445,6 +445,37 @@ function hasWeatherKeyword(text: string): boolean {
     '비 올', '눈 올', '맑', '흐림', '우천',
   ];
   return keywords.some((kw) => text.includes(kw));
+}
+
+/**
+ * Strip common Korean particles (조사) from words for better keyword matching.
+ * e.g., "클라이언트가" → "클라이언트", "카피의" → "카피", "방향성에" → "방향성"
+ */
+function stripKoreanParticles(text: string): string {
+  // Korean particles sorted by length (longest first to avoid partial matches)
+  const particles = [
+    // 3-char
+    '에서는', '으로는', '에게서', '한테서', '이라고', '이라는',
+    // 2-char
+    '에서', '으로', '에게', '한테', '까지', '부터', '처럼', '만큼', '대로',
+    '이랑', '이나', '에는', '에도', '이고', '이며', '이든', '마저', '조차',
+    // 1-char (careful — only strip from words 3+ chars to avoid false positives)
+    '가', '이', '를', '을', '의', '에', '는', '은', '도', '로', '와', '과',
+    '나', '며', '고', '든', '만',
+  ];
+
+  return text.split(/\s+/).map(word => {
+    // Only strip particles from Korean words (contains Hangul)
+    if (!/[가-힣]/.test(word)) return word;
+
+    for (const p of particles) {
+      if (word.endsWith(p) && word.length > p.length + 1) {
+        return word.slice(0, -p.length);
+        break;
+      }
+    }
+    return word;
+  }).join(' ');
 }
 
 /**
