@@ -1,613 +1,531 @@
 /**
- * VoiceRecorderWidget — Record audio, upload files, manage recordings.
+ * VoiceRecorderWidget — 녹음 + STT Transcript + Brain AI 분석
  *
- * Three modes:
- * 1. Record — Browser microphone recording with waveform visualization
- * 2. Upload — Drag & drop or file picker for audio files
- * 3. History — List of past recordings with status and Brain results
+ * Flow:
+ * 1. 녹음 시작 (MediaRecorder, webm/opus)
+ * 2. 녹음 종료 → Supabase Storage 업로드
+ * 3. voice-transcribe Edge Function 호출 (Google STT)
+ * 4. voice-brain-analyze Edge Function 호출 (Claude Haiku)
+ * 5. 결과 표시 (transcript + 분석 결과)
  *
- * Optimizations:
- * - React.memo on sub-components to prevent unnecessary re-renders
- * - Reusable dataArray buffer in WaveformCanvas (avoids GC pressure)
- * - Stable callback refs to minimize re-renders
- * - Sorted recordings memoized to avoid sort on every render
- * - Lazy-loaded TranscriptViewDialog
+ * 프로젝트 컨텍스트 내에서 사용 시 projectId 전달
  */
 
-import { useState, useRef, useEffect, useCallback, useMemo, memo, lazy, Suspense } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { useAppStore } from '@/stores/appStore';
 import { useTranslation } from '@/hooks/useTranslation';
+import { supabase, isSupabaseConfigured } from '@/integrations/supabase/client';
 import {
-  Mic,
-  MicOff,
-  Square,
-  Pause,
-  Play,
-  Upload,
-  List,
-  Loader2,
-  FileAudio,
-  Brain,
-  CheckCircle2,
-  AlertTriangle,
-  Clock,
-  FolderOpen,
+  Mic, Square, Loader2, FileText, Brain, ChevronDown, ChevronUp,
+  Clock, CheckCircle2, AlertCircle, ListTodo, CalendarPlus, Quote,
 } from 'lucide-react';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { Input } from '@/components/ui/input';
-import type { WidgetDataContext } from '@/types/widget';
-import type { VoiceRecording, RecordingType } from '@/types/core';
-import {
-  startRecording,
-  stopRecording,
-  pauseRecording,
-  resumeRecording,
-  cancelRecording,
-  getAnalyserNode,
-  getRecordingDuration,
-  validateAudioFile,
-} from '@/services/audioService';
+import { cn } from '@/lib/utils';
 
-// Lazy-load the transcript dialog — only needed when user clicks a recording
-const TranscriptViewDialog = lazy(() => import('./TranscriptViewDialog'));
+interface TranscriptSegment {
+  speaker: string;
+  text: string;
+  startTime: number;
+  endTime: number;
+}
 
-type TabMode = 'record' | 'upload' | 'history';
+interface BrainAnalysis {
+  summary: string;
+  decisions: Array<{ text: string; confidence: number }>;
+  suggestedEvents: Array<{ title: string; date: string; time: string; attendees: string[] }>;
+  actionItems: Array<{ text: string; assignee: string; dueDate?: string }>;
+  followups: Array<{ text: string; deadline?: string }>;
+  keyQuotes: Array<{ speaker: string; text: string }>;
+}
 
-// ─── Waveform Visualizer ─────────────────────────────
+type RecordingStatus = 'idle' | 'recording' | 'uploading' | 'transcribing' | 'analyzing' | 'done' | 'error';
 
-const WaveformCanvas = memo(function WaveformCanvas({ isRecording }: { isRecording: boolean }) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const animationRef = useRef<number>(0);
-  // Reuse buffer to avoid GC pressure during animation
-  const dataArrayRef = useRef<Uint8Array | null>(null);
+interface VoiceRecorderWidgetProps {
+  projectId?: string;
+  projectTitle?: string;
+  className?: string;
+}
 
+export function VoiceRecorderWidget({ projectId, projectTitle, className }: VoiceRecorderWidgetProps) {
+  const { currentUser, projects, users } = useAppStore();
+  const { language } = useTranslation();
+
+  const [status, setStatus] = useState<RecordingStatus>('idle');
+  const [errorMessage, setErrorMessage] = useState('');
+  const [duration, setDuration] = useState(0);
+  const [transcript, setTranscript] = useState<TranscriptSegment[]>([]);
+  const [analysis, setAnalysis] = useState<BrainAnalysis | null>(null);
+  const [showTranscript, setShowTranscript] = useState(false);
+  const [showAnalysis, setShowAnalysis] = useState(true);
+  const [recordingTitle, setRecordingTitle] = useState('');
+
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const startTimeRef = useRef<number>(0);
+
+  // Cleanup on unmount
   useEffect(() => {
-    if (!isRecording) {
-      cancelAnimationFrame(animationRef.current);
-      return;
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+      if (mediaRecorderRef.current?.state === 'recording') {
+        mediaRecorderRef.current.stop();
+      }
+    };
+  }, []);
+
+  // Format duration as mm:ss
+  const formatDuration = (seconds: number) => {
+    const m = Math.floor(seconds / 60).toString().padStart(2, '0');
+    const s = (seconds % 60).toString().padStart(2, '0');
+    return `${m}:${s}`;
+  };
+
+  // ─── Start Recording ──────────────────────────────
+  const startRecording = useCallback(async () => {
+    try {
+      setErrorMessage('');
+      setTranscript([]);
+      setAnalysis(null);
+
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+          sampleRate: 48000,
+        },
+      });
+
+      const mediaRecorder = new MediaRecorder(stream, {
+        mimeType: MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+          ? 'audio/webm;codecs=opus'
+          : 'audio/webm',
+      });
+
+      chunksRef.current = [];
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) chunksRef.current.push(e.data);
+      };
+
+      mediaRecorder.start(1000); // Collect chunks every 1s
+      mediaRecorderRef.current = mediaRecorder;
+      startTimeRef.current = Date.now();
+      setStatus('recording');
+      setDuration(0);
+
+      // Timer
+      timerRef.current = setInterval(() => {
+        setDuration(Math.floor((Date.now() - startTimeRef.current) / 1000));
+      }, 1000);
+
+    } catch (err) {
+      console.error('[VoiceRecorder] Mic access error:', err);
+      setErrorMessage(language === 'ko' ? '마이크 접근이 거부되었습니다.' : 'Microphone access denied.');
+      setStatus('error');
+    }
+  }, [language]);
+
+  // ─── Stop Recording + Process ──────────────────────
+  const stopRecording = useCallback(async () => {
+    if (!mediaRecorderRef.current || mediaRecorderRef.current.state !== 'recording') return;
+
+    // Stop timer
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
     }
 
-    const draw = () => {
-      const canvas = canvasRef.current;
-      const analyser = getAnalyserNode();
-      if (!canvas || !analyser) {
-        animationRef.current = requestAnimationFrame(draw);
+    const finalDuration = Math.floor((Date.now() - startTimeRef.current) / 1000);
+    setDuration(finalDuration);
+
+    // Stop recording and wait for final data
+    return new Promise<void>((resolve) => {
+      const recorder = mediaRecorderRef.current!;
+
+      recorder.onstop = async () => {
+        // Stop all tracks
+        recorder.stream.getTracks().forEach(t => t.stop());
+
+        const audioBlob = new Blob(chunksRef.current, { type: 'audio/webm' });
+        console.log(`[VoiceRecorder] Recording stopped. Size: ${(audioBlob.size / 1024).toFixed(1)} KB, Duration: ${finalDuration}s`);
+
+        if (audioBlob.size < 1000) {
+          setErrorMessage(language === 'ko' ? '녹음이 너무 짧습니다.' : 'Recording too short.');
+          setStatus('error');
+          resolve();
+          return;
+        }
+
+        await processRecording(audioBlob, finalDuration);
+        resolve();
+      };
+
+      recorder.stop();
+    });
+  }, [language]);
+
+  // ─── Process: Upload → Transcribe → Analyze ────────
+  const processRecording = async (audioBlob: Blob, durationSec: number) => {
+    if (!isSupabaseConfigured() || !currentUser) return;
+
+    const userId = currentUser.id;
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const storagePath = `${userId}/${timestamp}.webm`;
+    const title = recordingTitle.trim() ||
+      (language === 'ko' ? `녹음 ${new Date().toLocaleString('ko-KR')}` : `Recording ${new Date().toLocaleString('en-US')}`);
+
+    try {
+      // Step 1: Upload to Storage
+      setStatus('uploading');
+      const { error: uploadError } = await supabase.storage
+        .from('voice-recordings')
+        .upload(storagePath, audioBlob, { contentType: 'audio/webm' });
+
+      if (uploadError) throw new Error(`Upload failed: ${uploadError.message}`);
+
+      // Step 2: Create DB record
+      const { data: recording, error: dbError } = await supabase
+        .from('voice_recordings')
+        .insert({
+          user_id: userId,
+          project_id: projectId || null,
+          title,
+          audio_storage_path: storagePath,
+          duration_seconds: durationSec,
+          status: 'uploaded',
+          recording_type: 'voice_memo',
+          language: language === 'ko' ? 'ko-KR' : 'en-US',
+        })
+        .select()
+        .single();
+
+      if (dbError || !recording) throw new Error(`DB insert failed: ${dbError?.message}`);
+
+      const recordingId = recording.id;
+
+      // Step 3: Transcribe
+      setStatus('transcribing');
+      const { data: transcriptData, error: transcribeError } = await supabase.functions.invoke('voice-transcribe', {
+        body: { userId, recordingId, audioStoragePath: storagePath },
+      });
+
+      if (transcribeError) throw new Error(`Transcription failed: ${transcribeError.message}`);
+
+      const transcriptSegments: TranscriptSegment[] = transcriptData?.transcript || [];
+      setTranscript(transcriptSegments);
+
+      if (transcriptSegments.length === 0) {
+        setStatus('done');
         return;
       }
 
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return;
+      // Step 4: Brain AI Analysis
+      setStatus('analyzing');
 
-      // Allocate buffer once, reuse across frames
-      const bufferLength = analyser.frequencyBinCount;
-      if (!dataArrayRef.current || dataArrayRef.current.length !== bufferLength) {
-        dataArrayRef.current = new Uint8Array(bufferLength);
+      // Build context
+      const context: Record<string, unknown> = {};
+      if (projectId) {
+        const activeProjects = projects.filter(p => p.status === 'IN_PROGRESS' || p.status === 'PLANNING');
+        context.projects = activeProjects.map(p => ({
+          id: p.id, title: p.title, client: p.client || '', status: p.status,
+        }));
       }
-      analyser.getByteTimeDomainData(dataArrayRef.current);
-
-      const w = canvas.width;
-      const h = canvas.height;
-
-      ctx.clearRect(0, 0, w, h);
-      ctx.lineWidth = 2;
-      ctx.strokeStyle = 'hsl(var(--primary))';
-      ctx.beginPath();
-
-      const sliceWidth = w / bufferLength;
-      let x = 0;
-
-      for (let i = 0; i < bufferLength; i++) {
-        const v = dataArrayRef.current[i] / 128.0;
-        const y = (v * h) / 2;
-        if (i === 0) ctx.moveTo(x, y);
-        else ctx.lineTo(x, y);
-        x += sliceWidth;
+      if (users) {
+        context.users = users.map(u => ({ id: u.id, name: u.name, role: u.role || '' }));
       }
 
-      ctx.lineTo(w, h / 2);
-      ctx.stroke();
-
-      animationRef.current = requestAnimationFrame(draw);
-    };
-
-    // Small delay to allow analyser to initialize
-    const timer = setTimeout(() => {
-      animationRef.current = requestAnimationFrame(draw);
-    }, 100);
-
-    return () => {
-      clearTimeout(timer);
-      cancelAnimationFrame(animationRef.current);
-    };
-  }, [isRecording]);
-
-  return (
-    <canvas
-      ref={canvasRef}
-      width={280}
-      height={60}
-      className="w-full h-[60px] rounded-md bg-muted/20"
-    />
-  );
-});
-
-// ─── Recording Timer ─────────────────────────────────
-
-const RecordingTimer = memo(function RecordingTimer({ isRecording }: { isRecording: boolean }) {
-  const [seconds, setSeconds] = useState(0);
-
-  useEffect(() => {
-    if (!isRecording) {
-      setSeconds(0);
-      return;
-    }
-    const interval = setInterval(() => {
-      setSeconds(getRecordingDuration());
-    }, 500);
-    return () => clearInterval(interval);
-  }, [isRecording]);
-
-  const mm = String(Math.floor(seconds / 60)).padStart(2, '0');
-  const ss = String(seconds % 60).padStart(2, '0');
-
-  return (
-    <span className="font-mono text-lg tabular-nums text-foreground">
-      {mm}:{ss}
-    </span>
-  );
-});
-
-// ─── Status Icon ─────────────────────────────────────
-
-const RecordingStatusIcon = memo(function RecordingStatusIcon({ status }: { status: VoiceRecording['status'] }) {
-  switch (status) {
-    case 'uploading':
-    case 'transcribing':
-    case 'analyzing':
-      return <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-500" />;
-    case 'completed':
-      return <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />;
-    case 'error':
-      return <AlertTriangle className="w-3.5 h-3.5 text-red-500" />;
-    default:
-      return <Clock className="w-3.5 h-3.5 text-muted-foreground" />;
-  }
-});
-
-const STATUS_LABELS: Record<string, string> = {
-  uploading: '업로드 중',
-  transcribing: '음성 인식 중',
-  analyzing: 'Brain 분석 중',
-  completed: '완료',
-  error: '오류',
-};
-
-function formatDuration(seconds: number): string {
-  if (!seconds) return '0:00';
-  const m = Math.floor(seconds / 60);
-  const s = seconds % 60;
-  return `${m}:${String(s).padStart(2, '0')}`;
-}
-
-// ─── Recording List Item ────────────────────────────
-
-const RecordingListItem = memo(function RecordingListItem({
-  recording,
-  projectTitle,
-  onSelect,
-}: {
-  recording: VoiceRecording;
-  projectTitle: string | null;
-  onSelect: (recording: VoiceRecording) => void;
-}) {
-  const handleClick = useCallback(() => onSelect(recording), [recording, onSelect]);
-
-  return (
-    <button
-      onClick={handleClick}
-      className="w-full text-left px-2 py-1.5 rounded-md hover:bg-muted/50 transition-colors"
-    >
-      <div className="flex items-center gap-1.5">
-        <RecordingStatusIcon status={recording.status} />
-        <span className="text-xs font-medium truncate flex-1">
-          {recording.title}
-        </span>
-        <span className="text-xs font-medium text-muted-foreground shrink-0">
-          {formatDuration(recording.duration)}
-        </span>
-      </div>
-      <div className="flex items-center gap-1.5 mt-0.5 pl-5">
-        <span className="text-xs font-medium text-muted-foreground/60">
-          {STATUS_LABELS[recording.status] || recording.status}
-        </span>
-        {projectTitle && (
-          <span className="inline-flex items-center gap-0.5 text-[8px] px-1 py-0.5 rounded bg-violet-500/10 text-violet-600 dark:text-violet-400">
-            <FolderOpen className="w-2 h-2" />
-            {projectTitle}
-          </span>
-        )}
-        {recording.brainAnalysis && (
-          <Brain className="w-2.5 h-2.5 text-primary" />
-        )}
-        {recording.ragIngested && (
-          <span className="inline-flex items-center text-[8px] px-1 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
-            RAG
-          </span>
-        )}
-      </div>
-    </button>
-  );
-});
-
-// ─── Main Widget ─────────────────────────────────────
-
-function VoiceRecorderWidget({ context }: { context: WidgetDataContext }) {
-  const { t } = useTranslation();
-
-  // Use selector pattern to minimize re-renders — only subscribe to what we need
-  const projects = useAppStore(s => s.projects);
-  const currentUser = useAppStore(s => s.currentUser);
-  const voiceRecordings = useAppStore(s => s.voiceRecordings);
-  const startVoiceRecordingAction = useAppStore(s => s.startVoiceRecording);
-  const uploadVoiceFileAction = useAppStore(s => s.uploadVoiceFile);
-
-  const activeProjects = useMemo(
-    () => projects.filter(p => p.status === 'ACTIVE'),
-    [projects],
-  );
-
-  // Build project lookup map once
-  const projectMap = useMemo(() => {
-    const map = new Map<string, string>();
-    projects.forEach(p => map.set(p.id, p.title));
-    return map;
-  }, [projects]);
-
-  const [tab, setTab] = useState<TabMode>('record');
-  const [isRecording, setIsRecording] = useState(false);
-  const [isPaused, setIsPaused] = useState(false);
-  const [title, setTitle] = useState('');
-  const [projectId, setProjectId] = useState(context.projectId || '');
-  const [recordingType, setRecordingType] = useState<RecordingType>('manual');
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [dragOver, setDragOver] = useState(false);
-  const [selectedRecording, setSelectedRecording] = useState<VoiceRecording | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  // Filter and sort recordings — memoized to avoid recomputing on every render
-  const sortedRecordings = useMemo(() => {
-    const list = context.type === 'project' && context.projectId
-      ? voiceRecordings.filter(r => r.projectId === context.projectId)
-      : voiceRecordings;
-    return [...list].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-  }, [voiceRecordings, context.type, context.projectId]);
-
-  // ─── Record handlers ───────
-  const handleStartRecording = useCallback(async () => {
-    try {
-      await startRecording();
-      setIsRecording(true);
-      setIsPaused(false);
-    } catch (err) {
-      console.error('[VoiceRecorder] Failed to start recording:', err);
-      alert(t('voiceRecorderMicError'));
-    }
-  }, [t]);
-
-  const handlePauseResume = useCallback(() => {
-    if (isPaused) {
-      resumeRecording();
-      setIsPaused(false);
-    } else {
-      pauseRecording();
-      setIsPaused(true);
-    }
-  }, [isPaused]);
-
-  const handleStopRecording = useCallback(async () => {
-    setIsProcessing(true);
-    try {
-      const { blob } = await stopRecording();
-      setIsRecording(false);
-      setIsPaused(false);
-
-      if (blob.size > 0 && currentUser) {
-        await startVoiceRecordingAction(blob, {
-          title: title || `녹음 ${new Date().toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}`,
-          projectId: projectId || undefined,
-          recordingType,
-        });
-        setTitle('');
-        setTab('history');
-      }
-    } catch (err) {
-      console.error('[VoiceRecorder] Stop recording error:', err);
-    } finally {
-      setIsProcessing(false);
-    }
-  }, [title, projectId, currentUser, startVoiceRecordingAction]);
-
-  const handleCancelRecording = useCallback(() => {
-    cancelRecording();
-    setIsRecording(false);
-    setIsPaused(false);
-  }, []);
-
-  // ─── Upload handlers ───────
-  const handleFileSelect = useCallback(async (files: FileList | null) => {
-    if (!files?.length || !currentUser) return;
-
-    const file = files[0];
-    const error = validateAudioFile(file);
-    if (error) {
-      alert(error);
-      return;
-    }
-
-    setIsProcessing(true);
-    try {
-      await uploadVoiceFileAction(file, {
-        title: title || file.name.replace(/\.[^.]+$/, ''),
-        projectId: projectId || undefined,
-        recordingType,
+      const { data: analysisData, error: analyzeError } = await supabase.functions.invoke('voice-brain-analyze', {
+        body: {
+          userId,
+          recordingId,
+          transcript: transcriptSegments,
+          context,
+        },
       });
-      setTitle('');
-      setTab('history');
+
+      if (analyzeError) {
+        console.error('[VoiceRecorder] Analysis error (non-fatal):', analyzeError);
+        // Analysis failure is non-fatal — transcript is still saved
+      }
+
+      if (analysisData?.analysis) {
+        setAnalysis(analysisData.analysis);
+      }
+
+      setStatus('done');
+      setShowTranscript(true);
+      setShowAnalysis(true);
+
     } catch (err) {
-      console.error('[VoiceRecorder] Upload error:', err);
-    } finally {
-      setIsProcessing(false);
+      console.error('[VoiceRecorder] Processing error:', err);
+      setErrorMessage((err as Error).message);
+      setStatus('error');
     }
-  }, [title, projectId, currentUser, uploadVoiceFileAction]);
+  };
 
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setDragOver(false);
-    handleFileSelect(e.dataTransfer.files);
-  }, [handleFileSelect]);
+  // ─── Status labels ─────────────────────────────────
+  const statusLabel = {
+    idle: '',
+    recording: language === 'ko' ? '녹음 중...' : 'Recording...',
+    uploading: language === 'ko' ? '업로드 중...' : 'Uploading...',
+    transcribing: language === 'ko' ? '음성 인식 중...' : 'Transcribing...',
+    analyzing: language === 'ko' ? 'Brain AI 분석 중...' : 'Analyzing with Brain AI...',
+    done: language === 'ko' ? '완료' : 'Done',
+    error: language === 'ko' ? '오류' : 'Error',
+  };
 
-  const handleDragOver = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setDragOver(true);
-  }, []);
-
-  const handleDragLeave = useCallback(() => setDragOver(false), []);
-
-  const handleFileInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    handleFileSelect(e.target.files);
-  }, [handleFileSelect]);
-
-  const handleOpenFileInput = useCallback(() => fileInputRef.current?.click(), []);
-
-  const handleProjectChange = useCallback((v: string) => setProjectId(v === '__none__' ? '' : v), []);
-
-  const handleTitleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => setTitle(e.target.value), []);
-
-  const handleDialogClose = useCallback((open: boolean) => {
-    if (!open) setSelectedRecording(null);
-  }, []);
-
-  const handleSelectRecording = useCallback((recording: VoiceRecording) => {
-    setSelectedRecording(recording);
-  }, []);
-
-  // ─── Tab buttons ───────
-  const tabs = useMemo<Array<{ key: TabMode; icon: typeof Mic; label: string }>>(() => [
-    { key: 'record', icon: Mic, label: t('voiceRecorderRecord') },
-    { key: 'upload', icon: Upload, label: t('voiceRecorderUpload') },
-    { key: 'history', icon: List, label: t('voiceRecorderHistory') },
-  ], [t]);
+  const isProcessing = ['uploading', 'transcribing', 'analyzing'].includes(status);
 
   return (
-    <div className="flex flex-col h-full">
-      {/* Tab bar */}
-      <div className="flex items-center border-b border-border/30 shrink-0">
-        {tabs.map(({ key, icon: Icon, label }) => (
-          <button
-            key={key}
-            onClick={() => setTab(key)}
-            className={`flex-1 flex items-center justify-center gap-1 py-1.5 text-xs font-medium transition-colors ${
-              tab === key
-                ? 'text-primary border-b-2 border-primary'
-                : 'text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            <Icon className="w-3 h-3" />
-            {label}
-          </button>
-        ))}
-      </div>
-
-      {/* Content */}
-      <div className="flex-1 min-h-0 overflow-auto p-2.5">
-        {/* ───── Record Mode ───── */}
-        {tab === 'record' && (
-          <div className="flex flex-col items-center justify-center h-full gap-3">
-            {!isRecording ? (
-              <>
-                {/* Metadata inputs */}
-                <div className="w-full space-y-2">
-                  <Input
-                    value={title}
-                    onChange={handleTitleChange}
-                    placeholder={t('voiceRecorderTitlePlaceholder')}
-                    className="h-8 text-xs"
-                  />
-                  <Select value={projectId || '__none__'} onValueChange={handleProjectChange}>
-                    <SelectTrigger className="h-8 text-xs">
-                      <SelectValue placeholder={t('brainFieldProjectNone')} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__none__">{t('brainFieldProjectNone')}</SelectItem>
-                      {activeProjects.map(p => (
-                        <SelectItem key={p.id} value={p.id}>{p.title}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Select value={recordingType} onValueChange={(v) => setRecordingType(v as RecordingType)}>
-                    <SelectTrigger className="h-8 text-xs">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="manual">🎙️ 직접 녹음</SelectItem>
-                      <SelectItem value="phone_call">📞 전화 통화</SelectItem>
-                      <SelectItem value="offline_meeting">🤝 오프라인 미팅</SelectItem>
-                      <SelectItem value="online_meeting">💻 온라인 미팅</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Big record button */}
-                <button
-                  onClick={handleStartRecording}
-                  disabled={isProcessing}
-                  className="relative w-16 h-16 rounded-full bg-red-500 hover:bg-red-600 text-white flex items-center justify-center transition-all shadow-lg hover:shadow-xl disabled:opacity-50"
-                >
-                  {isProcessing ? (
-                    <Loader2 className="w-7 h-7 animate-spin" />
-                  ) : (
-                    <Mic className="w-7 h-7" />
-                  )}
-                  <span className="absolute inset-0 rounded-full animate-ping bg-red-500/30" style={{ animationDuration: '2s' }} />
-                </button>
-                <span className="text-xs font-medium text-muted-foreground">{t('voiceRecorderTapToRecord')}</span>
-              </>
-            ) : (
-              <>
-                {/* Waveform + timer */}
-                <WaveformCanvas isRecording={isRecording && !isPaused} />
-                <RecordingTimer isRecording={isRecording} />
-
-                {/* Recording controls */}
-                <div className="flex items-center gap-3">
-                  <button
-                    onClick={handlePauseResume}
-                    className="w-10 h-10 rounded-full bg-muted hover:bg-muted/80 flex items-center justify-center transition-colors"
-                  >
-                    {isPaused ? <Play className="w-5 h-5" /> : <Pause className="w-5 h-5" />}
-                  </button>
-                  <button
-                    onClick={handleStopRecording}
-                    disabled={isProcessing}
-                    className="w-14 h-14 rounded-full bg-red-500 hover:bg-red-600 text-white flex items-center justify-center transition-all shadow-lg disabled:opacity-50"
-                  >
-                    {isProcessing ? (
-                      <Loader2 className="w-6 h-6 animate-spin" />
-                    ) : (
-                      <Square className="w-6 h-6" />
-                    )}
-                  </button>
-                  <button
-                    onClick={handleCancelRecording}
-                    className="w-10 h-10 rounded-full bg-muted hover:bg-muted/80 flex items-center justify-center transition-colors"
-                  >
-                    <MicOff className="w-5 h-5 text-muted-foreground" />
-                  </button>
-                </div>
-                <span className="text-xs font-medium text-red-500 font-medium animate-pulse">
-                  {isPaused ? t('voiceRecorderPaused') : t('voiceRecorderRecording')}
-                </span>
-              </>
-            )}
-          </div>
-        )}
-
-        {/* ───── Upload Mode ───── */}
-        {tab === 'upload' && (
-          <div className="flex flex-col h-full gap-3">
-            {/* Metadata */}
-            <div className="space-y-2">
-              <Input
-                value={title}
-                onChange={handleTitleChange}
-                placeholder={t('voiceRecorderTitlePlaceholder')}
-                className="h-8 text-xs"
-              />
-              <Select value={projectId || '__none__'} onValueChange={handleProjectChange}>
-                <SelectTrigger className="h-8 text-xs">
-                  <SelectValue placeholder={t('brainFieldProjectNone')} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__none__">{t('brainFieldProjectNone')}</SelectItem>
-                  {activeProjects.map(p => (
-                    <SelectItem key={p.id} value={p.id}>{p.title}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Drop zone */}
-            <div
-              onDragOver={handleDragOver}
-              onDragLeave={handleDragLeave}
-              onDrop={handleDrop}
-              onClick={handleOpenFileInput}
-              className={`flex-1 flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed cursor-pointer transition-colors ${
-                dragOver
-                  ? 'border-primary bg-primary/5'
-                  : 'border-border/50 hover:border-primary/40 hover:bg-muted/20'
-              }`}
-            >
-              {isProcessing ? (
-                <Loader2 className="w-8 h-8 animate-spin text-primary" />
-              ) : (
-                <FileAudio className="w-8 h-8 text-muted-foreground/50" />
-              )}
-              <span className="text-xs text-muted-foreground">
-                {isProcessing ? t('voiceRecorderUploading') : t('voiceRecorderDropHere')}
-              </span>
-              <span className="text-xs font-medium text-muted-foreground/50">
-                mp3, wav, m4a, webm, ogg
-              </span>
-            </div>
-
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="audio/*"
-              className="hidden"
-              onChange={handleFileInputChange}
-            />
-          </div>
-        )}
-
-        {/* ───── History Mode ───── */}
-        {tab === 'history' && (
-          <div className="space-y-1">
-            {sortedRecordings.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-8 text-muted-foreground/60 gap-1">
-                <FileAudio className="w-5 h-5" />
-                <span className="text-xs">{t('voiceRecorderNoRecordings')}</span>
-              </div>
-            ) : (
-              sortedRecordings.map(recording => (
-                <RecordingListItem
-                  key={recording.id}
-                  recording={recording}
-                  projectTitle={recording.projectId ? projectMap.get(recording.projectId) || null : null}
-                  onSelect={handleSelectRecording}
-                />
-              ))
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* Transcript View Dialog — lazy-loaded */}
-      {selectedRecording && (
-        <Suspense fallback={null}>
-          <TranscriptViewDialog
-            open={!!selectedRecording}
-            onOpenChange={handleDialogClose}
-            recording={selectedRecording}
+    <div className={cn('space-y-3', className)}>
+      {/* Recording Control */}
+      <div className="rounded-xl border bg-card p-4">
+        {/* Title input */}
+        {status === 'idle' && (
+          <input
+            type="text"
+            value={recordingTitle}
+            onChange={e => setRecordingTitle(e.target.value)}
+            placeholder={language === 'ko' ? '녹음 제목 (선택)' : 'Recording title (optional)'}
+            className="w-full text-sm bg-transparent border-b border-border/50 pb-2 mb-3 outline-none placeholder:text-muted-foreground/40"
           />
-        </Suspense>
+        )}
+
+        {/* Record button + timer */}
+        <div className="flex items-center justify-center gap-4">
+          {status === 'idle' || status === 'done' || status === 'error' ? (
+            <button
+              onClick={startRecording}
+              className="w-14 h-14 rounded-full bg-red-500 hover:bg-red-600 flex items-center justify-center transition-colors shadow-lg shadow-red-500/20 active:scale-95"
+            >
+              <Mic className="w-6 h-6 text-white" />
+            </button>
+          ) : status === 'recording' ? (
+            <div className="flex items-center gap-4">
+              {/* Pulsing indicator */}
+              <div className="flex items-center gap-2">
+                <div className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />
+                <span className="text-sm font-mono font-medium text-red-400">
+                  {formatDuration(duration)}
+                </span>
+              </div>
+
+              {/* Stop button */}
+              <button
+                onClick={stopRecording}
+                className="w-14 h-14 rounded-full bg-white/10 hover:bg-white/15 border border-white/10 flex items-center justify-center transition-colors active:scale-95"
+              >
+                <Square className="w-5 h-5 text-white fill-white" />
+              </button>
+            </div>
+          ) : (
+            /* Processing states */
+            <div className="flex items-center gap-3 py-3">
+              <Loader2 className="w-5 h-5 animate-spin text-primary" />
+              <span className="text-sm text-muted-foreground">{statusLabel[status]}</span>
+            </div>
+          )}
+        </div>
+
+        {/* Status hint */}
+        {status === 'idle' && (
+          <p className="text-xs text-muted-foreground/40 text-center mt-3">
+            {language === 'ko'
+              ? '녹음 버튼을 눌러 시작하세요. 미팅, 메모, 아이디어를 녹음하고 AI가 정리해드립니다.'
+              : 'Press record to start. Record meetings, memos, ideas — AI will organize them.'}
+          </p>
+        )}
+
+        {/* Error */}
+        {status === 'error' && errorMessage && (
+          <div className="flex items-start gap-2 mt-3 p-2 rounded-lg bg-destructive/10">
+            <AlertCircle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
+            <p className="text-xs text-destructive">{errorMessage}</p>
+          </div>
+        )}
+
+        {/* Project context badge */}
+        {projectId && projectTitle && (
+          <div className="flex items-center justify-center mt-3">
+            <span className="text-[10px] text-muted-foreground/50 bg-muted/50 px-2 py-0.5 rounded-full">
+              📁 {projectTitle}
+            </span>
+          </div>
+        )}
+      </div>
+
+      {/* Transcript Section */}
+      {transcript.length > 0 && (
+        <div className="rounded-xl border bg-card overflow-hidden">
+          <button
+            onClick={() => setShowTranscript(!showTranscript)}
+            className="w-full flex items-center justify-between px-4 py-3 hover:bg-muted/30 transition-colors"
+          >
+            <div className="flex items-center gap-2">
+              <FileText className="w-4 h-4 text-blue-500" />
+              <span className="text-sm font-medium">
+                {language === 'ko' ? 'Transcript' : 'Transcript'}
+              </span>
+              <span className="text-xs text-muted-foreground">
+                ({transcript.length} {language === 'ko' ? '구간' : 'segments'})
+              </span>
+            </div>
+            {showTranscript ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+          </button>
+
+          {showTranscript && (
+            <div className="px-4 pb-4 space-y-2 max-h-64 overflow-y-auto">
+              {transcript.map((seg, i) => (
+                <div key={i} className="flex items-start gap-2">
+                  <span className="text-[10px] font-mono text-muted-foreground shrink-0 mt-1 w-12">
+                    {seg.startTime > 0 ? formatDuration(Math.floor(seg.startTime)) : ''}
+                  </span>
+                  <div>
+                    <span className="text-[11px] font-semibold text-primary/70">{seg.speaker}</span>
+                    <p className="text-[13px] text-foreground/80 leading-relaxed">{seg.text}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Brain AI Analysis Section */}
+      {analysis && (
+        <div className="rounded-xl border bg-card overflow-hidden">
+          <button
+            onClick={() => setShowAnalysis(!showAnalysis)}
+            className="w-full flex items-center justify-between px-4 py-3 hover:bg-muted/30 transition-colors"
+          >
+            <div className="flex items-center gap-2">
+              <Brain className="w-4 h-4 text-amber-500" />
+              <span className="text-sm font-medium">
+                {language === 'ko' ? 'Brain AI 분석' : 'Brain AI Analysis'}
+              </span>
+            </div>
+            {showAnalysis ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+          </button>
+
+          {showAnalysis && (
+            <div className="px-4 pb-4 space-y-4">
+              {/* Summary */}
+              {analysis.summary && (
+                <div>
+                  <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">
+                    {language === 'ko' ? '요약' : 'Summary'}
+                  </p>
+                  <p className="text-[13px] text-foreground/70 leading-relaxed">{analysis.summary}</p>
+                </div>
+              )}
+
+              {/* Decisions */}
+              {analysis.decisions?.length > 0 && (
+                <div>
+                  <div className="flex items-center gap-1.5 mb-1.5">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                    <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+                      {language === 'ko' ? '결정사항' : 'Decisions'}
+                    </p>
+                  </div>
+                  <ul className="space-y-1">
+                    {analysis.decisions.map((d, i) => (
+                      <li key={i} className="text-[13px] text-foreground/70 flex items-start gap-1.5">
+                        <span className="text-emerald-500 mt-0.5">•</span>
+                        {d.text}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* Action Items */}
+              {analysis.actionItems?.length > 0 && (
+                <div>
+                  <div className="flex items-center gap-1.5 mb-1.5">
+                    <ListTodo className="w-3.5 h-3.5 text-blue-500" />
+                    <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+                      {language === 'ko' ? '할 일' : 'Action Items'}
+                    </p>
+                  </div>
+                  <ul className="space-y-1">
+                    {analysis.actionItems.map((item, i) => (
+                      <li key={i} className="text-[13px] text-foreground/70 flex items-start gap-1.5">
+                        <span className="text-blue-500 mt-0.5">☐</span>
+                        <div>
+                          {item.text}
+                          {item.assignee && (
+                            <span className="text-[10px] text-muted-foreground ml-1.5 bg-muted/50 px-1.5 py-0.5 rounded">
+                              @{item.assignee}
+                            </span>
+                          )}
+                          {item.dueDate && (
+                            <span className="text-[10px] text-amber-500 ml-1">
+                              ~{item.dueDate}
+                            </span>
+                          )}
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* Suggested Events */}
+              {analysis.suggestedEvents?.length > 0 && (
+                <div>
+                  <div className="flex items-center gap-1.5 mb-1.5">
+                    <CalendarPlus className="w-3.5 h-3.5 text-purple-500" />
+                    <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+                      {language === 'ko' ? '일정 제안' : 'Suggested Events'}
+                    </p>
+                  </div>
+                  <ul className="space-y-1">
+                    {analysis.suggestedEvents.map((evt, i) => (
+                      <li key={i} className="text-[13px] text-foreground/70 flex items-start gap-1.5">
+                        <span className="text-purple-500 mt-0.5">📅</span>
+                        <div>
+                          {evt.title}
+                          <span className="text-[10px] text-muted-foreground ml-1.5">
+                            {evt.date} {evt.time}
+                          </span>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* Key Quotes */}
+              {analysis.keyQuotes?.length > 0 && (
+                <div>
+                  <div className="flex items-center gap-1.5 mb-1.5">
+                    <Quote className="w-3.5 h-3.5 text-amber-500" />
+                    <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+                      {language === 'ko' ? '주요 발언' : 'Key Quotes'}
+                    </p>
+                  </div>
+                  <ul className="space-y-1.5">
+                    {analysis.keyQuotes.map((q, i) => (
+                      <li key={i} className="text-[13px] text-foreground/70 italic border-l-2 border-amber-500/30 pl-2.5">
+                        "{q.text}"
+                        <span className="text-[10px] text-muted-foreground not-italic ml-1.5">— {q.speaker}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* Duration */}
+              <div className="flex items-center gap-1.5 pt-2 border-t border-border/30">
+                <Clock className="w-3 h-3 text-muted-foreground/40" />
+                <span className="text-[10px] text-muted-foreground/40">
+                  {language === 'ko' ? `녹음 시간: ${formatDuration(duration)}` : `Duration: ${formatDuration(duration)}`}
+                </span>
+              </div>
+            </div>
+          )}
+        </div>
       )}
     </div>
   );
