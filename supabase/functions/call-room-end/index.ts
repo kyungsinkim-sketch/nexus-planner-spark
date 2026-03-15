@@ -67,14 +67,13 @@ Deno.serve(async (req) => {
     const endedAt = new Date();
     const durationSeconds = Math.round((endedAt.getTime() - startedAt.getTime()) / 1000);
 
-    // Update room
+    // Update room (don't touch analysis_status — client manages it)
     await supabase
       .from('call_rooms')
       .update({
         status: 'processing',
         ended_at: endedAt.toISOString(),
         duration_seconds: durationSeconds,
-        analysis_status: 'pending',
       })
       .eq('id', roomId);
 
