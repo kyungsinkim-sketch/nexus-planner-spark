@@ -483,24 +483,50 @@ function TranscriptViewDialog({
     };
   }, [recording]);
 
-  const { addEvent, addTodo, loadEvents, loadTodos } = useAppStore();
+  const { addEvent, addTodo, loadEvents, loadTodos, events, updateEvent } = useAppStore();
 
   const handleConfirmSuggestion = useCallback(async (
     _suggestion: EmailBrainSuggestion,
     edits: { event?: BrainExtractedEvent; todo?: BrainExtractedTodo; note?: string; includeEvent: boolean; includeTodo: boolean; includeNote: boolean },
   ) => {
     if (edits.includeEvent && edits.event) {
-      await addEvent({
-        title: edits.event.title,
-        type: 'MEETING',
-        startAt: edits.event.startAt || new Date().toISOString(),
-        endAt: edits.event.endAt || new Date(Date.now() + 3600000).toISOString(),
-        location: edits.event.location,
-        projectId: edits.event.projectId,
-        attendeeIds: edits.event.attendeeIds,
-        ownerId: useAppStore.getState().currentUser?.id,
-      });
-      await loadEvents();
+      const evt = edits.event as any;
+      // Check if this is an update to an existing event
+      if (evt.action === 'update' && evt.originalTitle) {
+        const existing = events.find(e =>
+          e.title?.includes(evt.originalTitle) || evt.originalTitle?.includes(e.title || '')
+        );
+        if (existing) {
+          await updateEvent(existing.id, {
+            startAt: evt.startAt || existing.startAt,
+            endAt: evt.endAt || existing.endAt,
+            title: evt.title || existing.title,
+            location: evt.location || existing.location,
+          });
+          await loadEvents();
+        } else {
+          // Couldn't find existing event, create new
+          await addEvent({
+            title: evt.title, type: 'MEETING',
+            startAt: evt.startAt || new Date().toISOString(),
+            endAt: evt.endAt || new Date(Date.now() + 3600000).toISOString(),
+            location: evt.location, projectId: evt.projectId,
+            attendeeIds: evt.attendeeIds,
+            ownerId: useAppStore.getState().currentUser?.id,
+          });
+          await loadEvents();
+        }
+      } else {
+        await addEvent({
+          title: evt.title, type: 'MEETING',
+          startAt: evt.startAt || new Date().toISOString(),
+          endAt: evt.endAt || new Date(Date.now() + 3600000).toISOString(),
+          location: evt.location, projectId: evt.projectId,
+          attendeeIds: evt.attendeeIds,
+          ownerId: useAppStore.getState().currentUser?.id,
+        });
+        await loadEvents();
+      }
     }
     if (edits.includeTodo && edits.todo) {
       await addTodo({

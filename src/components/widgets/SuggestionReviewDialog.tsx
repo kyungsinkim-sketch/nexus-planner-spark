@@ -211,7 +211,7 @@ export function SuggestionReviewDialog({
     if (!suggestion) return;
     setIsSubmitting(true);
 
-    const editedEvent: BrainExtractedEvent | undefined = includeEvent
+    const editedEvent: (BrainExtractedEvent & { action?: string; originalTitle?: string }) | undefined = includeEvent
       ? {
           title: eventTitle,
           startAt: dateTimeToIso(eventDate, eventStartTime),
@@ -221,6 +221,8 @@ export function SuggestionReviewDialog({
           attendeeIds: eventAttendees.map(u => u.id),
           type: eventType,
           projectId: eventProjectId || undefined,
+          action: (suggestion.suggestedEvent as any)?.action,
+          originalTitle: (suggestion.suggestedEvent as any)?.originalTitle,
         }
       : undefined;
 
@@ -317,7 +319,9 @@ export function SuggestionReviewDialog({
                   />
                   <label htmlFor="include-event" className="flex items-center gap-1.5 text-xs font-medium cursor-pointer">
                     <Calendar className="w-3.5 h-3.5 text-blue-500" />
-                    {t('brainCreateEvent')}
+                    {(suggestion.suggestedEvent as any)?.action === 'update'
+                      ? (t('language') === 'ko' ? '일정 변경' : 'Update Event')
+                      : t('brainCreateEvent')}
                   </label>
                 </div>
 

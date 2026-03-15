@@ -99,7 +99,7 @@ Return a single JSON object:
     }
   ],
   "suggestedEvents": [
-    { "title": "", "startAt": "ISO", "endAt": "ISO", "location": "", "type": "MEETING|TASK|DEADLINE|DELIVERY", "attendeeIds": [], "projectId": "" }
+    { "title": "", "startAt": "ISO", "endAt": "ISO", "location": "", "type": "MEETING|TASK|DEADLINE|DELIVERY", "attendeeIds": [], "projectId": "", "action": "create|update", "originalTitle": "" }
   ],
   "actionItems": [
     { "title": "", "assigneeNames": [], "assigneeIds": [], "dueDate": "ISO", "priority": "LOW|MEDIUM|HIGH", "projectId": "" }
@@ -120,6 +120,10 @@ Return a single JSON object:
 - Use KST timezone (+09:00) for all timestamps
 - For event duration, default to 1 hour unless specified
 - Prioritize decisions and action items — those are most valuable
+- **IMPORTANT: For suggestedEvents, distinguish between NEW events and CHANGES to existing events:**
+  - If the conversation mentions CHANGING/MOVING/RESCHEDULING an existing meeting or event, set "action": "update" and put the original event name in "originalTitle"
+  - If the conversation mentions scheduling something NEW, set "action": "create"
+  - Examples: "3시반에서 4시로 변경" → action: "update"; "다음주 수요일에 미팅 잡자" → action: "create"
 - For decisions: capture WHY it was decided (reasoning), WHAT alternatives were discussed, and categorize the decision type
 - Even informal decisions ("그냥 이걸로 하자", "그럼 A안으로 가죠") count as decisions — extract the context around them
 - If the transcript is too short or uninformative, return minimal results${contextSection}`;

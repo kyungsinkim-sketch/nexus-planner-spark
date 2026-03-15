@@ -527,6 +527,14 @@ async function connectToRoom(wsUrl: string, token: string): Promise<void> {
     check();
   };
   startRecordingWhenReady();
+
+  // Auto-start Live STT for transcript collection (ensures Brain AI works even if recording fails)
+  setTimeout(() => {
+    if (!transcriptLines.length) {
+      const started = startLiveTranscript('ko-KR');
+      console.log('[Call] Auto-started Live STT for Brain AI:', started ? '✅' : '❌');
+    }
+  }, 2000);
 }
 
 // ─── Client-side Recording (MVP) ─────────────────────
