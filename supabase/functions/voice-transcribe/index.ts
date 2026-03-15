@@ -152,7 +152,10 @@ async function transcribeWithGoogleSTT(
   return parseWordsToSegments(data.results || []);
 }
 
-// ─── Long audio: async recognize for files > 10MB ───
+// ─── Long audio: async recognize ─────────────────────
+// Google STT sync `recognize` has a hard 60-second audio limit (NOT file size).
+// WebM OPUS at ~48kbps ≈ 360KB/min, so a 1-min file is only ~360KB.
+// Always use longrunningrecognize for reliability — it handles any length.
 
 async function transcribeLongAudio(
   audioBytes: Uint8Array,
@@ -161,8 +164,8 @@ async function transcribeLongAudio(
   const audioSizeMB = audioBytes.length / (1024 * 1024);
   console.log(`[voice-transcribe] Audio size: ${audioSizeMB.toFixed(1)} MB`);
 
-  // Synchronous API for smaller files (< ~10MB / ~1 min)
-  if (audioBytes.length < 10 * 1024 * 1024) {
+  // Use sync API only for very short recordings (< 200KB ≈ ~30s)
+  if (audioBytes.length < 200 * 1024) {
     return transcribeWithGoogleSTT(audioBytes, apiKey);
   }
 
