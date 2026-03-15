@@ -397,6 +397,21 @@ export function MobileAIChatView() {
     })();
   }, [currentUser?.id]);
 
+  // Reload events & todos on mount and when tab becomes visible (sync with web)
+  useEffect(() => {
+    loadEvents().catch(() => {});
+    loadTodos().catch(() => {});
+
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        loadEvents().catch(() => {});
+        loadTodos().catch(() => {});
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => document.removeEventListener('visibilitychange', handleVisibility);
+  }, [loadEvents, loadTodos]);
+
   // Track keyboard height via visualViewport
   const [kbBottom, setKbBottom] = useState<number | null>(null);
   useEffect(() => {
@@ -440,27 +455,38 @@ export function MobileAIChatView() {
       items.push(...appNotifications.filter(n => !n.read));
     }
 
-    // 2. Upcoming todos (due today or overdue, not completed)
-    if (personalTodos) {
+    // 2. All pending todos assigned to or requested by current user (matches web dashboard)
+    if (personalTodos && currentUser) {
       const now = new Date();
       const todayStr = format(now, 'yyyy-MM-dd');
-      for (const todo of personalTodos) {
-        if (todo.status === 'COMPLETED') continue;
-        if (!todo.dueDate) continue;
-        const dueStr = typeof todo.dueDate === 'string' ? todo.dueDate.slice(0, 10) : '';
-        if (dueStr <= todayStr) {
-          const isOverdue = dueStr < todayStr;
-          items.push({
-            id: `todo-${todo.id}`,
-            type: 'todo',
-            title: isOverdue
-              ? (language === 'ko' ? `⚠️ 마감 지남: ${todo.title}` : `⚠️ Overdue: ${todo.title}`)
-              : (language === 'ko' ? `📋 오늘 마감: ${todo.title}` : `📋 Due today: ${todo.title}`),
-            message: todo.description || '',
-            createdAt: todo.dueDate,
-            read: false,
-          });
-        }
+      const myTodos = personalTodos.filter(
+        td => td.status !== 'COMPLETED' && (
+          td.assigneeIds?.includes(currentUser.id) || td.requestedById === currentUser.id
+        )
+      );
+      for (const todo of myTodos) {
+        const dueStr = todo.dueDate ? (typeof todo.dueDate === 'string' ? todo.dueDate.slice(0, 10) : '') : '';
+        const isOverdue = dueStr && dueStr < todayStr;
+        const isDueToday = dueStr === todayStr;
+        // Find project name for context
+        const project = todo.projectId ? projects?.find(p => p.id === todo.projectId) : null;
+        const projectLabel = project ? `[${project.title}] ` : '';
+        items.push({
+          id: `todo-${todo.id}`,
+          type: 'todo',
+          title: isOverdue
+            ? `⚠️ ${projectLabel}${todo.title}`
+            : isDueToday
+            ? `📋 ${projectLabel}${todo.title}`
+            : `${projectLabel}${todo.title}`,
+          message: isOverdue
+            ? (language === 'ko' ? `마감 지남 (${dueStr})` : `Overdue (${dueStr})`)
+            : isDueToday
+            ? (language === 'ko' ? '오늘 마감' : 'Due today')
+            : (dueStr ? dueStr : (language === 'ko' ? '마감일 미설정' : 'No due date')),
+          createdAt: todo.dueDate || todo.createdAt || new Date().toISOString(),
+          read: false,
+        });
       }
     }
 
@@ -503,6 +529,7 @@ export function MobileAIChatView() {
   const [selectedTarget, setSelectedTarget] = useState<SuggestionItem | null>(null);
   const [chatSuggestions, setChatSuggestions] = useState<SuggestionItem[]>([]);
   const [showChatSuggestions, setShowChatSuggestions] = useState(false);
+  const [suggestionIndex, setSuggestionIndex] = useState(-1);
 
   const brainAgent: SuggestionItem = useMemo(() => ({
     type: 'brain' as const, id: BRAIN_BOT_ID, name: 'Brain AI',
@@ -545,13 +572,16 @@ export function MobileAIChatView() {
       const f = allChannelSuggestions.filter(s => s.name.toLowerCase().includes(q)).slice(0, 6);
       setChatSuggestions(f);
       setShowChatSuggestions(f.length > 0);
+      setSuggestionIndex(-1);
     } else if (lastWord.startsWith('@')) {
       const q = lastWord.slice(1).toLowerCase();
       const f = [brainAgent, ...allUserSuggestions].filter(s => s.name.toLowerCase().includes(q)).slice(0, 6);
       setChatSuggestions(f);
       setShowChatSuggestions(f.length > 0);
+      setSuggestionIndex(-1);
     } else {
       setShowChatSuggestions(false);
+      setSuggestionIndex(-1);
     }
   }, [allChannelSuggestions, allUserSuggestions, brainAgent]);
 
@@ -620,10 +650,17 @@ export function MobileAIChatView() {
     } catch (e) { console.error('[BrainChat] Save user msg failed:', e); }
 
     try {
-      const { processMessageWithLLM } = await import('@/services/brainService');
-      const result = await processMessageWithLLM({ messageContent: msg, userId: currentUser.id, chatMembers: [], language });
+      const brainService = await import('@/services/brainService');
+      const result = await brainService.processMessageWithLLM({
+        messageContent: msg,
+        userId: currentUser.id,
+        directChatUserId: BRAIN_BOT_ID,
+        chatMembers: [],
+        language,
+      });
       const reply = result.llmResponse?.replyMessage || (language === 'ko' ? '처리 완료' : 'Done');
-      const actions: BrainAction[] = (result.llmResponse?.suggestedActions || []).map((a: any) => ({
+      const brainActions = result.llmResponse?.suggestedActions || [];
+      const actions: BrainAction[] = brainActions.map((a: any) => ({
         type: a.type || 'unknown', title: a.title || a.content || '', status: a.status || 'pending',
       }));
 
@@ -639,6 +676,36 @@ export function MobileAIChatView() {
         id: brainMsgId, role: 'assistant', content: reply, timestamp: new Date(),
         actions: actions.length > 0 ? actions : undefined, revealed: 0,
       }]);
+
+      // Auto-execute brain actions (calendar events, todos, etc.)
+      if (brainActions.length > 0) {
+        const botMsgDbId = (result.message as any)?.id || brainMsgId;
+        try {
+          const dbActions = await brainService.getActionsByMessage(botMsgDbId);
+          for (const action of dbActions) {
+            if (action.status === 'pending' || action.status === 'confirmed') {
+              try {
+                await brainService.executeAction(action.id, currentUser.id);
+                // Update action display status
+                setMessages(prev => prev.map(m => {
+                  if (m.id === brainMsgId && m.actions) {
+                    return { ...m, actions: m.actions.map(a =>
+                      a.type === action.actionType ? { ...a, status: 'executed' } : a
+                    )};
+                  }
+                  return m;
+                }));
+              } catch (execErr) {
+                console.error('[BrainChat] Action exec failed:', execErr);
+              }
+            }
+          }
+        } catch (e) { console.error('[BrainChat] getActionsByMessage failed:', e); }
+
+        // Reload events and todos to reflect changes
+        try { await loadEvents(); } catch {}
+        try { await loadTodos(); } catch {}
+      }
     } catch (err: unknown) {
       const errContent = err instanceof Error ? err.message : 'Error';
       setMessages(prev => [...prev, { id: `err_${Date.now()}`, role: 'assistant', content: errContent, timestamp: new Date(), revealed: 0 }]);
@@ -755,11 +822,14 @@ export function MobileAIChatView() {
         {/* Autocomplete dropdown (above input) */}
         {showChatSuggestions && chatSuggestions.length > 0 && (
           <div className="mb-1.5 rounded-2xl border border-border/50 bg-popover shadow-lg overflow-hidden">
-            {chatSuggestions.map(item => (
+            {chatSuggestions.map((item, idx) => (
               <button
                 key={`${item.type}-${item.id}`}
                 onClick={() => handleSelectTarget(item)}
-                className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-accent active:bg-accent/80 transition-colors text-left"
+                className={cn(
+                  "w-full flex items-center gap-3 px-4 py-2.5 hover:bg-accent active:bg-accent/80 transition-colors text-left",
+                  idx === suggestionIndex && "bg-accent"
+                )}
               >
                 {item.type === 'brain' ? (
                   <div className="w-7 h-7 rounded-full bg-amber-500/20 flex items-center justify-center shrink-0">
@@ -802,7 +872,24 @@ export function MobileAIChatView() {
             type="text"
             value={input}
             onChange={e => handleUniversalInputChange(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleSubmit(); } }}
+            onKeyDown={e => {
+              if (showChatSuggestions && chatSuggestions.length > 0) {
+                if (e.key === 'ArrowDown') {
+                  e.preventDefault();
+                  setSuggestionIndex(prev => (prev + 1) % chatSuggestions.length);
+                  return;
+                } else if (e.key === 'ArrowUp') {
+                  e.preventDefault();
+                  setSuggestionIndex(prev => prev <= 0 ? chatSuggestions.length - 1 : prev - 1);
+                  return;
+                } else if (e.key === 'Enter' && suggestionIndex >= 0) {
+                  e.preventDefault();
+                  handleSelectTarget(chatSuggestions[suggestionIndex]);
+                  return;
+                }
+              }
+              if (e.key === 'Enter') { e.preventDefault(); handleSubmit(); }
+            }}
             onFocus={() => { window.scrollTo(0, 0); setTimeout(() => window.scrollTo(0, 0), 150); }}
             placeholder={
               selectedTarget
