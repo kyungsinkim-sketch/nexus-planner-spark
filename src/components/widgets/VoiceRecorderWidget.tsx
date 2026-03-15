@@ -14,7 +14,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { useAppStore } from '@/stores/appStore';
 import { useTranslation } from '@/hooks/useTranslation';
-import { supabase, isSupabaseConfigured } from '@/lib/supabase';
+import { supabase, isSupabaseConfigured } from '@/integrations/supabase/client';
 import {
   Mic, Square, Loader2, FileText, Brain, ChevronDown, ChevronUp,
   Clock, CheckCircle2, AlertCircle, ListTodo, CalendarPlus, Quote,
