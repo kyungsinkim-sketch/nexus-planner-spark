@@ -313,24 +313,6 @@ async function connectToRoom(wsUrl: string, token: string): Promise<void> {
   room.on(RoomEvent.LocalTrackPublished, (pub: any) => {
     const trackKind = pub?.track?.kind ?? pub?.kind;
     console.log('[Call] LocalTrackPublished, kind:', trackKind, 'Track.Kind.Audio:', Track.Kind.Audio, 'readyState:', pub?.track?.mediaStreamTrack?.readyState);
-    // Start recording when audio track is published (most reliable trigger)
-    const isAudio = trackKind === Track.Kind.Audio || trackKind === 'audio';
-    if (isAudio) {
-      if (!mediaRecorder || mediaRecorder.state === 'inactive') {
-        console.log('[Call] Starting recording from LocalTrackPublished event');
-        startMixedRecording(room);
-      } else if (recordingAudioContext && recordingDestination) {
-        // Add to existing mix
-        const stream = getMediaStreamFromTrack(pub.track);
-        if (stream) {
-          try {
-            const source = recordingAudioContext.createMediaStreamSource(stream);
-            source.connect(recordingDestination);
-            console.log('[Call] ✅ Local audio added to existing recording mix');
-          } catch (e) { /* ignore duplicate */ }
-        }
-      }
-    }
   });
 
   room.on(RoomEvent.Disconnected, (reason?: any) => {
@@ -414,12 +396,8 @@ async function connectToRoom(wsUrl: string, token: string): Promise<void> {
         console.warn('[Call] Web Audio API not available, using element volume:', err);
       }
 
-      // Start recording if not yet started (most reliable trigger — remote audio arrived)
-      if (!mediaRecorder || mediaRecorder.state !== 'recording') {
-        console.log('[Call] Starting recording from TrackSubscribed (remote audio arrived)');
-        startMixedRecording(room);
-      } else {
-        // Add to existing recording mix
+      // Add to existing recording mix if active
+      if (mediaRecorder && mediaRecorder.state === 'recording') {
         addRemoteTrackToRecording(track);
       }
     }
@@ -462,17 +440,13 @@ async function connectToRoom(wsUrl: string, token: string): Promise<void> {
     setState({ status: 'active' });
     startDurationTimer();
 
-    // Enable microphone — try starting recording after mic is confirmed
+    // Enable microphone then start recording with retry polling
     room.localParticipant.setMicrophoneEnabled(true)
-      .then(() => {
-        console.log('[Call] Microphone enabled ✅');
-        // Try recording immediately after mic enabled
-        if (!mediaRecorder || mediaRecorder.state !== 'recording') {
-          console.log('[Call] Starting recording after mic enabled');
-          startMixedRecording(room);
-        }
-      })
+      .then(() => console.log('[Call] Microphone enabled ✅'))
       .catch((err: any) => console.warn('[Call] Mic enable failed:', err));
+
+    // Start recording with polling — waits for tracks to become available
+    startRecordingWithRetry(room);
   } catch (err: any) {
     console.error('[Call] Connection failed:', err);
     try { room.disconnect(); } catch { /* ignore */ }
@@ -534,6 +508,99 @@ async function connectToRoom(wsUrl: string, token: string): Promise<void> {
 
 let recordingAudioContext: AudioContext | null = null;
 let recordingDestination: MediaStreamAudioDestinationNode | null = null;
+
+// ─── Retry-based recording start (polling for tracks) ──────
+async function startRecordingWithRetry(room: Room, maxRetries: number = 10): Promise<void> {
+  console.log('[Call] startRecordingWithRetry: beginning polling for audio tracks...');
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    // Wait before checking (give LiveKit time to publish tracks)
+    await new Promise(r => setTimeout(r, 1500));
+
+    // Check if call already ended
+    if (currentState.status !== 'active') {
+      console.log('[Call] Recording retry aborted — call no longer active');
+      return;
+    }
+
+    // Already recording?
+    if (mediaRecorder && mediaRecorder.state === 'recording') {
+      console.log('[Call] Recording already active, stopping retry');
+      return;
+    }
+
+    // Collect all available audio tracks
+    const tracks: MediaStreamTrack[] = [];
+
+    // Local mic
+    const localPubs = Array.from(room.localParticipant.audioTrackPublications.values()) as any[];
+    for (const pub of localPubs) {
+      const mst = pub?.track?.mediaStreamTrack;
+      if (mst && mst.readyState === 'live') {
+        tracks.push(mst);
+        console.log(`[Call] Retry ${attempt}: ✅ Local audio track found`);
+      }
+    }
+
+    // Remote audio
+    room.remoteParticipants.forEach(participant => {
+      participant.audioTrackPublications.forEach((pub: any) => {
+        const mst = pub?.track?.mediaStreamTrack;
+        if (mst && mst.readyState === 'live') {
+          tracks.push(mst);
+          console.log(`[Call] Retry ${attempt}: ✅ Remote audio track from ${participant.identity}`);
+        }
+      });
+    });
+
+    console.log(`[Call] Retry ${attempt}/${maxRetries}: found ${tracks.length} audio track(s)`);
+
+    if (tracks.length > 0) {
+      startRecorderFromTracks(tracks, room);
+      return;
+    }
+  }
+
+  // All retries failed — fallback to getUserMedia
+  console.warn('[Call] All retries exhausted, falling back to getUserMedia');
+  startMicRecording();
+}
+
+// ─── Start MediaRecorder from collected tracks ──────
+function startRecorderFromTracks(tracks: MediaStreamTrack[], room: Room): void {
+  if (mediaRecorder && mediaRecorder.state === 'recording') return;
+
+  const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+    ? 'audio/webm;codecs=opus'
+    : 'audio/webm';
+
+  try {
+    if (tracks.length > 1) {
+      // Mix multiple tracks via AudioContext
+      recordingAudioContext = new AudioContext();
+      if (recordingAudioContext.state === 'suspended') recordingAudioContext.resume().catch(() => {});
+      recordingDestination = recordingAudioContext.createMediaStreamDestination();
+      for (const t of tracks) {
+        const src = recordingAudioContext.createMediaStreamSource(new MediaStream([t]));
+        src.connect(recordingDestination);
+      }
+      audioChunks = [];
+      mediaRecorder = new MediaRecorder(recordingDestination.stream, { mimeType });
+    } else {
+      // Single track — record directly
+      audioChunks = [];
+      mediaRecorder = new MediaRecorder(new MediaStream(tracks), { mimeType });
+    }
+
+    mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) audioChunks.push(e.data); };
+    mediaRecorder.onerror = (e) => console.error('[Call] MediaRecorder error:', e);
+    mediaRecorder.start(1000);
+    callStartTime = Date.now();
+    console.log('[Call] ✅ Recording started with', tracks.length, 'track(s) via retry polling');
+  } catch (err) {
+    console.error('[Call] startRecorderFromTracks failed:', err);
+    startMicRecording();
+  }
+}
 
 // ─── Mixed recording: local mic + remote audio ──────
 function startMixedRecording(room: Room): void {
