@@ -714,8 +714,8 @@ export function MobileAIChatView() {
         } catch (e) { console.error('[BrainChat] getActionsByMessage failed:', e); }
 
         // Reload events and todos to reflect changes
-        try { await loadEvents(); } catch {}
-        try { await loadTodos(); } catch {}
+        try { await loadEvents(); } catch { /* reload best-effort */ }
+        try { await loadTodos(); } catch { /* reload best-effort */ }
       }
     } catch (err: unknown) {
       const errContent = err instanceof Error ? err.message : 'Error';
