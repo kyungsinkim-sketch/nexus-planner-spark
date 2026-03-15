@@ -97,23 +97,28 @@ Deno.serve(async (req) => {
     // Client sends base64 audio blob → we upload to storage → trigger pipeline
     // Production: LiveKit Egress webhook triggers this automatically
 
+    let audioProcessed = false;
     if (audioBlob) {
-      // Upload audio to Supabase Storage
-      const audioBuffer = Uint8Array.from(atob(audioBlob), c => c.charCodeAt(0));
-      const storagePath = `call-recordings/${roomId}.webm`;
+      try {
+        console.log('[call-room-end] Decoding audio base64, length:', audioBlob.length);
+        const audioBuffer = Uint8Array.from(atob(audioBlob), c => c.charCodeAt(0));
+        console.log('[call-room-end] Audio decoded, size:', audioBuffer.length, 'bytes');
+        const storagePath = `call-recordings/${roomId}.webm`;
 
-      const { error: uploadError } = await supabase.storage
-        .from('voice-recordings')
-        .upload(storagePath, audioBuffer, {
-          contentType: 'audio/webm',
-          upsert: true,
-        });
+        const { error: uploadError } = await supabase.storage
+          .from('voice-recordings')
+          .upload(storagePath, audioBuffer, {
+            contentType: 'audio/webm',
+            upsert: true,
+          });
 
-      if (uploadError) {
-        console.error('[call-room-end] Upload error:', uploadError);
-      } else {
+        if (uploadError) {
+          console.error('[call-room-end] Upload error:', JSON.stringify(uploadError));
+          throw new Error('Storage upload failed: ' + JSON.stringify(uploadError));
+        }
+
         // Create voice_recording entry
-        const { data: voiceRec } = await supabase
+        const { data: voiceRec, error: insertError } = await supabase
           .from('voice_recordings')
           .insert({
             user_id: user.id,
@@ -128,21 +133,21 @@ Deno.serve(async (req) => {
           .select()
           .single();
 
+        if (insertError) {
+          console.error('[call-room-end] voice_recordings insert error:', JSON.stringify(insertError));
+          throw new Error('voice_recordings insert failed');
+        }
+
         if (voiceRec) {
-          // Link to call room
-          await supabase
-            .from('call_rooms')
-            .update({
-              voice_recording_id: voiceRec.id,
-              analysis_status: 'transcribing',
-            })
-            .eq('id', roomId);
+          audioProcessed = true;
+          await supabase.from('call_rooms').update({
+            voice_recording_id: voiceRec.id,
+            analysis_status: 'transcribing',
+          }).eq('id', roomId);
 
           // Trigger full analysis pipeline (non-blocking)
-          // STT → Brain Analysis → Suggestions → RAG
           const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
           const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-
           fetch(`${supabaseUrl}/functions/v1/call-analyze-pipeline`, {
             method: 'POST',
             headers: {
@@ -157,12 +162,13 @@ Deno.serve(async (req) => {
             }),
           }).catch(err => console.error('[call-room-end] Pipeline trigger failed:', err));
         }
+      } catch (audioErr) {
+        console.error('[call-room-end] Audio processing failed, falling back to liveTranscript:', audioErr);
       }
     }
 
-    // ── Fallback: If no audio recording but live transcript exists ──
-    // Use browser STT text to trigger Brain analysis directly (skip server STT)
-    if (!audioBlob && liveTranscript && liveTranscript.trim().length > 10) {
+    // ── Fallback: If audio processing failed OR no audio, use live transcript ──
+    if (!audioProcessed && liveTranscript && liveTranscript.trim().length > 10) {
       console.log('[call-room-end] No audio, using live transcript for analysis. Length:', liveTranscript.length);
 
       // Create a voice_recording entry with pre-filled transcript
