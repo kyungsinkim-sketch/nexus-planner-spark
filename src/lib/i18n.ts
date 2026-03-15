@@ -80,6 +80,7 @@ export const translations = {
     weeklyActivity: '주간 활동',
     attendance: '출근 상태',
     notifications: '알림',
+    updates: '업데이트',
     nextActions: '다음 일정',
     importantNotes: '중요 기록',
     importantNotesCount: '건',
@@ -1692,6 +1693,7 @@ export const translations = {
 
     // Inbox
     notifications: 'Notifications',
+    updates: 'Updates',
     markAsRead: 'Mark as read',
     markAllAsRead: 'Mark all as read',
     deleteNotification: 'Delete notification',

@@ -37,6 +37,7 @@ export type WidgetType =
   | 'projectBoard'
   | 'projectLinks'
   | 'slack'
+  | 'updates'
 ;
 
 // Widget context — determines which data scope a widget uses

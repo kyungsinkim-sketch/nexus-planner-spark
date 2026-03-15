@@ -198,9 +198,9 @@ function MorningBriefing({
   );
 }
 
-// ── Notifications Widget (replaces Today's Schedule) ─────────
+// ── Updates Widget (replaces Today's Schedule) ───────────────
 
-function NotificationsWidget({
+function UpdatesWidget({
   notifications,
   language,
   onNotifClick,
@@ -230,7 +230,7 @@ function NotificationsWidget({
       <div className="flex items-center gap-2 mb-3">
         <Bell className="w-4 h-4 text-muted-foreground/50" />
         <h3 className="typo-h4 font-bold text-foreground">
-          {language === 'ko' ? '알림' : 'Notifications'}
+          {language === 'ko' ? '업데이트' : 'Updates'}
         </h3>
         {notifications.length > 0 && (
           <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full font-medium">
@@ -344,7 +344,7 @@ interface SuggestionItem {
 }
 
 export function MobileAIChatView() {
-  const { events, currentUser, users, projects, loadEvents, loadTodos, addTodo, chatRooms, appNotifications, personalTodos } = useAppStore();
+  const { events, currentUser, users, projects, loadEvents, loadTodos, addTodo, chatRooms, appNotifications } = useAppStore();
   const { openMobileDm, openMobileGroupChat, openProjectTab, setActiveTab } = useWidgetStore();
   const { language } = useTranslation();
   const locale = language === 'ko' ? ko : enUS;
@@ -524,65 +524,11 @@ export function MobileAIChatView() {
   }, [events]);
 
   // ── Notifications (unread + todos + today events) ──
+  // ── Updates: chat messages, todo alerts, brain suggestions, emails ──
   const unreadNotifs = useMemo(() => {
-    const items: AppNotification[] = [];
-
-    // 1. Real-time push notifications (unread)
-    if (appNotifications) {
-      items.push(...appNotifications.filter(n => !n.read));
-    }
-
-    // 2. All pending todos assigned to or requested by current user (matches web dashboard)
-    if (personalTodos && currentUser) {
-      const now = new Date();
-      const todayStr = format(now, 'yyyy-MM-dd');
-      const myTodos = personalTodos.filter(
-        td => td.status !== 'COMPLETED' &&
-          td.assigneeIds?.includes(currentUser.id) &&
-          td.requestedById !== currentUser.id // Exclude self-created todos
-      );
-      for (const todo of myTodos) {
-        const dueStr = todo.dueDate ? (typeof todo.dueDate === 'string' ? todo.dueDate.slice(0, 10) : '') : '';
-        const isOverdue = dueStr && dueStr < todayStr;
-        const isDueToday = dueStr === todayStr;
-        // Find project name for context
-        const project = todo.projectId ? projects?.find(p => p.id === todo.projectId) : null;
-        const projectLabel = project ? `[${project.title}] ` : '';
-        items.push({
-          id: `todo-${todo.id}`,
-          type: 'todo',
-          title: isOverdue
-            ? `⚠️ ${projectLabel}${todo.title}`
-            : isDueToday
-            ? `📋 ${projectLabel}${todo.title}`
-            : `${projectLabel}${todo.title}`,
-          message: isOverdue
-            ? (language === 'ko' ? `마감 지남 (${dueStr})` : `Overdue (${dueStr})`)
-            : isDueToday
-            ? (language === 'ko' ? '오늘 마감' : 'Due today')
-            : (dueStr ? dueStr : (language === 'ko' ? '마감일 미설정' : 'No due date')),
-          createdAt: todo.dueDate || todo.createdAt || new Date().toISOString(),
-          read: false,
-        });
-      }
-    }
-
-    // 3. Today's events (exclude self-created — those are not "notifications")
-    if (todayEvents.length > 0 && currentUser) {
-      for (const evt of todayEvents.filter(e => e.ownerId !== currentUser.id).slice(0, 3)) {
-        items.push({
-          id: `event-${evt.id}`,
-          type: 'event',
-          title: `⏰ ${format(parseISO(evt.startAt), 'HH:mm')} ${evt.title}`,
-          message: evt.location || '',
-          createdAt: evt.startAt,
-          read: false,
-        });
-      }
-    }
-
-    return items.slice(0, 10);
-  }, [appNotifications, personalTodos, todayEvents, language]);
+    if (!appNotifications) return [];
+    return appNotifications.filter(n => !n.read).slice(0, 10);
+  }, [appNotifications]);
 
   const handleNotifClick = useCallback((notif: AppNotification) => {
     try {
@@ -801,7 +747,7 @@ export function MobileAIChatView() {
         <div className="shrink-0 px-4 pt-6 pb-2">
           <ProfileCard user={currentUser} language={language} projects={projects} onProjectsClick={() => useWidgetStore.getState().setMobileView('projects')} />
           <div className="mt-4">
-            <NotificationsWidget notifications={unreadNotifs} language={language} onNotifClick={handleNotifClick} />
+            <UpdatesWidget notifications={unreadNotifs} language={language} onNotifClick={handleNotifClick} />
           </div>
         </div>
 

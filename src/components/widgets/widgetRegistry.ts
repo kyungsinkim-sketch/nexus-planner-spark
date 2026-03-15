@@ -69,6 +69,7 @@ export const WIDGET_COMPONENTS: Record<WidgetType, ComponentType<{ context: Widg
   projectBoard:   lazy(() => import('./ProjectBoardWidget')),
   projectLinks:   lazy(() => import('./LinksWidget')),
   slack:          lazy(() => import('./SlackWidget')),
+  updates:        lazy(() => import('./UpdatesWidget')),
   // call widget removed — call UI is in ActiveCallOverlay
 };
 
@@ -300,4 +301,12 @@ export const WIDGET_DEFINITIONS: Record<WidgetType, WidgetDefinition> = {
     contexts: ['dashboard', 'project'],
   },
   // call widget removed — call UI is in ActiveCallOverlay
+  updates: {
+    type: 'updates',
+    titleKey: 'updates',
+    icon: Bell,
+    defaultSize: { w: 3, h: 3 },
+    minSize: { w: 2, h: 2 },
+    contexts: ['dashboard', 'project'],
+  },
 };
