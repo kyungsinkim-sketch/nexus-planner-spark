@@ -511,13 +511,15 @@ async function connectToRoom(wsUrl: string, token: string): Promise<void> {
   // Start mixed recording AFTER mic is ready (ensures local audio track exists)
   // Wait a bit for mic to publish, then start recording
   const startRecordingWhenReady = () => {
-    const maxWait = 5000; // 5s max wait
-    const interval = 300;
+    const maxWait = 8000; // 8s max wait for mic
+    const interval = 500;
     let waited = 0;
     const check = () => {
-      const hasLocalAudio = Array.from(room.localParticipant.audioTrackPublications.values()).some((p: any) => p.track);
+      const pubs = Array.from(room.localParticipant.audioTrackPublications.values()) as any[];
+      const hasLocalAudio = pubs.some((p: any) => p.track?.mediaStreamTrack?.readyState === 'live');
+      console.log('[Call] Recording check:', { waited, hasLocalAudio, pubs: pubs.length, tracks: pubs.map((p: any) => p.track?.mediaStreamTrack?.readyState) });
       if (hasLocalAudio || waited >= maxWait) {
-        if (!hasLocalAudio) console.warn('[Call] Starting recording without local audio (mic not ready after 5s)');
+        if (!hasLocalAudio) console.warn('[Call] Starting recording without confirmed local audio (waited', waited, 'ms)');
         startMixedRecording(room);
         return;
       }
@@ -556,59 +558,68 @@ function startMixedRecording(room: Room): void {
     return;
   }
 
-  try {
-    recordingAudioContext = new AudioContext();
-    // Resume if suspended (browser requires user gesture)
-    if (recordingAudioContext.state === 'suspended') {
-      recordingAudioContext.resume().catch(() => {});
-    }
-    recordingDestination = recordingAudioContext.createMediaStreamDestination();
+  const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+    ? 'audio/webm;codecs=opus'
+    : 'audio/webm';
 
-    // Add local mic audio
+  // Strategy 1: Use LiveKit tracks directly (no extra AudioContext)
+  try {
+    const tracks: MediaStreamTrack[] = [];
+
+    // Local mic track from LiveKit
     const localPubs = Array.from(room.localParticipant.audioTrackPublications.values()) as any[];
-    const localPub = localPubs.find((p: any) => p.track);
-    if (localPub?.track) {
-      const localStream = getMediaStreamFromTrack(localPub.track);
-      if (localStream) {
-        const source = recordingAudioContext.createMediaStreamSource(localStream);
-        source.connect(recordingDestination);
-        console.log('[Call] ✅ Local audio connected to recording');
+    for (const pub of localPubs) {
+      const mst = pub?.track?.mediaStreamTrack;
+      if (mst && mst.readyState === 'live') {
+        tracks.push(mst);
+        console.log('[Call] ✅ Local audio track found');
       }
     }
 
-    // Add existing remote audio tracks
+    // Remote audio tracks
     room.remoteParticipants.forEach(participant => {
-      participant.audioTrackPublications.forEach(pub => {
-        const stream = getMediaStreamFromTrack((pub as any).track);
-        if (stream) {
-          try {
-            const source = recordingAudioContext!.createMediaStreamSource(stream);
-            source.connect(recordingDestination!);
-            console.log('[Call] ✅ Remote audio connected to recording:', participant.identity);
-          } catch (e) {
-            console.warn('[Call] Remote audio source failed:', e);
-          }
+      participant.audioTrackPublications.forEach((pub: any) => {
+        const mst = pub?.track?.mediaStreamTrack;
+        if (mst && mst.readyState === 'live') {
+          tracks.push(mst);
+          console.log('[Call] ✅ Remote audio track found:', participant.identity);
         }
       });
     });
 
-    // Start MediaRecorder on mixed stream
-    audioChunks = [];
-    mediaRecorder = new MediaRecorder(recordingDestination.stream, {
-      mimeType: MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
-        ? 'audio/webm;codecs=opus'
-        : 'audio/webm',
-    });
-    mediaRecorder.ondataavailable = (e) => {
-      if (e.data.size > 0) audioChunks.push(e.data);
-    };
-    mediaRecorder.start(1000);
-    callStartTime = Date.now();
-    console.log('[Call] ✅ Mixed MediaRecorder started');
+    if (tracks.length > 0) {
+      // If multiple tracks, mix via AudioContext
+      if (tracks.length > 1) {
+        recordingAudioContext = new AudioContext();
+        if (recordingAudioContext.state === 'suspended') recordingAudioContext.resume().catch(() => {});
+        recordingDestination = recordingAudioContext.createMediaStreamDestination();
+        for (const t of tracks) {
+          const src = recordingAudioContext.createMediaStreamSource(new MediaStream([t]));
+          src.connect(recordingDestination);
+        }
+        audioChunks = [];
+        mediaRecorder = new MediaRecorder(recordingDestination.stream, { mimeType });
+      } else {
+        // Single track — record directly
+        audioChunks = [];
+        mediaRecorder = new MediaRecorder(new MediaStream(tracks), { mimeType });
+      }
+
+      mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) audioChunks.push(e.data); };
+      mediaRecorder.onerror = (e) => console.error('[Call] MediaRecorder error:', e);
+      mediaRecorder.start(1000);
+      callStartTime = Date.now();
+      console.log('[Call] ✅ Recording started with', tracks.length, 'track(s)');
+      return;
+    }
+
+    console.warn('[Call] No live audio tracks found from LiveKit');
   } catch (err) {
-    console.error('[Call] Mixed recording setup failed, falling back to mic-only:', err);
-    startMicRecording();
+    console.error('[Call] LiveKit track recording failed:', err);
   }
+
+  // Strategy 2: getUserMedia fallback
+  startMicRecording();
 }
 
 // Add a new remote audio track to the ongoing recording mix
@@ -628,29 +639,22 @@ function addRemoteTrackToRecording(track: RemoteTrack): void {
 
 // ─── Fallback: mic-only recording ──────
 async function startMicRecording(): Promise<void> {
-  console.log('[Call] startMicRecording() called, current mediaRecorder:', mediaRecorder?.state ?? 'null');
-  if (mediaRecorder && mediaRecorder.state === 'recording') {
-    console.log('[Call] Recording already active, skipping');
-    return;
-  }
+  console.log('[Call] startMicRecording() fallback called');
+  if (mediaRecorder && mediaRecorder.state === 'recording') return;
   try {
-    console.log('[Call] Requesting getUserMedia({audio:true})...');
+    // Try to reuse LiveKit's mic track via getUserMedia with same constraints
     const micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    console.log('[Call] ✅ Got mic stream for recording');
+    console.log('[Call] ✅ Got mic stream via getUserMedia');
     audioChunks = [];
-    mediaRecorder = new MediaRecorder(micStream, {
-      mimeType: MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
-        ? 'audio/webm;codecs=opus'
-        : 'audio/webm',
-    });
-    mediaRecorder.ondataavailable = (e) => {
-      if (e.data.size > 0) audioChunks.push(e.data);
-    };
+    const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus' : 'audio/webm';
+    mediaRecorder = new MediaRecorder(micStream, { mimeType });
+    mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) audioChunks.push(e.data); };
+    mediaRecorder.onerror = (e) => console.error('[Call] MediaRecorder error:', e);
     mediaRecorder.start(1000);
     callStartTime = Date.now();
-    console.log('[Call] ✅ MediaRecorder started, state:', mediaRecorder.state);
+    console.log('[Call] ✅ Mic-only recording started');
   } catch (err) {
-    console.error('[Call] ❌ Mic recording setup failed:', err);
+    console.error('[Call] ❌ All recording methods failed:', err);
   }
 }
 
