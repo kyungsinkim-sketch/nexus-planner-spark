@@ -502,7 +502,7 @@ export function MobileAIChatView() {
         document.body.classList.toggle('keyboard-open', kbHeight > 50);
       }
     };
-    const onFocus = () => { if (vv) { vv.addEventListener('resize', update); vv.addEventListener('scroll', update); update(); } };
+    const onFocus = () => { if (vv) { vv.addEventListener('resize', update); vv.addEventListener('scroll', update); update(); } window.scrollTo(0, 0); };
     const onBlur = () => setTimeout(() => { setKbBottom(null); document.body.classList.remove('keyboard-open'); if (vv) { vv.removeEventListener('resize', update); vv.removeEventListener('scroll', update); } }, 100);
     el.addEventListener('focus', onFocus);
     el.addEventListener('blur', onBlur);
@@ -821,7 +821,8 @@ export function MobileAIChatView() {
 
       {/* ═══ Universal Chat Bar — flex bottom, above nav ═══ */}
       <div
-        className="shrink-0 px-4 py-2 pb-[calc(64px+env(safe-area-inset-bottom,0px))]"
+        className="shrink-0 px-4 py-2"
+        style={{ paddingBottom: kbBottom && kbBottom > 50 ? `${kbBottom}px` : 'calc(64px + env(safe-area-inset-bottom, 0px))' }}
       >
         {/* Selected target badge */}
         {selectedTarget && (
