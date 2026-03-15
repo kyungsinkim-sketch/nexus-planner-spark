@@ -65,6 +65,7 @@ function PostCallTranscriptView({ roomId, onClose }: { roomId: string; onClose: 
   const [recording, setRecording] = useState<VoiceRecording | null>(null);
   const [loading, setLoading] = useState(true);
   const [showDialog, setShowDialog] = useState(false);
+  const [minimized, setMinimized] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -143,18 +144,39 @@ function PostCallTranscriptView({ roomId, onClose }: { roomId: string; onClose: 
     return () => { active = false; };
   }, [roomId]);
 
-  if (loading) {
+  if (loading && !minimized) {
     return (
       <div className="fixed inset-0 z-[9999] bg-gray-950/95 backdrop-blur-sm flex flex-col items-center justify-center">
         <Loader2 className="w-10 h-10 text-primary animate-spin mb-4" />
         <p className="text-white text-lg font-medium">Brain AI 분석 중</p>
         <p className="text-white/50 text-sm mt-2">통화 내용에서 일정, 할 일, 중요 기록을 추출하고 있습니다...</p>
-        <button
-          onClick={onClose}
-          className="mt-6 px-6 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white/60 text-sm transition-colors"
-        >
-          건너뛰기
-        </button>
+        <div className="mt-6 flex gap-3">
+          <button
+            onClick={() => setMinimized(true)}
+            className="px-6 py-2 rounded-xl bg-primary/20 hover:bg-primary/30 text-primary text-sm font-medium transition-colors"
+          >
+            화면 축소
+          </button>
+          <button
+            onClick={onClose}
+            className="px-6 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white/60 text-sm transition-colors"
+          >
+            건너뛰기
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Minimized: small floating indicator
+  if (loading && minimized) {
+    return (
+      <div
+        className="fixed bottom-24 right-4 z-[9999] flex items-center gap-2 px-4 py-2.5 rounded-full bg-gray-900/90 backdrop-blur-sm border border-white/10 shadow-lg cursor-pointer hover:bg-gray-800/90 transition-colors"
+        onClick={() => setMinimized(false)}
+      >
+        <Loader2 className="w-4 h-4 text-primary animate-spin" />
+        <span className="text-white text-xs font-medium">Brain AI 분석 중...</span>
       </div>
     );
   }
@@ -307,6 +329,7 @@ export function ActiveCallOverlay() {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const lastRoomId = useRef<string | null>(null);
   const endHandled = useRef(false);
+  const wasCaller = useRef(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [captionsOn, setCaptionsOn] = useState(false);
   const [translateOn, setTranslateOn] = useState(false);
@@ -406,6 +429,7 @@ export function ActiveCallOverlay() {
     if (callState?.room?.id) {
       lastRoomId.current = callState.room.id;
       endHandled.current = false;
+      wasCaller.current = callState.isCaller;
     }
     // Track duration while active (before it resets to 0)
     if (callState?.status === 'active' && (callState?.durationSeconds ?? 0) > 0) {
@@ -413,7 +437,8 @@ export function ActiveCallOverlay() {
     }
     if (callState?.status === 'idle' && lastRoomId.current && !endHandled.current) {
       endHandled.current = true;
-      if (lastDuration.current >= 10) {
+      // Only show Brain AI analysis for the caller (to avoid duplicate calendar events)
+      if (lastDuration.current >= 10 && wasCaller.current) {
         setShowSuggestions(true);
       } else {
         lastRoomId.current = null;

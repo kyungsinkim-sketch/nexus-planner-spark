@@ -209,15 +209,16 @@ const TranscriptTimeline = memo(function TranscriptTimeline({
   onSeek: (time: number) => void;
 }) {
   // Build speaker → color index map
+  const safeSegments = Array.isArray(segments) ? segments : [];
   const speakerMap = useMemo(() => {
     const map = new Map<string, number>();
-    segments.forEach(s => {
+    safeSegments.forEach(s => {
       if (!map.has(s.speaker)) {
         map.set(s.speaker, map.size % SPEAKER_COLORS.length);
       }
     });
     return map;
-  }, [segments]);
+  }, [safeSegments]);
 
   if (segments.length === 0) {
     return (
@@ -230,7 +231,7 @@ const TranscriptTimeline = memo(function TranscriptTimeline({
 
   return (
     <div className="space-y-1.5 max-h-[200px] overflow-auto">
-      {segments.map((seg, i) => {
+      {safeSegments.map((seg, i) => {
         const colorIdx = speakerMap.get(seg.speaker) || 0;
         return (
           <div
@@ -525,7 +526,12 @@ function TranscriptViewDialog({
   if (!recording) return null;
 
   const isProcessing = ['uploading', 'transcribing', 'analyzing'].includes(recording.status);
-  const transcript = recording.transcript || [];
+  const rawTranscript = recording.transcript;
+  const transcript = Array.isArray(rawTranscript)
+    ? rawTranscript
+    : typeof rawTranscript === 'string'
+      ? (() => { try { const p = JSON.parse(rawTranscript); return Array.isArray(p) ? p : []; } catch { return []; } })()
+      : [];
   const analysis = recording.brainAnalysis;
 
   return (

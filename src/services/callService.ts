@@ -52,6 +52,8 @@ export interface CallState {
   targetUserIds: string[];
   /** Project context for this call */
   callProjectId: string | null;
+  /** Whether current user initiated the call */
+  isCaller: boolean;
 }
 
 export interface CallSuggestion {
@@ -172,6 +174,7 @@ let currentState: CallState = {
   localVideoTrack: null,
   targetUserIds: [],
   callProjectId: null,
+  isCaller: false,
 };
 
 function setState(partial: Partial<CallState>) {
@@ -194,7 +197,7 @@ export function getCallState(): CallState {
 export async function createCall(targetUserId: string | string[], projectId?: string, title?: string, isVideo?: boolean): Promise<void> {
   const targetUserIds = Array.isArray(targetUserId) ? targetUserId : [targetUserId];
   try {
-    setState({ status: 'creating', error: null, isVideoCall: !!isVideo, targetUserIds: targetUserIds, callProjectId: projectId || null });
+    setState({ status: 'creating', error: null, isVideoCall: !!isVideo, targetUserIds: targetUserIds, callProjectId: projectId || null, isCaller: true });
 
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) throw new Error('Not authenticated');
@@ -274,7 +277,7 @@ export async function createCall(targetUserId: string | string[], projectId?: st
 
 export async function joinCall(roomId: string): Promise<void> {
   try {
-    setState({ status: 'connecting', error: null });
+    setState({ status: 'connecting', error: null, isCaller: false });
 
     const response = await supabase.functions.invoke('call-room-join', {
       body: { roomId },
@@ -1051,8 +1054,13 @@ async function processCallRecording(roomId: string, blob: Blob, duration: number
 
   console.log('[Call] 📤 Uploading recording...', Math.round(blob.size / 1024), 'KB');
 
-  // 1. Upload to storage (same path pattern as audioService)
-  const storagePath = `${userId}/call_${roomId}_${Date.now()}.webm`;
+  // 1. Upload to storage — filename: 통화제목_날짜시간
+  const now = new Date();
+  const dateStr = now.toISOString().replace(/[-:]/g, '').replace('T', '_').slice(0, 15); // 20260315_210530
+  const callState = getCallState();
+  const remoteName = callState.remoteParticipantName || 'call';
+  const safeTitle = remoteName.replace(/[^a-zA-Z0-9가-힣_-]/g, '_').slice(0, 30);
+  const storagePath = `${userId}/${safeTitle}_${dateStr}.webm`;
   const { error: uploadError } = await supabase.storage
     .from('voice-recordings')
     .upload(storagePath, blob, { contentType: 'audio/webm', upsert: true });
@@ -1072,7 +1080,7 @@ async function processCallRecording(roomId: string, blob: Blob, duration: number
     .from('voice_recordings')
     .insert({
       user_id: userId,
-      title: 'In-App Call',
+      title: `${remoteName} 통화 · ${now.toLocaleDateString('ko-KR')}`,
       audio_storage_path: storagePath,
       duration_seconds: duration,
       status: 'transcribing',

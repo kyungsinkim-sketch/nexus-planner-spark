@@ -6,6 +6,7 @@
  */
 
 const LINGVA_INSTANCES = [
+  'https://translate.plausibility.cloud',
   'https://lingva.ml',
   'https://lingva.thedaviddelta.com',
 ];
