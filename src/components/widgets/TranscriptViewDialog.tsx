@@ -40,6 +40,7 @@ import {
 } from 'lucide-react';
 import { useTranslation } from '@/hooks/useTranslation';
 import type { VoiceRecording, TranscriptSegment, VoiceBrainAnalysis, EmailBrainSuggestion, BrainExtractedEvent, BrainExtractedTodo } from '@/types/core';
+import { useAppStore } from '@/stores/appStore';
 import { SuggestionReviewDialog } from './SuggestionReviewDialog';
 
 interface TranscriptViewDialogProps {
@@ -344,6 +345,36 @@ function TranscriptViewDialog({
     };
   }, [recording]);
 
+  const { addEvent, addTodo, loadEvents, loadTodos } = useAppStore();
+
+  const handleConfirmSuggestion = useCallback(async (
+    _suggestion: EmailBrainSuggestion,
+    edits: { event?: BrainExtractedEvent; todo?: BrainExtractedTodo; note?: string; includeEvent: boolean; includeTodo: boolean; includeNote: boolean },
+  ) => {
+    if (edits.includeEvent && edits.event) {
+      await addEvent({
+        title: edits.event.title,
+        startAt: edits.event.startAt || new Date().toISOString(),
+        endAt: edits.event.endAt || new Date().toISOString(),
+        location: edits.event.location,
+        projectId: edits.event.projectId,
+        attendeeIds: edits.event.attendeeIds,
+      });
+      await loadEvents();
+    }
+    if (edits.includeTodo && edits.todo) {
+      await addTodo({
+        title: edits.todo.title,
+        assigneeIds: edits.todo.assigneeIds || [],
+        dueDate: edits.todo.dueDate,
+        priority: edits.todo.priority || 'NORMAL',
+        projectId: edits.todo.projectId,
+      });
+      await loadTodos();
+    }
+    // Note: important_notes could be saved here too if needed
+  }, [addEvent, addTodo, loadEvents, loadTodos]);
+
   const handleAddEvent = useCallback((event: VoiceBrainAnalysis['suggestedEvents'][0]) => {
     console.log('[TranscriptView] Add event:', event);
   }, []);
@@ -385,6 +416,7 @@ function TranscriptViewDialog({
                 ref={audioRef}
                 src={recording.audioUrl}
                 onEnded={handleAudioEnded}
+                onError={() => console.warn('[TranscriptView] Audio source not available')}
                 className="hidden"
               />
               <div className="flex-1 text-xs font-medium text-muted-foreground">
@@ -456,6 +488,8 @@ function TranscriptViewDialog({
             open={showSuggestionReview}
             onOpenChange={setShowSuggestionReview}
             suggestion={voiceSuggestion}
+            onConfirm={handleConfirmSuggestion}
+            sourceLabel={recording?.title || 'Voice Recording'}
           />
         )}
       </DialogContent>
