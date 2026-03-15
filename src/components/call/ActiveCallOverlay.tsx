@@ -56,7 +56,7 @@ import type { VoiceRecording } from '@/types/core';
 
 // Lazy import TranscriptViewDialog
 const TranscriptViewDialog = React.lazy(() =>
-  import('@/components/widgets/TranscriptViewDialog').then(m => ({ default: m.TranscriptViewDialog }))
+  import('@/components/widgets/TranscriptViewDialog')
 );
 
 
