@@ -72,7 +72,7 @@ const WaveformPlayer = memo(function WaveformPlayer({
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
-    const onTime = () => { if (audio.duration) setProgress(audio.currentTime / audio.duration); };
+    const onTime = () => { if (audio.duration && isFinite(audio.duration)) setProgress(audio.currentTime / audio.duration); };
     const onMeta = () => setDuration(audio.duration || 0);
     const onEnd = () => { setIsPlaying(false); setProgress(1); };
     audio.addEventListener('timeupdate', onTime);
@@ -98,10 +98,12 @@ const WaveformPlayer = memo(function WaveformPlayer({
   const handleBarClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     const audio = audioRef.current;
     const el = e.currentTarget;
-    if (!audio || !audio.duration) return;
+    if (!audio || !audio.duration || !isFinite(audio.duration)) return;
     const rect = el.getBoundingClientRect();
     const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-    audio.currentTime = pct * audio.duration;
+    const seekTime = pct * audio.duration;
+    if (!isFinite(seekTime)) return;
+    audio.currentTime = seekTime;
     setProgress(pct);
     if (!isPlaying) { decodeWaveform(); audio.play().catch(() => {}); setIsPlaying(true); }
     onSeekTime?.(audio.currentTime);
