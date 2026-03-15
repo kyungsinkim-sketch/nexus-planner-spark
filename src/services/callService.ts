@@ -311,9 +311,11 @@ async function connectToRoom(wsUrl: string, token: string): Promise<void> {
   });
 
   room.on(RoomEvent.LocalTrackPublished, (pub: any) => {
-    console.log('[Call] LocalTrackPublished, kind:', pub?.track?.kind, 'readyState:', pub?.track?.mediaStreamTrack?.readyState);
+    const trackKind = pub?.track?.kind ?? pub?.kind;
+    console.log('[Call] LocalTrackPublished, kind:', trackKind, 'Track.Kind.Audio:', Track.Kind.Audio, 'readyState:', pub?.track?.mediaStreamTrack?.readyState);
     // Start recording when audio track is published (most reliable trigger)
-    if (pub?.track?.kind === Track.Kind.Audio) {
+    const isAudio = trackKind === Track.Kind.Audio || trackKind === 'audio';
+    if (isAudio) {
       if (!mediaRecorder || mediaRecorder.state === 'inactive') {
         console.log('[Call] Starting recording from LocalTrackPublished event');
         startMixedRecording(room);
@@ -412,8 +414,14 @@ async function connectToRoom(wsUrl: string, token: string): Promise<void> {
         console.warn('[Call] Web Audio API not available, using element volume:', err);
       }
 
-      // Add to mixed recording
-      addRemoteTrackToRecording(track);
+      // Start recording if not yet started (most reliable trigger — remote audio arrived)
+      if (!mediaRecorder || mediaRecorder.state !== 'recording') {
+        console.log('[Call] Starting recording from TrackSubscribed (remote audio arrived)');
+        startMixedRecording(room);
+      } else {
+        // Add to existing recording mix
+        addRemoteTrackToRecording(track);
+      }
     }
   });
 
@@ -454,9 +462,16 @@ async function connectToRoom(wsUrl: string, token: string): Promise<void> {
     setState({ status: 'active' });
     startDurationTimer();
 
-    // Enable microphone — recording starts via LocalTrackPublished event
+    // Enable microphone — try starting recording after mic is confirmed
     room.localParticipant.setMicrophoneEnabled(true)
-      .then(() => console.log('[Call] Microphone enabled ✅'))
+      .then(() => {
+        console.log('[Call] Microphone enabled ✅');
+        // Try recording immediately after mic enabled
+        if (!mediaRecorder || mediaRecorder.state !== 'recording') {
+          console.log('[Call] Starting recording after mic enabled');
+          startMixedRecording(room);
+        }
+      })
       .catch((err: any) => console.warn('[Call] Mic enable failed:', err));
   } catch (err: any) {
     console.error('[Call] Connection failed:', err);
