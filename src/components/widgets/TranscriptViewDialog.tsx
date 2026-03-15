@@ -529,6 +529,7 @@ function TranscriptViewDialog({
   const analysis = recording.brainAnalysis;
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto">
         <DialogHeader>
@@ -654,7 +655,11 @@ function TranscriptViewDialog({
               )}
               {/* Review Brain AI Suggestions button */}
               <button
-                onClick={() => setShowSuggestionReview(true)}
+                onClick={() => {
+                  console.log('[TranscriptView] Review clicked, voiceSuggestion:', voiceSuggestion);
+                  console.log('[TranscriptView] brainAnalysis:', recording?.brainAnalysis);
+                  setShowSuggestionReview(true);
+                }}
                 className="w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary text-xs font-medium transition-colors"
               >
                 <Sparkles className="w-3.5 h-3.5" />
@@ -664,18 +669,20 @@ function TranscriptViewDialog({
           )}
         </div>
 
-        {/* SuggestionReviewDialog — same as email Brain popup */}
-        {voiceSuggestion && (
-          <SuggestionReviewDialog
-            open={showSuggestionReview}
-            onOpenChange={setShowSuggestionReview}
-            suggestion={voiceSuggestion}
-            onConfirm={handleConfirmSuggestion}
-            sourceLabel={recording?.title || 'Voice Recording'}
-          />
-        )}
       </DialogContent>
     </Dialog>
+
+    {/* SuggestionReviewDialog — must be outside parent Dialog to avoid z-index/portal issues */}
+    {voiceSuggestion && (
+      <SuggestionReviewDialog
+        open={showSuggestionReview}
+        onOpenChange={setShowSuggestionReview}
+        suggestion={voiceSuggestion}
+        onConfirm={handleConfirmSuggestion}
+        sourceLabel={recording?.title || 'Voice Recording'}
+      />
+    )}
+  </>
   );
 }
 
