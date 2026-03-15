@@ -181,6 +181,7 @@ function PostCallTranscriptView({ roomId, onClose }: { roomId: string; onClose: 
         open={showDialog}
         onOpenChange={(open) => { if (!open) onClose(); setShowDialog(open); }}
         recording={recording}
+        onRecordingUpdate={(updated) => setRecording(updated)}
       />
     </Suspense>
   );

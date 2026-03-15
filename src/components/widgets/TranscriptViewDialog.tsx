@@ -73,7 +73,7 @@ const WaveformPlayer = memo(function WaveformPlayer({
     const audio = audioRef.current;
     if (!audio) return;
     const onTime = () => { if (audio.duration && isFinite(audio.duration)) setProgress(audio.currentTime / audio.duration); };
-    const onMeta = () => setDuration(audio.duration || 0);
+    const onMeta = () => setDuration(isFinite(audio.duration) ? audio.duration : 0);
     const onEnd = () => { setIsPlaying(false); setProgress(1); };
     audio.addEventListener('timeupdate', onTime);
     audio.addEventListener('loadedmetadata', onMeta);
@@ -167,10 +167,11 @@ import type { VoiceRecording, TranscriptSegment, VoiceBrainAnalysis, EmailBrainS
 import { useAppStore } from '@/stores/appStore';
 import { SuggestionReviewDialog } from './SuggestionReviewDialog';
 
-interface TranscriptViewDialogProps {
+export interface TranscriptViewDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   recording: VoiceRecording | null;
+  onRecordingUpdate?: (updated: VoiceRecording) => void;
 }
 
 // Speaker colors for differentiation
@@ -418,6 +419,7 @@ function TranscriptViewDialog({
   open,
   onOpenChange,
   recording,
+  onRecordingUpdate,
 }: TranscriptViewDialogProps) {
   const { t } = useTranslation();
   const handleSeek = useCallback((_time: number) => {
@@ -425,6 +427,7 @@ function TranscriptViewDialog({
   }, []);
 
   const [showSuggestionReview, setShowSuggestionReview] = useState(false);
+  const [analyzingBrain, setAnalyzingBrain] = useState(false);
 
   // Convert VoiceBrainAnalysis → EmailBrainSuggestion for SuggestionReviewDialog
   const voiceSuggestion = useMemo((): EmailBrainSuggestion | null => {
@@ -576,38 +579,54 @@ function TranscriptViewDialog({
           )}
 
           {/* Brain AI: trigger analysis button when no analysis yet */}
-          {!analysis && !isProcessing && transcript.length > 0 && (
+          {!analysis && !isProcessing && !analyzingBrain && transcript.length > 0 && (
             <button
               onClick={async () => {
                 try {
-                  // Update status to analyzing
+                  setAnalyzingBrain(true);
                   const { supabase } = await import('@/lib/supabase');
                   await supabase.from('voice_recordings').update({ status: 'analyzing' }).eq('id', recording.id);
                   
                   const { data: { session } } = await supabase.auth.getSession();
                   const userId = session?.user?.id;
-                  if (!userId) return;
+                  if (!userId) {
+                    console.error('[TranscriptView] No auth session');
+                    setAnalyzingBrain(false);
+                    return;
+                  }
 
+                  console.log('[TranscriptView] Starting brain analysis for', recording.id);
                   const { data, error } = await supabase.functions.invoke('voice-brain-analyze', {
                     body: { recordingId: recording.id, userId, transcript },
                   });
                   
-                  if (!error && data?.analysis) {
-                    // Reload recording to get updated brain_analysis
-                    const { data: updated } = await supabase
-                      .from('voice_recordings')
-                      .select('*')
-                      .eq('id', recording.id)
-                      .single();
-                    if (updated) {
-                      recording.brainAnalysis = typeof updated.brain_analysis === 'string' 
-                        ? JSON.parse(updated.brain_analysis) : updated.brain_analysis;
-                      recording.status = updated.status as any;
-                      onOpenChange(true); // force re-render
-                    }
+                  console.log('[TranscriptView] Brain response:', { data, error });
+
+                  if (error) {
+                    console.error('[TranscriptView] Brain analysis error:', error);
+                    setAnalyzingBrain(false);
+                    return;
                   }
+
+                  // Reload recording from DB to get updated brain_analysis
+                  const { data: updated } = await supabase
+                    .from('voice_recordings')
+                    .select('*')
+                    .eq('id', recording.id)
+                    .single();
+                  if (updated) {
+                    const newRecording: VoiceRecording = {
+                      ...recording,
+                      brainAnalysis: typeof updated.brain_analysis === 'string' 
+                        ? JSON.parse(updated.brain_analysis) : updated.brain_analysis,
+                      status: updated.status as VoiceRecording['status'],
+                    };
+                    onRecordingUpdate?.(newRecording);
+                  }
+                  setAnalyzingBrain(false);
                 } catch (err) {
                   console.error('[TranscriptView] Brain analysis failed:', err);
+                  setAnalyzingBrain(false);
                 }
               }}
               className="w-full flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary text-sm font-medium transition-colors"
@@ -615,6 +634,12 @@ function TranscriptViewDialog({
               <Brain className="w-4 h-4" />
               Brain AI 분석 시작
             </button>
+          )}
+          {analyzingBrain && (
+            <div className="w-full flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg bg-primary/10 text-primary text-sm font-medium">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Brain AI 분석 중...
+            </div>
           )}
 
           {/* Brain Analysis — simplified: summary only + Review button */}

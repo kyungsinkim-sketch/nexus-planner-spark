@@ -644,6 +644,7 @@ function VoiceRecorderWidget({ context }: { context: WidgetDataContext }) {
             open={!!selectedRecording}
             onOpenChange={handleDialogClose}
             recording={selectedRecording}
+            onRecordingUpdate={(updated) => setSelectedRecording(updated)}
           />
         </Suspense>
       )}
