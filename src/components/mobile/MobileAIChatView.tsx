@@ -344,7 +344,7 @@ interface SuggestionItem {
 }
 
 export function MobileAIChatView() {
-  const { events, currentUser, users, projects, loadEvents, loadTodos, addTodo, chatRooms, appNotifications } = useAppStore();
+  const { events, currentUser, users, projects, loadEvents, loadTodos, addTodo, chatRooms, appNotifications, personalTodos } = useAppStore();
   const { openMobileDm, openMobileGroupChat, openProjectTab, setActiveTab } = useWidgetStore();
   const { language } = useTranslation();
   const locale = language === 'ko' ? ko : enUS;
@@ -431,11 +431,55 @@ export function MobileAIChatView() {
       .sort((a, b) => a.startAt.localeCompare(b.startAt));
   }, [events]);
 
-  // ── Notifications (unread) ──
+  // ── Notifications (unread + todos + today events) ──
   const unreadNotifs = useMemo(() => {
-    if (!appNotifications) return [];
-    return appNotifications.filter(n => !n.read).slice(0, 8);
-  }, [appNotifications]);
+    const items: AppNotification[] = [];
+
+    // 1. Real-time push notifications (unread)
+    if (appNotifications) {
+      items.push(...appNotifications.filter(n => !n.read));
+    }
+
+    // 2. Upcoming todos (due today or overdue, not completed)
+    if (personalTodos) {
+      const now = new Date();
+      const todayStr = format(now, 'yyyy-MM-dd');
+      for (const todo of personalTodos) {
+        if (todo.status === 'COMPLETED') continue;
+        if (!todo.dueDate) continue;
+        const dueStr = typeof todo.dueDate === 'string' ? todo.dueDate.slice(0, 10) : '';
+        if (dueStr <= todayStr) {
+          const isOverdue = dueStr < todayStr;
+          items.push({
+            id: `todo-${todo.id}`,
+            type: 'todo',
+            title: isOverdue
+              ? (language === 'ko' ? `⚠️ 마감 지남: ${todo.title}` : `⚠️ Overdue: ${todo.title}`)
+              : (language === 'ko' ? `📋 오늘 마감: ${todo.title}` : `📋 Due today: ${todo.title}`),
+            message: todo.description || '',
+            createdAt: todo.dueDate,
+            read: false,
+          });
+        }
+      }
+    }
+
+    // 3. Today's events
+    if (todayEvents.length > 0) {
+      for (const evt of todayEvents.slice(0, 3)) {
+        items.push({
+          id: `event-${evt.id}`,
+          type: 'event',
+          title: `⏰ ${format(parseISO(evt.startAt), 'HH:mm')} ${evt.title}`,
+          message: evt.location || '',
+          createdAt: evt.startAt,
+          read: false,
+        });
+      }
+    }
+
+    return items.slice(0, 10);
+  }, [appNotifications, personalTodos, todayEvents, language]);
 
   const handleNotifClick = useCallback((notif: AppNotification) => {
     try {
@@ -475,7 +519,7 @@ export function MobileAIChatView() {
     const items: SuggestionItem[] = [];
     if (projects) {
       for (const p of projects) {
-        if (p.status === 'IN_PROGRESS' || p.status === 'PLANNING') {
+        if (p.status === 'ACTIVE' || p.status === 'IN_PROGRESS' || p.status === 'PLANNING') {
           const room = chatRooms?.find(r => r.projectId === p.id);
           items.push({ type: 'project', id: p.id, name: p.title || '', keyColor: p.keyColor, roomId: room?.id });
         }

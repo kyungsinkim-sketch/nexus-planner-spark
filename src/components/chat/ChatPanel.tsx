@@ -208,7 +208,7 @@ export function ChatPanel({ defaultProjectId, defaultDmUserId, defaultGroupRoomI
 
   // Filter all projects
   const allProjects = useMemo(() => {
-    return projects;
+    return projects.filter(p => p.status === 'ACTIVE' || p.status === 'IN_PROGRESS' || p.status === 'PLANNING');
   }, [projects]);
 
   // Filter projects by search, sorted by most recent message
