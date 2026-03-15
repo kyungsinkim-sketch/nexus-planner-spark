@@ -542,17 +542,22 @@ export function MobileAIChatView() {
           const { sendDirectMessage } = await import('@/services/chatService');
           await sendDirectMessage(currentUser.id, target.id, msg);
           setSelectedTarget(null);
+          // Small delay to let DB write propagate before loading chat
+          await new Promise(r => setTimeout(r, 300));
           openMobileDm(target.id);
           return;
         } else if (target.roomId) {
           const { sendRoomMessage } = await import('@/services/chatService');
           await sendRoomMessage(target.roomId, currentUser.id, msg);
           setSelectedTarget(null);
+          await new Promise(r => setTimeout(r, 300));
           openMobileGroupChat(target.roomId);
           return;
         }
       } catch (err) {
         console.error('[UniversalChat] Send error:', err);
+        // Show error in chat
+        setMessages(prev => [...prev, { id: `err_${Date.now()}`, role: 'assistant', content: `메시지 전송 실패: ${(err as Error).message}`, timestamp: new Date(), revealed: 0 }]);
         return;
       }
     }
