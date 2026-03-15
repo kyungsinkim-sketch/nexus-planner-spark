@@ -316,15 +316,16 @@ async function connectToRoom(wsUrl: string, token: string): Promise<void> {
   });
 
   room.on(RoomEvent.Disconnected, (reason?: any) => {
-    console.log('[Call] Disconnected, reason:', reason);
-    // Only auto-end if we were in an active call (not if connection failed during setup)
-    if (currentState.status === 'active' || currentState.status === 'ending') {
+    console.log('[Call] Disconnected, reason:', reason, 'status:', currentState.status);
+    // Only auto-end if we were in an active call (not already ended/idle)
+    if (currentState.status === 'active') {
       handleCallEnd();
-    } else {
-      // Connection dropped during setup — show error instead of silently closing
+    } else if (currentState.status === 'connecting' || currentState.status === 'ringing') {
+      // Connection dropped during setup
       setState({ status: 'error', error: '연결이 끊어졌습니다. 다시 시도해주세요.' });
       currentRoom = null;
     }
+    // If idle/ending/error — ignore (already handled by endCall)
   });
 
   room.on(RoomEvent.ParticipantConnected, (participant: RemoteParticipant) => {
