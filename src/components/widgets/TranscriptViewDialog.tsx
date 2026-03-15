@@ -21,6 +21,160 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
+
+// ── Waveform Audio Player ────────────────────────────
+const WaveformPlayer = memo(function WaveformPlayer({
+  audioUrl,
+  onSeekTime,
+}: {
+  audioUrl: string;
+  onSeekTime?: (time: number) => void;
+}) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const audioRef = useRef<HTMLAudioElement>(null);
+  const waveformRef = useRef<number[]>([]);
+  const animFrameRef = useRef<number>(0);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [loaded, setLoaded] = useState(false);
+
+  // Decode audio and extract waveform peaks
+  useEffect(() => {
+    if (!audioUrl) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const resp = await fetch(audioUrl);
+        const buf = await resp.arrayBuffer();
+        const actx = new (window.AudioContext || (window as any).webkitAudioContext)();
+        const decoded = await actx.decodeAudioData(buf);
+        const raw = decoded.getChannelData(0);
+        const bars = 80;
+        const blockSize = Math.floor(raw.length / bars);
+        const peaks: number[] = [];
+        for (let i = 0; i < bars; i++) {
+          let sum = 0;
+          for (let j = 0; j < blockSize; j++) {
+            sum += Math.abs(raw[i * blockSize + j]);
+          }
+          peaks.push(sum / blockSize);
+        }
+        const max = Math.max(...peaks, 0.01);
+        waveformRef.current = peaks.map(p => p / max);
+        actx.close();
+        if (!cancelled) setLoaded(true);
+      } catch (err) {
+        console.warn('[WaveformPlayer] Decode error:', err);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [audioUrl]);
+
+  // Draw waveform + progress
+  useEffect(() => {
+    if (!loaded) return;
+    const draw = () => {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+      const dpr = window.devicePixelRatio || 1;
+      const w = canvas.clientWidth;
+      const h = canvas.clientHeight;
+      canvas.width = w * dpr;
+      canvas.height = h * dpr;
+      ctx.scale(dpr, dpr);
+      ctx.clearRect(0, 0, w, h);
+
+      const bars = waveformRef.current;
+      const barW = w / bars.length;
+      const gap = 1;
+
+      for (let i = 0; i < bars.length; i++) {
+        const barH = Math.max(2, bars[i] * (h - 4));
+        const x = i * barW;
+        const y = (h - barH) / 2;
+        const pct = i / bars.length;
+        ctx.fillStyle = pct <= progress
+          ? 'hsl(var(--primary))'
+          : 'hsl(var(--muted-foreground) / 0.25)';
+        ctx.fillRect(x + gap / 2, y, barW - gap, barH);
+      }
+
+      if (isPlaying) animFrameRef.current = requestAnimationFrame(draw);
+    };
+    draw();
+    return () => cancelAnimationFrame(animFrameRef.current);
+  }, [loaded, progress, isPlaying]);
+
+  // Track playback progress
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    const onTime = () => {
+      if (audio.duration) setProgress(audio.currentTime / audio.duration);
+    };
+    const onMeta = () => setDuration(audio.duration || 0);
+    const onEnd = () => { setIsPlaying(false); setProgress(0); };
+    audio.addEventListener('timeupdate', onTime);
+    audio.addEventListener('loadedmetadata', onMeta);
+    audio.addEventListener('ended', onEnd);
+    return () => {
+      audio.removeEventListener('timeupdate', onTime);
+      audio.removeEventListener('loadedmetadata', onMeta);
+      audio.removeEventListener('ended', onEnd);
+    };
+  }, []);
+
+  const togglePlay = useCallback(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    if (isPlaying) { audio.pause(); } else { audio.play().catch(() => {}); }
+    setIsPlaying(!isPlaying);
+  }, [isPlaying]);
+
+  const handleCanvasClick = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current;
+    const audio = audioRef.current;
+    if (!canvas || !audio || !audio.duration) return;
+    const rect = canvas.getBoundingClientRect();
+    const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    audio.currentTime = pct * audio.duration;
+    setProgress(pct);
+    if (!isPlaying) { audio.play().catch(() => {}); setIsPlaying(true); }
+    onSeekTime?.(audio.currentTime);
+  }, [isPlaying, onSeekTime]);
+
+  const formatSec = (s: number) => {
+    const m = Math.floor(s / 60);
+    const sec = Math.floor(s % 60);
+    return `${m}:${String(sec).padStart(2, '0')}`;
+  };
+
+  return (
+    <div className="rounded-lg bg-muted/30 p-2.5">
+      <div className="flex items-center gap-2">
+        <button
+          onClick={togglePlay}
+          className="w-8 h-8 rounded-full bg-primary/10 hover:bg-primary/20 flex items-center justify-center text-primary transition-colors shrink-0"
+        >
+          {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 ml-0.5" />}
+        </button>
+        <canvas
+          ref={canvasRef}
+          onClick={handleCanvasClick}
+          className="flex-1 h-10 cursor-pointer rounded"
+          style={{ minWidth: 0 }}
+        />
+        <span className="text-[10px] text-muted-foreground tabular-nums shrink-0 w-8 text-right">
+          {duration > 0 ? formatSec(duration) : '--:--'}
+        </span>
+      </div>
+      <audio ref={audioRef} src={audioUrl} preload="metadata" className="hidden" />
+    </div>
+  );
+});
 import {
   Brain,
   Calendar,
@@ -296,28 +450,9 @@ function TranscriptViewDialog({
   recording,
 }: TranscriptViewDialogProps) {
   const { t } = useTranslation();
-  const audioRef = useRef<HTMLAudioElement>(null);
-  const [isPlaying, setIsPlaying] = useState(false);
-
-  const handleSeek = useCallback((time: number) => {
-    if (audioRef.current) {
-      audioRef.current.currentTime = time;
-      audioRef.current.play();
-      setIsPlaying(true);
-    }
+  const handleSeek = useCallback((_time: number) => {
+    // WaveformPlayer handles seek internally
   }, []);
-
-  const togglePlay = useCallback(() => {
-    if (!audioRef.current) return;
-    if (isPlaying) {
-      audioRef.current.pause();
-    } else {
-      audioRef.current.play();
-    }
-    setIsPlaying(prev => !prev);
-  }, [isPlaying]);
-
-  const handleAudioEnded = useCallback(() => setIsPlaying(false), []);
 
   const [showSuggestionReview, setShowSuggestionReview] = useState(false);
 
@@ -408,26 +543,9 @@ function TranscriptViewDialog({
         </DialogHeader>
 
         <div className="space-y-3">
-          {/* Audio Player */}
+          {/* Audio Waveform Player */}
           {recording.audioUrl && (
-            <div className="flex items-center gap-2 rounded-md bg-muted/30 p-2">
-              <button
-                onClick={togglePlay}
-                className="w-8 h-8 rounded-full bg-primary/10 hover:bg-primary/20 flex items-center justify-center text-primary transition-colors"
-              >
-                {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 ml-0.5" />}
-              </button>
-              <audio
-                ref={audioRef}
-                src={recording.audioUrl}
-                onEnded={handleAudioEnded}
-                onError={() => console.warn('[TranscriptView] Audio source not available')}
-                className="hidden"
-              />
-              <div className="flex-1 text-xs font-medium text-muted-foreground">
-                {t('voiceRecorderAudioPlayer')}
-              </div>
-            </div>
+            <WaveformPlayer audioUrl={recording.audioUrl} onSeekTime={handleSeek} />
           )}
 
           {/* Processing indicator */}
