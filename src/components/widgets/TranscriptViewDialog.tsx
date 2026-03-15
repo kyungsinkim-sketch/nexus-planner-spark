@@ -13,7 +13,7 @@
  * - Stable callbacks with useCallback
  */
 
-import { useState, useRef, useMemo, useCallback, memo } from 'react';
+import { useState, useRef, useMemo, useCallback, useEffect, memo } from 'react';
 import {
   Dialog,
   DialogContent,
