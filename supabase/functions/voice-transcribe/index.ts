@@ -152,10 +152,75 @@ async function transcribeWithGoogleSTT(
   return parseWordsToSegments(data.results || []);
 }
 
+// ─── GCS Upload Helper (for long audio) ──────────────
+// Google STT requires gs:// URI for audio > 1 minute (inline base64 is limited).
+// We upload to GCS temporarily, transcribe, then delete.
+
+import { SignJWT, importPKCS8 } from 'https://deno.land/x/jose@v5.2.0/index.ts';
+
+interface ServiceAccount {
+  client_email: string;
+  private_key: string;
+  project_id: string;
+}
+
+async function getGcsAccessToken(sa: ServiceAccount): Promise<string> {
+  const now = Math.floor(Date.now() / 1000);
+  const privateKey = await importPKCS8(sa.private_key, 'RS256');
+  const jwt = await new SignJWT({
+    iss: sa.client_email,
+    scope: 'https://www.googleapis.com/auth/devstorage.read_write',
+    aud: 'https://oauth2.googleapis.com/token',
+    iat: now,
+    exp: now + 3600,
+  })
+    .setProtectedHeader({ alg: 'RS256', typ: 'JWT' })
+    .sign(privateKey);
+
+  const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: `grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer&assertion=${jwt}`,
+  });
+  const tokenData = await tokenRes.json();
+  if (!tokenData.access_token) throw new Error(`GCS auth failed: ${JSON.stringify(tokenData)}`);
+  return tokenData.access_token;
+}
+
+async function uploadToGcs(
+  audioBytes: Uint8Array,
+  bucket: string,
+  objectName: string,
+  accessToken: string,
+): Promise<string> {
+  const url = `https://storage.googleapis.com/upload/storage/v1/b/${bucket}/o?uploadType=media&name=${encodeURIComponent(objectName)}`;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+      'Content-Type': 'audio/webm',
+    },
+    body: audioBytes,
+  });
+  if (!res.ok) {
+    const errText = await res.text();
+    throw new Error(`GCS upload failed: ${res.status} - ${errText}`);
+  }
+  return `gs://${bucket}/${objectName}`;
+}
+
+async function deleteFromGcs(bucket: string, objectName: string, accessToken: string): Promise<void> {
+  await fetch(
+    `https://storage.googleapis.com/storage/v1/b/${bucket}/o/${encodeURIComponent(objectName)}`,
+    { method: 'DELETE', headers: { 'Authorization': `Bearer ${accessToken}` } },
+  ).catch(() => { /* best effort cleanup */ });
+}
+
 // ─── Long audio: async recognize ─────────────────────
-// Google STT sync `recognize` has a hard 60-second audio limit (NOT file size).
-// WebM OPUS at ~48kbps ≈ 360KB/min, so a 1-min file is only ~360KB.
-// Always use longrunningrecognize for reliability — it handles any length.
+// Google STT inline (base64) is limited to ~1 minute for BOTH sync and longrunning.
+// For longer audio, must use GCS URI with longrunningrecognize.
+
+const GCS_BUCKET = 're-be-stt-temp';
 
 async function transcribeLongAudio(
   audioBytes: Uint8Array,
@@ -169,7 +234,88 @@ async function transcribeLongAudio(
     return transcribeWithGoogleSTT(audioBytes, apiKey);
   }
 
-  // Async API for larger files
+  // For longer audio, try GCS upload → longrunningrecognize
+  const saJson = Deno.env.get('GOOGLE_SERVICE_ACCOUNT_JSON');
+  if (!saJson) {
+    // Fallback: try inline longrunning (will fail for > 1 min, but worth a shot)
+    console.warn('[voice-transcribe] No GOOGLE_SERVICE_ACCOUNT_JSON — trying inline longrunning');
+    return transcribeInlineLongRunning(audioBytes, apiKey);
+  }
+
+  const sa: ServiceAccount = JSON.parse(saJson);
+  const accessToken = await getGcsAccessToken(sa);
+
+  // Upload to GCS
+  const objectName = `stt-temp/${crypto.randomUUID()}.webm`;
+  console.log(`[voice-transcribe] Uploading to GCS: ${GCS_BUCKET}/${objectName}`);
+  const gcsUri = await uploadToGcs(audioBytes, GCS_BUCKET, objectName, accessToken);
+  console.log(`[voice-transcribe] GCS URI: ${gcsUri}`);
+
+  try {
+    // Call longrunningrecognize with GCS URI
+    const opResponse = await fetch(
+      `https://speech.googleapis.com/v1/speech:longrunningrecognize?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          config: {
+            encoding: 'WEBM_OPUS',
+            sampleRateHertz: 48000,
+            languageCode: 'ko-KR',
+            enableAutomaticPunctuation: true,
+            enableWordTimeOffsets: true,
+            diarizationConfig: {
+              enableSpeakerDiarization: true,
+              minSpeakerCount: 1,
+              maxSpeakerCount: 6,
+            },
+            model: 'latest_long',
+            useEnhanced: true,
+          },
+          audio: { uri: gcsUri },
+        }),
+      },
+    );
+
+    if (!opResponse.ok) {
+      const errText = await opResponse.text();
+      throw new Error(`Google STT longrunning error: ${opResponse.status} - ${errText}`);
+    }
+
+    const operation = await opResponse.json();
+    const operationName = operation.name;
+
+    // Poll for completion (max 10 minutes)
+    for (let i = 0; i < 120; i++) {
+      await new Promise(r => setTimeout(r, 5000));
+
+      const pollResponse = await fetch(
+        `https://speech.googleapis.com/v1/operations/${operationName}?key=${apiKey}`,
+      );
+      const pollData = await pollResponse.json();
+
+      if (pollData.done) {
+        if (pollData.error) {
+          throw new Error(`Google STT async error: ${JSON.stringify(pollData.error)}`);
+        }
+        return parseWordsToSegments(pollData.response?.results || []);
+      }
+    }
+
+    throw new Error('Transcription timed out after 10 minutes');
+  } finally {
+    // Always clean up GCS file
+    await deleteFromGcs(GCS_BUCKET, objectName, accessToken);
+    console.log(`[voice-transcribe] Cleaned up GCS: ${objectName}`);
+  }
+}
+
+// Fallback: inline longrunning (for when no GCS credentials)
+async function transcribeInlineLongRunning(
+  audioBytes: Uint8Array,
+  apiKey: string,
+): Promise<TranscriptSegment[]> {
   const audioContent = uint8ArrayToBase64(audioBytes);
 
   const opResponse = await fetch(
@@ -205,19 +351,14 @@ async function transcribeLongAudio(
   const operation = await opResponse.json();
   const operationName = operation.name;
 
-  // Poll for completion (max 5 minutes, 60 polls × 5s)
   for (let i = 0; i < 60; i++) {
     await new Promise(r => setTimeout(r, 5000));
-
     const pollResponse = await fetch(
       `https://speech.googleapis.com/v1/operations/${operationName}?key=${apiKey}`,
     );
     const pollData = await pollResponse.json();
-
     if (pollData.done) {
-      if (pollData.error) {
-        throw new Error(`Google STT async error: ${JSON.stringify(pollData.error)}`);
-      }
+      if (pollData.error) throw new Error(`Google STT async error: ${JSON.stringify(pollData.error)}`);
       return parseWordsToSegments(pollData.response?.results || []);
     }
   }
