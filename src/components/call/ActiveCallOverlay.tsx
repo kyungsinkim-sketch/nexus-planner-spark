@@ -54,9 +54,13 @@ import { supabase } from '@/lib/supabase';
 import { Sparkles } from 'lucide-react';
 import type { VoiceRecording } from '@/types/core';
 
-// Lazy import TranscriptViewDialog
+// Lazy import TranscriptViewDialog — auto-reload on stale chunk
 const TranscriptViewDialog = React.lazy(() =>
-  import('@/components/widgets/TranscriptViewDialog')
+  import('@/components/widgets/TranscriptViewDialog').catch(() => {
+    console.warn('[Call] Stale chunk detected, reloading...');
+    window.location.reload();
+    return import('@/components/widgets/TranscriptViewDialog');
+  })
 );
 
 

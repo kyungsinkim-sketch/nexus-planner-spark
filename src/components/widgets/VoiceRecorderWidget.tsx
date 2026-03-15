@@ -56,7 +56,10 @@ import {
 } from '@/services/audioService';
 
 // Lazy-load the transcript dialog — only needed when user clicks a recording
-const TranscriptViewDialog = lazy(() => import('./TranscriptViewDialog'));
+const TranscriptViewDialog = lazy(() => import('./TranscriptViewDialog').catch(() => {
+  window.location.reload();
+  return import('./TranscriptViewDialog');
+}));
 
 type TabMode = 'record' | 'upload' | 'history';
 
