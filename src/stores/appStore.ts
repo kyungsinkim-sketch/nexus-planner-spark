@@ -1230,11 +1230,17 @@ export const useAppStore = create<AppState>()(
           } else if (message.messageType === 'file') {
             preview = '📎 ' + message.content.slice(0, 80);
           }
+          // Resolve projectId: prefer message.projectId, fallback to room's projectId
+          let resolvedProjectId = message.projectId;
+          if (!resolvedProjectId && message.roomId) {
+            const room = state.chatRooms.find(r => r.id === message.roomId);
+            if (room?.projectId) resolvedProjectId = room.projectId;
+          }
           get().addAppNotification({
             type: 'chat',
             title: sender?.name || 'New message',
             message: preview,
-            projectId: message.projectId || undefined,
+            projectId: resolvedProjectId || undefined,
             roomId: message.roomId || undefined,
             directUserId: message.directChatUserId || undefined,
             sourceId: message.id,

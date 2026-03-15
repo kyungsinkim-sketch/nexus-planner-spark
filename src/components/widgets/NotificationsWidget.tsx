@@ -136,12 +136,16 @@ function NotificationsWidget({ context }: { context: WidgetDataContext }) {
     brainNotifications
       .slice(0, 10)
       .forEach((bn) => {
-        // In project context, only show brain notifs linked to this project's chat rooms
-        if (isProjectContext && bn.chatRoomId) {
-          // Check if chatRoom belongs to this project
-          const { chatRooms } = useAppStore.getState();
-          const room = chatRooms.find(r => r.id === bn.chatRoomId);
-          if (room && room.projectId !== context.projectId) return;
+        // In project context, only show brain notifs linked to this project
+        if (isProjectContext) {
+          if (bn.chatRoomId) {
+            const { chatRooms } = useAppStore.getState();
+            const room = chatRooms.find(r => r.id === bn.chatRoomId);
+            if (!room || room.projectId !== context.projectId) return;
+          } else {
+            // No chatRoomId — skip in project context (can't determine project)
+            return;
+          }
         }
         const id = `brain-${bn.id}`;
         if (dismissedSet.has(id)) return;
