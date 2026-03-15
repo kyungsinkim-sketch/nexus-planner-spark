@@ -886,6 +886,11 @@ export function MobileAIChatView() {
                   e.preventDefault();
                   handleSelectTarget(chatSuggestions[suggestionIndex]);
                   return;
+                } else if (e.key === 'Escape') {
+                  e.preventDefault();
+                  setShowChatSuggestions(false);
+                  setSuggestionIndex(-1);
+                  return;
                 }
               }
               if (e.key === 'Enter') { e.preventDefault(); handleSubmit(); }
