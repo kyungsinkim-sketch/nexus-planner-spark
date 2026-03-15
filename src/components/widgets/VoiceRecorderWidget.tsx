@@ -617,6 +617,26 @@ function VoiceRecorderWidget({ context }: { context: WidgetDataContext }) {
         {/* ───── History Mode ───── */}
         {tab === 'history' && (
           <div className="space-y-1">
+            {sortedRecordings.length > 0 && (
+              <div className="flex justify-end mb-1">
+                <button
+                  onClick={async () => {
+                    if (!confirm(`녹음 ${sortedRecordings.length}개를 모두 삭제하시겠습니까?`)) return;
+                    try {
+                      const { supabase } = await import('@/lib/supabase');
+                      const paths = sortedRecordings.filter(r => r.audioStoragePath).map(r => r.audioStoragePath);
+                      if (paths.length) await supabase.storage.from('voice-recordings').remove(paths);
+                      const ids = sortedRecordings.map(r => r.id);
+                      await supabase.from('voice_recordings').delete().in('id', ids);
+                      useAppStore.setState({ voiceRecordings: [] });
+                    } catch (err) { console.error('[VoiceRecorder] Delete all error:', err); }
+                  }}
+                  className="text-[10px] text-destructive/70 hover:text-destructive transition-colors"
+                >
+                  전체 삭제
+                </button>
+              </div>
+            )}
             {sortedRecordings.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-8 text-muted-foreground/60 gap-1">
                 <FileAudio className="w-5 h-5" />
