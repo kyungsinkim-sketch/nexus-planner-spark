@@ -1079,7 +1079,7 @@ async function processCallRecording(roomId: string, blob: Blob, duration: number
       title: 'In-App Call',
       audio_storage_path: storagePath,
       file_size: blob.size,
-      duration,
+      duration_seconds: duration,
       status: 'transcribing',
       recording_type: 'online_meeting',
     })
@@ -1143,7 +1143,7 @@ async function processLiveTranscriptOnly(roomId: string, liveTranscript: string,
   }));
 
   const { data: voiceRec } = await supabase.from('voice_recordings').insert({
-    user_id: userId, title: 'In-App Call', file_size: 0, duration,
+    user_id: userId, title: 'In-App Call', file_size: 0, duration_seconds: duration,
     status: 'analyzing', recording_type: 'online_meeting',
     transcript: JSON.stringify(transcript),
   }).select().single();
