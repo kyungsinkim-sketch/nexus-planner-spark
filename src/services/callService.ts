@@ -1110,7 +1110,12 @@ async function processCallRecording(roomId: string, blob: Blob, duration: number
   }
   console.log('[Call] ✅ STT done, segments:', sttData?.transcript?.length || 0);
 
-  // 5. Mark ready — TranscriptViewDialog handles Brain Analysis on user action
+  // 5. Mark voice_recording as completed (ready for user review)
+  await supabase.from('voice_recordings').update({
+    status: 'completed',
+  }).eq('id', voiceRec.id);
+
+  // 6. Mark call room ready
   await supabase.from('call_rooms').update({
     analysis_status: 'completed',
     status: 'completed',
