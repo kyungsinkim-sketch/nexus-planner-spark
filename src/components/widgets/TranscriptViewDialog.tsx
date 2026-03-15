@@ -339,7 +339,10 @@ function TranscriptViewDialog({
         priority: a.actionItems[0].priority || 'NORMAL',
         projectId: a.actionItems[0].projectId,
       } : undefined,
-      suggestedNote: a.decisions?.map(d => d.content).join('\n') || a.summary || undefined,
+      suggestedNote: [
+        ...(a.decisions?.map(d => `• ${d.content}${d.decidedBy ? ` (${d.decidedBy})` : ''}`) || []),
+        ...(a.keyQuotes?.map(q => `"${q.text}" — ${q.speaker}`) || []),
+      ].join('\n') || a.summary || undefined,
       confidence: 0.9,
       status: 'pending',
     };
@@ -354,11 +357,13 @@ function TranscriptViewDialog({
     if (edits.includeEvent && edits.event) {
       await addEvent({
         title: edits.event.title,
+        type: 'MEETING',
         startAt: edits.event.startAt || new Date().toISOString(),
-        endAt: edits.event.endAt || new Date().toISOString(),
+        endAt: edits.event.endAt || new Date(Date.now() + 3600000).toISOString(),
         location: edits.event.location,
         projectId: edits.event.projectId,
         attendeeIds: edits.event.attendeeIds,
+        ownerId: useAppStore.getState().currentUser?.id,
       });
       await loadEvents();
     }
@@ -456,28 +461,24 @@ function TranscriptViewDialog({
             </div>
           )}
 
-          {/* Brain Analysis */}
+          {/* Brain Analysis — simplified: summary only + Review button */}
           {analysis && (
             <div>
               <h4 className="text-xs font-medium text-muted-foreground mb-1.5 flex items-center gap-1">
                 <Brain className="w-3 h-3 text-primary" />
-                {t('voiceRecorderBrainAnalysis')}
+                Meeting Summary
               </h4>
-              <BrainAnalysisView
-                analysis={analysis}
-                onAddEvent={handleAddEvent}
-                onAddTodo={handleAddTodo}
-              />
-              {/* Brain AI 제안 확인 button → opens SuggestionReviewDialog */}
-              {(analysis.suggestedEvents?.length > 0 || analysis.actionItems?.length > 0 || analysis.decisions?.length > 0) && (
-                <button
-                  onClick={() => setShowSuggestionReview(true)}
-                  className="mt-2 w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary text-xs font-medium transition-colors"
-                >
-                  <Sparkles className="w-3.5 h-3.5" />
-                  {t('language') === 'ko' ? 'Brain AI 제안 확인 및 적용' : 'Review & Apply Brain AI Suggestions'}
-                </button>
+              {analysis.summary && (
+                <p className="text-xs text-foreground/80 leading-relaxed mb-2">{analysis.summary}</p>
               )}
+              {/* Review Brain AI Suggestions button */}
+              <button
+                onClick={() => setShowSuggestionReview(true)}
+                className="w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary text-xs font-medium transition-colors"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                Review Brain AI Suggestions
+              </button>
             </div>
           )}
         </div>
