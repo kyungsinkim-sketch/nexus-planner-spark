@@ -913,7 +913,7 @@ export async function endCall(): Promise<void> {
   const roomInfo = currentState.room;
 
   // Stop recording BEFORE disconnect (tracks get detached on disconnect)
-  let audioBase64: string | null = null;
+  let audioBlob: Blob | null = null;
   console.log('[Call] Recording state check:', {
     hasMediaRecorder: !!mediaRecorder,
     state: mediaRecorder?.state ?? 'null',
@@ -923,35 +923,20 @@ export async function endCall(): Promise<void> {
 
   if (mediaRecorder && mediaRecorder.state !== 'inactive') {
     try {
-      audioBase64 = await Promise.race([
-        stopAndCollectRecording(),
+      audioBlob = await Promise.race([
+        stopAndCollectBlob(),
         new Promise<null>(resolve => setTimeout(() => {
           console.warn('[Call] ⚠️ Recording collection TIMED OUT after 8s');
           resolve(null);
-        }, 8000)), // 8s timeout (was 3s — too aggressive for large recordings)
+        }, 8000)),
       ]);
-      console.log('[Call] Recording collected:', audioBase64 ? `${Math.round(audioBase64.length / 1024)}KB base64 (${audioChunks.length} chunks)` : 'null (timeout or empty)');
+      console.log('[Call] Recording collected:', audioBlob ? `${Math.round(audioBlob.size / 1024)}KB blob` : 'null (timeout or empty)');
     } catch (err) {
       console.warn('[Call] Recording collection failed:', err);
     }
-  } else if (mediaRecorder && mediaRecorder.state === 'inactive' && audioChunks.length > 0) {
-    // MediaRecorder already stopped (e.g. track ended) but we have chunks — collect them
-    console.log('[Call] MediaRecorder inactive but has', audioChunks.length, 'chunks, collecting...');
-    try {
-      const blob = new Blob(audioChunks, { type: 'audio/webm' });
-      if (blob.size > 0 && blob.size < 5 * 1024 * 1024) {
-        const buffer = await blob.arrayBuffer();
-        const bytes = new Uint8Array(buffer);
-        let binary = '';
-        for (let i = 0; i < bytes.length; i++) {
-          binary += String.fromCharCode(bytes[i]);
-        }
-        audioBase64 = btoa(binary);
-        console.log('[Call] Collected from inactive recorder:', Math.round(audioBase64.length / 1024), 'KB');
-      }
-    } catch (err) {
-      console.warn('[Call] Inactive chunk collection failed:', err);
-    }
+  } else if (audioChunks.length > 0) {
+    audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+    console.log('[Call] Collected from chunks:', Math.round(audioBlob.size / 1024), 'KB');
   } else {
     console.warn('[Call] No active mediaRecorder at endCall. state:', mediaRecorder?.state ?? 'null', 'chunks:', audioChunks.length);
   }
@@ -1007,86 +992,182 @@ export async function endCall(): Promise<void> {
   setTimeout(() => { endCallInProgress = false; }, 3000);
   console.log('[Call] UI reset to idle');
 
-  // Send end signal to backend (non-blocking, after UI reset)
+  // Process call end: direct client-side upload (same as Voice Recorder)
   if (roomInfo) {
-    console.log('[Call] Sending end signal to backend. roomId:', roomInfo.id, 'hasAudio:', !!audioBase64, 'audioSize:', audioBase64 ? Math.round(audioBase64.length / 1024) + 'KB' : '0', 'hasLiveTranscript:', !!liveTranscriptText);
-    try {
-      supabase.functions.invoke('call-room-end', {
-        body: {
-          roomId: roomInfo.id,
-          audioBlob: audioBase64,
-          liveTranscript: liveTranscriptText || null,
-        },
-      }).then((resp) => {
-        console.log('[Call] End signal sent to backend:', JSON.stringify(resp.data));
-        if (resp.error) console.error('[Call] Backend error:', resp.error);
-      }).catch(err => {
-        console.error('[Call] End call API failed:', err);
+    const roomId = roomInfo.id;
+    const duration = currentState.durationSeconds || Math.round((Date.now() - (callStartTime || Date.now())) / 1000);
+
+    // 1. End room on backend (no audio — just status update)
+    supabase.functions.invoke('call-room-end', {
+      body: { roomId, liveTranscript: liveTranscriptText || null },
+    }).then((resp) => {
+      console.log('[Call] Room ended:', JSON.stringify(resp.data));
+    }).catch(err => console.error('[Call] call-room-end failed:', err));
+
+    // 2. Client-side upload + pipeline (Voice Recorder pattern)
+    if (audioBlob && audioBlob.size > 0) {
+      processCallRecording(roomId, audioBlob, duration, liveTranscriptText).catch(err => {
+        console.error('[Call] processCallRecording failed:', err);
       });
-    } catch { /* ignore */ }
+    } else if (liveTranscriptText && liveTranscriptText.trim().length > 10) {
+      console.log('[Call] No audio, using liveTranscript for analysis');
+      processLiveTranscriptOnly(roomId, liveTranscriptText, duration).catch(err => {
+        console.error('[Call] processLiveTranscriptOnly failed:', err);
+      });
+    }
   }
 }
 
-async function stopAndCollectRecording(): Promise<string | null> {
+async function stopAndCollectBlob(): Promise<Blob | null> {
   return new Promise((resolve) => {
     if (!mediaRecorder || mediaRecorder.state === 'inactive') {
-      console.log('[Call] stopAndCollect: recorder inactive/null, trying chunks directly');
-      // Even if inactive, try to collect existing chunks
       if (audioChunks.length > 0) {
-        try {
-          const blob = new Blob(audioChunks, { type: 'audio/webm' });
-          if (blob.size > 0 && blob.size < 5 * 1024 * 1024) {
-            blob.arrayBuffer().then(buffer => {
-              const bytes = new Uint8Array(buffer);
-              let binary = '';
-              for (let i = 0; i < bytes.length; i++) {
-                binary += String.fromCharCode(bytes[i]);
-              }
-              resolve(btoa(binary));
-            }).catch(() => resolve(null));
-            return;
-          }
-        } catch { /* fall through */ }
+        resolve(new Blob(audioChunks, { type: 'audio/webm' }));
+      } else {
+        resolve(null);
       }
-      resolve(null);
       return;
     }
 
     console.log('[Call] stopAndCollect: stopping recorder, state:', mediaRecorder.state, 'chunks:', audioChunks.length);
 
-    mediaRecorder.onstop = async () => {
+    mediaRecorder.onstop = () => {
       console.log('[Call] stopAndCollect: onstop fired, chunks:', audioChunks.length);
-      try {
-        if (audioChunks.length > 0) {
-          const blob = new Blob(audioChunks, { type: 'audio/webm' });
-          console.log('[Call] stopAndCollect: blob size:', blob.size);
-          // Only encode if under 5MB to avoid blocking
-          if (blob.size < 5 * 1024 * 1024) {
-            const buffer = await blob.arrayBuffer();
-            const bytes = new Uint8Array(buffer);
-            let binary = '';
-            for (let i = 0; i < bytes.length; i++) {
-              binary += String.fromCharCode(bytes[i]);
-            }
-            const result = btoa(binary);
-            console.log('[Call] stopAndCollect: base64 size:', Math.round(result.length / 1024), 'KB');
-            resolve(result);
-          } else {
-            console.warn('[Call] Recording too large for base64:', blob.size);
-            resolve(null);
-          }
-        } else {
-          console.warn('[Call] stopAndCollect: no chunks collected');
-          resolve(null);
-        }
-      } catch (err) {
-        console.error('[Call] stopAndCollect error:', err);
+      if (audioChunks.length > 0) {
+        const blob = new Blob(audioChunks, { type: 'audio/webm' });
+        console.log('[Call] stopAndCollect: blob size:', blob.size);
+        resolve(blob);
+      } else {
         resolve(null);
       }
     };
 
     mediaRecorder.stop();
   });
+}
+
+// ─── Client-side upload + pipeline (Voice Recorder pattern) ──────
+
+async function processCallRecording(roomId: string, blob: Blob, duration: number, liveTranscript: string | null): Promise<void> {
+  const { data: { session } } = await supabase.auth.getSession();
+  const userId = session?.user?.id;
+  if (!userId) { console.error('[Call] No user session for upload'); return; }
+
+  console.log('[Call] 📤 Uploading recording...', Math.round(blob.size / 1024), 'KB');
+
+  // 1. Upload to storage (same path pattern as audioService)
+  const storagePath = `${userId}/call_${roomId}_${Date.now()}.webm`;
+  const { error: uploadError } = await supabase.storage
+    .from('voice-recordings')
+    .upload(storagePath, blob, { contentType: 'audio/webm', upsert: true });
+
+  if (uploadError) {
+    console.error('[Call] ❌ Storage upload failed:', uploadError);
+    // Fallback to liveTranscript
+    if (liveTranscript && liveTranscript.trim().length > 10) {
+      return processLiveTranscriptOnly(roomId, liveTranscript, duration);
+    }
+    return;
+  }
+  console.log('[Call] ✅ Upload success:', storagePath);
+
+  // 2. Create voice_recordings entry (same as audioService)
+  const { data: voiceRec, error: insertError } = await supabase
+    .from('voice_recordings')
+    .insert({
+      user_id: userId,
+      title: 'In-App Call',
+      audio_storage_path: storagePath,
+      file_size: blob.size,
+      duration,
+      status: 'transcribing',
+      recording_type: 'online_meeting',
+    })
+    .select()
+    .single();
+
+  if (insertError || !voiceRec) {
+    console.error('[Call] ❌ voice_recordings insert failed:', insertError);
+    return;
+  }
+  console.log('[Call] ✅ voice_recordings created:', voiceRec.id);
+
+  // 3. Link to call_rooms
+  await supabase.from('call_rooms').update({
+    voice_recording_id: voiceRec.id,
+    analysis_status: 'transcribing',
+  }).eq('id', roomId);
+
+  // 4. Trigger STT (voice-transcribe) → same as Voice Recorder
+  console.log('[Call] 🎙️ Starting transcription...');
+  const { data: sttData, error: sttError } = await supabase.functions.invoke('voice-transcribe', {
+    body: { recordingId: voiceRec.id, userId, audioStoragePath: storagePath },
+  });
+
+  if (sttError || sttData?.error) {
+    console.error('[Call] ❌ STT failed:', sttError || sttData?.error);
+    await supabase.from('call_rooms').update({ analysis_status: 'error' }).eq('id', roomId);
+    return;
+  }
+  console.log('[Call] ✅ STT done, segments:', sttData?.transcript?.length || 0);
+
+  // 5. Trigger Brain Analysis (voice-brain-analyze) → same as Voice Recorder
+  console.log('[Call] 🧠 Starting brain analysis...');
+  await supabase.from('call_rooms').update({ analysis_status: 'analyzing' }).eq('id', roomId);
+
+  const { data: brainData, error: brainError } = await supabase.functions.invoke('voice-brain-analyze', {
+    body: { recordingId: voiceRec.id, userId, transcript: sttData.transcript },
+  });
+
+  if (brainError || brainData?.error) {
+    console.error('[Call] ❌ Brain analysis failed:', brainError || brainData?.error);
+    await supabase.from('call_rooms').update({ analysis_status: 'error' }).eq('id', roomId);
+    return;
+  }
+  console.log('[Call] ✅ Brain analysis done');
+
+  // 6. Mark complete
+  await supabase.from('call_rooms').update({
+    analysis_status: 'completed',
+    status: 'completed',
+  }).eq('id', roomId);
+}
+
+async function processLiveTranscriptOnly(roomId: string, liveTranscript: string, duration: number): Promise<void> {
+  const { data: { session } } = await supabase.auth.getSession();
+  const userId = session?.user?.id;
+  if (!userId) return;
+
+  const transcript = liveTranscript.split('\n').filter(l => l.trim()).map((line, i) => ({
+    speaker: '화자 1', text: line.trim(), startTime: i * 10, endTime: (i + 1) * 10,
+  }));
+
+  const { data: voiceRec } = await supabase.from('voice_recordings').insert({
+    user_id: userId, title: 'In-App Call', file_size: 0, duration,
+    status: 'analyzing', recording_type: 'online_meeting',
+    transcript: JSON.stringify(transcript),
+  }).select().single();
+
+  if (!voiceRec) return;
+
+  await supabase.from('call_rooms').update({
+    voice_recording_id: voiceRec.id, analysis_status: 'analyzing',
+  }).eq('id', roomId);
+
+  const { error } = await supabase.functions.invoke('voice-brain-analyze', {
+    body: { recordingId: voiceRec.id, userId, transcript },
+  });
+
+  if (error) {
+    console.error('[Call] Live transcript analysis failed:', error);
+    await supabase.from('call_rooms').update({ analysis_status: 'error' }).eq('id', roomId);
+    return;
+  }
+
+  await supabase.from('call_rooms').update({
+    analysis_status: 'completed', status: 'completed',
+  }).eq('id', roomId);
+  console.log('[Call] ✅ Live transcript analysis done');
 }
 
 // handleCallEnd is now only called by Disconnected event during active call
