@@ -742,7 +742,7 @@ export function MobileAIChatView() {
   return (
     <div className="relative flex flex-col h-full widget-area-bg overflow-hidden">
       {/* ═══ Scrollable area: briefing at top, messages grow from bottom ═══ */}
-      <div className="flex-1 min-h-0 overflow-y-auto flex flex-col" style={{ paddingBottom: '140px' }}>
+      <div className="flex-1 min-h-0 overflow-y-auto flex flex-col">
         {/* ── Sticky header zone: Profile Card + Briefing ── */}
         <div className="shrink-0 px-4 pt-6 pb-2">
           <ProfileCard user={currentUser} language={language} projects={projects} onProjectsClick={() => useWidgetStore.getState().setMobileView('projects')} />
@@ -819,10 +819,9 @@ export function MobileAIChatView() {
         </div>
       </div>
 
-      {/* ═══ Universal Chat Bar — fixed above floating nav ═══ */}
+      {/* ═══ Universal Chat Bar — flex bottom, above nav ═══ */}
       <div
-        className="fixed left-0 right-0 z-40 px-4 py-2"
-        style={{ bottom: kbBottom != null ? `${kbBottom}px` : 'calc(64px + env(safe-area-inset-bottom, 0px))' }}
+        className="shrink-0 px-4 py-2 pb-[calc(64px+env(safe-area-inset-bottom,0px))]"
       >
         {/* Selected target badge */}
         {selectedTarget && (
@@ -918,7 +917,7 @@ export function MobileAIChatView() {
               }
               if (e.key === 'Enter') { e.preventDefault(); handleSubmit(); }
             }}
-            onFocus={() => { window.scrollTo(0, 0); setTimeout(() => window.scrollTo(0, 0), 150); }}
+            onFocus={() => { /* no-op: body overflow hidden prevents scroll */ }}
             placeholder={
               selectedTarget
                 ? (language === 'ko' ? `${selectedTarget.name}에게 메시지...` : `Message ${selectedTarget.name}...`)

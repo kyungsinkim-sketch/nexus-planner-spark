@@ -75,8 +75,7 @@ export function TabLayout() {
     const onResize = () => {
       // Set container height to visual viewport height so keyboard pushes content up
       setViewportHeight(vv.height);
-      // Scroll to keep focused element visible
-      window.scrollTo(0, vv.offsetTop);
+      // Do NOT scroll body — causes white gap below content
     };
 
     vv.addEventListener('resize', onResize);
@@ -86,7 +85,6 @@ export function TabLayout() {
     const handleFocusOut = () => {
       setTimeout(() => {
         setViewportHeight(null);
-        window.scrollTo(0, 0);
       }, 100);
     };
     document.addEventListener('focusout', handleFocusOut);

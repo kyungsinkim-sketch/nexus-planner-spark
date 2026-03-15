@@ -55,11 +55,23 @@
       -webkit-text-size-adjust: 100%;
       -moz-text-size-adjust: 100%;
       text-size-adjust: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #0C0A1E;
     }
 
     /* Safe area insets for iOS notch — no bottom padding so content extends behind nav */
     body {
       padding: env(safe-area-inset-top) env(safe-area-inset-right) 0px env(safe-area-inset-left);
+      background: #0C0A1E;
+      height: 100%;
+      overflow: hidden;
+    }
+
+    /* Prevent white gap when keyboard pushes content (resizes-visual mode) */
+    #root {
+      height: 100%;
+      overflow: hidden;
       background: #0C0A1E;
     }
   </style>
