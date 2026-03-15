@@ -364,7 +364,7 @@ export const translations = {
 
     // Employee Directory
     employeeList: '임직원 목록',
-    position: '직급',
+    position: 'Job Title / Role',
     hireDate: '입사일',
 
     // Salary Table
@@ -1808,7 +1808,7 @@ export const translations = {
 
     // Employee Directory
     employeeList: 'Employee List',
-    position: 'Position',
+    position: 'Job Title / Role',
     hireDate: 'Hire Date',
 
     // Salary Table

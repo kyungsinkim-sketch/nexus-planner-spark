@@ -123,6 +123,27 @@ export async function removeProjectTeamMember(projectId: string, userId: string)
   if (error) throw error;
 }
 
+// ─── Add custom role ───
+
+export async function addCreativeRole(name: string, category: string): Promise<CreativeRole> {
+  if (!isSupabaseConfigured()) throw new Error('Supabase not configured');
+  // Get max sort_order for this category
+  const { data: existing } = await supabase
+    .from('creative_roles')
+    .select('sort_order')
+    .eq('category', category)
+    .order('sort_order', { ascending: false })
+    .limit(1);
+  const nextOrder = existing && existing.length > 0 ? (existing[0].sort_order as number) + 1 : 50;
+  const { data, error } = await supabase
+    .from('creative_roles')
+    .insert({ name, category, sort_order: nextOrder, is_active: true })
+    .select('*')
+    .single();
+  if (error) throw error;
+  return transformRole(data);
+}
+
 // ─── Profile default role ───
 
 export async function setDefaultCreativeRole(userId: string, roleId: string | null): Promise<void> {

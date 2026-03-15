@@ -24,6 +24,8 @@ import { useTranslation } from '@/hooks/useTranslation';
 import { useAdminEmployees } from '@/hooks/useAdmin';
 import { AdminEmployee } from '@/types/admin';
 import { useCreativeRoles } from '@/hooks/useCreativeRoles';
+import { addCreativeRole } from '@/services/creativeRoleService';
+import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 
 interface OrgMember {
@@ -129,6 +131,21 @@ export function OrganizationChart() {
   const { t } = useTranslation();
   const { employees, isLoading, addEmployee, updateEmployee, deleteEmployee } = useAdminEmployees();
   const { grouped: groupedRoles } = useCreativeRoles();
+  const queryClient = useQueryClient();
+
+  const handleAddRoleInline = async () => {
+    const name = prompt('Enter new job title name:');
+    if (!name?.trim()) return;
+    const category = prompt('Category (Production, Creative, Post-Production, Management, Strategy, Other):', 'Management');
+    if (!category?.trim()) return;
+    try {
+      await addCreativeRole(name.trim(), category.trim());
+      await queryClient.invalidateQueries({ queryKey: ['creativeRoles'] });
+      toast.success(`"${name.trim()}" added`);
+    } catch (err) {
+      toast.error('Failed to add role');
+    }
+  };
   const {
     departments: deptObjects, departmentNames: departments, teamsMap: teams, orgTeams,
     loading: orgLoading,
@@ -402,13 +419,13 @@ export function OrganizationChart() {
               />
             </div>
             <div className="space-y-2">
-              <label className="text-xs font-medium">Position</label>
+              <label className="text-xs font-medium">Job Title / Role</label>
               <Select
                 value={tempMember.position || ''}
                 onValueChange={v => setTempMember({ ...tempMember, position: v })}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="직책 선택" />
+                  <SelectValue placeholder="Select title" />
                 </SelectTrigger>
                 <SelectContent>
                   {Object.entries(groupedRoles).map(([category, roles]) => (
@@ -421,6 +438,13 @@ export function OrganizationChart() {
                       ))}
                     </React.Fragment>
                   ))}
+                  <div className="border-t my-1" />
+                  <button
+                    className="w-full flex items-center gap-2 px-2 py-1.5 text-xs text-primary hover:bg-accent rounded cursor-pointer"
+                    onMouseDown={(e) => { e.preventDefault(); handleAddRoleInline(); }}
+                  >
+                    <Plus className="w-3 h-3" /> Add new title
+                  </button>
                 </SelectContent>
               </Select>
             </div>
@@ -553,7 +577,7 @@ export function OrganizationChart() {
                                     onValueChange={(v) => setMembers(prev => prev.map(m => m.id === member.id ? { ...m, position: v } : m))}
                                   >
                                     <SelectTrigger className="h-8 w-[160px]">
-                                      <SelectValue placeholder="직책 선택" />
+                                      <SelectValue placeholder="Select title" />
                                     </SelectTrigger>
                                     <SelectContent>
                                       {Object.entries(groupedRoles).map(([category, roles]) => (
@@ -566,6 +590,13 @@ export function OrganizationChart() {
                                           ))}
                                         </React.Fragment>
                                       ))}
+                                      <div className="border-t my-1" />
+                                      <button
+                                        className="w-full flex items-center gap-2 px-2 py-1.5 text-xs text-primary hover:bg-accent rounded cursor-pointer"
+                                        onMouseDown={(e) => { e.preventDefault(); handleAddRoleInline(); }}
+                                      >
+                                        <Plus className="w-3 h-3" /> Add new title
+                                      </button>
                                     </SelectContent>
                                   </Select>
                                 </TableCell>

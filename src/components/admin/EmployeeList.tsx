@@ -22,6 +22,9 @@ import { AdminEmployee } from '@/types/admin';
 import { useAppStore } from '@/stores/appStore';
 import { isSupabaseConfigured, supabase } from '@/lib/supabase';
 import { useCreativeRoles } from '@/hooks/useCreativeRoles';
+import { addCreativeRole } from '@/services/creativeRoleService';
+import { useQueryClient } from '@tanstack/react-query';
+import { Plus } from 'lucide-react';
 
 interface Employee extends AdminEmployee {
   monthsWorked: string;
@@ -53,6 +56,30 @@ export function EmployeeList() {
   const { currentUser } = useAppStore();
   const isAdmin = currentUser?.role === 'ADMIN';
   const { roles: creativeRoles, grouped: groupedRoles } = useCreativeRoles();
+  const queryClient = useQueryClient();
+
+  // Custom role add dialog state
+  const [addRoleDialogOpen, setAddRoleDialogOpen] = useState(false);
+  const [newRoleName, setNewRoleName] = useState('');
+  const [newRoleCategory, setNewRoleCategory] = useState('Management');
+  const [isAddingRole, setIsAddingRole] = useState(false);
+
+  const handleAddRole = async () => {
+    if (!newRoleName.trim()) return;
+    setIsAddingRole(true);
+    try {
+      await addCreativeRole(newRoleName.trim(), newRoleCategory);
+      await queryClient.invalidateQueries({ queryKey: ['creativeRoles'] });
+      toast.success(`"${newRoleName.trim()}" added`);
+      setNewRoleName('');
+      setAddRoleDialogOpen(false);
+    } catch (err) {
+      toast.error('Failed to add role');
+      console.error(err);
+    } finally {
+      setIsAddingRole(false);
+    }
+  };
 
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -412,6 +439,13 @@ export function EmployeeList() {
                                 ))}
                               </React.Fragment>
                             ))}
+                            <div className="border-t my-1" />
+                            <button
+                              className="w-full flex items-center gap-2 px-2 py-1.5 text-xs text-primary hover:bg-accent rounded cursor-pointer"
+                              onMouseDown={(e) => { e.preventDefault(); setAddRoleDialogOpen(true); }}
+                            >
+                              <Plus className="w-3 h-3" /> Add new title
+                            </button>
                           </SelectContent>
                         </Select>
                       </TableCell>
@@ -620,13 +654,13 @@ export function EmployeeList() {
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label>직책</Label>
+              <Label>Job Title / Role</Label>
               <Select
                 value={newEmpData.position}
                 onValueChange={(v) => setNewEmpData(prev => ({ ...prev, position: v }))}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="직책 선택" />
+                  <SelectValue placeholder="Select title" />
                 </SelectTrigger>
                 <SelectContent>
                   {Object.entries(groupedRoles).map(([category, roles]) => (
@@ -639,6 +673,13 @@ export function EmployeeList() {
                       ))}
                     </React.Fragment>
                   ))}
+                  <div className="border-t my-1" />
+                  <button
+                    className="w-full flex items-center gap-2 px-2 py-1.5 text-xs text-primary hover:bg-accent rounded cursor-pointer"
+                    onMouseDown={(e) => { e.preventDefault(); setAddRoleDialogOpen(true); }}
+                  >
+                    <Plus className="w-3 h-3" /> Add new title
+                  </button>
                 </SelectContent>
               </Select>
             </div>
@@ -682,6 +723,44 @@ export function EmployeeList() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setAddDialogOpen(false)}>취소</Button>
             <Button onClick={handleAddEmployee}>등록</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      {/* Add Role Dialog */}
+      <Dialog open={addRoleDialogOpen} onOpenChange={setAddRoleDialogOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Add New Job Title</DialogTitle>
+            <DialogDescription>Create a new job title / role that can be assigned to employees.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <Label>Title Name</Label>
+              <Input
+                placeholder="e.g. Chief Creative Officer"
+                value={newRoleName}
+                onChange={(e) => setNewRoleName(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') handleAddRole(); }}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Category</Label>
+              <Select value={newRoleCategory} onValueChange={setNewRoleCategory}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {Object.keys(groupedRoles).map(cat => (
+                    <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                  ))}
+                  <SelectItem value="Other">Other</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAddRoleDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleAddRole} disabled={!newRoleName.trim() || isAddingRole}>
+              {isAddingRole ? 'Adding...' : 'Add'}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
