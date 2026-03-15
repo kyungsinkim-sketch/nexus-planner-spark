@@ -453,7 +453,7 @@ export function MobileAIChatView() {
   const todayEvents = useMemo(() => {
     const now = new Date();
     return events
-      .filter(e => { try { const s = parseISO(e.startAt); return !isBefore(s, startOfDay(now)) && !isAfter(s, endOfDay(now)); } catch { return false; } })
+      .filter(e => { try { const s = parseISO(e.startAt); return !isBefore(s, startOfDay(now)) && !isAfter(s, endOfDay(now)); } catch (_e) { return false; } })
       .sort((a, b) => a.startAt.localeCompare(b.startAt));
   }, [events]);
 
@@ -714,8 +714,8 @@ export function MobileAIChatView() {
         } catch (e) { console.error('[BrainChat] getActionsByMessage failed:', e); }
 
         // Reload events and todos to reflect changes
-        try { await loadEvents(); } catch { /* reload best-effort */ }
-        try { await loadTodos(); } catch { /* reload best-effort */ }
+        await loadEvents().catch(() => { /* best-effort */ });
+        await loadTodos().catch(() => { /* best-effort */ });
       }
     } catch (err: unknown) {
       const errContent = err instanceof Error ? err.message : 'Error';
