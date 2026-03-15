@@ -1140,8 +1140,14 @@ async function processLiveTranscriptOnly(roomId: string, liveTranscript: string,
     voice_recording_id: voiceRec.id, analysis_status: 'analyzing',
   }).eq('id', roomId);
 
+  // Build context for attendee matching
+  const { projects, allUsers } = (await import('@/stores/appStore')).useAppStore.getState();
+  const context = {
+    projects: projects?.map(p => ({ id: p.id, title: p.title, client: (p as any).clientName || '', status: p.status, teamMemberIds: (p as any).teamMemberIds || [] })) || [],
+    users: allUsers?.map(u => ({ id: u.id, name: u.name, department: (u as any).department || '', role: (u as any).role || '' })) || [],
+  };
   const { error } = await supabase.functions.invoke('voice-brain-analyze', {
-    body: { recordingId: voiceRec.id, userId, transcript },
+    body: { recordingId: voiceRec.id, userId, transcript, context },
   });
 
   if (error) {

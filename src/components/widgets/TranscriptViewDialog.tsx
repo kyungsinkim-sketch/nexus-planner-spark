@@ -456,7 +456,7 @@ function TranscriptViewDialog({
     };
   }, [recording]);
 
-  const { addEvent, addTodo, loadEvents, loadTodos, events, updateEvent } = useAppStore();
+  const { addEvent, addTodo, loadEvents, loadTodos, events, updateEvent, projects, allUsers } = useAppStore();
 
   const handleConfirmSuggestion = useCallback(async (
     _suggestion: EmailBrainSuggestion,
@@ -596,9 +596,19 @@ function TranscriptViewDialog({
                     return;
                   }
 
-                  console.log('[TranscriptView] Starting brain analysis for', recording.id);
+                  // Build context with projects + users for attendee matching
+                  const context = {
+                    projects: projects?.map(p => ({
+                      id: p.id, title: p.title, client: p.clientName || '', status: p.status,
+                      teamMemberIds: p.teamMemberIds || [],
+                    })) || [],
+                    users: allUsers?.map(u => ({
+                      id: u.id, name: u.name, department: u.department || '', role: u.role || '',
+                    })) || [],
+                  };
+                  console.log('[TranscriptView] Starting brain analysis for', recording.id, 'with', context.users?.length, 'users');
                   const { data, error } = await supabase.functions.invoke('voice-brain-analyze', {
-                    body: { recordingId: recording.id, userId, transcript },
+                    body: { recordingId: recording.id, userId, transcript, context },
                   });
                   
                   console.log('[TranscriptView] Brain response:', { data, error });

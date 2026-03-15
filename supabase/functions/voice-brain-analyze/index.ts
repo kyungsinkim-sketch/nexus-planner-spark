@@ -117,6 +117,10 @@ Return a single JSON object:
 - Match speakers and names to team members when possible
 - Match project mentions to active projects using title, client name, or abbreviations
 - When matched, set projectId in suggestedEvents and actionItems
+- **IMPORTANT: Match attendee names from transcript to Team Members list and fill attendeeIds with their IDs**
+  - Match by full name, partial name, nickname, or surname (e.g. "원주님" → find member with "원주" in name)
+  - Include the speaker (caller) as attendee too
+  - For actionItems, match assignee names to Team Members and fill assigneeIds
 - Use KST timezone (+09:00) for all timestamps
 - For event duration, default to 1 hour unless specified
 - Prioritize decisions and action items — those are most valuable
