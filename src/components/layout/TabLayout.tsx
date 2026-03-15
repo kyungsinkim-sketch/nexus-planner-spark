@@ -39,7 +39,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import type { WidgetDataContext } from '@/types/widget';
 
 // Lazy load mobile components — only loaded on mobile (Phase 3 redesign)
-const CosmosHomeV2 = lazy(() => import('@/components/mobile/CosmosHomeV2'));
+const MobileAIChatView = lazy(() => import('@/components/mobile/MobileAIChatView'));
 const MobileProjectsView = lazy(() => import('@/components/mobile/MobileProjectsView'));
 const MobileMembersView = lazy(() => import('@/components/mobile/MobileMembersView'));
 const MobileCalendarView = lazy(() => import('@/components/mobile/MobileCalendarView'));
@@ -136,7 +136,7 @@ export function TabLayout() {
             </div>
           }>
             {mobileView === 'ai-chat' ? (
-              <CosmosHomeV2 />
+              <MobileAIChatView />
             ) : mobileView === 'projects' ? (
               <MobileProjectsView />
             ) : mobileView === 'members' ? (
@@ -146,7 +146,7 @@ export function TabLayout() {
             ) : mobileView === 'dm-chat' ? (
               <MobileDmChatView />
             ) : (
-              <CosmosHomeV2 />
+              <MobileAIChatView />
             )}
           </Suspense>
         </div>
