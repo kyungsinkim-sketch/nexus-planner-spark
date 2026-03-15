@@ -318,7 +318,12 @@ export function ActiveCallOverlay() {
       setTranslationEnabled(false);
     } else {
       const started = startLiveTranscript('ko-KR');
-      if (started) setCaptionsOn(true);
+      if (started) {
+        setCaptionsOn(true);
+      } else {
+        // Speech API might be blocked when mic is in use
+        console.warn('[Call] Captions unavailable (mic in use by call)');
+      }
     }
   }, [captionsOn]);
 

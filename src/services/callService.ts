@@ -311,16 +311,22 @@ async function connectToRoom(wsUrl: string, token: string): Promise<void> {
   });
 
   room.on(RoomEvent.LocalTrackPublished, (pub: any) => {
-    console.log('[Call] LocalTrackPublished, kind:', pub?.track?.kind);
-    // Add local audio to recording mix if it wasn't available at recording start
-    if (pub?.track?.kind === Track.Kind.Audio && recordingAudioContext && recordingDestination) {
-      const stream = getMediaStreamFromTrack(pub.track);
-      if (stream) {
-        try {
-          const source = recordingAudioContext.createMediaStreamSource(stream);
-          source.connect(recordingDestination);
-          console.log('[Call] ✅ Local audio added to recording (late publish)');
-        } catch (e) { /* ignore duplicate */ }
+    console.log('[Call] LocalTrackPublished, kind:', pub?.track?.kind, 'readyState:', pub?.track?.mediaStreamTrack?.readyState);
+    // Start recording when audio track is published (most reliable trigger)
+    if (pub?.track?.kind === Track.Kind.Audio) {
+      if (!mediaRecorder || mediaRecorder.state === 'inactive') {
+        console.log('[Call] Starting recording from LocalTrackPublished event');
+        startMixedRecording(room);
+      } else if (recordingAudioContext && recordingDestination) {
+        // Add to existing mix
+        const stream = getMediaStreamFromTrack(pub.track);
+        if (stream) {
+          try {
+            const source = recordingAudioContext.createMediaStreamSource(stream);
+            source.connect(recordingDestination);
+            console.log('[Call] ✅ Local audio added to existing recording mix');
+          } catch (e) { /* ignore duplicate */ }
+        }
       }
     }
   });
@@ -448,21 +454,10 @@ async function connectToRoom(wsUrl: string, token: string): Promise<void> {
     setState({ status: 'active' });
     startDurationTimer();
 
-    // Enable microphone — WAIT for it, then start recording + STT
+    // Enable microphone — recording starts via LocalTrackPublished event
     room.localParticipant.setMicrophoneEnabled(true)
-      .then(() => {
-        console.log('[Call] Microphone enabled ✅');
-        // Start recording after mic is confirmed
-        startRecordingAfterMic(room);
-        // Start Live STT after mic is confirmed
-        startSttForBrain();
-      })
-      .catch((err: any) => {
-        console.warn('[Call] Mic enable failed:', err);
-        // Still try recording + STT even if mic enable "fails"
-        startRecordingAfterMic(room);
-        startSttForBrain();
-      });
+      .then(() => console.log('[Call] Microphone enabled ✅'))
+      .catch((err: any) => console.warn('[Call] Mic enable failed:', err));
   } catch (err: any) {
     console.error('[Call] Connection failed:', err);
     try { room.disconnect(); } catch { /* ignore */ }
@@ -518,38 +513,6 @@ async function connectToRoom(wsUrl: string, token: string): Promise<void> {
   }
 
   currentRoom = room;
-}
-
-// Start recording after mic is confirmed enabled
-function startRecordingAfterMic(room: Room): void {
-  const maxWait = 6000;
-  const interval = 500;
-  let waited = 0;
-  const check = () => {
-    const pubs = Array.from(room.localParticipant.audioTrackPublications.values()) as any[];
-    const hasLocalAudio = pubs.some((p: any) => p.track?.mediaStreamTrack?.readyState === 'live');
-    console.log('[Call] Recording check:', { waited, hasLocalAudio, pubCount: pubs.length, states: pubs.map((p: any) => p.track?.mediaStreamTrack?.readyState ?? 'none') });
-    if (hasLocalAudio || waited >= maxWait) {
-      if (!hasLocalAudio) console.warn('[Call] No live audio track after', waited, 'ms');
-      startMixedRecording(room);
-      return;
-    }
-    waited += interval;
-    setTimeout(check, interval);
-  };
-  check();
-}
-
-// Start Live STT for Brain AI (called after mic enabled)
-function startSttForBrain(): void {
-  const started = startLiveTranscript('ko-KR');
-  console.log('[Call] Auto Live STT for Brain AI:', started ? '✅' : '❌ (retry in 2s)');
-  if (!started) {
-    setTimeout(() => {
-      const retry = startLiveTranscript('ko-KR');
-      console.log('[Call] STT retry:', retry ? '✅' : '❌');
-    }, 2000);
-  }
 }
 
 // ─── Client-side Recording (MVP) ─────────────────────
