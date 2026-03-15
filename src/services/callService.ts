@@ -529,12 +529,18 @@ async function connectToRoom(wsUrl: string, token: string): Promise<void> {
   startRecordingWhenReady();
 
   // Auto-start Live STT for transcript collection (ensures Brain AI works even if recording fails)
-  setTimeout(() => {
-    if (!transcriptLines.length) {
-      const started = startLiveTranscript('ko-KR');
-      console.log('[Call] Auto-started Live STT for Brain AI:', started ? '✅' : '❌');
-    }
-  }, 2000);
+  // Start immediately — don't wait, Brain AI needs transcript data
+  const sttStarted = startLiveTranscript('ko-KR');
+  console.log('[Call] Auto-started Live STT for Brain AI:', sttStarted ? '✅' : '❌ (will retry)');
+  if (!sttStarted) {
+    // Retry after mic is ready
+    setTimeout(() => {
+      if (!transcriptLines.length) {
+        const retry = startLiveTranscript('ko-KR');
+        console.log('[Call] Retried Live STT:', retry ? '✅' : '❌');
+      }
+    }, 3000);
+  }
 }
 
 // ─── Client-side Recording (MVP) ─────────────────────

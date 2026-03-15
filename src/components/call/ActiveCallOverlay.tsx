@@ -12,7 +12,7 @@
  * Audio-only: centered avatar(s) with waveform.
  */
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, Suspense } from 'react';
 import {
   Phone,
   PhoneOff,
@@ -50,6 +50,127 @@ import {
 } from '@/services/callService';
 import { CallSuggestionsPanel } from './CallSuggestionsPanel';
 import { useWidgetStore } from '@/stores/widgetStore';
+import { supabase } from '@/lib/supabase';
+import { Sparkles } from 'lucide-react';
+import type { VoiceRecording } from '@/types/core';
+
+// Lazy import TranscriptViewDialog
+const TranscriptViewDialog = React.lazy(() =>
+  import('@/components/widgets/TranscriptViewDialog').then(m => ({ default: m.TranscriptViewDialog }))
+);
+
+
+/* ─── Post-call Transcript + Brain Suggestion (unified with voice recorder) ─── */
+function PostCallTranscriptView({ roomId, onClose }: { roomId: string; onClose: () => void }) {
+  const [recording, setRecording] = useState<VoiceRecording | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [showDialog, setShowDialog] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    let attempts = 0;
+    const maxAttempts = 30; // 30 * 2s = 60s
+
+    const poll = async () => {
+      try {
+        // Find voice_recording linked to this call room
+        const { data: room } = await supabase
+          .from('call_rooms')
+          .select('voice_recording_id, analysis_status')
+          .eq('id', roomId)
+          .single();
+
+        if (!active) return;
+
+        if (room?.voice_recording_id) {
+          const { data: rec } = await supabase
+            .from('voice_recordings')
+            .select('*')
+            .eq('id', room.voice_recording_id)
+            .single();
+
+          if (rec) {
+            const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://ciuzbyjiqvtkwdlqovst.supabase.co';
+            const mapped: VoiceRecording = {
+              id: rec.id,
+              title: rec.title || 'In-App Call',
+              projectId: rec.project_id || undefined,
+              audioUrl: rec.audio_storage_path ? `${supabaseUrl}/storage/v1/object/public/voice-recordings/${rec.audio_storage_path}` : '',
+              audioStoragePath: rec.audio_storage_path || '',
+              duration: rec.duration_seconds || 0,
+              status: rec.status as VoiceRecording['status'],
+              transcript: typeof rec.transcript === 'string' ? JSON.parse(rec.transcript) : rec.transcript,
+              brainAnalysis: typeof rec.brain_analysis === 'string' ? JSON.parse(rec.brain_analysis) : rec.brain_analysis,
+              errorMessage: rec.error_message || undefined,
+              recordingType: rec.recording_type || 'online_meeting',
+              ragIngested: rec.rag_ingested || false,
+              createdAt: rec.created_at,
+              createdBy: rec.user_id,
+            };
+            setRecording(mapped);
+            setShowDialog(true);
+            setLoading(false);
+            return;
+          }
+        }
+
+        attempts++;
+        if (attempts >= maxAttempts) {
+          setLoading(false);
+          return;
+        }
+        setTimeout(poll, 2000);
+      } catch {
+        if (active) setLoading(false);
+      }
+    };
+
+    poll();
+    return () => { active = false; };
+  }, [roomId]);
+
+  if (loading) {
+    return (
+      <div className="fixed inset-0 z-[9999] bg-gray-950/95 backdrop-blur-sm flex flex-col items-center justify-center">
+        <Loader2 className="w-10 h-10 text-primary animate-spin mb-4" />
+        <p className="text-white text-lg font-medium">Brain AI 분석 중</p>
+        <p className="text-white/50 text-sm mt-2">통화 내용에서 일정, 할 일, 중요 기록을 추출하고 있습니다...</p>
+        <button
+          onClick={onClose}
+          className="mt-6 px-6 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white/60 text-sm transition-colors"
+        >
+          건너뛰기
+        </button>
+      </div>
+    );
+  }
+
+  if (!recording) {
+    return (
+      <div className="fixed inset-0 z-[9999] bg-gray-950/95 backdrop-blur-sm flex flex-col items-center justify-center">
+        <Sparkles className="w-12 h-12 text-gray-500 mb-4" />
+        <p className="text-white text-lg font-medium">분석 완료</p>
+        <p className="text-white/50 text-sm mt-2">추출된 항목이 없습니다.</p>
+        <button
+          onClick={onClose}
+          className="mt-6 px-6 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-sm transition-colors"
+        >
+          닫기
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <Suspense fallback={null}>
+      <TranscriptViewDialog
+        open={showDialog}
+        onOpenChange={(open) => { if (!open) onClose(); setShowDialog(open); }}
+        recording={recording}
+      />
+    </Suspense>
+  );
+}
 
 /* ─── Video renderer (attaches LiveKit track) ─── */
 function VideoRenderer({ track, className, mirror }: { track: any; className?: string; mirror?: boolean }) {
@@ -293,10 +414,10 @@ export function ActiveCallOverlay() {
     }
   }, [callState?.status]);
 
-  // Post-call suggestions
+  // Post-call: show TranscriptViewDialog (unified with voice recorder)
   if (showSuggestions && lastRoomId.current) {
     return (
-      <CallSuggestionsPanel
+      <PostCallTranscriptView
         roomId={lastRoomId.current}
         onClose={() => { setShowSuggestions(false); lastRoomId.current = null; }}
       />
