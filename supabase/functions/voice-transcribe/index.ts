@@ -169,7 +169,7 @@ async function getGcsAccessToken(sa: ServiceAccount): Promise<string> {
   const privateKey = await importPKCS8(sa.private_key, 'RS256');
   const jwt = await new SignJWT({
     iss: sa.client_email,
-    scope: 'https://www.googleapis.com/auth/devstorage.read_write',
+    scope: 'https://www.googleapis.com/auth/devstorage.read_write https://www.googleapis.com/auth/cloud-platform',
     aud: 'https://oauth2.googleapis.com/token',
     iat: now,
     exp: now + 3600,
@@ -252,12 +252,13 @@ async function transcribeLongAudio(
   console.log(`[voice-transcribe] GCS URI: ${gcsUri}`);
 
   try {
-    // Call longrunningrecognize with GCS URI
+    // Call longrunningrecognize with GCS URI — use access token (not API key)
+    // so the service account can read its own GCS objects
     const opResponse = await fetch(
-      `https://speech.googleapis.com/v1/speech:longrunningrecognize?key=${apiKey}`,
+      `https://speech.googleapis.com/v1/speech:longrunningrecognize`,
       {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${accessToken}` },
         body: JSON.stringify({
           config: {
             encoding: 'WEBM_OPUS',
@@ -291,7 +292,8 @@ async function transcribeLongAudio(
       await new Promise(r => setTimeout(r, 5000));
 
       const pollResponse = await fetch(
-        `https://speech.googleapis.com/v1/operations/${operationName}?key=${apiKey}`,
+        `https://speech.googleapis.com/v1/operations/${operationName}`,
+        { headers: { 'Authorization': `Bearer ${accessToken}` } },
       );
       const pollData = await pollResponse.json();
 
