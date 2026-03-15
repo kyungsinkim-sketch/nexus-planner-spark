@@ -41,6 +41,7 @@ export function CallSuggestionsPanel({ roomId, onClose }: CallSuggestionsPanelPr
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
   const [transcript, setTranscript] = useState<Array<{ speaker: string; text: string }> | null>(null);
   const [showTranscript, setShowTranscript] = useState(false);
+  const [minimized, setMinimized] = useState(false);
 
   // Poll for suggestions
   useEffect(() => {
@@ -142,6 +143,22 @@ export function CallSuggestionsPanel({ roomId, onClose }: CallSuggestionsPanelPr
     }
   }, [roomId]);
 
+  // Minimized floating badge
+  if (minimized) {
+    return (
+      <button
+        onClick={() => setMinimized(false)}
+        className="fixed bottom-24 right-4 z-[9999] flex items-center gap-2 px-4 py-2.5 rounded-full bg-primary text-primary-foreground shadow-lg hover:shadow-xl transition-all animate-in slide-in-from-bottom-4"
+      >
+        <Sparkles className="w-4 h-4" />
+        <span className="text-xs font-medium">
+          {loading ? 'Brain AI 분석 중...' : `${suggestions.length}개 제안`}
+        </span>
+        {loading && <Loader2 className="w-3 h-3 animate-spin" />}
+      </button>
+    );
+  }
+
   const pending = suggestions.filter(s => s.status === 'pending');
   const events = suggestions.filter(s => s.suggestionType === 'event');
   const todos = suggestions.filter(s => s.suggestionType === 'todo');
@@ -184,12 +201,20 @@ export function CallSuggestionsPanel({ roomId, onClose }: CallSuggestionsPanelPr
         <Loader2 className="w-12 h-12 text-blue-400 animate-spin mb-4" />
         <p className="text-white text-lg font-medium">Brain AI 분석 중</p>
         <p className="text-white/50 text-sm mt-2">통화 내용에서 일정, 할 일, 중요 기록을 추출하고 있습니다...</p>
-        <button
-          onClick={onClose}
-          className="mt-6 px-6 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white/60 text-sm transition-colors"
-        >
-          건너뛰기
-        </button>
+        <div className="mt-6 flex gap-3">
+          <button
+            onClick={() => setMinimized(true)}
+            className="px-6 py-2 rounded-xl bg-primary/80 hover:bg-primary text-white text-sm transition-colors"
+          >
+            백그라운드에서 분석
+          </button>
+          <button
+            onClick={onClose}
+            className="px-6 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white/60 text-sm transition-colors"
+          >
+            건너뛰기
+          </button>
+        </div>
       </div>
     );
   }
@@ -245,6 +270,13 @@ export function CallSuggestionsPanel({ roomId, onClose }: CallSuggestionsPanelPr
               전체 승인
             </button>
           )}
+          <button
+            onClick={() => setMinimized(true)}
+            className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white/70 text-xs transition-colors"
+            title="최소화"
+          >
+            <ChevronDown className="w-3.5 h-3.5" />
+          </button>
           <button
             onClick={onClose}
             className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white/70 text-xs transition-colors"

@@ -22,7 +22,16 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 
-// ── Waveform Audio Player ────────────────────────────
+// ── Waveform Audio Player (lightweight) ──────────────
+// Uses a simple progress bar with pseudo-waveform bars (no full audio decode).
+// Waveform decode happens lazily after first play to avoid blocking dialog open.
+const BARS = 50;
+const placeholderBars = Array.from({ length: BARS }, (_, i) => {
+  // Deterministic pseudo-random pattern
+  const v = Math.sin(i * 0.7) * 0.3 + Math.sin(i * 1.3) * 0.2 + 0.4;
+  return Math.max(0.1, Math.min(1, v));
+});
+
 const WaveformPlayer = memo(function WaveformPlayer({
   audioUrl,
   onSeekTime,
@@ -30,93 +39,42 @@ const WaveformPlayer = memo(function WaveformPlayer({
   audioUrl: string;
   onSeekTime?: (time: number) => void;
 }) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
-  const waveformRef = useRef<number[]>([]);
-  const animFrameRef = useRef<number>(0);
+  const barsRef = useRef<number[]>(placeholderBars);
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(0);
-  const [loaded, setLoaded] = useState(false);
+  const decodedRef = useRef(false);
 
-  // Decode audio and extract waveform peaks
-  useEffect(() => {
-    if (!audioUrl) return;
-    let cancelled = false;
-    (async () => {
-      try {
-        const resp = await fetch(audioUrl);
-        const buf = await resp.arrayBuffer();
-        const actx = new (window.AudioContext || (window as any).webkitAudioContext)();
-        const decoded = await actx.decodeAudioData(buf);
-        const raw = decoded.getChannelData(0);
-        const bars = 80;
-        const blockSize = Math.floor(raw.length / bars);
-        const peaks: number[] = [];
-        for (let i = 0; i < bars; i++) {
-          let sum = 0;
-          for (let j = 0; j < blockSize; j++) {
-            sum += Math.abs(raw[i * blockSize + j]);
-          }
-          peaks.push(sum / blockSize);
-        }
-        const max = Math.max(...peaks, 0.01);
-        waveformRef.current = peaks.map(p => p / max);
-        actx.close();
-        if (!cancelled) setLoaded(true);
-      } catch (err) {
-        console.warn('[WaveformPlayer] Decode error:', err);
+  // Lazy decode: only on first play
+  const decodeWaveform = useCallback(async () => {
+    if (decodedRef.current || !audioUrl) return;
+    decodedRef.current = true;
+    try {
+      const resp = await fetch(audioUrl);
+      const buf = await resp.arrayBuffer();
+      const actx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const decoded = await actx.decodeAudioData(buf);
+      const raw = decoded.getChannelData(0);
+      const blockSize = Math.floor(raw.length / BARS);
+      const peaks: number[] = [];
+      for (let i = 0; i < BARS; i++) {
+        let sum = 0;
+        for (let j = 0; j < blockSize; j++) sum += Math.abs(raw[i * blockSize + j]);
+        peaks.push(sum / blockSize);
       }
-    })();
-    return () => { cancelled = true; };
+      const max = Math.max(...peaks, 0.01);
+      barsRef.current = peaks.map(p => p / max);
+      actx.close();
+    } catch { /* keep placeholder */ }
   }, [audioUrl]);
 
-  // Draw waveform + progress
-  useEffect(() => {
-    if (!loaded) return;
-    const draw = () => {
-      const canvas = canvasRef.current;
-      if (!canvas) return;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return;
-      const dpr = window.devicePixelRatio || 1;
-      const w = canvas.clientWidth;
-      const h = canvas.clientHeight;
-      canvas.width = w * dpr;
-      canvas.height = h * dpr;
-      ctx.scale(dpr, dpr);
-      ctx.clearRect(0, 0, w, h);
-
-      const bars = waveformRef.current;
-      const barW = w / bars.length;
-      const gap = 1;
-
-      for (let i = 0; i < bars.length; i++) {
-        const barH = Math.max(2, bars[i] * (h - 4));
-        const x = i * barW;
-        const y = (h - barH) / 2;
-        const pct = i / bars.length;
-        ctx.fillStyle = pct <= progress
-          ? 'hsl(var(--primary))'
-          : 'hsl(var(--muted-foreground) / 0.25)';
-        ctx.fillRect(x + gap / 2, y, barW - gap, barH);
-      }
-
-      if (isPlaying) animFrameRef.current = requestAnimationFrame(draw);
-    };
-    draw();
-    return () => cancelAnimationFrame(animFrameRef.current);
-  }, [loaded, progress, isPlaying]);
-
-  // Track playback progress
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
-    const onTime = () => {
-      if (audio.duration) setProgress(audio.currentTime / audio.duration);
-    };
+    const onTime = () => { if (audio.duration) setProgress(audio.currentTime / audio.duration); };
     const onMeta = () => setDuration(audio.duration || 0);
-    const onEnd = () => { setIsPlaying(false); setProgress(0); };
+    const onEnd = () => { setIsPlaying(false); setProgress(1); };
     audio.addEventListener('timeupdate', onTime);
     audio.addEventListener('loadedmetadata', onMeta);
     audio.addEventListener('ended', onEnd);
@@ -130,27 +88,27 @@ const WaveformPlayer = memo(function WaveformPlayer({
   const togglePlay = useCallback(() => {
     const audio = audioRef.current;
     if (!audio) return;
-    if (isPlaying) { audio.pause(); } else { audio.play().catch(() => {}); }
+    if (isPlaying) { audio.pause(); } else {
+      decodeWaveform(); // lazy decode on first play
+      audio.play().catch(() => {});
+    }
     setIsPlaying(!isPlaying);
-  }, [isPlaying]);
+  }, [isPlaying, decodeWaveform]);
 
-  const handleCanvasClick = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
-    const canvas = canvasRef.current;
+  const handleBarClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     const audio = audioRef.current;
-    if (!canvas || !audio || !audio.duration) return;
-    const rect = canvas.getBoundingClientRect();
+    const el = e.currentTarget;
+    if (!audio || !audio.duration) return;
+    const rect = el.getBoundingClientRect();
     const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
     audio.currentTime = pct * audio.duration;
     setProgress(pct);
-    if (!isPlaying) { audio.play().catch(() => {}); setIsPlaying(true); }
+    if (!isPlaying) { decodeWaveform(); audio.play().catch(() => {}); setIsPlaying(true); }
     onSeekTime?.(audio.currentTime);
-  }, [isPlaying, onSeekTime]);
+  }, [isPlaying, onSeekTime, decodeWaveform]);
 
-  const formatSec = (s: number) => {
-    const m = Math.floor(s / 60);
-    const sec = Math.floor(s % 60);
-    return `${m}:${String(sec).padStart(2, '0')}`;
-  };
+  const formatSec = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+  const bars = barsRef.current;
 
   return (
     <div className="rounded-lg bg-muted/30 p-2.5">
@@ -161,12 +119,22 @@ const WaveformPlayer = memo(function WaveformPlayer({
         >
           {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 ml-0.5" />}
         </button>
-        <canvas
-          ref={canvasRef}
-          onClick={handleCanvasClick}
-          className="flex-1 h-10 cursor-pointer rounded"
-          style={{ minWidth: 0 }}
-        />
+        <div onClick={handleBarClick} className="flex-1 flex items-center gap-px h-10 cursor-pointer" style={{ minWidth: 0 }}>
+          {bars.map((v, i) => {
+            const pct = i / bars.length;
+            const h = Math.max(3, v * 28);
+            return (
+              <div
+                key={i}
+                className="flex-1 rounded-sm transition-colors duration-75"
+                style={{
+                  height: h,
+                  backgroundColor: pct <= progress ? 'hsl(var(--primary))' : 'hsl(var(--muted-foreground) / 0.2)',
+                }}
+              />
+            );
+          })}
+        </div>
         <span className="text-[10px] text-muted-foreground tabular-nums shrink-0 w-8 text-right">
           {duration > 0 ? formatSec(duration) : '--:--'}
         </span>
