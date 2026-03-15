@@ -40,23 +40,38 @@ function initPushAndSync(userId: string, get: () => AppState): void {
       // onRead: a single notification was read on another device
       (event) => {
         const state = get();
+        // Mark appNotification as read
         const notif = state.appNotifications.find(n => n.id === event.notificationId);
         if (notif && !notif.read) {
-          // Use the store's markAppNotificationRead — isSyncSuppressed prevents loop
           get().markAppNotificationRead(event.notificationId);
+        }
+        // Also add to dismissedNotificationIds (for evt-/brain-/company- prefixed notifs)
+        if (!state.dismissedNotificationIds.includes(event.notificationId)) {
+          useAppStore.setState((s) => ({
+            dismissedNotificationIds: [...s.dismissedNotificationIds, event.notificationId].slice(-500),
+          }));
         }
       },
       // onBulkRead: initial reconciliation — multiple read states
       (events) => {
         const readIds = new Set(events.map(e => e.notificationId));
         const state = get();
+        // Reconcile appNotifications
         const needsUpdate = state.appNotifications.some(n => readIds.has(n.id) && !n.read);
         if (needsUpdate) {
-          // Directly update state to avoid triggering sync-back for each one
           useAppStore.setState((s) => ({
             appNotifications: s.appNotifications.map(n =>
               readIds.has(n.id) ? { ...n, read: true } : n
             ),
+          }));
+        }
+        // Reconcile dismissedNotificationIds
+        const newDismissed = events
+          .map(e => e.notificationId)
+          .filter(id => !state.dismissedNotificationIds.includes(id));
+        if (newDismissed.length > 0) {
+          useAppStore.setState((s) => ({
+            dismissedNotificationIds: [...new Set([...s.dismissedNotificationIds, ...newDismissed])].slice(-500),
           }));
         }
       },
@@ -2547,13 +2562,35 @@ export const useAppStore = create<AppState>()(
       setWorldClockSettingsOpen: (open) => set({ worldClockSettingsOpen: open }),
       setWeatherSettingsOpen: (open) => set({ weatherSettingsOpen: open }),
       setNotificationSoundEnabled: (enabled) => set({ notificationSoundEnabled: enabled }),
-      dismissNotification: (id) => set((state) => ({
-        // Cap at 500 entries to prevent unbounded localStorage growth
-        dismissedNotificationIds: [...state.dismissedNotificationIds, id].slice(-500),
-      })),
-      dismissAllNotifications: (ids) => set((state) => ({
-        dismissedNotificationIds: [...new Set([...state.dismissedNotificationIds, ...ids])].slice(-500),
-      })),
+      dismissNotification: (id) => {
+        set((state) => ({
+          dismissedNotificationIds: [...state.dismissedNotificationIds, id].slice(-500),
+        }));
+        // Sync dismiss to other devices via notification_read_state
+        const userId = get().currentUser?.id;
+        if (userId) {
+          import('@/services/notificationSyncService').then(({ syncNotificationRead, isSyncSuppressed }) => {
+            if (!isSyncSuppressed()) {
+              syncNotificationRead(userId, id, 'company');
+            }
+          }).catch(() => {});
+        }
+      },
+      dismissAllNotifications: (ids) => {
+        set((state) => ({
+          dismissedNotificationIds: [...new Set([...state.dismissedNotificationIds, ...ids])].slice(-500),
+        }));
+        const userId = get().currentUser?.id;
+        if (userId) {
+          import('@/services/notificationSyncService').then(({ syncNotificationRead, isSyncSuppressed }) => {
+            if (!isSyncSuppressed()) {
+              for (const id of ids) {
+                syncNotificationRead(userId, id, 'company');
+              }
+            }
+          }).catch(() => {});
+        }
+      },
 
       // Settings Actions
       // App Notification Actions
