@@ -83,35 +83,41 @@ function PostCallTranscriptView({ roomId, onClose }: { roomId: string; onClose: 
         if (!active) return;
 
         if (room?.voice_recording_id) {
-          const { data: rec } = await supabase
-            .from('voice_recordings')
-            .select('*')
-            .eq('id', room.voice_recording_id)
-            .single();
+          // Wait until analysis is complete (or error) before showing dialog
+          const isReady = room.analysis_status === 'completed' || room.analysis_status === 'error';
 
-          if (rec) {
-            const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://ciuzbyjiqvtkwdlqovst.supabase.co';
-            const mapped: VoiceRecording = {
-              id: rec.id,
-              title: rec.title || 'In-App Call',
-              projectId: rec.project_id || undefined,
-              audioUrl: rec.audio_storage_path ? `${supabaseUrl}/storage/v1/object/public/voice-recordings/${rec.audio_storage_path}` : '',
-              audioStoragePath: rec.audio_storage_path || '',
-              duration: rec.duration_seconds || 0,
-              status: rec.status as VoiceRecording['status'],
-              transcript: typeof rec.transcript === 'string' ? JSON.parse(rec.transcript) : rec.transcript,
-              brainAnalysis: typeof rec.brain_analysis === 'string' ? JSON.parse(rec.brain_analysis) : rec.brain_analysis,
-              errorMessage: rec.error_message || undefined,
-              recordingType: rec.recording_type || 'online_meeting',
-              ragIngested: rec.rag_ingested || false,
-              createdAt: rec.created_at,
-              createdBy: rec.user_id,
-            };
-            setRecording(mapped);
-            setShowDialog(true);
-            setLoading(false);
-            return;
+          if (isReady) {
+            const { data: rec } = await supabase
+              .from('voice_recordings')
+              .select('*')
+              .eq('id', room.voice_recording_id)
+              .single();
+
+            if (rec) {
+              const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://ciuzbyjiqvtkwdlqovst.supabase.co';
+              const mapped: VoiceRecording = {
+                id: rec.id,
+                title: rec.title || 'In-App Call',
+                projectId: rec.project_id || undefined,
+                audioUrl: rec.audio_storage_path ? `${supabaseUrl}/storage/v1/object/public/voice-recordings/${rec.audio_storage_path}` : '',
+                audioStoragePath: rec.audio_storage_path || '',
+                duration: rec.duration_seconds || 0,
+                status: rec.status as VoiceRecording['status'],
+                transcript: typeof rec.transcript === 'string' ? JSON.parse(rec.transcript) : rec.transcript,
+                brainAnalysis: typeof rec.brain_analysis === 'string' ? JSON.parse(rec.brain_analysis) : rec.brain_analysis,
+                errorMessage: rec.error_message || undefined,
+                recordingType: rec.recording_type || 'phone_call',
+                ragIngested: rec.rag_ingested || false,
+                createdAt: rec.created_at,
+                createdBy: rec.user_id,
+              };
+              setRecording(mapped);
+              setShowDialog(true);
+              setLoading(false);
+              return;
+            }
           }
+          // Still processing — keep polling
         }
 
         attempts++;
