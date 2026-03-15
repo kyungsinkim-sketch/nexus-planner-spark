@@ -17,9 +17,10 @@ import { useWidgetStore } from '@/stores/widgetStore';
 import { useTranslation } from '@/hooks/useTranslation';
 import { format, parseISO, startOfDay, endOfDay, isBefore, isAfter } from 'date-fns';
 import { ko, enUS } from 'date-fns/locale';
-import { Brain, Send, Loader2, Mic, Cloud, Sun, CloudRain, CheckCircle2, Clock as ClockIcon, XCircle } from 'lucide-react';
+import { Brain, Send, Loader2, Mic, Cloud, Sun, CloudRain, CheckCircle2, Clock as ClockIcon, XCircle, MessageSquare, Bell, ChevronRight, Hash, AtSign, Sparkles, ListTodo, Calendar as CalIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { WEATHER_CITIES, CONDITION_ICONS, CONDITION_COLORS, CONDITION_LABELS_KO, CONDITION_LABELS_EN, generateForecast } from '@/components/widgets/weatherUtils';
+import type { AppNotification } from '@/types/core';
 
 // ── Types ────────────────────────────────────────────────────
 
@@ -197,6 +198,77 @@ function MorningBriefing({
   );
 }
 
+// ── Notifications Widget (replaces Today's Schedule) ─────────
+
+function NotificationsWidget({
+  notifications,
+  language,
+  onNotifClick,
+}: {
+  notifications: AppNotification[];
+  language: string;
+  onNotifClick: (n: AppNotification) => void;
+}) {
+  const notifIcon = (type: string) => {
+    if (type === 'chat') return <MessageSquare className="w-3.5 h-3.5 text-blue-400/60" />;
+    if (type === 'todo') return <ListTodo className="w-3.5 h-3.5 text-emerald-400/60" />;
+    if (type === 'event') return <CalIcon className="w-3.5 h-3.5 text-purple-400/60" />;
+    if (type === 'brain') return <Sparkles className="w-3.5 h-3.5 text-amber-400/60" />;
+    return <Bell className="w-3.5 h-3.5 text-muted-foreground/40" />;
+  };
+
+  const notifBg = (type: string) => {
+    if (type === 'chat') return 'bg-blue-500/10';
+    if (type === 'todo') return 'bg-emerald-500/10';
+    if (type === 'event') return 'bg-purple-500/10';
+    if (type === 'brain') return 'bg-amber-500/10';
+    return 'bg-muted/50';
+  };
+
+  return (
+    <div className="mobile-glass rounded-2xl p-5">
+      <div className="flex items-center gap-2 mb-3">
+        <Bell className="w-4 h-4 text-muted-foreground/50" />
+        <h3 className="typo-h4 font-bold text-foreground">
+          {language === 'ko' ? '알림' : 'Notifications'}
+        </h3>
+        {notifications.length > 0 && (
+          <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full font-medium">
+            {notifications.length}
+          </span>
+        )}
+      </div>
+
+      {notifications.length === 0 ? (
+        <p className="text-sm text-muted-foreground">
+          {language === 'ko' ? '조용한 하루예요 ✨' : 'All quiet today ✨'}
+        </p>
+      ) : (
+        <div className="space-y-1.5">
+          {notifications.map((notif) => (
+            <button
+              key={notif.id}
+              className="w-full rounded-xl p-2.5 flex items-start gap-2.5 active:bg-accent/50 transition-colors text-left"
+              onClick={() => onNotifClick(notif)}
+            >
+              <div className={cn('w-7 h-7 rounded-full flex items-center justify-center shrink-0 mt-0.5', notifBg(notif.type))}>
+                {notifIcon(notif.type)}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-[13px] text-foreground/70 truncate">{notif.title}</p>
+                {notif.message && (
+                  <p className="text-[11px] text-muted-foreground/50 truncate mt-0.5">{notif.message}</p>
+                )}
+              </div>
+              <ChevronRight className="w-3.5 h-3.5 text-muted-foreground/20 shrink-0 mt-1" />
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Typing animation hook ────────────────────────────────────
 
 function useTypingReveal(messages: ChatMessage[], setMessages: React.Dispatch<React.SetStateAction<ChatMessage[]>>) {
@@ -260,8 +332,20 @@ function getActionTypeLabel(type: string) {
 
 // ── Main Component ───────────────────────────────────────────
 
+// ── Suggestion types for Universal Chat Bar ──────────────────
+
+interface SuggestionItem {
+  type: 'user' | 'project' | 'group' | 'brain';
+  id: string;
+  name: string;
+  avatar?: string;
+  keyColor?: string;
+  roomId?: string;
+}
+
 export function MobileAIChatView() {
-  const { events, currentUser, users, projects, loadEvents, loadTodos, addTodo } = useAppStore();
+  const { events, currentUser, users, projects, loadEvents, loadTodos, addTodo, chatRooms, appNotifications } = useAppStore();
+  const { openMobileDm, openMobileGroupChat, openProjectTab, setActiveTab } = useWidgetStore();
   const { language } = useTranslation();
   const locale = language === 'ko' ? ko : enUS;
   // Seed messages — visual continuity (faded at top via CSS mask)
@@ -347,6 +431,96 @@ export function MobileAIChatView() {
       .sort((a, b) => a.startAt.localeCompare(b.startAt));
   }, [events]);
 
+  // ── Notifications (unread) ──
+  const unreadNotifs = useMemo(() => {
+    if (!appNotifications) return [];
+    return appNotifications.filter(n => !n.read).slice(0, 8);
+  }, [appNotifications]);
+
+  const handleNotifClick = useCallback((notif: AppNotification) => {
+    try {
+      if (notif.directUserId) {
+        openMobileDm(notif.directUserId);
+      } else if (notif.roomId) {
+        openMobileGroupChat(notif.roomId);
+      } else if (notif.projectId && projects) {
+        const project = projects.find(p => p.id === notif.projectId);
+        if (project) {
+          openProjectTab(project.id, project.title || '', project.keyColor);
+          setActiveTab(project.id);
+        }
+      }
+    } catch (err) {
+      console.error('[MobileAI] Notif click error:', err);
+    }
+  }, [projects, openMobileDm, openMobileGroupChat, openProjectTab, setActiveTab]);
+
+  // ── Universal Chat Bar: # @ suggestions ──
+  const [selectedTarget, setSelectedTarget] = useState<SuggestionItem | null>(null);
+  const [chatSuggestions, setChatSuggestions] = useState<SuggestionItem[]>([]);
+  const [showChatSuggestions, setShowChatSuggestions] = useState(false);
+
+  const brainAgent: SuggestionItem = useMemo(() => ({
+    type: 'brain' as const, id: BRAIN_BOT_ID, name: 'Brain AI',
+  }), []);
+
+  const allUserSuggestions = useMemo(() => {
+    if (!users) return [];
+    return users
+      .filter(u => u.id !== currentUser?.id && u.id !== BRAIN_BOT_ID)
+      .map(u => ({ type: 'user' as const, id: u.id, name: u.name || '', avatar: u.avatar }));
+  }, [users, currentUser]);
+
+  const allChannelSuggestions = useMemo(() => {
+    const items: SuggestionItem[] = [];
+    if (projects) {
+      for (const p of projects) {
+        if (p.status === 'IN_PROGRESS' || p.status === 'PLANNING') {
+          const room = chatRooms?.find(r => r.projectId === p.id);
+          items.push({ type: 'project', id: p.id, name: p.title || '', keyColor: p.keyColor, roomId: room?.id });
+        }
+      }
+    }
+    if (chatRooms) {
+      for (const r of chatRooms) {
+        if (r.type === 'group') {
+          items.push({ type: 'group', id: r.id, name: r.name || 'Group', roomId: r.id });
+        }
+      }
+    }
+    return items;
+  }, [projects, chatRooms]);
+
+  const handleUniversalInputChange = useCallback((value: string) => {
+    setInput(value);
+    const words = value.split(' ');
+    const lastWord = words[words.length - 1] || '';
+
+    if (lastWord.startsWith('#')) {
+      const q = lastWord.slice(1).toLowerCase();
+      const f = allChannelSuggestions.filter(s => s.name.toLowerCase().includes(q)).slice(0, 6);
+      setChatSuggestions(f);
+      setShowChatSuggestions(f.length > 0);
+    } else if (lastWord.startsWith('@')) {
+      const q = lastWord.slice(1).toLowerCase();
+      const f = [brainAgent, ...allUserSuggestions].filter(s => s.name.toLowerCase().includes(q)).slice(0, 6);
+      setChatSuggestions(f);
+      setShowChatSuggestions(f.length > 0);
+    } else {
+      setShowChatSuggestions(false);
+    }
+  }, [allChannelSuggestions, allUserSuggestions, brainAgent]);
+
+  const handleSelectTarget = useCallback((item: SuggestionItem) => {
+    setSelectedTarget(item);
+    setShowChatSuggestions(false);
+    // Remove the #/@ trigger word
+    const words = input.split(' ');
+    words.pop();
+    setInput(words.join(' '));
+    setTimeout(() => inputRef.current?.focus(), 50);
+  }, [input]);
+
   const greeting = useMemo(() => {
     const hour = new Date().getHours();
     const name = currentUser?.name?.split(' ')[0] || '';
@@ -359,6 +533,31 @@ export function MobileAIChatView() {
     if (!input.trim() || loading || !currentUser?.id) return;
     const msg = input.trim();
     setInput('');
+
+    // If target is not Brain AI, send to that target and navigate
+    const target = selectedTarget;
+    if (target && target.type !== 'brain') {
+      try {
+        if (target.type === 'user') {
+          const { sendDirectMessage } = await import('@/services/chatService');
+          await sendDirectMessage(currentUser.id, target.id, msg);
+          setSelectedTarget(null);
+          openMobileDm(target.id);
+          return;
+        } else if (target.roomId) {
+          const { sendRoomMessage } = await import('@/services/chatService');
+          await sendRoomMessage(target.roomId, currentUser.id, msg);
+          setSelectedTarget(null);
+          openMobileGroupChat(target.roomId);
+          return;
+        }
+      } catch (err) {
+        console.error('[UniversalChat] Send error:', err);
+        return;
+      }
+    }
+    // Clear target (Brain AI or no target = Brain AI)
+    setSelectedTarget(null);
 
     const userMsgId = `user_${Date.now()}`;
     setMessages(prev => [...prev, { id: userMsgId, role: 'user', content: msg, timestamp: new Date() }]);
@@ -409,7 +608,7 @@ export function MobileAIChatView() {
         <div className="shrink-0 px-4 pt-6 pb-2">
           <ProfileCard user={currentUser} language={language} projects={projects} onProjectsClick={() => useWidgetStore.getState().setMobileView('projects')} />
           <div className="mt-4">
-            <MorningBriefing greeting={greeting} todayEvents={todayEvents} language={language} locale={locale} />
+            <NotificationsWidget notifications={unreadNotifs} language={language} onNotifClick={handleNotifClick} />
           </div>
         </div>
 
@@ -481,21 +680,86 @@ export function MobileAIChatView() {
         </div>
       </div>
 
-      {/* ═══ Input bar — fixed above floating nav (or just above keyboard) ═══ */}
+      {/* ═══ Universal Chat Bar — fixed above floating nav ═══ */}
       <div
         className="fixed left-0 right-0 z-40 px-4 py-2"
         style={{ bottom: kbBottom != null ? `${kbBottom}px` : 'calc(64px + env(safe-area-inset-bottom, 0px))' }}
       >
+        {/* Selected target badge */}
+        {selectedTarget && (
+          <div className="flex items-center gap-1.5 mb-1.5 px-2">
+            <span className={cn(
+              'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium',
+              selectedTarget.type === 'brain' ? 'bg-amber-500/20 text-amber-300' :
+              selectedTarget.type === 'user' ? 'bg-blue-500/20 text-blue-300' :
+              'bg-emerald-500/20 text-emerald-300'
+            )}>
+              {selectedTarget.type === 'brain' ? <Sparkles className="w-3 h-3" /> :
+               selectedTarget.type === 'user' ? <AtSign className="w-3 h-3" /> :
+               <Hash className="w-3 h-3" />}
+              {selectedTarget.name}
+            </span>
+            <button onClick={() => setSelectedTarget(null)} className="text-muted-foreground hover:text-foreground text-xs">✕</button>
+          </div>
+        )}
+
+        {/* Autocomplete dropdown (above input) */}
+        {showChatSuggestions && chatSuggestions.length > 0 && (
+          <div className="mb-1.5 rounded-2xl border border-border/50 bg-popover shadow-lg overflow-hidden">
+            {chatSuggestions.map(item => (
+              <button
+                key={`${item.type}-${item.id}`}
+                onClick={() => handleSelectTarget(item)}
+                className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-accent active:bg-accent/80 transition-colors text-left"
+              >
+                {item.type === 'brain' ? (
+                  <div className="w-7 h-7 rounded-full bg-amber-500/20 flex items-center justify-center shrink-0">
+                    <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                  </div>
+                ) : item.type === 'user' ? (
+                  <div className="w-7 h-7 rounded-full bg-blue-500/20 flex items-center justify-center shrink-0 text-[11px] font-bold text-blue-300 overflow-hidden">
+                    {item.avatar ? <img src={item.avatar} className="w-7 h-7 rounded-full object-cover" alt="" /> : (item.name || '?').charAt(0)}
+                  </div>
+                ) : (
+                  <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+                    style={{ backgroundColor: item.keyColor ? `${item.keyColor}30` : 'rgba(128,128,128,0.15)' }}>
+                    <Hash className="w-3.5 h-3.5" style={{ color: item.keyColor || 'rgba(128,128,128,0.6)' }} />
+                  </div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <p className="text-[13px] text-foreground/70 truncate">{item.name}</p>
+                  <p className="text-[10px] text-muted-foreground/50">
+                    {item.type === 'brain' ? 'AI Agent' :
+                     item.type === 'user' ? (language === 'ko' ? '개인 메시지' : 'Direct message') :
+                     item.type === 'project' ? (language === 'ko' ? '프로젝트' : 'Project') :
+                     (language === 'ko' ? '그룹' : 'Group')}
+                  </p>
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
+
         <div className="flex items-center gap-2 px-4 py-2.5 rounded-full mobile-glass shadow-lg">
-          <Brain className="w-4 h-4 text-violet-500 shrink-0" />
+          {selectedTarget ? (
+            selectedTarget.type === 'brain' ? <Sparkles className="w-4 h-4 text-amber-400 shrink-0" /> :
+            selectedTarget.type === 'user' ? <AtSign className="w-4 h-4 text-blue-400 shrink-0" /> :
+            <Hash className="w-4 h-4 text-emerald-400 shrink-0" />
+          ) : (
+            <Brain className="w-4 h-4 text-violet-500 shrink-0" />
+          )}
           <input
             ref={inputRef}
             type="text"
             value={input}
-            onChange={e => setInput(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && handleSubmit()}
+            onChange={e => handleUniversalInputChange(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleSubmit(); } }}
             onFocus={() => { window.scrollTo(0, 0); setTimeout(() => window.scrollTo(0, 0), 150); }}
-            placeholder={language === 'ko' ? 'Brain AI에게 물어보세요...' : 'Ask Brain AI...'}
+            placeholder={
+              selectedTarget
+                ? (language === 'ko' ? `${selectedTarget.name}에게 메시지...` : `Message ${selectedTarget.name}...`)
+                : (language === 'ko' ? '# 채널  @ 사람  메시지 입력...' : '# channel  @ person  type a message...')
+            }
             className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none"
             disabled={loading}
           />
