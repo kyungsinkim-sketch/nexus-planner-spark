@@ -380,7 +380,7 @@ export function MobileAIChatView() {
       const { getDirectMessages } = await import('@/services/chatService');
       const history = await getDirectMessages(currentUser.id, BRAIN_BOT_ID);
       if (history.length > 0) {
-        const recent = history.slice(-20);
+        const recent = history.slice(-10);
         setMessages(recent.map(m => ({
           id: m.id,
           role: m.userId === BRAIN_BOT_ID ? 'assistant' as const : 'user' as const,

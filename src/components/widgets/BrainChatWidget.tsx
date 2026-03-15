@@ -42,9 +42,36 @@ function BrainChatWidget({ context }: { context: WidgetDataContext }) {
 
   const [isListening, setIsListening] = useState(false);
   const recognitionRef = useRef<any>(null);
+  const historyLoadedRef = useRef(false);
 
   const projectId = context.type === 'project' ? context.projectId : undefined;
   const project = projectId ? projects.find(p => p.id === projectId) : undefined;
+
+  const BRAIN_BOT_ID = '00000000-0000-0000-0000-000000000099';
+
+  // Load recent Brain AI DM history from DB on mount
+  useEffect(() => {
+    if (historyLoadedRef.current || !currentUser?.id) return;
+    historyLoadedRef.current = true;
+    (async () => {
+      try {
+        const { getDirectMessages } = await import('@/services/chatService');
+        const msgs = await getDirectMessages(currentUser.id, BRAIN_BOT_ID);
+        if (msgs.length > 0) {
+          const recent = msgs.slice(-10);
+          const items: BrainHistoryItem[] = recent.map(m => ({
+            id: m.id,
+            type: m.userId === BRAIN_BOT_ID ? 'brain' as const : 'user' as const,
+            content: m.content,
+            timestamp: m.createdAt,
+          }));
+          setHistory(items);
+        }
+      } catch (err) {
+        console.error('[BrainWidget] Failed to load DM history:', err);
+      }
+    })();
+  }, [currentUser?.id]);
 
   // Web Speech API voice recognition
   const toggleVoice = useCallback(() => {
