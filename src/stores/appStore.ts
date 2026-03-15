@@ -1695,8 +1695,8 @@ export const useAppStore = create<AppState>()(
               if (state.personalTodos.some(t => t.id === newTodo.id)) return state;
               return { personalTodos: [...state.personalTodos, newTodo] };
             });
-            // Push app notification for assigned todo
-            if (newTodo.assigneeIds?.includes(currentUser.id)) {
+            // Push app notification only if assigned to me by someone else
+            if (newTodo.assigneeIds?.includes(currentUser.id) && newTodo.requestedById !== currentUser.id) {
               get().addAppNotification({
                 type: 'todo',
                 title: newTodo.title,
@@ -1723,8 +1723,8 @@ export const useAppStore = create<AppState>()(
             createdAt: new Date().toISOString(),
           };
           set((state) => ({ personalTodos: [...state.personalTodos, newTodo] }));
-          // Push app notification for assigned todo
-          if (newTodo.assigneeIds?.includes(currentUser.id)) {
+          // Push app notification only if assigned to me by someone else
+          if (newTodo.assigneeIds?.includes(currentUser.id) && newTodo.requestedById !== currentUser.id) {
             get().addAppNotification({
               type: 'todo',
               title: newTodo.title,

@@ -398,6 +398,72 @@ export function MobileAIChatView() {
     loadBrainHistory();
   }, [loadBrainHistory]);
 
+  // Realtime subscription for Brain AI DM messages
+  useEffect(() => {
+    if (!currentUser?.id) return;
+    let channel: ReturnType<typeof import('@/lib/supabase').supabase.channel> | null = null;
+
+    import('@/lib/supabase').then(({ supabase, isSupabaseConfigured }) => {
+      if (!isSupabaseConfigured()) return;
+      channel = supabase
+        .channel('brain_ai_dm_sync')
+        .on('postgres_changes', {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'chat_messages',
+          filter: `direct_chat_user_id=eq.${currentUser.id}`,
+        }, (payload) => {
+          const msg = payload.new as Record<string, unknown>;
+          // Only process Brain AI messages (not our own)
+          if (msg.user_id === BRAIN_BOT_ID) {
+            const newMsg: ChatMessage = {
+              id: msg.id as string,
+              role: 'assistant',
+              content: msg.content as string,
+              timestamp: new Date(msg.created_at as string),
+            };
+            setMessages(prev => {
+              // Avoid duplicates
+              if (prev.some(m => m.id === newMsg.id)) return prev;
+              return [...prev, newMsg];
+            });
+            setHistoryLoaded(true);
+          }
+        })
+        .on('postgres_changes', {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'chat_messages',
+          filter: `user_id=eq.${currentUser.id}`,
+        }, (payload) => {
+          const msg = payload.new as Record<string, unknown>;
+          // Only process DMs to Brain AI from other devices
+          if (msg.direct_chat_user_id === BRAIN_BOT_ID) {
+            const newMsg: ChatMessage = {
+              id: msg.id as string,
+              role: 'user',
+              content: msg.content as string,
+              timestamp: new Date(msg.created_at as string),
+            };
+            setMessages(prev => {
+              if (prev.some(m => m.id === newMsg.id)) return prev;
+              return [...prev, newMsg];
+            });
+            setHistoryLoaded(true);
+          }
+        })
+        .subscribe();
+    }).catch(() => { /* supabase import failed */ });
+
+    return () => {
+      if (channel) {
+        import('@/lib/supabase').then(({ supabase }) => {
+          supabase.removeChannel(channel!);
+        }).catch(() => { /* cleanup */ });
+      }
+    };
+  }, [currentUser?.id]);
+
   // Reload events, todos, and brain history on mount + visibility change + focus
   useEffect(() => {
     loadEvents().catch(() => {});
@@ -471,9 +537,9 @@ export function MobileAIChatView() {
       const now = new Date();
       const todayStr = format(now, 'yyyy-MM-dd');
       const myTodos = personalTodos.filter(
-        td => td.status !== 'COMPLETED' && (
-          td.assigneeIds?.includes(currentUser.id) || td.requestedById === currentUser.id
-        )
+        td => td.status !== 'COMPLETED' &&
+          td.assigneeIds?.includes(currentUser.id) &&
+          td.requestedById !== currentUser.id // Exclude self-created todos
       );
       for (const todo of myTodos) {
         const dueStr = todo.dueDate ? (typeof todo.dueDate === 'string' ? todo.dueDate.slice(0, 10) : '') : '';
@@ -501,9 +567,9 @@ export function MobileAIChatView() {
       }
     }
 
-    // 3. Today's events
-    if (todayEvents.length > 0) {
-      for (const evt of todayEvents.slice(0, 3)) {
+    // 3. Today's events (exclude self-created — those are not "notifications")
+    if (todayEvents.length > 0 && currentUser) {
+      for (const evt of todayEvents.filter(e => e.ownerId !== currentUser.id).slice(0, 3)) {
         items.push({
           id: `event-${evt.id}`,
           type: 'event',
@@ -739,11 +805,11 @@ export function MobileAIChatView() {
           </div>
         </div>
 
-        {/* ── Chat messages: flex-1 pushes them to the bottom ── */}
-        {/* CSS mask: messages fade to transparent at the top */}
+        {/* ── Chat messages: fixed max height, internal scroll ── */}
         <div
-          className={cn('flex-1 flex flex-col px-4 relative', 'justify-end')}
+          className="flex flex-col px-4 relative overflow-y-auto"
           style={{
+            maxHeight: '45vh',
             maskImage: 'linear-gradient(to bottom, transparent 0%, black 48px)',
             WebkitMaskImage: 'linear-gradient(to bottom, transparent 0%, black 48px)',
           }}
