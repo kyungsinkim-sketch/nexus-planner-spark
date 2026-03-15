@@ -1110,26 +1110,12 @@ async function processCallRecording(roomId: string, blob: Blob, duration: number
   }
   console.log('[Call] ✅ STT done, segments:', sttData?.transcript?.length || 0);
 
-  // 5. Trigger Brain Analysis (voice-brain-analyze) → same as Voice Recorder
-  console.log('[Call] 🧠 Starting brain analysis...');
-  await supabase.from('call_rooms').update({ analysis_status: 'analyzing' }).eq('id', roomId);
-
-  const { data: brainData, error: brainError } = await supabase.functions.invoke('voice-brain-analyze', {
-    body: { recordingId: voiceRec.id, userId, transcript: sttData.transcript },
-  });
-
-  if (brainError || brainData?.error) {
-    console.error('[Call] ❌ Brain analysis failed:', brainError || brainData?.error);
-    await supabase.from('call_rooms').update({ analysis_status: 'error' }).eq('id', roomId);
-    return;
-  }
-  console.log('[Call] ✅ Brain analysis done');
-
-  // 6. Mark complete
+  // 5. Mark ready — TranscriptViewDialog handles Brain Analysis on user action
   await supabase.from('call_rooms').update({
     analysis_status: 'completed',
     status: 'completed',
   }).eq('id', roomId);
+  console.log('[Call] ✅ Ready for review (Brain analysis triggered by user in dialog)');
 }
 
 async function processLiveTranscriptOnly(roomId: string, liveTranscript: string, duration: number): Promise<void> {
