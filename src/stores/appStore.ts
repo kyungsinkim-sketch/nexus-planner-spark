@@ -605,6 +605,35 @@ export const useAppStore = create<AppState>()(
             await get().loadTodos();
             await get().loadImportantNotes();
             await get().loadGroupRooms();
+            // Load voice recordings from DB
+            try {
+              const { supabase: sb } = await import('@/lib/supabase');
+              const { data: recs } = await sb
+                .from('voice_recordings')
+                .select('*')
+                .eq('user_id', user.id)
+                .order('created_at', { ascending: false })
+                .limit(50);
+              if (recs && recs.length > 0) {
+                const mapped: VoiceRecording[] = recs.map((r: Record<string, unknown>) => ({
+                  id: r.id as string,
+                  title: r.title as string,
+                  projectId: r.project_id as string | undefined,
+                  audioUrl: `${import.meta.env.VITE_SUPABASE_URL || 'https://ciuzbyjiqvtkwdlqovst.supabase.co'}/storage/v1/object/public/voice-recordings/${r.audio_storage_path}`,
+                  audioStoragePath: r.audio_storage_path as string,
+                  duration: (r.duration_seconds as number) || 0,
+                  status: r.status as VoiceRecording['status'],
+                  transcript: r.transcript as any,
+                  brainAnalysis: r.brain_analysis as any,
+                  errorMessage: r.error_message as string | undefined,
+                  recordingType: (r.recording_type as string) || 'manual',
+                  ragIngested: (r.rag_ingested as boolean) || false,
+                  createdAt: r.created_at as string,
+                  createdBy: r.user_id as string,
+                }));
+                set({ voiceRecordings: mapped });
+              }
+            } catch (e) { console.error('[Init] Failed to load voice recordings:', e); }
             useWidgetStore.getState().loadLayoutFromDB();
 
             // Initialize push notifications & cross-device sync

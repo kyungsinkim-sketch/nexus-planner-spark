@@ -252,7 +252,8 @@ Deno.serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Upsert recording (create if not exists, update if exists)
-    await supabase
+    const projectId = body.projectId && body.projectId.length > 10 ? body.projectId : null;
+    const { error: upsertError } = await supabase
       .from('voice_recordings')
       .upsert({
         id: recordingId,
@@ -260,11 +261,14 @@ Deno.serve(async (req) => {
         audio_storage_path: audioStoragePath,
         title: body.title || 'Recording',
         recording_type: body.recordingType || 'manual',
-        project_id: body.projectId || null,
+        project_id: projectId,
         duration_seconds: body.duration || 0,
         status: 'transcribing',
         updated_at: new Date().toISOString(),
       }, { onConflict: 'id' });
+    if (upsertError) {
+      console.error('[voice-transcribe] Upsert error:', upsertError);
+    }
 
     const googleApiKey = Deno.env.get('GOOGLE_CLOUD_STT_API_KEY');
 
