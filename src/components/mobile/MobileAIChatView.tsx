@@ -244,7 +244,7 @@ function UpdatesWidget({
           {language === 'ko' ? '조용한 하루예요 ✨' : 'All quiet today ✨'}
         </p>
       ) : (
-        <div className="space-y-1.5">
+        <div className="space-y-1.5 max-h-[240px] overflow-y-auto">
           {notifications.map((notif) => (
             <button
               key={notif.id}
@@ -592,13 +592,13 @@ export function MobileAIChatView() {
 
     if (lastWord.startsWith('#')) {
       const q = lastWord.slice(1).toLowerCase();
-      const f = allChannelSuggestions.filter(s => s.name.toLowerCase().includes(q)).slice(0, 6);
+      const f = allChannelSuggestions.filter(s => s.name.toLowerCase().includes(q));
       setChatSuggestions(f);
       setShowChatSuggestions(f.length > 0);
       setSuggestionIndex(-1);
     } else if (lastWord.startsWith('@')) {
       const q = lastWord.slice(1).toLowerCase();
-      const f = [brainAgent, ...allUserSuggestions].filter(s => s.name.toLowerCase().includes(q)).slice(0, 6);
+      const f = [brainAgent, ...allUserSuggestions].filter(s => s.name.toLowerCase().includes(q));
       setChatSuggestions(f);
       setShowChatSuggestions(f.length > 0);
       setSuggestionIndex(-1);
@@ -844,7 +844,7 @@ export function MobileAIChatView() {
 
         {/* Autocomplete dropdown (above input) */}
         {showChatSuggestions && chatSuggestions.length > 0 && (
-          <div className="mb-1.5 rounded-2xl border border-border/50 bg-popover shadow-lg overflow-hidden">
+          <div className="mb-1.5 rounded-2xl border border-border/50 bg-popover shadow-lg overflow-hidden max-h-[240px] overflow-y-auto">
             {chatSuggestions.map((item, idx) => (
               <button
                 key={`${item.type}-${item.id}`}
