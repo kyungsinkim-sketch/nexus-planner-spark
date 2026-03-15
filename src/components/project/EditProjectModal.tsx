@@ -22,7 +22,7 @@ import {
 } from '@/components/ui/select';
 import { CurrencyInput } from '@/components/ui/currency-input';
 import { UserSearchInput } from '@/components/ui/user-search-input';
-import { X, Image, Loader2, Trash2 } from 'lucide-react';
+import { X, Image, Loader2, Trash2, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import { useTranslation } from '@/hooks/useTranslation';
@@ -528,8 +528,28 @@ export function EditProjectModal({ open, onOpenChange, project }: EditProjectMod
             )}
           </div>
 
-          {/* Delete Project */}
-          <div className="border-t border-destructive/20 pt-4 mt-4">
+          {/* Complete / Delete Project */}
+          <div className="border-t border-border/30 pt-4 mt-4 space-y-2">
+            {project.status !== 'COMPLETED' && (
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full text-emerald-600 border-emerald-300 hover:bg-emerald-50 dark:text-emerald-400 dark:border-emerald-800 dark:hover:bg-emerald-950/30"
+                onClick={async () => {
+                  try {
+                    await updateProject(project.id, { status: 'COMPLETED' });
+                    toast.success(t('language') === 'ko' ? '프로젝트가 완료 처리되었습니다' : 'Project marked as completed');
+                    onOpenChange(false);
+                  } catch (err) {
+                    console.error('Failed to complete project:', err);
+                    toast.error(t('language') === 'ko' ? '프로젝트 완료 처리에 실패했습니다' : 'Failed to complete project');
+                  }
+                }}
+              >
+                <CheckCircle2 className="w-4 h-4 mr-2" />
+                {t('language') === 'ko' ? '프로젝트 진행 완료' : 'Mark as Completed'}
+              </Button>
+            )}
             {!showDeleteConfirm ? (
               <Button
                 type="button"
