@@ -216,7 +216,7 @@ function LocalVideoPreview({ callState, className }: { callState: CallState; cla
     }
   }, [callState.isCameraOn]);
   if (!callState.isCameraOn) return null;
-  return <video ref={videoRef} autoPlay playsInline muted className={`scale-x-[-1] ${className || ''}`} />;
+  return <video ref={videoRef} autoPlay playsInline muted className={className || ''} />;
 }
 
 /* ─── Participant tile (video or avatar) ─── */
@@ -774,7 +774,7 @@ export function ActiveCallOverlay() {
 
       {/* ─── Live transcript overlay ─── */}
       {captionsOn && status === 'active' && (
-        <div className="absolute bottom-[160px] inset-x-0 z-20 px-4 max-h-[30vh] overflow-y-auto pointer-events-none">
+        <div className="absolute bottom-[200px] inset-x-0 z-20 px-4 max-h-[25vh] overflow-y-auto pointer-events-none">
           <div className="max-w-xl mx-auto space-y-1">
             {transcriptLines.slice(-8).map(line => (
               <div

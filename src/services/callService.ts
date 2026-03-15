@@ -448,10 +448,21 @@ async function connectToRoom(wsUrl: string, token: string): Promise<void> {
     setState({ status: 'active' });
     startDurationTimer();
 
-    // Enable microphone (non-blocking — don't let this delay anything)
+    // Enable microphone — WAIT for it, then start recording + STT
     room.localParticipant.setMicrophoneEnabled(true)
-      .then(() => console.log('[Call] Microphone enabled'))
-      .catch((err: any) => console.warn('[Call] Mic enable failed:', err));
+      .then(() => {
+        console.log('[Call] Microphone enabled ✅');
+        // Start recording after mic is confirmed
+        startRecordingAfterMic(room);
+        // Start Live STT after mic is confirmed
+        startSttForBrain();
+      })
+      .catch((err: any) => {
+        console.warn('[Call] Mic enable failed:', err);
+        // Still try recording + STT even if mic enable "fails"
+        startRecordingAfterMic(room);
+        startSttForBrain();
+      });
   } catch (err: any) {
     console.error('[Call] Connection failed:', err);
     try { room.disconnect(); } catch { /* ignore */ }
@@ -507,41 +518,37 @@ async function connectToRoom(wsUrl: string, token: string): Promise<void> {
   }
 
   currentRoom = room;
+}
 
-  // Start mixed recording AFTER mic is ready (ensures local audio track exists)
-  // Wait a bit for mic to publish, then start recording
-  const startRecordingWhenReady = () => {
-    const maxWait = 8000; // 8s max wait for mic
-    const interval = 500;
-    let waited = 0;
-    const check = () => {
-      const pubs = Array.from(room.localParticipant.audioTrackPublications.values()) as any[];
-      const hasLocalAudio = pubs.some((p: any) => p.track?.mediaStreamTrack?.readyState === 'live');
-      console.log('[Call] Recording check:', { waited, hasLocalAudio, pubs: pubs.length, tracks: pubs.map((p: any) => p.track?.mediaStreamTrack?.readyState) });
-      if (hasLocalAudio || waited >= maxWait) {
-        if (!hasLocalAudio) console.warn('[Call] Starting recording without confirmed local audio (waited', waited, 'ms)');
-        startMixedRecording(room);
-        return;
-      }
-      waited += interval;
-      setTimeout(check, interval);
-    };
-    check();
+// Start recording after mic is confirmed enabled
+function startRecordingAfterMic(room: Room): void {
+  const maxWait = 6000;
+  const interval = 500;
+  let waited = 0;
+  const check = () => {
+    const pubs = Array.from(room.localParticipant.audioTrackPublications.values()) as any[];
+    const hasLocalAudio = pubs.some((p: any) => p.track?.mediaStreamTrack?.readyState === 'live');
+    console.log('[Call] Recording check:', { waited, hasLocalAudio, pubCount: pubs.length, states: pubs.map((p: any) => p.track?.mediaStreamTrack?.readyState ?? 'none') });
+    if (hasLocalAudio || waited >= maxWait) {
+      if (!hasLocalAudio) console.warn('[Call] No live audio track after', waited, 'ms');
+      startMixedRecording(room);
+      return;
+    }
+    waited += interval;
+    setTimeout(check, interval);
   };
-  startRecordingWhenReady();
+  check();
+}
 
-  // Auto-start Live STT for transcript collection (ensures Brain AI works even if recording fails)
-  // Start immediately — don't wait, Brain AI needs transcript data
-  const sttStarted = startLiveTranscript('ko-KR');
-  console.log('[Call] Auto-started Live STT for Brain AI:', sttStarted ? '✅' : '❌ (will retry)');
-  if (!sttStarted) {
-    // Retry after mic is ready
+// Start Live STT for Brain AI (called after mic enabled)
+function startSttForBrain(): void {
+  const started = startLiveTranscript('ko-KR');
+  console.log('[Call] Auto Live STT for Brain AI:', started ? '✅' : '❌ (retry in 2s)');
+  if (!started) {
     setTimeout(() => {
-      if (!transcriptLines.length) {
-        const retry = startLiveTranscript('ko-KR');
-        console.log('[Call] Retried Live STT:', retry ? '✅' : '❌');
-      }
-    }, 3000);
+      const retry = startLiveTranscript('ko-KR');
+      console.log('[Call] STT retry:', retry ? '✅' : '❌');
+    }, 2000);
   }
 }
 
