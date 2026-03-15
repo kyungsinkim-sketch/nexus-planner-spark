@@ -374,30 +374,31 @@ export function MobileAIChatView() {
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   // Load previous Brain AI conversation from DB
-  useEffect(() => {
+  const loadBrainHistory = useCallback(async () => {
     if (!currentUser?.id) return;
-    (async () => {
-      try {
-        const { getDirectMessages } = await import('@/services/chatService');
-        const history = await getDirectMessages(currentUser.id, BRAIN_BOT_ID);
-        if (history.length > 0) {
-          // Show only the last 2 messages (1 user + 1 assistant typically)
-          const recent = history.slice(-2);
-          setMessages(recent.map(m => ({
-            id: m.id,
-            role: m.userId === BRAIN_BOT_ID ? 'assistant' as const : 'user' as const,
-            content: m.content,
-            timestamp: new Date(m.createdAt),
-          })));
-          setHistoryLoaded(true);
-        }
-      } catch (err) {
-        console.error('[BrainChat] Failed to load history:', err);
+    try {
+      const { getDirectMessages } = await import('@/services/chatService');
+      const history = await getDirectMessages(currentUser.id, BRAIN_BOT_ID);
+      if (history.length > 0) {
+        const recent = history.slice(-20);
+        setMessages(recent.map(m => ({
+          id: m.id,
+          role: m.userId === BRAIN_BOT_ID ? 'assistant' as const : 'user' as const,
+          content: m.content,
+          timestamp: new Date(m.createdAt),
+        })));
+        setHistoryLoaded(true);
       }
-    })();
+    } catch (err) {
+      console.error('[BrainChat] Failed to load history:', err);
+    }
   }, [currentUser?.id]);
 
-  // Reload events & todos on mount and when tab becomes visible (sync with web)
+  useEffect(() => {
+    loadBrainHistory();
+  }, [loadBrainHistory]);
+
+  // Reload events, todos, and brain history on mount + visibility change + focus
   useEffect(() => {
     loadEvents().catch(() => {});
     loadTodos().catch(() => {});
@@ -406,11 +407,21 @@ export function MobileAIChatView() {
       if (document.visibilityState === 'visible') {
         loadEvents().catch(() => {});
         loadTodos().catch(() => {});
+        loadBrainHistory();
       }
     };
+    const handleFocus = () => {
+      loadEvents().catch(() => {});
+      loadTodos().catch(() => {});
+      loadBrainHistory();
+    };
     document.addEventListener('visibilitychange', handleVisibility);
-    return () => document.removeEventListener('visibilitychange', handleVisibility);
-  }, [loadEvents, loadTodos]);
+    window.addEventListener('focus', handleFocus);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibility);
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, [loadEvents, loadTodos, loadBrainHistory]);
 
   // Track keyboard height via visualViewport
   const [kbBottom, setKbBottom] = useState<number | null>(null);

@@ -77,6 +77,27 @@ function initPushAndSync(userId: string, get: () => AppState): void {
       },
     );
   }).catch(() => {});
+
+  // 3. Realtime sync for calendar events and todos
+  import('@/lib/supabase').then(({ supabase, isSupabaseConfigured }) => {
+    if (!isSupabaseConfigured()) return;
+
+    // Calendar events — reload on any INSERT/UPDATE/DELETE
+    supabase
+      .channel('realtime_calendar_events')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'calendar_events' }, () => {
+        get().loadEvents();
+      })
+      .subscribe();
+
+    // Todos — reload on any INSERT/UPDATE/DELETE
+    supabase
+      .channel('realtime_todos')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'personal_todos' }, () => {
+        get().loadTodos();
+      })
+      .subscribe();
+  }).catch(() => {});
 }
 
 interface AppState {
