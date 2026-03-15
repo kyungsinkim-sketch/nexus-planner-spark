@@ -573,6 +573,48 @@ function TranscriptViewDialog({
             </div>
           )}
 
+          {/* Brain AI: trigger analysis button when no analysis yet */}
+          {!analysis && !isProcessing && transcript.length > 0 && (
+            <button
+              onClick={async () => {
+                try {
+                  // Update status to analyzing
+                  const { supabase } = await import('@/lib/supabase');
+                  await supabase.from('voice_recordings').update({ status: 'analyzing' }).eq('id', recording.id);
+                  
+                  const { data: { session } } = await supabase.auth.getSession();
+                  const userId = session?.user?.id;
+                  if (!userId) return;
+
+                  const { data, error } = await supabase.functions.invoke('voice-brain-analyze', {
+                    body: { recordingId: recording.id, userId, transcript },
+                  });
+                  
+                  if (!error && data?.analysis) {
+                    // Reload recording to get updated brain_analysis
+                    const { data: updated } = await supabase
+                      .from('voice_recordings')
+                      .select('*')
+                      .eq('id', recording.id)
+                      .single();
+                    if (updated) {
+                      recording.brainAnalysis = typeof updated.brain_analysis === 'string' 
+                        ? JSON.parse(updated.brain_analysis) : updated.brain_analysis;
+                      recording.status = updated.status as any;
+                      onOpenChange(true); // force re-render
+                    }
+                  }
+                } catch (err) {
+                  console.error('[TranscriptView] Brain analysis failed:', err);
+                }
+              }}
+              className="w-full flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary text-sm font-medium transition-colors"
+            >
+              <Brain className="w-4 h-4" />
+              Brain AI 분석 시작
+            </button>
+          )}
+
           {/* Brain Analysis — simplified: summary only + Review button */}
           {analysis && (
             <div>
