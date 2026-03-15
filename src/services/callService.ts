@@ -575,22 +575,16 @@ function startRecorderFromTracks(tracks: MediaStreamTrack[], room: Room): void {
     : 'audio/webm';
 
   try {
-    if (tracks.length > 1) {
-      // Mix multiple tracks via AudioContext
-      recordingAudioContext = new AudioContext();
-      if (recordingAudioContext.state === 'suspended') recordingAudioContext.resume().catch(() => {});
-      recordingDestination = recordingAudioContext.createMediaStreamDestination();
-      for (const t of tracks) {
-        const src = recordingAudioContext.createMediaStreamSource(new MediaStream([t]));
-        src.connect(recordingDestination);
-      }
-      audioChunks = [];
-      mediaRecorder = new MediaRecorder(recordingDestination.stream, { mimeType });
-    } else {
-      // Single track — record directly
-      audioChunks = [];
-      mediaRecorder = new MediaRecorder(new MediaStream(tracks), { mimeType });
+    // Always use AudioContext mixer (so late remote tracks can be added)
+    recordingAudioContext = new AudioContext();
+    if (recordingAudioContext.state === 'suspended') recordingAudioContext.resume().catch(() => {});
+    recordingDestination = recordingAudioContext.createMediaStreamDestination();
+    for (const t of tracks) {
+      const src = recordingAudioContext.createMediaStreamSource(new MediaStream([t]));
+      src.connect(recordingDestination);
     }
+    audioChunks = [];
+    mediaRecorder = new MediaRecorder(recordingDestination.stream, { mimeType });
 
     mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) audioChunks.push(e.data); };
     mediaRecorder.onerror = (e) => console.error('[Call] MediaRecorder error:', e);

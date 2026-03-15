@@ -83,10 +83,18 @@ function PostCallTranscriptView({ roomId, onClose }: { roomId: string; onClose: 
         if (!active) return;
 
         if (room?.voice_recording_id) {
-          // Wait until analysis is complete (or error) before showing dialog
+          // Wait until analysis is complete (or error/stuck) before showing dialog
           const isReady = room.analysis_status === 'completed' || room.analysis_status === 'error';
+          
+          // Also check voice_recording status directly
+          const { data: recCheck } = await supabase
+            .from('voice_recordings')
+            .select('status')
+            .eq('id', room.voice_recording_id)
+            .single();
+          const recReady = recCheck?.status === 'completed' || recCheck?.status === 'error' || recCheck?.status === 'analyzed';
 
-          if (isReady) {
+          if (isReady || recReady) {
             const { data: rec } = await supabase
               .from('voice_recordings')
               .select('*')
