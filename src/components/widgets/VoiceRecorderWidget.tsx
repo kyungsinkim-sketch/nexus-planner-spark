@@ -32,6 +32,7 @@ import {
   AlertTriangle,
   Clock,
   FolderOpen,
+  Trash2,
 } from 'lucide-react';
 import {
   Select,
@@ -201,47 +202,62 @@ const RecordingListItem = memo(function RecordingListItem({
   recording,
   projectTitle,
   onSelect,
+  onDelete,
 }: {
   recording: VoiceRecording;
   projectTitle: string | null;
   onSelect: (recording: VoiceRecording) => void;
+  onDelete: (recording: VoiceRecording) => void;
 }) {
   const handleClick = useCallback(() => onSelect(recording), [recording, onSelect]);
+  const handleDelete = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    onDelete(recording);
+  }, [recording, onDelete]);
 
   return (
-    <button
-      onClick={handleClick}
-      className="w-full text-left px-2 py-1.5 rounded-md hover:bg-muted/50 transition-colors"
-    >
-      <div className="flex items-center gap-1.5">
-        <RecordingStatusIcon status={recording.status} />
-        <span className="text-xs font-medium truncate flex-1">
-          {recording.title}
-        </span>
-        <span className="text-xs font-medium text-muted-foreground shrink-0">
-          {formatDuration(recording.duration)}
-        </span>
-      </div>
-      <div className="flex items-center gap-1.5 mt-0.5 pl-5">
-        <span className="text-xs font-medium text-muted-foreground/60">
-          {STATUS_LABELS[recording.status] || recording.status}
-        </span>
-        {projectTitle && (
-          <span className="inline-flex items-center gap-0.5 text-[8px] px-1 py-0.5 rounded bg-violet-500/10 text-violet-600 dark:text-violet-400">
-            <FolderOpen className="w-2 h-2" />
-            {projectTitle}
+    <div className="flex items-center gap-1">
+      <button
+        onClick={handleClick}
+        className="flex-1 text-left px-2 py-1.5 rounded-md hover:bg-muted/50 transition-colors min-w-0"
+      >
+        <div className="flex items-center gap-1.5">
+          <RecordingStatusIcon status={recording.status} />
+          <span className="text-xs font-medium truncate flex-1">
+            {recording.title}
           </span>
-        )}
-        {recording.brainAnalysis && (
-          <Brain className="w-2.5 h-2.5 text-primary" />
-        )}
-        {recording.ragIngested && (
-          <span className="inline-flex items-center text-[8px] px-1 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
-            RAG
+          <span className="text-xs font-medium text-muted-foreground shrink-0">
+            {formatDuration(recording.duration)}
           </span>
-        )}
-      </div>
-    </button>
+        </div>
+        <div className="flex items-center gap-1.5 mt-0.5 pl-5">
+          <span className="text-xs font-medium text-muted-foreground/60">
+            {STATUS_LABELS[recording.status] || recording.status}
+          </span>
+          {projectTitle && (
+            <span className="inline-flex items-center gap-0.5 text-[8px] px-1 py-0.5 rounded bg-violet-500/10 text-violet-600 dark:text-violet-400">
+              <FolderOpen className="w-2 h-2" />
+              {projectTitle}
+            </span>
+          )}
+          {recording.brainAnalysis && (
+            <Brain className="w-2.5 h-2.5 text-primary" />
+          )}
+          {recording.ragIngested && (
+            <span className="inline-flex items-center text-[8px] px-1 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+              RAG
+            </span>
+          )}
+        </div>
+      </button>
+      <button
+        onClick={handleDelete}
+        className="shrink-0 p-1.5 rounded-md hover:bg-red-500/10 text-muted-foreground hover:text-red-500 transition-colors"
+        title="삭제"
+      >
+        <Trash2 className="w-3.5 h-3.5" />
+      </button>
+    </div>
   );
 });
 
@@ -395,6 +411,27 @@ function VoiceRecorderWidget({ context }: { context: WidgetDataContext }) {
 
   const handleSelectRecording = useCallback((recording: VoiceRecording) => {
     setSelectedRecording(recording);
+  }, []);
+
+  const handleDeleteRecording = useCallback(async (recording: VoiceRecording) => {
+    if (!confirm(`"${recording.title}" 녹음을 삭제하시겠습니까?`)) return;
+    try {
+      const { supabase, isSupabaseConfigured } = await import('@/lib/supabase');
+      if (isSupabaseConfigured()) {
+        // Delete from storage
+        if (recording.audioStoragePath) {
+          await supabase.storage.from('voice-recordings').remove([recording.audioStoragePath]);
+        }
+        // Delete from DB
+        await supabase.from('voice_recordings').delete().eq('id', recording.id);
+      }
+      // Remove from local state
+      useAppStore.setState(s => ({
+        voiceRecordings: s.voiceRecordings.filter(r => r.id !== recording.id),
+      }));
+    } catch (err) {
+      console.error('[VoiceRecorder] Delete error:', err);
+    }
   }, []);
 
   // ─── Tab buttons ───────
@@ -592,6 +629,7 @@ function VoiceRecorderWidget({ context }: { context: WidgetDataContext }) {
                   recording={recording}
                   projectTitle={recording.projectId ? projectMap.get(recording.projectId) || null : null}
                   onSelect={handleSelectRecording}
+                  onDelete={handleDeleteRecording}
                 />
               ))
             )}

@@ -36,9 +36,11 @@ import {
   ChevronUp,
   Plus,
   Clock,
+  Sparkles,
 } from 'lucide-react';
 import { useTranslation } from '@/hooks/useTranslation';
-import type { VoiceRecording, TranscriptSegment, VoiceBrainAnalysis } from '@/types/core';
+import type { VoiceRecording, TranscriptSegment, VoiceBrainAnalysis, EmailBrainSuggestion, BrainExtractedEvent, BrainExtractedTodo } from '@/types/core';
+import { SuggestionReviewDialog } from './SuggestionReviewDialog';
 
 interface TranscriptViewDialogProps {
   open: boolean;
@@ -316,13 +318,37 @@ function TranscriptViewDialog({
 
   const handleAudioEnded = useCallback(() => setIsPlaying(false), []);
 
+  const [showSuggestionReview, setShowSuggestionReview] = useState(false);
+
+  // Convert VoiceBrainAnalysis → EmailBrainSuggestion for SuggestionReviewDialog
+  const voiceSuggestion = useMemo((): EmailBrainSuggestion | null => {
+    if (!recording?.brainAnalysis) return null;
+    const a = recording.brainAnalysis;
+    return {
+      id: `voice_${recording.id}`,
+      emailId: recording.id,
+      threadId: recording.id,
+      intent: 'action_required' as any,
+      summary: a.summary || '',
+      suggestedEvent: a.suggestedEvents?.[0] || undefined,
+      suggestedTodo: a.actionItems?.[0] ? {
+        title: a.actionItems[0].title,
+        assigneeIds: a.actionItems[0].assigneeIds || [],
+        dueDate: a.actionItems[0].dueDate || '',
+        priority: a.actionItems[0].priority || 'NORMAL',
+        projectId: a.actionItems[0].projectId,
+      } : undefined,
+      suggestedNote: a.decisions?.map(d => d.content).join('\n') || a.summary || undefined,
+      confidence: 0.9,
+      status: 'pending',
+    };
+  }, [recording]);
+
   const handleAddEvent = useCallback((event: VoiceBrainAnalysis['suggestedEvents'][0]) => {
-    // TODO: Integrate with calendar event creation
     console.log('[TranscriptView] Add event:', event);
   }, []);
 
   const handleAddTodo = useCallback((todo: VoiceBrainAnalysis['actionItems'][0]) => {
-    // TODO: Integrate with todo creation
     console.log('[TranscriptView] Add todo:', todo);
   }, []);
 
@@ -410,9 +436,28 @@ function TranscriptViewDialog({
                 onAddEvent={handleAddEvent}
                 onAddTodo={handleAddTodo}
               />
+              {/* Brain AI 제안 확인 button → opens SuggestionReviewDialog */}
+              {(analysis.suggestedEvents?.length > 0 || analysis.actionItems?.length > 0 || analysis.decisions?.length > 0) && (
+                <button
+                  onClick={() => setShowSuggestionReview(true)}
+                  className="mt-2 w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary text-xs font-medium transition-colors"
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  {t('language') === 'ko' ? 'Brain AI 제안 확인 및 적용' : 'Review & Apply Brain AI Suggestions'}
+                </button>
+              )}
             </div>
           )}
         </div>
+
+        {/* SuggestionReviewDialog — same as email Brain popup */}
+        {voiceSuggestion && (
+          <SuggestionReviewDialog
+            open={showSuggestionReview}
+            onOpenChange={setShowSuggestionReview}
+            suggestion={voiceSuggestion}
+          />
+        )}
       </DialogContent>
     </Dialog>
   );
