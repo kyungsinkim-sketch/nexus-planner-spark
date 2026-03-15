@@ -127,7 +127,6 @@ async function transcribeWithGoogleSTT(
           encoding: 'WEBM_OPUS',
           sampleRateHertz: 48000,
           languageCode: 'ko-KR',
-          alternativeLanguageCodes: ['en-US'],
           enableAutomaticPunctuation: true,
           enableWordTimeOffsets: true,
           enableWordConfidence: true,
