@@ -2048,8 +2048,13 @@ export const useAppStore = create<AppState>()(
             })),
           };
 
-          const analysis = await audioService.analyzeTranscript(userId, recordingId, transcript, brainContext);
-          patchRecording({ brainAnalysis: analysis, status: 'completed' });
+          if (transcript && transcript.length > 0) {
+            const analysis = await audioService.analyzeTranscript(userId, recordingId, transcript, brainContext);
+            patchRecording({ brainAnalysis: analysis, status: 'completed' });
+          } else {
+            console.warn('[VoiceRecording] Empty transcript, skipping brain analysis');
+            patchRecording({ status: 'completed' });
+          }
         } catch (err) {
           console.error('[VoiceRecording] Pipeline error:', err);
           patchRecording({ status: 'error', errorMessage: (err as Error).message });

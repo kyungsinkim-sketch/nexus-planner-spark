@@ -253,10 +253,18 @@ Deno.serve(async (req) => {
     const { transcript, context } = body;
     recordingId = body.recordingId;
 
-    if (!userId || !recordingId || !transcript?.length) {
+    if (!userId || !recordingId) {
       return new Response(
-        JSON.stringify({ error: 'Missing required fields' }),
+        JSON.stringify({ error: 'Missing required fields: userId, recordingId' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      );
+    }
+
+    if (!transcript?.length) {
+      // Empty transcript — return empty analysis instead of error
+      return new Response(
+        JSON.stringify({ analysis: { summary: '', decisions: [], suggestedEvents: [], actionItems: [], followups: [], keyQuotes: [] } }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       );
     }
 
