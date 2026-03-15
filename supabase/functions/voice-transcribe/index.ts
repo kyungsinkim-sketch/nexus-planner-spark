@@ -126,7 +126,6 @@ async function transcribeWithGoogleSTT(
         config: {
           encoding: 'WEBM_OPUS',
           sampleRateHertz: 48000,
-          audioChannelCount: 2,
           languageCode: 'ko-KR',
           enableAutomaticPunctuation: true,
           enableWordTimeOffsets: true,
@@ -179,7 +178,6 @@ async function transcribeLongAudio(
         config: {
           encoding: 'WEBM_OPUS',
           sampleRateHertz: 48000,
-          audioChannelCount: 2,
           languageCode: 'ko-KR',
           enableAutomaticPunctuation: true,
           enableWordTimeOffsets: true,

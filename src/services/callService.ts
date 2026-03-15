@@ -576,9 +576,11 @@ function startRecorderFromTracks(tracks: MediaStreamTrack[], room: Room): void {
 
   try {
     // Always use AudioContext mixer (so late remote tracks can be added)
+    // Force mono output for Google STT compatibility
     recordingAudioContext = new AudioContext();
     if (recordingAudioContext.state === 'suspended') recordingAudioContext.resume().catch(() => {});
     recordingDestination = recordingAudioContext.createMediaStreamDestination();
+    recordingDestination.channelCount = 1;
     for (const t of tracks) {
       const src = recordingAudioContext.createMediaStreamSource(new MediaStream([t]));
       src.connect(recordingDestination);
