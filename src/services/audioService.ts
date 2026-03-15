@@ -192,6 +192,7 @@ export async function transcribeAudio(
   userId: string,
   recordingId: string,
   audioStoragePath: string,
+  metadata?: { title?: string; projectId?: string; recordingType?: string; duration?: number },
 ): Promise<TranscriptSegment[]> {
   if (isMockMode()) {
     // Simulate processing delay
@@ -204,7 +205,7 @@ export async function transcribeAudio(
   }
 
   const { data, error } = await supabase.functions.invoke('voice-transcribe', {
-    body: { userId, recordingId, audioStoragePath },
+    body: { userId, recordingId, audioStoragePath, ...metadata },
   });
 
   if (error) {

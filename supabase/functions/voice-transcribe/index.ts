@@ -252,11 +252,20 @@ Deno.serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Update status → transcribing
+    // Upsert recording (create if not exists, update if exists)
     await supabase
       .from('voice_recordings')
-      .update({ status: 'transcribing', updated_at: new Date().toISOString() })
-      .eq('id', recordingId);
+      .upsert({
+        id: recordingId,
+        user_id: userId,
+        audio_storage_path: audioStoragePath,
+        title: body.title || 'Recording',
+        recording_type: body.recordingType || 'manual',
+        project_id: body.projectId || null,
+        duration_seconds: body.duration || 0,
+        status: 'transcribing',
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'id' });
 
     const googleApiKey = Deno.env.get('GOOGLE_CLOUD_STT_API_KEY');
 

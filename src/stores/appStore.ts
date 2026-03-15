@@ -2017,42 +2017,22 @@ export const useAppStore = create<AppState>()(
         set({ voiceRecordings: [recording, ...state.voiceRecordings] });
 
         try {
-          // Insert record into DB first so Edge Function can update it
-          if (isSupabaseConfigured()) {
-            const { supabase } = await import('@/lib/supabase');
-            await supabase.from('voice_recordings').insert({
-              id: recordingId,
-              user_id: userId,
-              project_id: metadata.projectId || null,
-              title: metadata.title,
-              recording_type: metadata.recordingType || 'manual',
-              status: 'uploading',
-              duration_seconds: 0,
-              audio_storage_path: '',
-            });
-          }
-
           // Upload to Supabase Storage (get duration in parallel)
           const [duration, { storagePath, publicUrl }] = await Promise.all([
             audioService.getAudioDuration(blob),
             audioService.uploadAudio(blob, userId, metadata),
           ]);
 
-          // Update DB with storage path + duration
-          if (isSupabaseConfigured()) {
-            const { supabase } = await import('@/lib/supabase');
-            await supabase.from('voice_recordings').update({
-              audio_storage_path: storagePath,
-              duration_seconds: duration,
-              status: 'transcribing',
-            }).eq('id', recordingId);
-          }
-
           // Update local state
           patchRecording({ audioUrl: publicUrl, audioStoragePath: storagePath, duration, status: 'transcribing' });
 
           // Start transcription
-          const transcript = await audioService.transcribeAudio(userId, recordingId, storagePath);
+          const transcript = await audioService.transcribeAudio(userId, recordingId, storagePath, {
+            title: metadata.title,
+            projectId: metadata.projectId,
+            recordingType: metadata.recordingType,
+            duration,
+          });
           patchRecording({ transcript, status: 'analyzing' });
 
           // Build brain context (only active projects to reduce payload)
