@@ -299,11 +299,12 @@ function VoiceRecorderWidget({ context }: { context: WidgetDataContext }) {
   const [selectedRecording, setSelectedRecording] = useState<VoiceRecording | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Filter and sort recordings — memoized to avoid recomputing on every render
+  // Filter and sort recordings — exclude phone_call type (shown via call history)
   const sortedRecordings = useMemo(() => {
+    const filtered = voiceRecordings.filter(r => r.recordingType !== 'phone_call');
     const list = context.type === 'project' && context.projectId
-      ? voiceRecordings.filter(r => r.projectId === context.projectId)
-      : voiceRecordings;
+      ? filtered.filter(r => r.projectId === context.projectId)
+      : filtered;
     return [...list].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   }, [voiceRecordings, context.type, context.projectId]);
 
