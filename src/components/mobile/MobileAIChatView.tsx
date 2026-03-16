@@ -598,10 +598,21 @@ export function MobileAIChatView() {
 
   const todayEvents = useMemo(() => {
     const now = new Date();
+    const myId = currentUser?.id;
     return events
-      .filter(e => { try { const s = parseISO(e.startAt); return !isBefore(s, startOfDay(now)) && !isAfter(s, endOfDay(now)); } catch (_e) { return false; } })
+      .filter(e => {
+        try {
+          const s = parseISO(e.startAt);
+          if (isBefore(s, startOfDay(now)) || isAfter(s, endOfDay(now))) return false;
+          // Only show events owned by or attended by current user
+          if (!myId) return false;
+          if (e.ownerId === myId) return true;
+          if (e.attendeeIds?.includes(myId)) return true;
+          return false;
+        } catch (_e) { return false; }
+      })
       .sort((a, b) => a.startAt.localeCompare(b.startAt));
-  }, [events]);
+  }, [events, currentUser?.id]);
 
   // ── Notifications (unread + todos + today events) ──
   // ── Updates: chat messages, todo alerts, brain suggestions, emails ──
