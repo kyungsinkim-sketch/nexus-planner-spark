@@ -1305,7 +1305,6 @@ export const useAppStore = create<AppState>()(
           // not the recipient (current user). message.directChatUserId is the recipient,
           // so we use message.userId (the sender) for navigation.
           const dmUserId = message.directChatUserId ? message.userId : undefined;
-          console.log('[AppStore] Creating notif:', { senderId: message.userId, directChatUserId: message.directChatUserId, dmUserId, roomId: message.roomId, projectId: resolvedProjectId });
           get().addAppNotification({
             type: 'chat',
             title: sender?.name || 'New message',

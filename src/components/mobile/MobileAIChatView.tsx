@@ -218,6 +218,7 @@ function UpdatesWidget({
   language,
   onNotifClick,
   onEventClick,
+  onTodoClick,
 }: {
   notifications: AppNotification[];
   todayEvents: Array<{ id: string; title: string; startAt: string }>;
@@ -225,6 +226,7 @@ function UpdatesWidget({
   language: string;
   onNotifClick: (n: AppNotification) => void;
   onEventClick?: () => void;
+  onTodoClick?: (todo: { id: string; projectId?: string }) => void;
 }) {
   const items = useMemo<UpdateItem[]>(() => {
     const result: UpdateItem[] = [];
@@ -259,6 +261,7 @@ function UpdatesWidget({
         iconBg: 'bg-emerald-500/10',
         title: todo.title,
         subtitle: language === 'ko' ? '오늘까지' : 'Due today',
+        onClick: onTodoClick ? () => onTodoClick(todo) : undefined,
       });
     }
 
@@ -275,6 +278,7 @@ function UpdatesWidget({
         iconBg: 'bg-emerald-500/10',
         title: todo.title,
         subtitle: todo.dueDate,
+        onClick: onTodoClick ? () => onTodoClick(todo) : undefined,
       });
     }
 
@@ -298,7 +302,7 @@ function UpdatesWidget({
     }
 
     return result;
-  }, [todayEvents, pendingTodos, notifications, language, onNotifClick, onEventClick]);
+  }, [todayEvents, pendingTodos, notifications, language, onNotifClick, onEventClick, onTodoClick]);
 
   const totalCount = items.length;
 
@@ -625,8 +629,6 @@ export function MobileAIChatView() {
   }, [personalTodos]);
 
   const handleNotifClick = useCallback((notif: AppNotification) => {
-    const dbg = `type=${notif.type}\ndirectUserId=${notif.directUserId}\nroomId=${notif.roomId}\nprojectId=${notif.projectId}\ntitle=${notif.title}`;
-    alert(dbg);
     try {
       if (notif.directUserId && notif.directUserId !== currentUser?.id) {
         openMobileDm(notif.directUserId);
@@ -847,6 +849,11 @@ export function MobileAIChatView() {
               language={language}
               onNotifClick={handleNotifClick}
               onEventClick={() => useWidgetStore.getState().setMobileView('calendar')}
+              onTodoClick={(todo) => {
+                if (todo.projectId) {
+                  useWidgetStore.setState({ mobileView: 'projects', mobileProjectNav: { projectId: todo.projectId, widget: 'todos' } });
+                }
+              }}
             />
           </div>
         </div>
