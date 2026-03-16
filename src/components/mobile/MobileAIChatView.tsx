@@ -623,8 +623,15 @@ export function MobileAIChatView() {
 
   const pendingTodos = useMemo(() => {
     if (!personalTodos) return [];
+    const myId = currentUser?.id;
     return personalTodos
-      .filter(t => t.status !== 'done' && t.status !== 'cancelled')
+      .filter(t => {
+        const s = t.status?.toUpperCase();
+        if (s === 'COMPLETED' || s === 'DONE' || s === 'CANCELLED') return false;
+        // Only show todos assigned to me (not just ones I requested for others)
+        if (myId && t.assigneeIds?.length && !t.assigneeIds.includes(myId)) return false;
+        return true;
+      })
       .map(t => ({ id: t.id, title: t.title, dueDate: t.dueDate, priority: t.priority, projectId: t.projectId }));
   }, [personalTodos]);
 
