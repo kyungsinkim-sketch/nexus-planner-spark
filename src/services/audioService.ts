@@ -17,7 +17,7 @@ import type { VoiceRecording, RecordingMetadata, TranscriptSegment, VoiceBrainAn
 // ─── Constants ───────────────────────────────────────
 
 const STORAGE_BUCKET = 'voice-recordings';
-const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
+const MAX_FILE_SIZE = 250 * 1024 * 1024; // 250MB (Supabase Pro)
 const ACCEPTED_AUDIO_TYPES = [
   'audio/webm', 'audio/ogg', 'audio/mp3', 'audio/mpeg',
   'audio/wav', 'audio/x-wav', 'audio/mp4', 'audio/m4a', 'audio/x-m4a',
@@ -154,7 +154,7 @@ export async function uploadAudio(
   }
 
   if (blob.size > MAX_FILE_SIZE) {
-    throw new Error('File size exceeds 50MB limit');
+    throw new Error('File size exceeds 250MB limit');
   }
 
   const ext = blob.type.includes('webm') ? 'webm'
