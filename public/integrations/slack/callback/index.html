@@ -4,17 +4,19 @@
 <body>
 <p>Slack 연결 중... 잠시만 기다려주세요.</p>
 <script>
-  // Parent window will read the code from this URL
-  // This page just needs to exist so the redirect doesn't 404
-  var params = new URLSearchParams(window.location.search);
-  var code = params.get('code');
-  if (code && window.opener) {
-    window.opener.postMessage({ type: 'slack-oauth-callback', code: code }, '*');
-    document.body.innerHTML = '<p>✅ 연결 완료! 이 창은 자동으로 닫힙니다.</p>';
-    setTimeout(function() { window.close(); }, 1500);
-  } else if (!code) {
-    document.body.innerHTML = '<p>❌ 인증 코드가 없습니다. 다시 시도해주세요.</p>';
-  }
+  (function() {
+    if (window.__slackCallbackDone) return;
+    window.__slackCallbackDone = true;
+    var params = new URLSearchParams(window.location.search);
+    var code = params.get('code');
+    if (code && window.opener) {
+      window.opener.postMessage({ type: 'slack-oauth-callback', code: code }, window.location.origin);
+      document.body.innerHTML = '<p>✅ 연결 완료! 이 창은 자동으로 닫힙니다.</p>';
+      setTimeout(function() { window.close(); }, 1500);
+    } else if (!code) {
+      document.body.innerHTML = '<p>❌ 인증 코드가 없습니다. 다시 시도해주세요.</p>';
+    }
+  })();
 </script>
 </body>
 </html>

@@ -62,9 +62,9 @@ Deno.serve(async (req) => {
     const tokenData = await tokenResponse.json();
 
     if (!tokenData.ok) {
-      console.error('[SlackAuth] Token exchange failed:', tokenData.error);
+      console.error('[SlackAuth] Token exchange failed:', JSON.stringify(tokenData));
       return new Response(
-        JSON.stringify({ error: `Slack OAuth failed: ${tokenData.error}` }),
+        JSON.stringify({ error: `Slack OAuth failed: ${tokenData.error}`, detail: tokenData }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       );
     }
