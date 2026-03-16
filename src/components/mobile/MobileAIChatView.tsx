@@ -200,30 +200,111 @@ function MorningBriefing({
 
 // ── Updates Widget (replaces Today's Schedule) ───────────────
 
+interface UpdateItem {
+  id: string;
+  kind: 'event' | 'todo' | 'notif';
+  icon: React.ReactNode;
+  iconBg: string;
+  title: string;
+  subtitle?: string;
+  time?: string;
+  onClick?: () => void;
+}
+
 function UpdatesWidget({
   notifications,
+  todayEvents,
+  pendingTodos,
   language,
   onNotifClick,
+  onEventClick,
 }: {
   notifications: AppNotification[];
+  todayEvents: Array<{ id: string; title: string; startAt: string }>;
+  pendingTodos: Array<{ id: string; title: string; dueDate: string; priority: string; projectId?: string }>;
   language: string;
   onNotifClick: (n: AppNotification) => void;
+  onEventClick?: () => void;
 }) {
-  const notifIcon = (type: string) => {
-    if (type === 'chat') return <MessageSquare className="w-3.5 h-3.5 text-blue-400/60" />;
-    if (type === 'todo') return <ListTodo className="w-3.5 h-3.5 text-emerald-400/60" />;
-    if (type === 'event') return <CalIcon className="w-3.5 h-3.5 text-purple-400/60" />;
-    if (type === 'brain') return <Sparkles className="w-3.5 h-3.5 text-amber-400/60" />;
-    return <Bell className="w-3.5 h-3.5 text-muted-foreground/40" />;
-  };
+  const items = useMemo<UpdateItem[]>(() => {
+    const result: UpdateItem[] = [];
 
-  const notifBg = (type: string) => {
-    if (type === 'chat') return 'bg-blue-500/10';
-    if (type === 'todo') return 'bg-emerald-500/10';
-    if (type === 'event') return 'bg-purple-500/10';
-    if (type === 'brain') return 'bg-amber-500/10';
-    return 'bg-muted/50';
-  };
+    // Today's events
+    for (const ev of todayEvents) {
+      let timeStr = '';
+      try { timeStr = format(parseISO(ev.startAt), 'HH:mm'); } catch (_) {}
+      result.push({
+        id: `ev-${ev.id}`,
+        kind: 'event',
+        icon: <CalIcon className="w-3.5 h-3.5 text-purple-400/70" />,
+        iconBg: 'bg-purple-500/10',
+        title: ev.title || (language === 'ko' ? '일정' : 'Event'),
+        subtitle: timeStr,
+        time: timeStr,
+        onClick: onEventClick,
+      });
+    }
+
+    // Pending todos (due today or overdue, max 5)
+    const now = new Date();
+    const todayStr = format(now, 'yyyy-MM-dd');
+    const urgent = pendingTodos
+      .filter(t => t.dueDate <= todayStr)
+      .sort((a, b) => a.dueDate.localeCompare(b.dueDate))
+      .slice(0, 5);
+    for (const todo of urgent) {
+      const overdue = todo.dueDate < todayStr;
+      result.push({
+        id: `todo-${todo.id}`,
+        kind: 'todo',
+        icon: <ListTodo className={cn('w-3.5 h-3.5', overdue ? 'text-red-400/70' : 'text-emerald-400/70')} />,
+        iconBg: overdue ? 'bg-red-500/10' : 'bg-emerald-500/10',
+        title: todo.title,
+        subtitle: overdue
+          ? (language === 'ko' ? '기한 초과' : 'Overdue')
+          : (language === 'ko' ? '오늘까지' : 'Due today'),
+      });
+    }
+
+    // Remaining pending todos (not due today/overdue) — up to 3
+    const upcoming = pendingTodos
+      .filter(t => t.dueDate > todayStr)
+      .sort((a, b) => a.dueDate.localeCompare(b.dueDate))
+      .slice(0, 3);
+    for (const todo of upcoming) {
+      result.push({
+        id: `todo-${todo.id}`,
+        kind: 'todo',
+        icon: <ListTodo className="w-3.5 h-3.5 text-emerald-400/60" />,
+        iconBg: 'bg-emerald-500/10',
+        title: todo.title,
+        subtitle: todo.dueDate,
+      });
+    }
+
+    // Unread notifications (chat messages etc.)
+    for (const notif of notifications) {
+      let icon: React.ReactNode = <Bell className="w-3.5 h-3.5 text-muted-foreground/40" />;
+      let bg = 'bg-muted/50';
+      if (notif.type === 'chat') { icon = <MessageSquare className="w-3.5 h-3.5 text-blue-400/60" />; bg = 'bg-blue-500/10'; }
+      else if (notif.type === 'todo') { icon = <ListTodo className="w-3.5 h-3.5 text-emerald-400/60" />; bg = 'bg-emerald-500/10'; }
+      else if (notif.type === 'event') { icon = <CalIcon className="w-3.5 h-3.5 text-purple-400/60" />; bg = 'bg-purple-500/10'; }
+      else if (notif.type === 'brain') { icon = <Sparkles className="w-3.5 h-3.5 text-amber-400/60" />; bg = 'bg-amber-500/10'; }
+      result.push({
+        id: `notif-${notif.id}`,
+        kind: 'notif',
+        icon,
+        iconBg: bg,
+        title: notif.title,
+        subtitle: notif.message,
+        onClick: () => onNotifClick(notif),
+      });
+    }
+
+    return result;
+  }, [todayEvents, pendingTodos, notifications, language, onNotifClick, onEventClick]);
+
+  const totalCount = items.length;
 
   return (
     <div className="mobile-glass rounded-2xl p-5">
@@ -232,35 +313,39 @@ function UpdatesWidget({
         <h3 className="typo-h4 font-bold text-foreground">
           {language === 'ko' ? '업데이트' : 'Updates'}
         </h3>
-        {notifications.length > 0 && (
+        {totalCount > 0 && (
           <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full font-medium">
-            {notifications.length}
+            {totalCount}
           </span>
         )}
       </div>
 
-      {notifications.length === 0 ? (
+      {totalCount === 0 ? (
         <p className="text-sm text-muted-foreground">
           {language === 'ko' ? '조용한 하루예요 ✨' : 'All quiet today ✨'}
         </p>
       ) : (
         <div className="space-y-1.5 max-h-[240px] overflow-y-auto">
-          {notifications.map((notif) => (
+          {items.map((item) => (
             <button
-              key={notif.id}
+              key={item.id}
               className="w-full rounded-xl p-2.5 flex items-start gap-2.5 active:bg-accent/50 transition-colors text-left"
-              onClick={() => onNotifClick(notif)}
+              onClick={item.onClick}
             >
-              <div className={cn('w-7 h-7 rounded-full flex items-center justify-center shrink-0 mt-0.5', notifBg(notif.type))}>
-                {notifIcon(notif.type)}
+              <div className={cn('w-7 h-7 rounded-full flex items-center justify-center shrink-0 mt-0.5', item.iconBg)}>
+                {item.icon}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-[13px] text-foreground/70 truncate">{notif.title}</p>
-                {notif.message && (
-                  <p className="text-[11px] text-muted-foreground/50 truncate mt-0.5">{notif.message}</p>
+                <p className="text-[13px] text-foreground/70 truncate">{item.title}</p>
+                {item.subtitle && (
+                  <p className="text-[11px] text-muted-foreground/50 truncate mt-0.5">{item.subtitle}</p>
                 )}
               </div>
-              <ChevronRight className="w-3.5 h-3.5 text-muted-foreground/20 shrink-0 mt-1" />
+              {item.time ? (
+                <span className="text-[10px] text-muted-foreground/40 font-mono shrink-0 mt-1">{item.time}</span>
+              ) : (
+                <ChevronRight className="w-3.5 h-3.5 text-muted-foreground/20 shrink-0 mt-1" />
+              )}
             </button>
           ))}
         </div>
@@ -344,7 +429,7 @@ interface SuggestionItem {
 }
 
 export function MobileAIChatView() {
-  const { events, currentUser, users, projects, loadEvents, loadTodos, addTodo, chatRooms, appNotifications } = useAppStore();
+  const { events, currentUser, users, projects, loadEvents, loadTodos, addTodo, chatRooms, appNotifications, personalTodos } = useAppStore();
   const { openMobileDm, openMobileGroupChat, openProjectTab, setActiveTab } = useWidgetStore();
   const { language } = useTranslation();
   const locale = language === 'ko' ? ko : enUS;
@@ -524,6 +609,13 @@ export function MobileAIChatView() {
     if (!appNotifications) return [];
     return appNotifications.filter(n => !n.read).slice(0, 10);
   }, [appNotifications]);
+
+  const pendingTodos = useMemo(() => {
+    if (!personalTodos) return [];
+    return personalTodos
+      .filter(t => t.status !== 'done' && t.status !== 'cancelled')
+      .map(t => ({ id: t.id, title: t.title, dueDate: t.dueDate, priority: t.priority, projectId: t.projectId }));
+  }, [personalTodos]);
 
   const handleNotifClick = useCallback((notif: AppNotification) => {
     try {
@@ -742,7 +834,14 @@ export function MobileAIChatView() {
         <div className="shrink-0 px-4 pt-6 pb-2">
           <ProfileCard user={currentUser} language={language} projects={projects} onProjectsClick={() => useWidgetStore.getState().setMobileView('projects')} />
           <div className="mt-4">
-            <UpdatesWidget notifications={unreadNotifs} language={language} onNotifClick={handleNotifClick} />
+            <UpdatesWidget
+              notifications={unreadNotifs}
+              todayEvents={todayEvents}
+              pendingTodos={pendingTodos}
+              language={language}
+              onNotifClick={handleNotifClick}
+              onEventClick={() => useWidgetStore.getState().setMobileView('calendar')}
+            />
           </div>
         </div>
 
