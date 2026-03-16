@@ -1301,13 +1301,17 @@ export const useAppStore = create<AppState>()(
             const room = state.chatRooms.find(r => r.id === message.roomId);
             if (room?.projectId) resolvedProjectId = room.projectId;
           }
+          // For DM notifications: directUserId should be the OTHER user (sender),
+          // not the recipient (current user). message.directChatUserId is the recipient,
+          // so we use message.userId (the sender) for navigation.
+          const dmUserId = message.directChatUserId ? message.userId : undefined;
           get().addAppNotification({
             type: 'chat',
             title: sender?.name || 'New message',
             message: preview,
             projectId: resolvedProjectId || undefined,
             roomId: message.roomId || undefined,
-            directUserId: message.directChatUserId || undefined,
+            directUserId: dmUserId,
             sourceId: message.id,
           });
 
