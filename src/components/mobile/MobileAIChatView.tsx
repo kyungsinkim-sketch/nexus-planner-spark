@@ -248,21 +248,17 @@ function UpdatesWidget({
     // Pending todos (due today or overdue, max 5)
     const now = new Date();
     const todayStr = format(now, 'yyyy-MM-dd');
-    const urgent = pendingTodos
-      .filter(t => t.dueDate <= todayStr)
-      .sort((a, b) => a.dueDate.localeCompare(b.dueDate))
+    const dueToday = pendingTodos
+      .filter(t => t.dueDate === todayStr)
       .slice(0, 5);
-    for (const todo of urgent) {
-      const overdue = todo.dueDate < todayStr;
+    for (const todo of dueToday) {
       result.push({
         id: `todo-${todo.id}`,
         kind: 'todo',
-        icon: <ListTodo className={cn('w-3.5 h-3.5', overdue ? 'text-red-400/70' : 'text-emerald-400/70')} />,
-        iconBg: overdue ? 'bg-red-500/10' : 'bg-emerald-500/10',
+        icon: <ListTodo className="w-3.5 h-3.5 text-emerald-400/70" />,
+        iconBg: 'bg-emerald-500/10',
         title: todo.title,
-        subtitle: overdue
-          ? (language === 'ko' ? '기한 초과' : 'Overdue')
-          : (language === 'ko' ? '오늘까지' : 'Due today'),
+        subtitle: language === 'ko' ? '오늘까지' : 'Due today',
       });
     }
 
