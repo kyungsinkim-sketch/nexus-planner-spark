@@ -24,29 +24,18 @@ export function MobileMembersView() {
   const locale = language === 'ko' ? ko : enUS;
 
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
-  const [filterProjectId, setFilterProjectId] = useState<string | null>(null);
 
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [calendarMonth, setCalendarMonth] = useState(new Date());
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
 
-  // Filter users by project & search
+  // Filter users by search
   const filteredUsers = useMemo(() => {
-    let result = users;
-    if (filterProjectId) {
-      const project = projects.find(p => p.id === filterProjectId);
-      if (project?.teamMemberIds) {
-        const ids = new Set(project.teamMemberIds);
-        result = result.filter(u => ids.has(u.id));
-      }
-    }
-    if (searchQuery.trim()) {
-      const q = searchQuery.trim().toLowerCase();
-      result = result.filter(u => u.name.toLowerCase().includes(q));
-    }
-    return result;
-  }, [users, projects, filterProjectId, searchQuery]);
+    if (!searchQuery.trim()) return users;
+    const q = searchQuery.trim().toLowerCase();
+    return users.filter(u => u.name.toLowerCase().includes(q));
+  }, [users, searchQuery]);
 
   const selectedUser = useMemo(
     () => (selectedUserId ? users.find(u => u.id === selectedUserId) ?? null : null),
@@ -410,36 +399,7 @@ export function MobileMembersView() {
         </div>
       )}
 
-      {/* Project filter chips */}
-      <div className="flex gap-2 overflow-x-auto px-4 pb-2 scrollbar-hide">
-        <button
-          onClick={() => setFilterProjectId(null)}
-          className={cn(
-            'flex-shrink-0 rounded-full px-4 py-1.5 text-xs font-medium transition-colors',
-            !filterProjectId
-              ? 'bg-primary text-primary-foreground'
-              : 'mobile-glass text-muted-foreground',
-          )}
-        >
-          All
-        </button>
-        {projects.map(p => (
-          <button
-            key={p.id}
-            onClick={() => setFilterProjectId(prev => (prev === p.id ? null : p.id))}
-            className={cn(
-              'flex-shrink-0 rounded-full px-4 py-1.5 text-xs font-medium transition-colors whitespace-nowrap',
-              filterProjectId === p.id
-                ? 'bg-primary text-primary-foreground'
-                : 'mobile-glass text-muted-foreground',
-            )}
-          >
-            {p.title}
-          </button>
-        ))}
-      </div>
-
-      {/* Group chips — second row, left-aligned */}
+      {/* Group chips */}
       {getGroupRooms().length > 0 && (
         <div className="flex gap-2 overflow-x-auto px-4 pb-3 scrollbar-hide">
           {getGroupRooms().map(room => (
