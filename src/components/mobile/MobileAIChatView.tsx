@@ -628,14 +628,15 @@ export function MobileAIChatView() {
     const dbg = `type=${notif.type}\ndirectUserId=${notif.directUserId}\nroomId=${notif.roomId}\nprojectId=${notif.projectId}\ntitle=${notif.title}`;
     alert(dbg);
     try {
-      if (notif.directUserId) {
+      if (notif.directUserId && notif.directUserId !== currentUser?.id) {
         openMobileDm(notif.directUserId);
       } else if (notif.projectId && projects) {
-        // Project chat — open the project tab (with chat widget focused)
+        // Project chat — open the project tab and switch to projects view
         const project = projects.find(p => p.id === notif.projectId);
         if (project) {
           openProjectTab(project.id, project.title || '', project.keyColor);
           setActiveTab(project.id);
+          useWidgetStore.getState().setMobileView('projects');
         }
       } else if (notif.roomId) {
         openMobileGroupChat(notif.roomId);
