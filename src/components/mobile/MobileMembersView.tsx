@@ -18,7 +18,7 @@ function formatUserInfo(user: User, _language: string): { position: string; team
 }
 
 export function MobileMembersView() {
-  const { users, projects, events, boardTasks, boardGroups, currentUser, getGroupRooms } = useAppStore();
+  const { users, projects, events, boardTasks, boardGroups, currentUser, getGroupRooms, getUnreadCount } = useAppStore();
   const { openMobileDm, openMobileGroupChat, setMobileView } = useWidgetStore();
   const { t, language } = useTranslation();
   const locale = language === 'ko' ? ko : enUS;
@@ -446,10 +446,15 @@ export function MobileMembersView() {
             <button
               key={room.id}
               onClick={() => openMobileGroupChat(room.id)}
-              className="flex-shrink-0 flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium mobile-glass text-muted-foreground active:scale-[0.97] transition-all whitespace-nowrap"
+              className="flex-shrink-0 flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium mobile-glass text-muted-foreground active:scale-[0.97] transition-all whitespace-nowrap relative"
             >
               <span className="text-primary/70">#</span>
               {room.name || 'Group'}
+              {getUnreadCount(`room:${room.id}`) > 0 && (
+                <span className="absolute -top-1 -right-1 min-w-[16px] h-4 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center px-1">
+                  {getUnreadCount(`room:${room.id}`)}
+                </span>
+              )}
             </button>
           ))}
         </div>
@@ -464,8 +469,13 @@ export function MobileMembersView() {
             <button
               key={user.id}
               onClick={() => setSelectedUserId(user.id)}
-              className="mobile-glass rounded-2xl p-4 flex flex-col items-start gap-2 active:scale-[0.98] transition-transform text-left min-h-[140px]"
+              className="mobile-glass rounded-2xl p-4 flex flex-col items-start gap-2 active:scale-[0.98] transition-transform text-left min-h-[140px] relative"
             >
+              {getUnreadCount(`dm:${user.id}`) > 0 && (
+                <span className="absolute top-2 right-2 min-w-[18px] h-[18px] rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center px-1">
+                  {getUnreadCount(`dm:${user.id}`)}
+                </span>
+              )}
               <Avatar className="w-12 h-12">
                 <AvatarImage src={user.avatar} />
                 <AvatarFallback className="bg-primary/10 text-primary font-semibold">{user.name[0]}</AvatarFallback>

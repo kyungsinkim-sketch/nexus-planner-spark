@@ -1,8 +1,9 @@
 /**
- * translateService.ts — Free real-time translation via Lingva API.
+ * translateService.ts — Free real-time translation (Korean ↔ English).
  *
- * Uses lingva.ml (open-source Google Translate proxy) — free, no API key needed.
- * Fallback instances in case primary is down.
+ * Strategy:
+ * 1. Lingva API instances (open-source Google Translate proxy)
+ * 2. MyMemory API fallback (free, no API key, 5000 words/day)
  */
 
 const LINGVA_INSTANCES = [
@@ -11,18 +12,73 @@ const LINGVA_INSTANCES = [
   'https://lingva.thedaviddelta.com',
 ];
 
-let activeInstance = LINGVA_INSTANCES[0];
-
 /**
  * Detect if text is primarily Korean or English.
- * Returns 'ko' or 'en'.
  */
 export function detectLanguage(text: string): 'ko' | 'en' {
-  // Count Korean characters (Hangul range)
   const koChars = (text.match(/[\uAC00-\uD7AF\u1100-\u11FF\u3130-\u318F]/g) || []).length;
   const total = text.replace(/\s/g, '').length;
   if (total === 0) return 'ko';
   return koChars / total > 0.3 ? 'ko' : 'en';
+}
+
+/**
+ * Try Lingva instances.
+ */
+async function tryLingva(text: string, sourceLang: string, targetLang: string): Promise<string | null> {
+  for (const instance of LINGVA_INSTANCES) {
+    try {
+      const encoded = encodeURIComponent(text);
+      const url = `${instance}/api/v1/${sourceLang}/${targetLang}/${encoded}`;
+
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 4000);
+
+      const res = await fetch(url, { signal: controller.signal });
+      clearTimeout(timeout);
+
+      if (!res.ok) continue;
+
+      const data = await res.json();
+      if (data.translation) {
+        return data.translation;
+      }
+    } catch {
+      continue;
+    }
+  }
+  return null;
+}
+
+/**
+ * Try MyMemory API (free, no key needed).
+ * Limit: 5000 words/day, 500 chars/request.
+ */
+async function tryMyMemory(text: string, sourceLang: string, targetLang: string): Promise<string | null> {
+  try {
+    // MyMemory uses full locale codes
+    const langPair = `${sourceLang === 'ko' ? 'ko-KR' : 'en-US'}|${targetLang === 'ko' ? 'ko-KR' : 'en-US'}`;
+    const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text.slice(0, 500))}&langpair=${langPair}`;
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
+
+    const res = await fetch(url, { signal: controller.signal });
+    clearTimeout(timeout);
+
+    if (!res.ok) return null;
+
+    const data = await res.json();
+    if (data.responseStatus === 200 && data.responseData?.translatedText) {
+      const translated = data.responseData.translatedText;
+      // MyMemory sometimes returns the original text in uppercase when it fails
+      if (translated.toUpperCase() === text.toUpperCase()) return null;
+      return translated;
+    }
+  } catch {
+    /* ignore */
+  }
+  return null;
 }
 
 /**
@@ -35,37 +91,15 @@ export async function translate(text: string): Promise<string | null> {
   const sourceLang = detectLanguage(text);
   const targetLang = sourceLang === 'ko' ? 'en' : 'ko';
 
-  console.log('[Translate]', sourceLang, '→', targetLang, ':', text.slice(0, 50));
+  // Try Lingva first
+  const lingvaResult = await tryLingva(text, sourceLang, targetLang);
+  if (lingvaResult) return lingvaResult;
 
-  for (const instance of LINGVA_INSTANCES) {
-    try {
-      const encoded = encodeURIComponent(text);
-      const url = `${instance}/api/v1/${sourceLang}/${targetLang}/${encoded}`;
+  // Fallback to MyMemory
+  const myMemoryResult = await tryMyMemory(text, sourceLang, targetLang);
+  if (myMemoryResult) return myMemoryResult;
 
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 5000);
-
-      const res = await fetch(url, { signal: controller.signal });
-      clearTimeout(timeout);
-
-      if (!res.ok) {
-        console.warn('[Translate] Instance returned', res.status, instance);
-        continue;
-      }
-
-      const data = await res.json();
-      if (data.translation) {
-        activeInstance = instance;
-        console.log('[Translate] ✅', data.translation.slice(0, 50));
-        return data.translation;
-      }
-    } catch (err: any) {
-      console.warn('[Translate] Instance failed:', instance, err?.message || err);
-      continue;
-    }
-  }
-
-  console.warn('[Translate] All instances failed for:', text.slice(0, 50));
+  console.warn('[Translate] All providers failed for:', text.slice(0, 50));
   return null;
 }
 
@@ -80,8 +114,7 @@ let pendingBatch: PendingTranslation[] = [];
 let batchTimer: ReturnType<typeof setTimeout> | null = null;
 
 /**
- * Queue a translation request. Requests are debounced (200ms)
- * to avoid flooding the API during fast speech.
+ * Queue a translation request. Debounced (200ms) to avoid flooding.
  */
 export function translateDebounced(text: string): Promise<string | null> {
   return new Promise((resolve) => {
@@ -97,7 +130,6 @@ async function flushBatch() {
   pendingBatch = [];
   batchTimer = null;
 
-  // Process in parallel (but limit concurrency to 3)
   const chunks = [];
   for (let i = 0; i < batch.length; i += 3) {
     chunks.push(batch.slice(i, i + 3));
