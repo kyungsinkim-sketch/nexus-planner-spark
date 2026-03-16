@@ -278,16 +278,16 @@ function ReactionBar({ reactions, messageId, onToggle }: {
               {reactUsers.slice(0, 3).map((user) => (
                 user?.avatar ? (
                   <img key={user.id} src={user.avatar} alt={user.name} title={user.name}
-                    className="w-3.5 h-3.5 rounded-full border border-background object-cover" />
+                    className="w-5 h-5 rounded-full border border-background object-cover" />
                 ) : (
                   <div key={user?.id} title={user?.name}
-                    className="w-3.5 h-3.5 rounded-full border border-background bg-muted flex items-center justify-center text-[7px] font-medium">
+                    className="w-5 h-5 rounded-full border border-background bg-muted flex items-center justify-center text-[9px] font-medium">
                     {user?.name?.charAt(0)?.toUpperCase()}
                   </div>
                 )
               ))}
               {reactUsers.length > 3 && (
-                <div className="w-3.5 h-3.5 rounded-full border border-background bg-muted flex items-center justify-center text-[6px]">
+                <div className="w-5 h-5 rounded-full border border-background bg-muted flex items-center justify-center text-[8px]">
                   +{reactUsers.length - 3}
                 </div>
               )}
