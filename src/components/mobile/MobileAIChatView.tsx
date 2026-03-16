@@ -489,24 +489,24 @@ export function MobileAIChatView() {
     };
   }, [loadEvents, loadTodos, loadBrainHistory]);
 
-  // Track keyboard height via visualViewport
-  const [kbBottom, setKbBottom] = useState<number | null>(null);
+  // iOS keyboard: lock container height to visualViewport
+  const [vpHeight, setVpHeight] = useState<number | null>(null);
   useEffect(() => {
-    const el = inputRef.current;
-    if (!el) return;
     const vv = window.visualViewport;
+    if (!vv) return;
     const update = () => {
-      if (vv && document.activeElement === el) {
-        const kbHeight = window.innerHeight - vv.height - vv.offsetTop;
-        setKbBottom(kbHeight > 50 ? kbHeight : null);
-        document.body.classList.toggle('keyboard-open', kbHeight > 50);
+      // When keyboard is open, visualViewport.height shrinks
+      const kbOpen = window.innerHeight - vv.height > 50;
+      setVpHeight(kbOpen ? vv.height : null);
+      // Prevent iOS from scrolling the body
+      if (kbOpen) {
+        window.scrollTo(0, 0);
+        document.documentElement.scrollTop = 0;
       }
     };
-    const onFocus = () => { if (vv) { vv.addEventListener('resize', update); vv.addEventListener('scroll', update); update(); } window.scrollTo(0, 0); };
-    const onBlur = () => setTimeout(() => { setKbBottom(null); document.body.classList.remove('keyboard-open'); if (vv) { vv.removeEventListener('resize', update); vv.removeEventListener('scroll', update); } }, 100);
-    el.addEventListener('focus', onFocus);
-    el.addEventListener('blur', onBlur);
-    return () => { el.removeEventListener('focus', onFocus); el.removeEventListener('blur', onBlur); document.body.classList.remove('keyboard-open'); if (vv) { vv.removeEventListener('resize', update); vv.removeEventListener('scroll', update); } };
+    vv.addEventListener('resize', update);
+    vv.addEventListener('scroll', update);
+    return () => { vv.removeEventListener('resize', update); vv.removeEventListener('scroll', update); };
   }, []);
 
   useTypingReveal(messages, setMessages);
@@ -740,7 +740,7 @@ export function MobileAIChatView() {
   const formatTime = (d: Date) => d.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
 
   return (
-    <div className="relative flex flex-col h-full widget-area-bg overflow-hidden">
+    <div className="relative flex flex-col widget-area-bg overflow-hidden" style={{ height: vpHeight ? `${vpHeight}px` : '100%' }}>
       {/* ═══ Scrollable area: briefing at top, messages grow from bottom ═══ */}
       <div className="flex-1 min-h-0 overflow-y-auto flex flex-col">
         {/* ── Sticky header zone: Profile Card + Briefing ── */}
@@ -822,7 +822,7 @@ export function MobileAIChatView() {
       {/* ═══ Universal Chat Bar — flex bottom, above nav ═══ */}
       <div
         className="shrink-0 px-4 py-2"
-        style={{ paddingBottom: kbBottom && kbBottom > 50 ? `${kbBottom}px` : 'calc(64px + env(safe-area-inset-bottom, 0px))' }}
+        style={{ paddingBottom: vpHeight ? '8px' : 'calc(64px + env(safe-area-inset-bottom, 0px))' }}
       >
         {/* Selected target badge */}
         {selectedTarget && (
