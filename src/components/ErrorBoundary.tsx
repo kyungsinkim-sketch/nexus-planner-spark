@@ -26,6 +26,15 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo): void {
     console.error("[ErrorBoundary] Uncaught error:", error);
     console.error("[ErrorBoundary] Component stack:", errorInfo.componentStack);
+
+    // Auto-recovery: clear stale SW cache and reload once
+    const reloadKey = '__eb_reload';
+    if (!sessionStorage.getItem(reloadKey)) {
+      sessionStorage.setItem(reloadKey, '1');
+      navigator.serviceWorker?.getRegistrations().then(rs => rs.forEach(r => r.unregister())).catch(() => {});
+      caches?.keys().then(ks => ks.forEach(k => caches.delete(k))).catch(() => {});
+      setTimeout(() => window.location.reload(), 500);
+    }
   }
 
   handleReset = (): void => {
