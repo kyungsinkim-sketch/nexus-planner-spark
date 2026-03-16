@@ -121,7 +121,7 @@ interface ChatMessageBubbleProps {
 
 export function ChatMessageBubble({ message, isCurrentUser, onVoteDecision, onAcceptSchedule, onDelete, onEdit, onPin, onUnpin, onReply, onConfirmBrainAction, onRejectBrainAction, onReactionToggle }: ChatMessageBubbleProps) {
   const { messageType } = message;
-  const { currentUser, messages: allMessages } = useAppStore();
+  const { currentUser, messages: allMessages, language } = useAppStore();
 
   // For AI messages (persona_response, brain_action), check if the current user
   // was the one who triggered the AI by finding the preceding user message
@@ -320,7 +320,7 @@ function ReplyQuote({ message: replyMsg, isCurrentUser }: { message: ChatMessage
     >
       <div className="w-0.5 min-h-[16px] bg-primary/70 rounded-full shrink-0 mt-0.5" />
       <div className="min-w-0">
-        <span className="font-semibold text-xs font-medium">{sender?.name || '알 수 없음'}</span>
+        <span className="font-semibold text-xs font-medium">{sender?.name || 'Unknown'}</span>
         <p className="truncate max-w-[200px]">{replyMsg.content}</p>
       </div>
     </div>
@@ -430,14 +430,14 @@ function HoverActionBar({ messageId, content, canEdit, canDelete, canPin, isCurr
             }
             setShowEmoji(!showEmoji); setShowMenu(false);
           }}
-          className="p-1.5 rounded-l-lg hover:bg-muted/60 transition-colors" title="리액션">
+          className="p-1.5 rounded-l-lg hover:bg-muted/60 transition-colors" title={language === 'ko' ? '리액션' : 'React'}>
           <SmilePlus className="w-3.5 h-3.5 text-muted-foreground" />
         </button>
 
         {/* Reply */}
         {onReply && (
           <button onClick={() => { onReply(messageId); setShowEmoji(false); setShowMenu(false); }}
-            className="p-1.5 hover:bg-muted/60 transition-colors" title="답글">
+            className="p-1.5 hover:bg-muted/60 transition-colors" title={language === 'ko' ? '답글' : 'Reply'}>
             <MessageCircle className="w-3.5 h-3.5 text-muted-foreground" />
           </button>
         )}
@@ -452,7 +452,7 @@ function HoverActionBar({ messageId, content, canEdit, canDelete, canPin, isCurr
               }
               setShowMenu(!showMenu); setShowEmoji(false);
             }}
-            className="p-1.5 rounded-r-lg hover:bg-muted/60 transition-colors" title="더보기">
+            className="p-1.5 rounded-r-lg hover:bg-muted/60 transition-colors" title={language === 'ko' ? '더보기' : 'More'}>
             <MoreHorizontal className="w-3.5 h-3.5 text-muted-foreground" />
           </button>
         )}
@@ -484,19 +484,19 @@ function HoverActionBar({ messageId, content, canEdit, canDelete, canPin, isCurr
             {canEdit && onEdit && (
               <button onClick={startEdit}
                 className="w-full flex items-center gap-1.5 px-2.5 py-1.5 text-xs text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors">
-                <Pencil className="w-3 h-3 shrink-0 text-gray-500 dark:text-gray-400" /> 수정
+                <Pencil className="w-3 h-3 shrink-0 text-gray-500 dark:text-gray-400" />{language === 'ko' ? ' 수정' : ' Edit'}
               </button>
             )}
             {canPin && onPin && (
               <button onClick={() => { onPin(messageId); setShowMenu(false); }}
                 className="w-full flex items-center gap-1.5 px-2.5 py-1.5 text-xs text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors">
-                <Pin className="w-3 h-3 shrink-0 text-gray-500 dark:text-gray-400" /> 고정
+                <Pin className="w-3 h-3 shrink-0 text-gray-500 dark:text-gray-400" />{language === 'ko' ? ' 고정' : ' Pin'}
               </button>
             )}
             {canPin && onUnpin && (
               <button onClick={() => { onUnpin(messageId); setShowMenu(false); }}
                 className="w-full flex items-center gap-1.5 px-2.5 py-1.5 text-xs text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors">
-                <PinOff className="w-3 h-3 shrink-0 text-gray-500 dark:text-gray-400" /> 고정 해제
+                <PinOff className="w-3 h-3 shrink-0 text-gray-500 dark:text-gray-400" />{language === 'ko' ? ' 고정 해제' : ' Unpin'}
               </button>
             )}
             {canDelete && onDelete && (
@@ -504,7 +504,7 @@ function HoverActionBar({ messageId, content, canEdit, canDelete, canPin, isCurr
                 <div className="border-t border-gray-100 dark:border-zinc-700 my-1" />
                 <button onClick={() => { onDelete(messageId); setShowMenu(false); }}
                   className="w-full flex items-center gap-1.5 px-2.5 py-1.5 text-xs text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors">
-                  <Trash2 className="w-3 h-3 shrink-0" /> 삭제
+                  <Trash2 className="w-3 h-3 shrink-0" />{language === 'ko' ? ' 삭제' : ' Delete'}
                 </button>
               </>
             )}

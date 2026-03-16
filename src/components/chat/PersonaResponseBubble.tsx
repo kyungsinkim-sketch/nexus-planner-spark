@@ -29,6 +29,7 @@ import {
 } from 'lucide-react';
 import type { ChatMessage } from '@/types/core';
 import * as personaService from '@/services/personaService';
+import { useAppStore } from '@/stores/appStore';
 
 interface PersonaTheme {
   bg: string;
@@ -81,6 +82,7 @@ interface PersonaResponseBubbleProps {
 
 export function PersonaResponseBubble({ message }: PersonaResponseBubbleProps) {
   const personaData = message.personaResponseData;
+  const language = useAppStore(s => s.language);
   const [feedbackState, setFeedbackState] = useState<'none' | 'helpful' | 'unhelpful' | 'submitting'>('none');
 
   const theme = useMemo(
@@ -135,7 +137,7 @@ export function PersonaResponseBubble({ message }: PersonaResponseBubbleProps) {
               className={`text-xs font-medium gap-0.5 ${theme.badgeColor} ml-1`}
             >
               <BookOpen className="w-2.5 h-2.5" />
-              {ragCount}개 지식 참조
+              {language === 'ko' ? `${ragCount}개 지식 참조` : `${ragCount} sources`}
             </Badge>
           )}
         </div>
@@ -157,7 +159,7 @@ export function PersonaResponseBubble({ message }: PersonaResponseBubbleProps) {
                   onClick={() => handleFeedback('helpful')}
                 >
                   <ThumbsUp className="w-3 h-3" />
-                  도움됨
+                  {language === 'ko' ? '도움됨' : 'Helpful'}
                 </Button>
                 <Button
                   variant="ghost"
@@ -166,18 +168,18 @@ export function PersonaResponseBubble({ message }: PersonaResponseBubbleProps) {
                   onClick={() => handleFeedback('unhelpful')}
                 >
                   <ThumbsDown className="w-3 h-3" />
-                  부족함
+                  {language === 'ko' ? '부족함' : 'Not helpful'}
                 </Button>
               </>
             ) : feedbackState === 'submitting' ? (
               <span className="text-xs font-medium text-muted-foreground flex items-center gap-1">
                 <Loader2 className="w-3 h-3 animate-spin" />
-                전송 중...
+                {language === 'ko' ? '전송 중...' : 'Sending...'}
               </span>
             ) : (
               <span className="text-xs font-medium text-muted-foreground flex items-center gap-1">
                 <CheckCircle2 className="w-3 h-3 text-green-500" />
-                {feedbackState === 'helpful' ? '감사합니다! 👍' : '피드백 감사합니다'}
+                {feedbackState === 'helpful' ? (language === 'ko' ? '감사합니다! 👍' : 'Thanks! 👍') : (language === 'ko' ? '피드백 감사합니다' : 'Thanks for feedback')}
               </span>
             )}
           </div>

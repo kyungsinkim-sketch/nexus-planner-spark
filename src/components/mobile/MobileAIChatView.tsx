@@ -748,7 +748,7 @@ export function MobileAIChatView() {
       } catch (err) {
         console.error('[UniversalChat] Send error:', err);
         // Show error in chat
-        setMessages(prev => [...prev, { id: `err_${Date.now()}`, role: 'assistant', content: `메시지 전송 실패: ${(err as Error).message}`, timestamp: new Date(), revealed: 0 }]);
+        setMessages(prev => [...prev, { id: `err_${Date.now()}`, role: 'assistant', content: language === 'ko' ? `메시지 전송 실패: ${(err as Error).message}` : `Message send failed: ${(err as Error).message}`, timestamp: new Date(), revealed: 0 }]);
         return;
       }
     }

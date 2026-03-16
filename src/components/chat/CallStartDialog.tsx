@@ -62,6 +62,7 @@ export function CallStartDialog({
   const currentUser = useAppStore(s => s.currentUser);
   const users = useAppStore(s => s.users);
   const addEvent = useAppStore(s => s.addEvent);
+  const language = useAppStore(s => s.language);
 
   const [mode, setMode] = useState<CallMode | null>(null);
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
@@ -135,9 +136,11 @@ export function CallStartDialog({
     try {
       // Support 1:1 and group calls
       const targetNames = selectedUserIds.map(id => selectableUsers.find(u => u.id === id)?.name).filter(Boolean);
+      const callType = mediaType === 'video' ? (language === 'ko' ? '화상' : 'Video') : (language === 'ko' ? '음성' : 'Voice');
+      const callWord = language === 'ko' ? '통화' : 'Call';
       const title = callTitle || (selectedUserIds.length === 1
-        ? `${mediaType === 'video' ? '화상' : '음성'} 통화`
-        : `${mediaType === 'video' ? '화상' : '음성'} 통화 — ${targetNames.join(', ')}`);
+        ? `${callType} ${callWord}`
+        : `${callType} ${callWord} — ${targetNames.join(', ')}`);
 
       await createCall(selectedUserIds.length === 1 ? selectedUserIds[0] : selectedUserIds, projectId, title, mediaType === 'video');
       onOpenChange(false);
@@ -163,12 +166,16 @@ export function CallStartDialog({
         .filter(Boolean)
         .join(', ');
 
-      const title = callTitle || `${mediaType === 'video' ? '화상' : '음성'} 통화 — ${participantNames}`;
+      const schedCallType = mediaType === 'video' ? (language === 'ko' ? '화상' : 'Video') : (language === 'ko' ? '음성' : 'Voice');
+      const schedCallWord = language === 'ko' ? '통화' : 'Call';
+      const title = callTitle || `${schedCallType} ${schedCallWord} — ${participantNames}`;
 
       // Create calendar event with call link placeholder
+      const descParticipants = language === 'ko' ? '참여자' : 'Participants';
+      const descAutoLink = language === 'ko' ? '통화 링크는 시작 시 자동 생성됩니다.' : 'Call link will be generated automatically.';
       await addEvent({
         title,
-        description: `📞 In-App ${mediaType === 'video' ? 'Video' : 'Voice'} Call\n참여자: ${participantNames}\n\n통화 링크는 시작 시 자동 생성됩니다.`,
+        description: `📞 In-App ${mediaType === 'video' ? 'Video' : 'Voice'} Call\n${descParticipants}: ${participantNames}\n\n${descAutoLink}`,
         startTime: startTime.toISOString(),
         endTime: endTime.toISOString(),
         projectId: projectId || undefined,
@@ -192,7 +199,7 @@ export function CallStartDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             {mediaType === 'video' ? <Video className="w-5 h-5" /> : <Phone className="w-5 h-5" />}
-            {mediaType === 'video' ? '화상 통화' : '음성 통화'}
+            {mediaType === 'video' ? (language === 'ko' ? '화상 통화' : 'Video Call') : (language === 'ko' ? '음성 통화' : 'Voice Call')}
           </DialogTitle>
           <DialogDescription className="sr-only">Start a call</DialogDescription>
         </DialogHeader>
@@ -208,8 +215,8 @@ export function CallStartDialog({
                 <Phone className="w-6 h-6 text-green-500" />
               </div>
               <div className="text-center">
-                <p className="font-semibold text-sm">지금 통화</p>
-                <p className="text-xs text-muted-foreground mt-0.5">바로 연결</p>
+                <p className="font-semibold text-sm">{language === 'ko' ? '지금 통화' : 'Call Now'}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">{language === 'ko' ? '바로 연결' : 'Connect now'}</p>
               </div>
             </button>
 
@@ -221,8 +228,8 @@ export function CallStartDialog({
                 <CalendarPlus className="w-6 h-6 text-blue-500" />
               </div>
               <div className="text-center">
-                <p className="font-semibold text-sm">예약 통화</p>
-                <p className="text-xs text-muted-foreground mt-0.5">일정에 추가</p>
+                <p className="font-semibold text-sm">{language === 'ko' ? '예약 통화' : 'Schedule'}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">{language === 'ko' ? '일정에 추가' : 'Add to calendar'}</p>
               </div>
             </button>
           </div>
@@ -233,11 +240,11 @@ export function CallStartDialog({
           <div className="space-y-4 py-2">
             {/* Call title (optional) */}
             <div>
-              <Label className="text-xs text-muted-foreground">통화 제목 (선택)</Label>
+              <Label className="text-xs text-muted-foreground">{language === 'ko' ? '통화 제목 (선택)' : 'Call title (optional)'}</Label>
               <Input
                 value={callTitle}
                 onChange={e => setCallTitle(e.target.value)}
-                placeholder="예: 프로젝트 킥오프 미팅"
+                placeholder={language === 'ko' ? '예: 프로젝트 킥오프 미팅' : 'e.g. Project kickoff meeting'}
                 className="mt-1"
               />
             </div>
@@ -246,7 +253,7 @@ export function CallStartDialog({
             {mode === 'schedule' && (
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <Label className="text-xs text-muted-foreground">날짜</Label>
+                  <Label className="text-xs text-muted-foreground">{language === 'ko' ? '날짜' : 'Date'}</Label>
                   <Input
                     type="date"
                     value={scheduleDate}
@@ -255,7 +262,7 @@ export function CallStartDialog({
                   />
                 </div>
                 <div>
-                  <Label className="text-xs text-muted-foreground">시간</Label>
+                  <Label className="text-xs text-muted-foreground">{language === 'ko' ? '시간' : 'Time'}</Label>
                   <Input
                     type="time"
                     value={scheduleTime}
@@ -272,13 +279,13 @@ export function CallStartDialog({
                 <div className="flex items-center justify-between mb-2">
                   <Label className="text-xs text-muted-foreground flex items-center gap-1">
                     <Users className="w-3 h-3" />
-                    참여자 ({selectedUserIds.length}/{selectableUsers.length})
+                    {language === 'ko' ? '참여자' : 'Participants'} ({selectedUserIds.length}/{selectableUsers.length})
                   </Label>
                   <button
                     onClick={toggleAll}
                     className="text-xs text-primary hover:underline"
                   >
-                    {selectedUserIds.length === selectableUsers.length ? '전체 해제' : '전체 선택'}
+                    {selectedUserIds.length === selectableUsers.length ? (language === 'ko' ? '전체 해제' : 'Deselect all') : (language === 'ko' ? '전체 선택' : 'Select all')}
                   </button>
                 </div>
 
@@ -314,7 +321,7 @@ export function CallStartDialog({
         {mode && (
           <DialogFooter className="gap-2 sm:gap-0">
             <Button variant="outline" onClick={() => setMode(null)} disabled={loading}>
-              뒤로
+              {language === 'ko' ? '뒤로' : 'Back'}
             </Button>
             {mode === 'now' ? (
               <Button
@@ -327,7 +334,7 @@ export function CallStartDialog({
                 ) : (
                   <Phone className="w-4 h-4 mr-2" />
                 )}
-                통화 시작
+                {language === 'ko' ? '통화 시작' : 'Start Call'}
               </Button>
             ) : (
               <Button
@@ -339,7 +346,7 @@ export function CallStartDialog({
                 ) : (
                   <CalendarPlus className="w-4 h-4 mr-2" />
                 )}
-                일정 추가
+                {language === 'ko' ? '일정 추가' : 'Add to Calendar'}
               </Button>
             )}
           </DialogFooter>
