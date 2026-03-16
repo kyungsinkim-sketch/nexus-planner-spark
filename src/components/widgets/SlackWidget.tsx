@@ -446,20 +446,19 @@ function SlackWidget({ context }: { context: WidgetDataContext }) {
     const authUrl = getSlackAuthUrl(SLACK_REDIRECT_URI, state);
     if (!authUrl) { setError('Slack Client ID not configured'); return; }
     const popup = window.open(authUrl, 'slack-oauth', 'width=600,height=700');
-    let codeSent = false;
+    // Callback page (index.html) sends postMessage with the code.
+    // We only monitor for popup closure or Slack error here.
     const interval = setInterval(() => {
       try {
         if (popup?.closed) { clearInterval(interval); return; }
-        if (codeSent) return;
         const popupUrl = popup?.location?.href;
         if (popupUrl?.includes('/integrations/slack/callback')) {
           const url = new URL(popupUrl);
-          const code = url.searchParams.get('code');
           const slackError = url.searchParams.get('error');
-          if (slackError) { codeSent = true; popup?.close(); clearInterval(interval); setError(`Slack: ${slackError}`); return; }
-          if (code) { codeSent = true; popup?.close(); clearInterval(interval); window.postMessage({ type: 'slack-oauth-callback', code }, window.location.origin); }
+          if (slackError) { popup?.close(); clearInterval(interval); setError(`Slack: ${slackError}`); }
+          // Code is handled by callback page's postMessage → no duplicate send here
         }
-      } catch { /* cross-origin */ }
+      } catch { /* cross-origin — expected until redirect completes */ }
     }, 500);
   }, [userId]);
 
