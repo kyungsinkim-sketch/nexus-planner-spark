@@ -267,13 +267,13 @@ function ReactionBar({ reactions, messageId, onToggle }: {
           <button
             key={r.emoji}
             onClick={() => onToggle?.(messageId, r.emoji)}
-            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs transition-all border ${
+            className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs transition-all border ${
               isMine
                 ? 'bg-gray-100 dark:bg-zinc-700/50 border-primary/30 text-primary'
                 : 'bg-gray-50 dark:bg-zinc-800/50 border-gray-200 dark:border-zinc-700 hover:bg-gray-100 dark:hover:bg-zinc-700 text-muted-foreground'
             }`}
           >
-            <span className="text-base leading-none" style={{ fontFamily: '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif' }}>{r.emoji}</span>
+            <span className="text-xl leading-none" style={{ fontFamily: '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif' }}>{r.emoji}</span>
             <div className="flex -space-x-1">
               {reactUsers.slice(0, 3).map((user) => (
                 user?.avatar ? (
@@ -379,7 +379,7 @@ function EmojiPicker({ messageId, onToggle }: {
         </div>
       )}
       {showFull && createPortal(
-        <div ref={fullRef} className="fixed z-[9999]" style={{ top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }}>
+        <div ref={fullRef} className="fixed z-[9999]" style={{ top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }}>{/* EmojiPicker inline — centered fallback */}
           <Picker
             data={data}
             onEmojiSelect={(e: { native: string }) => { onToggle(messageId, e.native); setShowFull(false); setShowQuick(false); }}
@@ -514,11 +514,11 @@ function HoverActionBar({ messageId, content, canEdit, canDelete, canPin, isCurr
         document.body
       )}
 
-      {/* Full emoji picker — Portal to body */}
-      {showFullEmoji && createPortal(
+      {/* Full emoji picker — Portal to body, anchored near quick picker */}
+      {showFullEmoji && emojiPos && createPortal(
         <>
           <div className="fixed inset-0 z-[9998]" onClick={() => { setShowFullEmoji(false); setShowEmoji(false); }} />
-          <div className="fixed z-[9999]" style={{ top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }}
+          <div className="fixed z-[9999]" style={{ top: Math.min(emojiPos.top + 8, window.innerHeight - 440), left: Math.max(8, Math.min(emojiPos.left - 160, window.innerWidth - 360)) }}
             onClick={e => e.stopPropagation()}>
             <Picker
               data={data}
