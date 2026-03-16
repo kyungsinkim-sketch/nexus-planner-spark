@@ -212,8 +212,8 @@ export const createFileItem = async (fileItem: Partial<FileItem>): Promise<FileI
     return transformFileItem(data as FileItemRow);
 };
 
-// Maximum file upload size: 250MB (Supabase Pro supports up to 5GB)
-const MAX_FILE_SIZE_BYTES = 250 * 1024 * 1024;
+// Maximum file upload size: 500MB (Supabase Pro supports up to 5GB)
+const MAX_FILE_SIZE_BYTES = 500 * 1024 * 1024;
 
 // Upload file to storage
 export const uploadFile = async (
@@ -229,7 +229,7 @@ export const uploadFile = async (
     // Pre-validate file size before uploading to save bandwidth
     if (file.size > MAX_FILE_SIZE_BYTES) {
         const sizeMB = (file.size / (1024 * 1024)).toFixed(1);
-        throw new Error(`파일 크기(${sizeMB}MB)가 최대 업로드 크기(250MB)를 초과합니다.`);
+        throw new Error(`파일 크기(${sizeMB}MB)가 최대 업로드 크기(500MB)를 초과합니다.`);
     }
 
     // Reject empty files
@@ -249,10 +249,10 @@ export const uploadFile = async (
         // Provide user-friendly message for common storage errors
         const errMsg = uploadError.message || '';
         if (errMsg.includes('exceeded the maximum allowed size') || errMsg.includes('Payload too large')) {
-            throw new Error('File is too large. Maximum upload size is 250MB.');
+            throw new Error('File is too large. Maximum upload size is 500MB.');
         }
         if (errMsg.includes('<!DOCTYPE') || errMsg.includes('is not valid JSON')) {
-            throw new Error('Upload timed out. The file may be too large. Maximum size is 250MB.');
+            throw new Error('Upload timed out. The file may be too large. Maximum size is 500MB.');
         }
         throw new Error(handleSupabaseError(uploadError));
     }
