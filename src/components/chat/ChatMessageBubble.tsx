@@ -337,7 +337,6 @@ function EmojiPicker({ messageId, onToggle }: {
   const [showQuick, setShowQuick] = useState(false);
   const [showFull, setShowFull] = useState(false);
   const fullRef = useRef<HTMLDivElement>(null);
-  if (!onToggle) return null;
 
   // Close full picker on outside click
   useEffect(() => {
@@ -348,6 +347,8 @@ function EmojiPicker({ messageId, onToggle }: {
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, [showFull]);
+
+  if (!onToggle) return null;
 
   return (
     <div className="relative">
