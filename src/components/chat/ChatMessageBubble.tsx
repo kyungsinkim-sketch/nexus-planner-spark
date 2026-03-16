@@ -365,7 +365,7 @@ function EmojiPicker({ messageId, onToggle }: {
  * Slack-style hover action bar — appears top-right on hover.
  * Shows: emoji picker, reply, more menu (edit/pin/unpin/delete).
  */
-function HoverActionBar({ messageId, content, canEdit, canDelete, canPin, isCurrentUser, onReactionToggle, onEdit, onDelete, onPin, onUnpin, onReply }: {
+function HoverActionBar({ messageId, content, canEdit, canDelete, canPin, isCurrentUser, onReactionToggle, onEdit, onDelete, onPin, onUnpin, onReply, language }: {
   messageId: string;
   content?: string;
   canEdit: boolean;
@@ -378,6 +378,7 @@ function HoverActionBar({ messageId, content, canEdit, canDelete, canPin, isCurr
   onPin?: (messageId: string) => void;
   onUnpin?: (messageId: string) => void;
   onReply?: (messageId: string) => void;
+  language?: string;
 }) {
   const [showMenu, setShowMenu] = useState(false);
   const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
@@ -534,7 +535,7 @@ function MessageWrapper({ children, isCurrentUser, onDelete, onEdit, onPin, onUn
     <div className={`group/msg relative max-w-[85%] overflow-visible ${isCurrentUser ? 'ml-auto' : ''}`}>
       {children}
       <ReactionBar reactions={reactions} messageId={messageId} onToggle={onReactionToggle} />
-      <HoverActionBar
+      <HoverActionBar language={useAppStore.getState().language}
         messageId={messageId}
         content={content}
         canEdit={isCurrentUser}
@@ -568,7 +569,7 @@ function AiMessageWrapper({ children, canManage, onDelete, onPin, onUnpin, onRep
     <div className="group/msg relative max-w-full overflow-visible">
       {children}
       <ReactionBar reactions={reactions} messageId={messageId} onToggle={onReactionToggle} />
-      <HoverActionBar
+      <HoverActionBar language={useAppStore.getState().language}
         messageId={messageId}
         canEdit={false}
         canDelete={canManage}
