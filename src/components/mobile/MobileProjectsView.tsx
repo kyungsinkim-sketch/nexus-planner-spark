@@ -7,8 +7,9 @@
  * 3. Widget fullscreen
  */
 
-import { useState, useMemo, lazy, Suspense } from 'react';
+import { useState, useMemo, useEffect, lazy, Suspense } from 'react';
 import { useAppStore } from '@/stores/appStore';
+import { useWidgetStore } from '@/stores/widgetStore';
 import { useTranslation } from '@/hooks/useTranslation';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -54,6 +55,21 @@ export function MobileProjectsView() {
   const [projectId, setProjectId] = useState<string | null>(null);
   const [widgetKey, setWidgetKey] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<'ACTIVE' | 'COMPLETED'>('ACTIVE');
+
+  // Consume navigation intent from widgetStore (e.g. notification click → project chat)
+  const mobileProjectNav = useWidgetStore((s) => s.mobileProjectNav);
+  useEffect(() => {
+    if (mobileProjectNav) {
+      setProjectId(mobileProjectNav.projectId);
+      if (mobileProjectNav.widget) {
+        setWidgetKey(mobileProjectNav.widget);
+        setStep('widget');
+      } else {
+        setStep('detail');
+      }
+      useWidgetStore.setState({ mobileProjectNav: null });
+    }
+  }, [mobileProjectNav]);
 
   const filteredProjects = useMemo(
     () => projects.filter((p) => p.status === statusFilter),

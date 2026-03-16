@@ -103,6 +103,7 @@ interface WidgetState {
   mobileView: MobileView;
   mobileDmTargetUserId: string | null;
   mobileGroupRoomId: string | null;
+  mobileProjectNav: { projectId: string; widget?: string } | null;
 
   // Layout configuration
   dashboardWidgetLayout: WidgetLayoutItem[];
@@ -120,6 +121,7 @@ interface WidgetState {
   setMobileView: (view: MobileView) => void;
   openMobileDm: (userId: string) => void;
   openMobileGroupChat: (roomId: string) => void;
+  openMobileProjectChat: (projectId: string) => void;
 
   // Layout actions
   updateDashboardLayout: (layout: WidgetLayoutItem[]) => void;
@@ -146,6 +148,7 @@ export const useWidgetStore = create<WidgetState>()(
       mobileView: 'ai-chat' as MobileView,
       mobileDmTargetUserId: null,
       mobileGroupRoomId: null,
+      mobileProjectNav: null,
       dashboardWidgetLayout: DEFAULT_DASHBOARD_LAYOUT,
       projectWidgetLayout: DEFAULT_PROJECT_LAYOUT,
       _layoutLoadedFromDB: false,
@@ -154,6 +157,7 @@ export const useWidgetStore = create<WidgetState>()(
       setMobileView: (view) => set({ mobileView: view }),
       openMobileDm: (userId) => set({ mobileView: 'dm-chat', mobileDmTargetUserId: userId, mobileGroupRoomId: null }),
       openMobileGroupChat: (roomId) => set({ mobileView: 'dm-chat', mobileGroupRoomId: roomId, mobileDmTargetUserId: null }),
+      openMobileProjectChat: (projectId) => set({ mobileView: 'projects', mobileProjectNav: { projectId, widget: 'chat' } }),
 
       // --- Tab actions ---
 
