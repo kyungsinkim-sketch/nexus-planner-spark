@@ -625,10 +625,10 @@ export function MobileAIChatView() {
   }, [personalTodos]);
 
   const handleNotifClick = useCallback((notif: AppNotification) => {
-    console.log('[MobileAI] Notif click:', { type: notif.type, directUserId: notif.directUserId, roomId: notif.roomId, projectId: notif.projectId, title: notif.title, sourceId: notif.sourceId });
+    const dbg = `type=${notif.type}\ndirectUserId=${notif.directUserId}\nroomId=${notif.roomId}\nprojectId=${notif.projectId}\ntitle=${notif.title}`;
+    alert(dbg);
     try {
       if (notif.directUserId) {
-        console.log('[MobileAI] → openMobileDm:', notif.directUserId);
         openMobileDm(notif.directUserId);
       } else if (notif.projectId && projects) {
         // Project chat — open the project tab (with chat widget focused)
