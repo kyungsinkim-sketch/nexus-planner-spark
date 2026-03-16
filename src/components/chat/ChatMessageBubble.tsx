@@ -33,6 +33,8 @@ import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import * as fileService from '@/services/fileService';
 import type { ChatMessage, ChatReaction, FileItem } from '@/types/core';
 import { BRAIN_BOT_USER_ID } from '@/types/core';
+import data from '@emoji-mart/data';
+import Picker from '@emoji-mart/react';
 import { BrainActionBubble } from './BrainActionBubble';
 import { PersonaResponseBubble } from './PersonaResponseBubble';
 import { toggleReaction } from '@/services/chatReactionService';
@@ -327,35 +329,67 @@ function ReplyQuote({ message: replyMsg, isCurrentUser }: { message: ChatMessage
   );
 }
 
-// Quick emoji picker (appears on hover)
+// Quick emoji picker with full emoji-mart fallback
 function EmojiPicker({ messageId, onToggle }: {
   messageId: string;
   onToggle?: (messageId: string, emoji: string) => void;
 }) {
-  const [showPicker, setShowPicker] = useState(false);
+  const [showQuick, setShowQuick] = useState(false);
+  const [showFull, setShowFull] = useState(false);
+  const fullRef = useRef<HTMLDivElement>(null);
   if (!onToggle) return null;
+
+  // Close full picker on outside click
+  useEffect(() => {
+    if (!showFull) return;
+    const handler = (e: MouseEvent) => {
+      if (fullRef.current && !fullRef.current.contains(e.target as Node)) setShowFull(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [showFull]);
 
   return (
     <div className="relative">
       <button
-        onClick={() => setShowPicker(!showPicker)}
+        onClick={() => { setShowQuick(!showQuick); setShowFull(false); }}
         className="p-0.5 rounded opacity-0 group-hover/msg:opacity-100 hover:bg-muted transition-all"
         title="Add reaction"
       >
         <SmilePlus className="w-3.5 h-3.5 text-muted-foreground" />
       </button>
-      {showPicker && (
+      {showQuick && !showFull && (
         <div className="absolute bottom-7 left-0 z-20 flex gap-1 p-1.5 rounded-xl bg-popover/95 backdrop-blur-md border shadow-lg">
           {QUICK_EMOJIS.map((emoji) => (
             <button
               key={emoji}
-              onClick={() => { onToggle(messageId, emoji); setShowPicker(false); }}
+              onClick={() => { onToggle(messageId, emoji); setShowQuick(false); }}
               className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-muted transition-colors text-base"
             >
               {emoji}
             </button>
           ))}
+          <button
+            onClick={() => setShowFull(true)}
+            className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-muted transition-colors text-muted-foreground"
+            title="More emojis"
+          >
+            <SmilePlus className="w-4 h-4" />
+          </button>
         </div>
+      )}
+      {showFull && createPortal(
+        <div ref={fullRef} className="fixed z-[9999]" style={{ top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }}>
+          <Picker
+            data={data}
+            onEmojiSelect={(e: { native: string }) => { onToggle(messageId, e.native); setShowFull(false); setShowQuick(false); }}
+            theme="dark"
+            previewPosition="none"
+            skinTonePosition="search"
+            maxFrequentRows={2}
+          />
+        </div>,
+        document.body,
       )}
     </div>
   );
@@ -383,6 +417,7 @@ function HoverActionBar({ messageId, content, canEdit, canDelete, canPin, isCurr
   const [showMenu, setShowMenu] = useState(false);
   const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
   const [showEmoji, setShowEmoji] = useState(false);
+  const [showFullEmoji, setShowFullEmoji] = useState(false);
   const [emojiPos, setEmojiPos] = useState<{ top: number; left: number } | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const moreRef = useRef<HTMLButtonElement>(null);
@@ -460,7 +495,7 @@ function HoverActionBar({ messageId, content, canEdit, canDelete, canPin, isCurr
       </div>
 
       {/* Emoji picker — Portal to body */}
-      {showEmoji && emojiPos && createPortal(
+      {showEmoji && emojiPos && !showFullEmoji && createPortal(
         <>
           <div className="fixed inset-0 z-[9998]" onClick={() => setShowEmoji(false)} />
           <div className="fixed z-[9999] flex items-center gap-0.5 rounded-lg px-1.5 py-1 bg-white dark:bg-zinc-800 border border-black/10 dark:border-white/10 shadow-[0_4px_24px_rgba(0,0,0,0.15)]"
@@ -470,6 +505,29 @@ function HoverActionBar({ messageId, content, canEdit, canDelete, canPin, isCurr
               <button key={emoji} onClick={() => { onReactionToggle?.(messageId, emoji); setShowEmoji(false); }}
                 className="w-5 h-5 flex items-center justify-center rounded hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors text-xs">{emoji}</button>
             ))}
+            <button onClick={() => setShowFullEmoji(true)}
+              className="w-5 h-5 flex items-center justify-center rounded hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors">
+              <SmilePlus className="w-3.5 h-3.5 text-muted-foreground" />
+            </button>
+          </div>
+        </>,
+        document.body
+      )}
+
+      {/* Full emoji picker — Portal to body */}
+      {showFullEmoji && createPortal(
+        <>
+          <div className="fixed inset-0 z-[9998]" onClick={() => { setShowFullEmoji(false); setShowEmoji(false); }} />
+          <div className="fixed z-[9999]" style={{ top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }}
+            onClick={e => e.stopPropagation()}>
+            <Picker
+              data={data}
+              onEmojiSelect={(e: { native: string }) => { onReactionToggle?.(messageId, e.native); setShowFullEmoji(false); setShowEmoji(false); }}
+              theme="dark"
+              previewPosition="none"
+              skinTonePosition="search"
+              maxFrequentRows={2}
+            />
           </div>
         </>,
         document.body
