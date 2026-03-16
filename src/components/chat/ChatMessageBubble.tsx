@@ -455,7 +455,7 @@ function HoverActionBar({ messageId, content, canEdit, canDelete, canPin, isCurr
   return (
     <>
       {/* Floating action bar — for own messages: bottom-right; for others: right side vertically centered */}
-      <div className={`absolute flex items-center rounded-lg shadow-md z-20 transition-opacity bg-white dark:bg-zinc-800 border border-black/10 dark:border-white/10 -bottom-4 right-0 ${showMenu || showEmoji ? 'opacity-100' : 'opacity-0 group-hover/msg:opacity-100'}`}
+      <div className={`absolute flex items-center rounded-lg shadow-md z-20 transition-opacity bg-white dark:bg-zinc-800 border border-black/10 dark:border-white/10 -bottom-4 left-0 ${showMenu || showEmoji || showFullEmoji ? 'opacity-100' : 'opacity-0 group-hover/msg:opacity-100'}`}
       >
         {/* Emoji */}
         <button ref={emojiRef} onClick={(e) => {
