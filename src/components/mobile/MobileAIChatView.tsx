@@ -232,7 +232,7 @@ function UpdatesWidget({
     // Today's events
     for (const ev of todayEvents) {
       let timeStr = '';
-      try { timeStr = format(parseISO(ev.startAt), 'HH:mm'); } catch (_) {}
+      try { timeStr = format(parseISO(ev.startAt), 'HH:mm'); } catch (_) { /* ignore */ }
       result.push({
         id: `ev-${ev.id}`,
         kind: 'event',
