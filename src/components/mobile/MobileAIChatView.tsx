@@ -628,14 +628,15 @@ export function MobileAIChatView() {
     try {
       if (notif.directUserId) {
         openMobileDm(notif.directUserId);
-      } else if (notif.roomId) {
-        openMobileGroupChat(notif.roomId);
       } else if (notif.projectId && projects) {
+        // Project chat — open the project tab (with chat widget focused)
         const project = projects.find(p => p.id === notif.projectId);
         if (project) {
           openProjectTab(project.id, project.title || '', project.keyColor);
           setActiveTab(project.id);
         }
+      } else if (notif.roomId) {
+        openMobileGroupChat(notif.roomId);
       }
     } catch (err) {
       console.error('[MobileAI] Notif click error:', err);
