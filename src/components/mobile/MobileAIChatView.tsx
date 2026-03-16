@@ -599,7 +599,7 @@ export function MobileAIChatView() {
       .filter(e => {
         try {
           const s = parseISO(e.startAt);
-          if (isBefore(s, startOfDay(now)) || isAfter(s, endOfDay(now))) return false;
+          if (isBefore(s, now) || isAfter(s, endOfDay(now))) return false;
           // Only show events owned by or attended by current user
           if (!myId) return false;
           if (e.ownerId === myId) return true;
