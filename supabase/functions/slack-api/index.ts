@@ -37,6 +37,16 @@ interface SlackToken {
   team_icon: string;
 }
 
+/** Prefer user token for read operations (avoids bot joining channels) */
+function readToken(token: SlackToken): string {
+  return token.user_access_token || token.access_token;
+}
+
+/** Prefer user token for write operations (messages appear as the user) */
+function writeToken(token: SlackToken): string {
+  return token.user_access_token || token.access_token;
+}
+
 async function getSlackToken(supabase: ReturnType<typeof createClient>, userId: string): Promise<SlackToken | null> {
   const { data } = await supabase
     .from('slack_tokens')
@@ -116,7 +126,7 @@ Deno.serve(async (req) => {
 
     // ─── Channels: list conversations ───
     if (action === 'channels') {
-      const result = await slackApi(token.access_token, 'conversations.list', {
+      const result = await slackApi(readToken(token), 'conversations.list', {
         types: 'public_channel,private_channel,mpim,im',
         exclude_archived: 'true',
         limit: params.limit || '100',
@@ -135,11 +145,11 @@ Deno.serve(async (req) => {
       if (imChannels.length > 0) {
         const userIds = imChannels.map((c) => c.user as string).filter(Boolean);
         if (userIds.length > 0) {
-          const usersResult = await slackApi(token.access_token, 'users.info', { user: userIds[0] });
+          const usersResult = await slackApi(readToken(token), 'users.info', { user: userIds[0] });
           // Batch user lookups for IMs
           for (const im of imChannels) {
             try {
-              const userInfo = await slackApi(token.access_token, 'users.info', { user: im.user as string });
+              const userInfo = await slackApi(readToken(token), 'users.info', { user: im.user as string });
               if (userInfo.ok) {
                 const u = userInfo.user as Record<string, unknown>;
                 (im as Record<string, unknown>).user_name = (u.real_name || u.name) as string;
@@ -172,13 +182,13 @@ Deno.serve(async (req) => {
       };
       if (cursor) apiParams.cursor = cursor;
 
-      const result = await slackApi(token.access_token, 'conversations.history', apiParams);
+      const result = await slackApi(readToken(token), 'conversations.history', apiParams);
 
       if (!result.ok) {
         // If not in channel, try to join first
         if (result.error === 'not_in_channel') {
-          await slackPost(token.access_token, 'conversations.join', { channel: channelId });
-          const retry = await slackApi(token.access_token, 'conversations.history', apiParams);
+          await slackPost(readToken(token), 'conversations.join', { channel: channelId });
+          const retry = await slackApi(readToken(token), 'conversations.history', apiParams);
           if (retry.ok) {
             return new Response(
               JSON.stringify(retry),
@@ -200,7 +210,7 @@ Deno.serve(async (req) => {
       // Batch user lookups (max 10 to avoid rate limits)
       for (const uid of uniqueUserIds.slice(0, 10)) {
         try {
-          const userInfo = await slackApi(token.access_token, 'users.info', { user: uid });
+          const userInfo = await slackApi(readToken(token), 'users.info', { user: uid });
           if (userInfo.ok) {
             const u = userInfo.user as Record<string, unknown>;
             const profile = u.profile as Record<string, unknown>;
@@ -237,7 +247,7 @@ Deno.serve(async (req) => {
       if (threadTs) msgBody.thread_ts = threadTs;
 
       // Use user token if available for sending as the user
-      const sendToken = token.user_access_token || token.access_token;
+      const sendToken = writeToken(token);
       const result = await slackPost(sendToken, 'chat.postMessage', msgBody);
 
       return new Response(
@@ -255,7 +265,7 @@ Deno.serve(async (req) => {
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
         );
       }
-      const result = await slackApi(token.access_token, 'conversations.replies', {
+      const result = await slackApi(readToken(token), 'conversations.replies', {
         channel: channelId,
         ts: threadTs,
         limit: tLimit || '50',
@@ -272,7 +282,7 @@ Deno.serve(async (req) => {
       const uMap: Record<string, { name: string; avatar: string }> = {};
       for (const uid of uids.slice(0, 15)) {
         try {
-          const u = await slackApi(token.access_token, 'users.info', { user: uid });
+          const u = await slackApi(readToken(token), 'users.info', { user: uid });
           if (u.ok) {
             const user = u.user as Record<string, unknown>;
             const profile = user.profile as Record<string, unknown>;
@@ -295,7 +305,7 @@ Deno.serve(async (req) => {
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
         );
       }
-      const sendToken = token.user_access_token || token.access_token;
+      const sendToken = writeToken(token);
       const result = await slackPost(sendToken, 'chat.update', { channel: channelId, ts, text });
       return new Response(JSON.stringify(result), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
@@ -309,7 +319,7 @@ Deno.serve(async (req) => {
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
         );
       }
-      const sendToken = token.user_access_token || token.access_token;
+      const sendToken = writeToken(token);
       const result = await slackPost(sendToken, 'chat.delete', { channel: channelId, ts });
       return new Response(JSON.stringify(result), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
@@ -323,7 +333,7 @@ Deno.serve(async (req) => {
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
         );
       }
-      const result = await slackPost(token.access_token, 'reactions.add', {
+      const result = await slackPost(readToken(token), 'reactions.add', {
         channel: channelId, timestamp: ts, name: emoji,
       });
       return new Response(JSON.stringify(result), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
@@ -338,7 +348,7 @@ Deno.serve(async (req) => {
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
         );
       }
-      const result = await slackPost(token.access_token, 'reactions.remove', {
+      const result = await slackPost(readToken(token), 'reactions.remove', {
         channel: channelId, timestamp: ts, name: emoji,
       });
       return new Response(JSON.stringify(result), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
@@ -353,7 +363,7 @@ Deno.serve(async (req) => {
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
         );
       }
-      const result = await slackPost(token.access_token, 'pins.add', { channel: channelId, timestamp: ts });
+      const result = await slackPost(readToken(token), 'pins.add', { channel: channelId, timestamp: ts });
       return new Response(JSON.stringify(result), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
@@ -366,7 +376,7 @@ Deno.serve(async (req) => {
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
         );
       }
-      const result = await slackPost(token.access_token, 'pins.remove', { channel: channelId, timestamp: ts });
+      const result = await slackPost(readToken(token), 'pins.remove', { channel: channelId, timestamp: ts });
       return new Response(JSON.stringify(result), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 

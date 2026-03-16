@@ -29,10 +29,18 @@ const BOT_SCOPES = [
 ].join(',');
 
 const USER_SCOPES = [
-  'chat:write',
   'channels:history',
+  'channels:read',
   'groups:history',
+  'groups:read',
   'im:history',
+  'im:read',
+  'mpim:history',
+  'mpim:read',
+  'chat:write',
+  'users:read',
+  'reactions:read',
+  'reactions:write',
 ].join(',');
 
 // ─── Types ──────────────────────────────────────────
