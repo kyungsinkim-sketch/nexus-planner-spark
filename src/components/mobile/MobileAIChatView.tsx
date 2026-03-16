@@ -489,20 +489,15 @@ export function MobileAIChatView() {
     };
   }, [loadEvents, loadTodos, loadBrainHistory]);
 
-  // iOS keyboard: lock container height to visualViewport
-  const [vpHeight, setVpHeight] = useState<number | null>(null);
+  // iOS keyboard: track visual viewport height for fixed layout
+  const [viewH, setViewH] = useState(() => window.visualViewport?.height || window.innerHeight);
   useEffect(() => {
     const vv = window.visualViewport;
     if (!vv) return;
     const update = () => {
-      // When keyboard is open, visualViewport.height shrinks
-      const kbOpen = window.innerHeight - vv.height > 50;
-      setVpHeight(kbOpen ? vv.height : null);
-      // Prevent iOS from scrolling the body
-      if (kbOpen) {
-        window.scrollTo(0, 0);
-        document.documentElement.scrollTop = 0;
-      }
+      setViewH(vv.height);
+      // Prevent iOS body scroll
+      window.scrollTo(0, 0);
     };
     vv.addEventListener('resize', update);
     vv.addEventListener('scroll', update);
@@ -740,7 +735,7 @@ export function MobileAIChatView() {
   const formatTime = (d: Date) => d.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
 
   return (
-    <div className="relative flex flex-col widget-area-bg overflow-hidden" style={{ height: vpHeight ? `${vpHeight}px` : '100%' }}>
+    <div className="fixed top-0 left-0 right-0 flex flex-col widget-area-bg overflow-hidden" style={{ height: `${viewH}px` }}>
       {/* ═══ Scrollable area: briefing at top, messages grow from bottom ═══ */}
       <div className="flex-1 min-h-0 overflow-y-auto flex flex-col">
         {/* ── Sticky header zone: Profile Card + Briefing ── */}
@@ -821,8 +816,7 @@ export function MobileAIChatView() {
 
       {/* ═══ Universal Chat Bar — flex bottom, above nav ═══ */}
       <div
-        className="shrink-0 px-4 py-2"
-        style={{ paddingBottom: vpHeight ? '8px' : 'calc(64px + env(safe-area-inset-bottom, 0px))' }}
+        className="shrink-0 px-4 py-2 pb-[calc(64px+env(safe-area-inset-bottom,0px))]"
       >
         {/* Selected target badge */}
         {selectedTarget && (
