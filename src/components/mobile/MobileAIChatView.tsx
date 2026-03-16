@@ -829,7 +829,7 @@ export function MobileAIChatView() {
   return (
     <div className="fixed top-0 left-0 right-0 flex flex-col widget-area-bg overflow-hidden" style={{ height: `${viewH}px` }}>
       {/* ═══ Single scrollable area: cards + messages in one flow ═══ */}
-      <div className="flex-1 min-h-0 overflow-y-auto flex flex-col">
+      <div className="flex-1 min-h-0 overflow-y-auto flex flex-col" style={{ overscrollBehavior: 'none' }}>
         {/* ── Profile Card + Updates ── */}
         <div className="shrink-0 px-4 pt-6 pb-2">
           <ProfileCard user={currentUser} language={language} projects={projects} onProjectsClick={() => useWidgetStore.getState().setMobileView('projects')} />
