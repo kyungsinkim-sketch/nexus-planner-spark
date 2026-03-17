@@ -65,8 +65,8 @@ function UpdatesWidget({ context }: { context: WidgetDataContext }) {
     const widgetStore = useWidgetStore.getState();
     const appStore = useAppStore.getState();
 
-    if (notif.type === 'chat' && notif.directUserId) {
-      // Open DM
+    if (notif.type === 'chat' && notif.directUserId && notif.directUserId !== appStore.currentUser?.id) {
+      // Open DM (guard against self-DM)
       if (widgetStore.openMobileDm) {
         widgetStore.openMobileDm(notif.directUserId);
       }

@@ -203,8 +203,8 @@ function NotificationsWidget({ context }: { context: WidgetDataContext }) {
       store.setPendingChatNavigation({ type: 'group', id: n.roomId, roomId: n.roomId });
       store.setChatPanelCollapsed(false);
       widgetStore.setActiveTab('dashboard');
-    } else if (n.type === 'chat' && n.directUserId) {
-      // DM navigation
+    } else if (n.type === 'chat' && n.directUserId && n.directUserId !== store.currentUser?.id) {
+      // DM navigation (guard against self-DM)
       store.setPendingChatNavigation({ type: 'direct', id: n.directUserId });
       store.setChatPanelCollapsed(false);
       // Go to dashboard for DMs

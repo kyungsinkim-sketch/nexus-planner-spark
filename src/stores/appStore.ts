@@ -2836,7 +2836,24 @@ export const useAppStore = create<AppState>()(
       getMessagesByProject: (projectId) => get().messages.filter((m) => m.projectId === projectId),
       getMessagesByRoom: (roomId) => get().messages.filter((m) => m.roomId === roomId),
       getChatRoomsByProject: (projectId) => get().chatRooms.filter((r) => r.projectId === projectId),
-      getGroupRooms: () => get().chatRooms.filter((r) => !r.projectId),
+      getGroupRooms: () => {
+        const state = get();
+        const rooms = state.chatRooms.filter((r) => !r.projectId);
+        // Sort by latest activity (message or notification timestamp, most recent first)
+        return rooms.sort((a, b) => {
+          const aMsgLast = state.messages.filter(m => m.roomId === a.id).reduce((max, m) => m.createdAt > max ? m.createdAt : max, '');
+          const bMsgLast = state.messages.filter(m => m.roomId === b.id).reduce((max, m) => m.createdAt > max ? m.createdAt : max, '');
+          const aNotifLast = state.appNotifications.filter(n => n.roomId === a.id).reduce((max, n) => n.createdAt > max ? n.createdAt : max, '');
+          const bNotifLast = state.appNotifications.filter(n => n.roomId === b.id).reduce((max, n) => n.createdAt > max ? n.createdAt : max, '');
+          const aLast = aMsgLast > aNotifLast ? aMsgLast : aNotifLast;
+          const bLast = bMsgLast > bNotifLast ? bMsgLast : bNotifLast;
+          // Rooms with messages first, then by message time desc, then by room creation desc
+          if (aLast && bLast) return bLast.localeCompare(aLast);
+          if (aLast) return -1;
+          if (bLast) return 1;
+          return b.createdAt.localeCompare(a.createdAt);
+        });
+      },
       getFileGroupsByProject: (projectId) => get().fileGroups.filter((fg) => fg.projectId === projectId),
       getFilesByGroup: (groupId) => get().files.filter((f) => f.fileGroupId === groupId),
       getUserById: (id) => get().users.find((u) => u.id === id),
