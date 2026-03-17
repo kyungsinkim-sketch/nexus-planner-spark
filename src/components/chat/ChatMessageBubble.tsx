@@ -796,7 +796,10 @@ function FileBubble({ message, isCurrentUser }: { message: ChatMessage; isCurren
   const isPdf = fileExt === 'pdf';
   const isPreviewable = isImage || isPdf;
 
-  const downloadUrl = fileItem?.storagePath ? fileService.getFileDownloadUrl(fileItem.storagePath) : null;
+  // DM/group files are stored in 'dm-files' bucket; project files in 'project-files'
+  const isDmOrGroup = !!message.directChatUserId || (!!message.roomId && !message.projectId);
+  const bucket = isDmOrGroup ? 'dm-files' : 'project-files';
+  const downloadUrl = fileItem?.storagePath ? fileService.getFileDownloadUrl(fileItem.storagePath, bucket) : null;
 
   const handleDownload = async () => {
     if (!downloadUrl) return;

@@ -265,9 +265,12 @@ export const uploadFile = async (
 };
 
 // Get download URL for a file
-export const getFileDownloadUrl = (storagePath: string): string => {
+export const getFileDownloadUrl = (storagePath: string, bucket?: string): string => {
+    // Determine bucket: if storagePath starts with a user UUID (DM files use userId as folder),
+    // try dm-files first; otherwise use project-files
+    const resolvedBucket = bucket || 'project-files';
     const { data: { publicUrl } } = supabase.storage
-        .from('project-files')
+        .from(resolvedBucket)
         .getPublicUrl(storagePath);
     return publicUrl;
 };
