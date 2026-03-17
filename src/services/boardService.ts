@@ -22,11 +22,12 @@ const transformGroup = (row: GroupRow): BoardGroup => ({
   createdAt: row.created_at,
 });
 
-const transformTask = (row: TaskRow): BoardTask => ({
+const transformTask = (row: TaskRow & { description?: string }): BoardTask => ({
   id: row.id,
   boardGroupId: row.board_group_id,
   projectId: row.project_id,
   title: row.title,
+  description: row.description || undefined,
   status: row.status as BoardTaskStatus,
   ownerId: row.owner_id,
   reviewerIds: row.reviewer_ids || undefined,
@@ -167,6 +168,7 @@ export async function updateBoardTask(
   taskId: string,
   updates: Partial<{
     title: string;
+    description: string;
     status: BoardTaskStatus;
     ownerId: string;
     reviewerIds: string[];
@@ -182,6 +184,7 @@ export async function updateBoardTask(
 
   const dbUpdates: Record<string, unknown> = {};
   if (updates.title !== undefined) dbUpdates.title = updates.title;
+  if (updates.description !== undefined) dbUpdates.description = updates.description;
   if (updates.status !== undefined) dbUpdates.status = updates.status;
   if (updates.ownerId !== undefined) dbUpdates.owner_id = updates.ownerId;
   if (updates.reviewerIds !== undefined) dbUpdates.reviewer_ids = updates.reviewerIds;
@@ -211,5 +214,47 @@ export async function deleteBoardTask(taskId: string): Promise<void> {
     .delete()
     .eq('id', taskId);
 
+  if (error) throw new Error(handleSupabaseError(error));
+}
+
+// ── Board Task Comments ────────────────────────────────────
+
+export interface TaskCommentRow {
+  id: string;
+  task_id: string;
+  user_id: string;
+  content: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export async function getTaskComments(taskId: string): Promise<TaskCommentRow[]> {
+  if (!isSupabaseConfigured()) return [];
+  const { data, error } = await supabase
+    .from('board_task_comments')
+    .select('*')
+    .eq('task_id', taskId)
+    .order('created_at', { ascending: true });
+  if (error) throw new Error(handleSupabaseError(error));
+  return data || [];
+}
+
+export async function addTaskComment(taskId: string, userId: string, content: string): Promise<TaskCommentRow> {
+  if (!isSupabaseConfigured()) throw new Error('Supabase not configured');
+  const { data, error } = await supabase
+    .from('board_task_comments')
+    .insert({ task_id: taskId, user_id: userId, content })
+    .select()
+    .single();
+  if (error) throw new Error(handleSupabaseError(error));
+  return data;
+}
+
+export async function deleteTaskComment(commentId: string): Promise<void> {
+  if (!isSupabaseConfigured()) throw new Error('Supabase not configured');
+  const { error } = await supabase
+    .from('board_task_comments')
+    .delete()
+    .eq('id', commentId);
   if (error) throw new Error(handleSupabaseError(error));
 }

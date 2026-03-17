@@ -580,6 +580,7 @@ export interface BoardTask {
   boardGroupId: string;
   projectId: string;
   title: string;
+  description?: string;
   status: BoardTaskStatus;
   ownerId: string;
   reviewerIds?: string[];
@@ -588,6 +589,15 @@ export interface BoardTask {
   dueDate?: string;
   progress: number; // 0-100
   orderNo: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface BoardTaskComment {
+  id: string;
+  taskId: string;
+  userId: string;
+  content: string;
   createdAt: string;
   updatedAt: string;
 }

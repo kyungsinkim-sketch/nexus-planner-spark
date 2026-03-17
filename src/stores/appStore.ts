@@ -219,7 +219,7 @@ interface AppState {
   updateBoardGroup: (groupId: string, updates: { title?: string; color?: string; orderNo?: number }) => Promise<void>;
   deleteBoardGroup: (groupId: string) => Promise<void>;
   addBoardTask: (task: { boardGroupId: string; projectId: string; title: string; ownerId: string; status?: BoardTaskStatus; startDate?: string; endDate?: string; dueDate?: string }) => Promise<void>;
-  updateBoardTask: (taskId: string, updates: Partial<{ title: string; status: BoardTaskStatus; ownerId: string; reviewerIds: string[]; startDate: string | null; endDate: string | null; dueDate: string | null; progress: number; boardGroupId: string }>) => Promise<void>;
+  updateBoardTask: (taskId: string, updates: Partial<{ title: string; description: string; status: BoardTaskStatus; ownerId: string; reviewerIds: string[]; startDate: string | null; endDate: string | null; dueDate: string | null; progress: number; boardGroupId: string }>) => Promise<void>;
   deleteBoardTask: (taskId: string) => Promise<void>;
 
   // UI Actions

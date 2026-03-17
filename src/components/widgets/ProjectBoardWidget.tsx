@@ -9,9 +9,10 @@
  *     group-colored gantt bars, default dates on task creation.
  */
 
-import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
+import { useState, useMemo, useEffect, useCallback, useRef, lazy, Suspense } from 'react';
 import { useTranslation } from '@/hooks/useTranslation';
 import { useAppStore } from '@/stores/appStore';
+const BoardTaskDetailModal = lazy(() => import('./BoardTaskDetailModal'));
 import type { WidgetDataContext } from '@/types/widget';
 import type { User, BoardGroup, BoardTask, BoardTaskStatus, Project } from '@/types/core';
 import { cn } from '@/lib/utils';
@@ -364,6 +365,7 @@ function MainTableView({
   onDeleteTask,
   onAddTask,
   onUpdateGroup,
+  onOpenDetail,
 }: {
   groups: BoardGroup[];
   tasks: BoardTask[];
@@ -374,6 +376,7 @@ function MainTableView({
   onDeleteTask: (taskId: string) => void;
   onAddTask: (groupId: string) => void;
   onUpdateGroup: (groupId: string, updates: { title?: string; color?: string }) => void;
+  onOpenDetail?: (task: BoardTask) => void;
 }) {
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
 
@@ -434,8 +437,8 @@ function MainTableView({
                     className="grid grid-cols-[minmax(180px,2fr)_100px_100px_100px_100px_130px_36px] gap-1 px-3 py-1.5 items-center border-l-[3px] hover:bg-muted/30 transition-colors group/row"
                     style={{ borderLeftColor: group.color }}
                   >
-                    {/* Title - editable */}
-                    <div className="pl-5">
+                    {/* Title - click to open detail, double-click to inline edit */}
+                    <div className="pl-5 cursor-pointer" onClick={() => onOpenDetail?.(task)}>
                       <EditableCell
                         value={task.title}
                         onSave={(v) => { if (v.trim()) onUpdateTask(task.id, { title: v.trim() }); }}
@@ -1300,6 +1303,7 @@ export default function ProjectBoardWidget({ context }: { context: WidgetDataCon
   const [ganttScale, setGanttScale] = useState<GanttScale>('day');
   const [newTaskGroupId, setNewTaskGroupId] = useState<string | null>(null);
   const [newTaskTitle, setNewTaskTitle] = useState('');
+  const [detailTask, setDetailTask] = useState<typeof boardTasks[number] | null>(null);
 
   const projectId = context.type === 'project' ? context.projectId : undefined;
 
@@ -1441,6 +1445,7 @@ export default function ProjectBoardWidget({ context }: { context: WidgetDataCon
             onDeleteTask={handleDeleteTask}
             onAddTask={handleAddTask}
             onUpdateGroup={handleUpdateGroup}
+            onOpenDetail={setDetailTask}
           />
         ) : (
           <GanttChartView
@@ -1483,6 +1488,21 @@ export default function ProjectBoardWidget({ context }: { context: WidgetDataCon
             </Button>
           </div>
         </div>
+      )}
+
+      {/* Task detail modal */}
+      {detailTask && (
+        <Suspense fallback={null}>
+          <BoardTaskDetailModal
+            task={detailTask}
+            users={projectUsers}
+            onClose={() => setDetailTask(null)}
+            onUpdate={(taskId, updates) => {
+              handleUpdateTask(taskId, updates);
+              setDetailTask(prev => prev ? { ...prev, ...updates } : null);
+            }}
+          />
+        </Suspense>
       )}
     </div>
   );
