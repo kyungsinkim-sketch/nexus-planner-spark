@@ -521,8 +521,10 @@ export function ChatPanel({ defaultProjectId, defaultDmUserId, defaultGroupRoomI
   const [brainProcessing, setBrainProcessing] = useState(false);
   const [pabloProcessing, setPabloProcessing] = useState(false);
 
+  const [isSending, setIsSending] = useState(false);
   const handleSendMessage = async () => {
-    if (!newMessage.trim() || !selectedChat || !currentUser) return;
+    if (!newMessage.trim() || !selectedChat || !currentUser || isSending) return;
+    setIsSending(true);
 
     const trimmed = newMessage.trim();
 
@@ -549,9 +551,11 @@ export function ChatPanel({ defaultProjectId, defaultDmUserId, defaultGroupRoomI
     } catch (sendError) {
       console.error('Failed to send message:', sendError);
       toast.error(t('messageSendFailed'));
+      setIsSending(false);
       return; // Don't clear the input on failure
     }
 
+    setIsSending(false);
     setNewMessage('');
     setReplyingTo(null);
 
