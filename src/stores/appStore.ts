@@ -2788,28 +2788,42 @@ export const useAppStore = create<AppState>()(
 
       getUnreadCount: (key: string) => {
         const state = get();
-        const lastRead = state.chatLastReadTimestamps[key];
         const myId = state.currentUser?.id;
         if (!myId) return 0;
 
-        let msgs: typeof state.messages;
-        if (key.startsWith('dm:')) {
-          const otherUserId = key.slice(3);
-          msgs = state.messages.filter(m =>
-            m.userId !== myId &&
-            ((m.userId === otherUserId && m.directChatUserId === myId) ||
-             (m.directChatUserId === otherUserId && m.userId === otherUserId))
-          );
-        } else if (key.startsWith('room:')) {
-          const roomId = key.slice(5);
-          msgs = state.messages.filter(m => m.roomId === roomId && m.userId !== myId);
-        } else {
-          return 0;
+        // Primary: count from realtime messages (in-session)
+        const lastRead = state.chatLastReadTimestamps[key];
+
+        let realtimeCount = 0;
+        if (lastRead) {
+          let msgs: typeof state.messages;
+          if (key.startsWith('dm:')) {
+            const otherUserId = key.slice(3);
+            msgs = state.messages.filter(m =>
+              m.userId !== myId &&
+              ((m.userId === otherUserId && m.directChatUserId === myId) ||
+               (m.directChatUserId === otherUserId && m.userId === otherUserId))
+            );
+          } else if (key.startsWith('room:')) {
+            const roomId = key.slice(5);
+            msgs = state.messages.filter(m => m.roomId === roomId && m.userId !== myId);
+          } else {
+            msgs = [];
+          }
+          realtimeCount = msgs.filter(m => m.createdAt > lastRead).length;
         }
 
-        // No lastRead = never tracked yet → treat all existing as read
-        if (!lastRead) return 0;
-        return msgs.filter(m => m.createdAt > lastRead).length;
+        // Fallback: count from persisted appNotifications (survives page reload)
+        let notifCount = 0;
+        if (key.startsWith('dm:')) {
+          const otherUserId = key.slice(3);
+          notifCount = state.appNotifications.filter(n => !n.read && n.type === 'chat' && n.directUserId === otherUserId).length;
+        } else if (key.startsWith('room:')) {
+          const roomId = key.slice(5);
+          notifCount = state.appNotifications.filter(n => !n.read && n.type === 'chat' && n.roomId === roomId && !n.directUserId).length;
+        }
+
+        return Math.max(realtimeCount, notifCount);
       },
 
       updateScoreSettings: (settings) => set((state) => ({
