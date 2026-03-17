@@ -28,7 +28,8 @@ import { syncGoogleCalendar, getGoogleCalendarStatus } from '@/services/googleCa
 import { isSupabaseConfigured } from '@/lib/supabase';
 
 function CalendarWidget({ context }: { context: WidgetDataContext }) {
-  const { events, projects, currentUser, getProjectById, updateEvent, deleteEvent, loadEvents } = useAppStore();
+  const { projects, currentUser, getProjectById, updateEvent, deleteEvent, loadEvents, getMyEvents } = useAppStore();
+  const events = getMyEvents();
   const isMobile = useIsMobile();
   const { language } = useTranslation();
 

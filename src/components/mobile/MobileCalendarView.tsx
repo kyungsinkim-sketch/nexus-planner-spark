@@ -421,7 +421,8 @@ function EventSheet({
 // ════════════════════════════════════════
 
 export function MobileCalendarView() {
-  const { events, projects, currentUser } = useAppStore();
+  const { projects, currentUser, getMyEvents } = useAppStore();
+  const events = getMyEvents();
   const { language } = useTranslation();
 
   const [selectedDate, setSelectedDate] = useState(() => new Date());

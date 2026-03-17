@@ -358,6 +358,7 @@ interface AppState {
   // Getters
   getProjectById: (id: string) => Project | undefined;
   getEventsByProject: (projectId: string) => CalendarEvent[];
+  getMyEvents: () => CalendarEvent[];
   getMessagesByProject: (projectId: string) => ChatMessage[];
   getMessagesByRoom: (roomId: string) => ChatMessage[];
   getChatRoomsByProject: (projectId: string) => ChatRoom[];
@@ -2833,6 +2834,18 @@ export const useAppStore = create<AppState>()(
       // Getters
       getProjectById: (id) => get().projects.find((p) => p.id === id),
       getEventsByProject: (projectId) => get().events.filter((e) => e.projectId === projectId),
+      getMyEvents: () => {
+        const state = get();
+        const myId = state.currentUser?.id;
+        if (!myId) return state.events;
+        return state.events.filter(e => {
+          if (e.ownerId === myId) return true;
+          if (e.attendeeIds?.includes(myId)) return true;
+          // R_TRAINING from others: excluded from personal calendar (shown in admin/booking grid)
+          if (e.type === 'R_TRAINING' && e.ownerId !== myId) return false;
+          return true;
+        });
+      },
       getMessagesByProject: (projectId) => get().messages.filter((m) => m.projectId === projectId),
       getMessagesByRoom: (roomId) => get().messages.filter((m) => m.roomId === roomId),
       getChatRoomsByProject: (projectId) => get().chatRooms.filter((r) => r.projectId === projectId),

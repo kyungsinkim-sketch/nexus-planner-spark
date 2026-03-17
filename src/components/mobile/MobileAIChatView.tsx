@@ -429,7 +429,8 @@ interface SuggestionItem {
 }
 
 export function MobileAIChatView() {
-  const { events, currentUser, users, projects, loadEvents, loadTodos, addTodo, chatRooms, appNotifications, personalTodos } = useAppStore();
+  const { currentUser, users, projects, loadEvents, loadTodos, addTodo, chatRooms, appNotifications, personalTodos, getMyEvents } = useAppStore();
+  const events = getMyEvents();
   const { openMobileDm, openMobileGroupChat, openProjectTab, setActiveTab } = useWidgetStore();
   const { language } = useTranslation();
   const locale = language === 'ko' ? ko : enUS;
