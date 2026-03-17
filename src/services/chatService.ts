@@ -473,10 +473,22 @@ export const getDirectMessages = async (
     }
 
     const BRAIN_BOT_ID = '00000000-0000-0000-0000-000000000099';
+    const BRAIN_AI_ID = '00000000-0000-0000-0000-000000000100';
+    const brainIds = [BRAIN_BOT_ID, BRAIN_AI_ID];
+    const isBrainChat = brainIds.includes(userId1) || brainIds.includes(userId2);
+
+    // For Brain AI chats, match both bot IDs (0099=response sender, 0100=DM target)
+    const filter = isBrainChat
+      ? (() => {
+          const humanId = brainIds.includes(userId1) ? userId2 : userId1;
+          return `and(user_id.eq.${humanId},direct_chat_user_id.in.(${BRAIN_BOT_ID},${BRAIN_AI_ID})),and(user_id.in.(${BRAIN_BOT_ID},${BRAIN_AI_ID}),direct_chat_user_id.eq.${humanId})`;
+        })()
+      : `and(user_id.eq.${userId1},direct_chat_user_id.eq.${userId2}),and(user_id.eq.${userId2},direct_chat_user_id.eq.${userId1})`;
+
     const { data, error } = await supabase
         .from('chat_messages')
         .select('*')
-        .or(`and(user_id.eq.${userId1},direct_chat_user_id.eq.${userId2}),and(user_id.eq.${userId2},direct_chat_user_id.eq.${userId1}),and(user_id.eq.${BRAIN_BOT_ID},direct_chat_user_id.in.(${userId1},${userId2}))`)
+        .or(filter)
         .order('created_at', { ascending: true });
 
     if (error) {

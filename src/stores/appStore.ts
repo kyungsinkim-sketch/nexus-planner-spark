@@ -676,7 +676,9 @@ export const useAppStore = create<AppState>()(
 
         try {
           const events = await eventService.getEvents();
-          set({ events });
+          // Deduplicate by id (safety net for Realtime + optimistic add race)
+          const unique = [...new Map(events.map(e => [e.id, e])).values()];
+          set({ events: unique });
         } catch (error) {
           // AbortError is expected during rapid navigation/focus changes — suppress
           const msg = (error as Error).message || '';
@@ -1119,7 +1121,10 @@ export const useAppStore = create<AppState>()(
         if (isSupabaseConfigured()) {
           try {
             const newEvent = await eventService.createEvent(event);
-            set((state) => ({ events: [...state.events, newEvent] }));
+            // Optimistic add — deduplicate in case Realtime already added it
+            set((state) => ({
+              events: [...state.events.filter(e => e.id !== newEvent.id), newEvent],
+            }));
 
             // Best-effort: push to Google Calendar if connected (non-blocking)
             if (newEvent.source === 'PAULUS' && !newEvent.googleEventId) {
