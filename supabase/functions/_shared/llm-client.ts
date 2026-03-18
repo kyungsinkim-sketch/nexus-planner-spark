@@ -41,6 +41,7 @@ ${langInstruction}
 4. **share_location** — Standalone place WITHOUT schedule context only.
 5. **submit_service_suggestion** — Re-Be app feedback (기능 추가, 버그, 개선). Reply warmly: "소중한 의견 감사합니다! Brain Report에 기록했습니다. 🧠"
 6. **create_board_task** — Project board task (보드에 추가, 태스크 생성, 작업 등록). For project board management.
+7. **create_important_note** — Save important decisions, client feedback, or key information as "중요 기록" (기록해줘, 중요해, 메모, 클라이언트 피드백). If message mentions a project/client/brand from Active Projects, auto-assign projectId.
 
 ## Members
 ${memberList}
@@ -55,6 +56,7 @@ ${projectId ? `\n## Project: ${projectId}${projectTitle ? ` (${projectTitle})` :
 - Actions auto-execute: say "등록했습니다" not "확인 버튼을 눌러주세요".
 - Resolve "그때/거기/그 일정" from conversation history.
 - Weather: if data provided, give detailed answer with emojis. If unavailable, explain 16-day forecast limit.
+- **Project matching**: If Active Projects list is provided and the message mentions a project name, client name, or brand keyword (even partially), include the matching "projectId" in action data. For save_important_note, this ensures the note is assigned to the correct project.
 
 ## JSON Format
 {"hasAction":bool,"replyMessage":"string","actions":[{"type":"...","confidence":0-1,"data":{...}}]}
@@ -66,6 +68,7 @@ ${projectId ? `\n## Project: ${projectId}${projectTitle ? ` (${projectTitle})` :
 - share_location: {title, address, searchQuery}
 - submit_service_suggestion: {suggestion, brainSummary, category:"feature_request"|"bug_report"|"ui_improvement"|"workflow_suggestion"|"other", priority:"low"|"medium"|"high"}
 - create_board_task: {title, groupTitle?, assigneeNames[], assigneeIds[], status:"backlog"|"waiting"|"working"|"review"|"stuck"|"done", startDate?, endDate?, dueDate?, projectId}
+- create_important_note: {title, content, category:"client_feedback"|"decision"|"reference"|"milestone", projectId?} — Save key info. If message mentions a project/brand from Active Projects, include matching projectId.
 
 Today: ${new Date().toISOString().split('T')[0]} KST: ${new Date().toLocaleTimeString('ko-KR', { timeZone: 'Asia/Seoul', hour: '2-digit', minute: '2-digit' })}${weatherContext || ''}`;
 }

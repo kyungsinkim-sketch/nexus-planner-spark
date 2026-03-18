@@ -311,8 +311,30 @@ Deno.serve(async (req) => {
       console.error('Important notes fetch failed (non-fatal):', notesErr);
     }
 
-    // Combine weather + RAG + important notes context
-    const combinedContext = [weatherContext, ragContext, importantNotesContext].filter(Boolean).join('') || undefined;
+    // 5.7. Fetch user's active projects — for smart project matching in DM/non-project chats
+    let projectListContext: string | undefined;
+    if (!projectId) {
+      try {
+        const { data: userProjects } = await supabase
+          .from('projects')
+          .select('id, title, client_company')
+          .eq('status', 'ACTIVE')
+          .order('updated_at', { ascending: false })
+          .limit(30);
+        if (userProjects && userProjects.length > 0) {
+          const projectLines = userProjects.map(
+            (p: { id: string; title: string; client_company?: string }) =>
+              `- ${p.title}${p.client_company ? ` (${p.client_company})` : ''} [id:${p.id}]`
+          ).join('\n');
+          projectListContext = `\n\n## Active Projects\nWhen the message mentions a project/client/brand below, include matching "projectId" in action data.\n${projectLines}`;
+        }
+      } catch (projErr) {
+        console.error('Project list fetch failed (non-fatal):', projErr);
+      }
+    }
+
+    // Combine weather + RAG + important notes + project list context
+    const combinedContext = [weatherContext, ragContext, importantNotesContext, projectListContext].filter(Boolean).join('') || undefined;
 
     // 6. Call Claude LLM (with conversation history + optional weather/RAG context)
     let llmResponse;
