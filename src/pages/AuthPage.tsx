@@ -361,13 +361,6 @@ export function AuthPage() {
           </CardContent>
 
           <CardFooter className="flex flex-col space-y-3">
-            <Button
-              variant="ghost"
-              className="text-xs"
-              onClick={() => setIsSignUp(!isSignUp)}
-            >
-              {isSignUp ? `${t('alreadyHaveAccount')} ${t('signIn')}` : `${t('dontHaveAccount')} ${t('signUp')}`}
-            </Button>
             <p className="text-[10px] text-center text-muted-foreground">
               {t('termsAgreement')}
             </p>
