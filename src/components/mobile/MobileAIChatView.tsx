@@ -746,13 +746,26 @@ export function MobileAIChatView() {
           await new Promise(r => setTimeout(r, 300));
           openMobileDm(target.id);
           return;
-        } else if (target.roomId) {
-          const { sendRoomMessage } = await import('@/services/chatService');
-          await sendRoomMessage(target.roomId, currentUser.id, msg);
-          setSelectedTarget(null);
-          await new Promise(r => setTimeout(r, 300));
-          openMobileGroupChat(target.roomId);
-          return;
+        } else if (target.type === 'project' || target.type === 'group') {
+          let roomId = target.roomId;
+          // If no roomId cached, look up from DB for project targets
+          if (!roomId && target.type === 'project') {
+            const { getRoomsByProject } = await import('@/services/chatService');
+            const rooms = await getRoomsByProject(target.id);
+            roomId = rooms?.[0]?.id;
+          }
+          if (roomId) {
+            const { sendRoomMessage } = await import('@/services/chatService');
+            await sendRoomMessage(roomId, currentUser.id, msg);
+            setSelectedTarget(null);
+            await new Promise(r => setTimeout(r, 300));
+            if (target.type === 'project') {
+              useWidgetStore.getState().openMobileProjectChat(target.id);
+            } else {
+              openMobileGroupChat(roomId);
+            }
+            return;
+          }
         }
       } catch (err) {
         console.error('[UniversalChat] Send error:', err);
