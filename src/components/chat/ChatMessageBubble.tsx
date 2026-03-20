@@ -240,7 +240,7 @@ export function ChatMessageBubble({ message, isCurrentUser, onVoteDecision, onAc
               ? 'bg-primary text-primary-foreground'
               : 'bg-muted text-foreground'
           } ${replyMsg ? 'rounded-tl-md' : ''}`}
-          style={{ overflowWrap: 'anywhere', wordBreak: 'break-word' }}
+          style={{ overflowWrap: 'break-word', wordBreak: 'normal' }}
         >
           {renderContentWithMentions(message.content, isCurrentUser)}
         </div>

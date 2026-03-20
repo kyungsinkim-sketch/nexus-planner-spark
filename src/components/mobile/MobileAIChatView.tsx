@@ -673,8 +673,18 @@ export function MobileAIChatView() {
     if (projects) {
       for (const p of projects) {
         if (p.status === 'ACTIVE' || p.status === 'IN_PROGRESS' || p.status === 'PLANNING') {
-          const room = chatRooms?.find(r => r.projectId === p.id);
-          items.push({ type: 'project', id: p.id, name: p.title || '', keyColor: p.keyColor, roomId: room?.id });
+          // Default project room
+          const defaultRoom = chatRooms?.find(r => r.projectId === p.id && r.isDefault);
+          const anyRoom = chatRooms?.find(r => r.projectId === p.id);
+          items.push({ type: 'project', id: p.id, name: p.title || '', keyColor: p.keyColor, roomId: (defaultRoom || anyRoom)?.id });
+          // Sub-rooms under this project
+          if (chatRooms) {
+            for (const r of chatRooms) {
+              if (r.projectId === p.id && !r.isDefault && r.id !== anyRoom?.id) {
+                items.push({ type: 'group', id: r.id, name: `${p.title} › ${r.name || 'Chat'}`, keyColor: p.keyColor, roomId: r.id });
+              }
+            }
+          }
         }
       }
     }

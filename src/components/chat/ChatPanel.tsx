@@ -275,62 +275,84 @@ export function ChatPanel({ defaultProjectId, defaultDmUserId, defaultGroupRoomI
     return getChatRoomsByProject(expandedProjectId);
   }, [expandedProjectId, chatRooms, getChatRoomsByProject]);
 
-  // Get messages for selected chat
+  // Pre-index messages by room/project/DM for O(1) lookup instead of O(N) filter
+  const messageIndex = useMemo(() => {
+    const byRoom = new Map<string, ChatMessage[]>();
+    const byProject = new Map<string, ChatMessage[]>();
+    const byDm = new Map<string, ChatMessage[]>();
+
+    for (const m of messages) {
+      if (m.roomId) {
+        const arr = byRoom.get(m.roomId);
+        if (arr) arr.push(m); else byRoom.set(m.roomId, [m]);
+      }
+      if (m.projectId && !m.directChatUserId) {
+        const arr = byProject.get(m.projectId);
+        if (arr) arr.push(m); else byProject.set(m.projectId, [m]);
+      }
+      if (m.directChatUserId) {
+        // Index by both participants so lookup from either side works
+        const key1 = `${m.userId}:${m.directChatUserId}`;
+        const key2 = `${m.directChatUserId}:${m.userId}`;
+        const arr1 = byDm.get(key1);
+        if (arr1) arr1.push(m); else byDm.set(key1, [m]);
+        if (key1 !== key2) {
+          const arr2 = byDm.get(key2);
+          if (arr2) arr2.push(m); else byDm.set(key2, [m]);
+        }
+      }
+    }
+    return { byRoom, byProject, byDm };
+  }, [messages]);
+
+  // Get messages for selected chat — uses pre-built index
   const chatMessages = useMemo(() => {
     if (!selectedChat) return [];
 
     if (selectedChat.type === 'group') {
-      return messages.filter(m => m.roomId === selectedChat.roomId);
+      return messageIndex.byRoom.get(selectedChat.roomId!) || [];
     }
 
     if (selectedChat.type === 'project') {
       if (selectedChat.roomId) {
-        return messages.filter(m => m.roomId === selectedChat.roomId);
+        return messageIndex.byRoom.get(selectedChat.roomId) || [];
       }
-      return messages.filter(m => m.projectId === selectedChat.id);
+      return messageIndex.byProject.get(selectedChat.id) || [];
     } else {
       if (!currentUser) return [];
       // For Brain AI DM: show user messages sent to Brain AI + Brain bot responses
       if (isBrainAIUser(selectedChat.id)) {
-        return messages.filter(m =>
-          // User messages TO Brain AI
-          (m.userId === currentUser.id && m.directChatUserId === BRAIN_AI_USER_ID) ||
-          // Brain bot responses TO current user (edge function sets directChatUserId = requesting userId)
-          (m.userId === BRAIN_BOT_USER_ID && m.directChatUserId === currentUser.id)
-        );
+        const fromUser = messageIndex.byDm.get(`${currentUser.id}:${BRAIN_AI_USER_ID}`) || [];
+        const fromBot = messageIndex.byDm.get(`${BRAIN_BOT_USER_ID}:${currentUser.id}`) || [];
+        // Merge and sort by createdAt
+        return [...fromUser, ...fromBot]
+          .filter((m, i, arr) => arr.findIndex(x => x.id === m.id) === i)
+          .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
       }
       // For AI Persona DMs (@pablo, @cd, @pd): strict scoping to persona ID
       if (isAIPersonaUser(selectedChat.id)) {
-        return messages.filter(m =>
-          // User messages TO this persona
-          (m.userId === currentUser.id && m.directChatUserId === selectedChat.id) ||
-          // Bot responses scoped to this persona's DM thread
-          (m.userId === BRAIN_BOT_USER_ID && m.directChatUserId === selectedChat.id)
-        );
+        const fromUser = messageIndex.byDm.get(`${currentUser.id}:${selectedChat.id}`) || [];
+        const fromBot = (messageIndex.byDm.get(`${BRAIN_BOT_USER_ID}:${selectedChat.id}`) || [])
+          .filter(m => m.directChatUserId === selectedChat.id);
+        return [...fromUser, ...fromBot]
+          .filter((m, i, arr) => arr.findIndex(x => x.id === m.id) === i)
+          .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
       }
       // Regular DM with real users
-      return messages.filter(m =>
-        // Messages FROM current user TO selected user
-        (m.userId === currentUser.id && m.directChatUserId === selectedChat.id) ||
-        // Messages FROM selected user TO current user
-        (m.userId === selectedChat.id && m.directChatUserId === currentUser.id)
-      );
+      return messageIndex.byDm.get(`${currentUser.id}:${selectedChat.id}`) || [];
     }
-  }, [messages, selectedChat, currentUser]);
+  }, [messageIndex, selectedChat, currentUser]);
 
-  const getLastMessage = (projectId: string) => {
-    const projectMessages = messages.filter(m => m.projectId === projectId && !m.directChatUserId);
-    return projectMessages[projectMessages.length - 1];
-  };
+  const getLastMessage = useCallback((projectId: string) => {
+    const arr = messageIndex.byProject.get(projectId);
+    return arr ? arr[arr.length - 1] : undefined;
+  }, [messageIndex]);
 
-  const getLastDirectMessage = (userId: string) => {
+  const getLastDirectMessage = useCallback((userId: string) => {
     if (!currentUser) return undefined;
-    const dms = messages.filter(m =>
-      (m.userId === currentUser.id && m.directChatUserId === userId) ||
-      (m.userId === userId && m.directChatUserId === currentUser.id)
-    );
-    return dms[dms.length - 1];
-  };
+    const arr = messageIndex.byDm.get(`${currentUser.id}:${userId}`);
+    return arr ? arr[arr.length - 1] : undefined;
+  }, [messageIndex, currentUser]);
 
   const getInitials = (name: string) => {
     return name.split(' ').map(n => n[0]).join('').toUpperCase();
