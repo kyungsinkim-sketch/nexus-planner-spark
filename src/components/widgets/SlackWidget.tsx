@@ -321,7 +321,11 @@ function SlackWidget({ context }: { context: WidgetDataContext }) {
   // ─── Brain AI Action ───
   // Brain AI: single button → comprehensive analysis → SuggestionReviewDialog
   const handleBrainAnalyze = useCallback(async (msg: SlackMessage) => {
-    if (!userId || !selectedChannel) return;
+    console.log('[SlackWidget] Brain analyze clicked', { userId, selectedChannel: selectedChannel?.id, msgTs: msg.ts, msgText: msg.text?.substring(0, 50) });
+    if (!userId || !selectedChannel) {
+      console.warn('[SlackWidget] Brain analyze skipped — missing userId or selectedChannel', { userId, selectedChannel });
+      return;
+    }
     setBrainProcessing(msg.ts);
 
     try {
