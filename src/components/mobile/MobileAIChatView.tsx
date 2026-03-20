@@ -756,7 +756,8 @@ export function MobileAIChatView() {
           }
           if (roomId) {
             const { sendRoomMessage } = await import('@/services/chatService');
-            await sendRoomMessage(roomId, currentUser.id, msg);
+            const projectId = target.type === 'project' ? target.id : null;
+            await sendRoomMessage(roomId, projectId, currentUser.id, msg);
             setSelectedTarget(null);
             await new Promise(r => setTimeout(r, 300));
             if (target.type === 'project') {
