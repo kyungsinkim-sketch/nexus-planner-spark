@@ -33,8 +33,21 @@ import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import * as fileService from '@/services/fileService';
 import type { ChatMessage, ChatReaction, FileItem } from '@/types/core';
 import { BRAIN_BOT_USER_ID } from '@/types/core';
-import data from '@emoji-mart/data';
-import Picker from '@emoji-mart/react';
+import { lazy, Suspense } from 'react';
+const LazyPicker = lazy(() => import('@emoji-mart/react'));
+
+function EmojiPickerLazy({ onEmojiSelect, theme }: { onEmojiSelect: (e: { native: string }) => void; theme?: string }) {
+  const [emojiData, setEmojiData] = useState<unknown>(null);
+  useEffect(() => {
+    import('@emoji-mart/data').then(m => setEmojiData(m.default));
+  }, []);
+  if (!emojiData) return <div className="p-4 text-xs text-muted-foreground">Loading...</div>;
+  return (
+    <Suspense fallback={<div className="p-4 text-xs text-muted-foreground">Loading...</div>}>
+      <LazyPicker data={emojiData} onEmojiSelect={onEmojiSelect} theme={theme} />
+    </Suspense>
+  );
+}
 import { BrainActionBubble } from './BrainActionBubble';
 import { PersonaResponseBubble } from './PersonaResponseBubble';
 import { toggleReaction } from '@/services/chatReactionService';
@@ -381,13 +394,9 @@ function EmojiPicker({ messageId, onToggle }: {
       )}
       {showFull && createPortal(
         <div ref={fullRef} className="fixed z-[9999]" style={{ top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }}>{/* EmojiPicker inline — centered fallback */}
-          <Picker
-            data={data}
+          <EmojiPickerLazy
             onEmojiSelect={(e: { native: string }) => { onToggle(messageId, e.native); setShowFull(false); setShowQuick(false); }}
             theme="dark"
-            previewPosition="none"
-            skinTonePosition="search"
-            maxFrequentRows={2}
           />
         </div>,
         document.body,
@@ -521,13 +530,9 @@ function HoverActionBar({ messageId, content, canEdit, canDelete, canPin, isCurr
           <div className="fixed inset-0 z-[9998]" onClick={() => { setShowFullEmoji(false); setShowEmoji(false); }} />
           <div className="fixed z-[9999]" style={{ top: Math.min(emojiPos.top + 8, window.innerHeight - 440), left: Math.max(8, Math.min(emojiPos.left - 160, window.innerWidth - 360)) }}
             onClick={e => e.stopPropagation()}>
-            <Picker
-              data={data}
+            <EmojiPickerLazy
               onEmojiSelect={(e: { native: string }) => { onReactionToggle?.(messageId, e.native); setShowFullEmoji(false); setShowEmoji(false); }}
               theme="dark"
-              previewPosition="none"
-              skinTonePosition="search"
-              maxFrequentRows={2}
             />
           </div>
         </>,
