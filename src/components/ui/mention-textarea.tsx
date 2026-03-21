@@ -97,7 +97,7 @@ export function MentionTextarea({
 
   const availableUsers = useMemo(() => {
     // Filter to valid users with name & email, then scope to mentionableUserIds if provided
-    const valid = users.filter(u => u && u.name && u.email);
+    const valid = users.filter(u => u && u.name);
     if (mentionableUserIds) {
       return valid.filter(u => mentionableUserIds.includes(u.id));
     }
