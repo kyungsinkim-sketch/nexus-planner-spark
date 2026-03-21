@@ -749,8 +749,10 @@ export function MobileAIChatView() {
     if (target && target.type !== 'brain') {
       try {
         if (target.type === 'user') {
+          console.log('[UniversalChat] Sending DM', { from: currentUser.id, to: target.id, msg: msg.substring(0, 50) });
           const { sendDirectMessage } = await import('@/services/chatService');
           await sendDirectMessage(currentUser.id, target.id, msg);
+          console.log('[UniversalChat] DM sent successfully');
           setSelectedTarget(null);
           // Small delay to let DB write propagate before loading chat
           await new Promise(r => setTimeout(r, 300));
