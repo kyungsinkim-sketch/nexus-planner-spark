@@ -804,8 +804,10 @@ function FileBubble({ message, isCurrentUser }: { message: ChatMessage; isCurren
   const handleDownload = async () => {
     if (!downloadUrl) return;
     try {
-      const response = await fetch(downloadUrl);
+      const response = await fetch(downloadUrl, { mode: 'cors' });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const blob = await response.blob();
+      if (blob.size === 0) throw new Error('Empty blob');
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -815,8 +817,15 @@ function FileBubble({ message, isCurrentUser }: { message: ChatMessage; isCurren
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } catch {
-      // Fallback to opening in new tab
-      window.open(downloadUrl, '_blank');
+      // Fallback: direct link download or new tab
+      const a = document.createElement('a');
+      a.href = downloadUrl;
+      a.download = fileName;
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
     }
   };
 
@@ -901,8 +910,19 @@ function FileBubble({ message, isCurrentUser }: { message: ChatMessage; isCurren
             {isImage && downloadUrl ? (
               <img src={downloadUrl} alt={fileName} className="max-w-full max-h-[55vh] object-contain mx-auto" loading="lazy" />
             ) : isPdf && downloadUrl ? (
-              <div className="w-full h-[60vh]">
-                <iframe src={`${downloadUrl}#toolbar=0`} className="w-full h-full border-0" title={fileName} />
+              <div className="w-full h-[60vh] relative">
+                <iframe
+                  src={`${downloadUrl}#toolbar=0`}
+                  className="w-full h-full border-0"
+                  title={fileName}
+                  onError={() => window.open(downloadUrl, '_blank')}
+                />
+                {/* Fallback link if iframe fails to render */}
+                <div className="absolute bottom-2 right-2">
+                  <Button size="sm" variant="secondary" className="text-xs gap-1" onClick={() => window.open(downloadUrl, '_blank')}>
+                    <ExternalLink className="w-3 h-3" /> Open in new tab
+                  </Button>
+                </div>
               </div>
             ) : (
               <div className="text-center space-y-2 p-6">
