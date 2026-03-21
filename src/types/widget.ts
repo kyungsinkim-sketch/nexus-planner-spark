@@ -29,6 +29,7 @@ export type WidgetType =
   | 'todayWeather'
   | 'todaySchedule'
   | 'importantNotes'
+  | 'livingNotes'
   | 'inspiration'
   | 'email'
   | 'voiceRecorder'

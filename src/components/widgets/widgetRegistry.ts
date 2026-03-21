@@ -61,6 +61,7 @@ export const WIDGET_COMPONENTS: Record<WidgetType, ComponentType<{ context: Widg
   todayWeather:   lazy(() => import('./TodayWeatherWidget')),
   todaySchedule:  lazy(() => import('./TodayScheduleWidget')),
   importantNotes: lazy(() => import('./ImportantNotesWidget')),
+  livingNotes: lazy(() => import('./LivingNotesWidget')),
   inspiration:    lazy(() => import('./InspirationWidget')),
   email:          lazy(() => import('./EmailWidget')),
   voiceRecorder:  lazy(() => import('./VoiceRecorderWidget')),
@@ -234,6 +235,14 @@ export const WIDGET_DEFINITIONS: Record<WidgetType, WidgetDefinition> = {
     icon: StickyNote,
     defaultSize: { w: 3, h: 3 },
     minSize: { w: 2, h: 2 },
+    contexts: ['project'],
+  },
+  livingNotes: {
+    type: 'livingNotes',
+    titleKey: 'livingNotes',
+    icon: StickyNote,
+    defaultSize: { w: 3, h: 4 },
+    minSize: { w: 2, h: 3 },
     contexts: ['project'],
   },
   inspiration: {
