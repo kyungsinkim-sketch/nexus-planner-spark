@@ -13,11 +13,12 @@ import { playNotificationSound } from "@/services/notificationSoundService";
 import { useChatNotifications } from "@/hooks/useChatNotifications";
 import { useTodoSync } from "@/hooks/useTodoSync";
 import { useAutoCheckIn } from "@/hooks/useAutoCheckIn";
-import { ActiveCallOverlay } from "@/components/call/ActiveCallOverlay";
-import { IncomingCallDialog } from "@/components/call/IncomingCallDialog";
 import { useInactivityDetector } from "@/hooks/useInactivityDetector";
 import { useUserStatusRefresh } from "@/hooks/useUserStatusRefresh";
-import { AutoCheckInDialog } from "@/components/dashboard/AutoCheckInDialog";
+
+const ActiveCallOverlay = lazy(() => import("@/components/call/ActiveCallOverlay").then(m => ({ default: m.ActiveCallOverlay })));
+const IncomingCallDialog = lazy(() => import("@/components/call/IncomingCallDialog").then(m => ({ default: m.IncomingCallDialog })));
+const AutoCheckInDialog = lazy(() => import("@/components/dashboard/AutoCheckInDialog").then(m => ({ default: m.AutoCheckInDialog })));
 
 // Lazy-loaded page components for code splitting
 const AdminPage = lazy(() => import("./pages/AdminPage"));
@@ -69,7 +70,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   return (
     <>
       {children}
-      <AutoCheckInDialog />
+      <Suspense fallback={null}><AutoCheckInDialog /></Suspense>
     </>
   );
 }
