@@ -12,7 +12,7 @@ import { useTranslation } from '@/hooks/useTranslation';
 import {
   ArrowLeft,
   CheckSquare,
-  BookMarked,
+  FileText,
   FileIcon,
   FolderKanban,
   ChevronRight,
@@ -22,14 +22,14 @@ import type { WidgetDataContext } from '@/types/widget';
 
 // Lazy load widget components
 const TodosWidget = lazy(() => import('@/components/widgets/TodosWidget'));
-const ImportantNotesWidget = lazy(() => import('@/components/widgets/ImportantNotesWidget'));
+const LivingNotesWidget = lazy(() => import('@/components/widgets/LivingNotesWidget'));
 const FilesWidget = lazy(() => import('@/components/widgets/FilesWidget'));
 
 type MobileProjectTab = 'todos' | 'notes' | 'files';
 
 const TAB_CONFIG: Array<{ id: MobileProjectTab; icon: typeof CheckSquare; labelKo: string; labelEn: string }> = [
   { id: 'todos', icon: CheckSquare, labelKo: '할 일', labelEn: 'Todos' },
-  { id: 'notes', icon: BookMarked, labelKo: '중요 기록', labelEn: 'Notes' },
+  { id: 'notes', icon: FileText, labelKo: '기록', labelEn: 'Notes' },
   { id: 'files', icon: FileIcon, labelKo: '파일', labelEn: 'Files' },
 ];
 
@@ -243,7 +243,7 @@ export function MobileProjectView() {
           )}
           {activeTab === 'notes' && (
             <div className="h-full overflow-y-auto p-3">
-              <ImportantNotesWidget context={context} />
+              <LivingNotesWidget context={context} />
             </div>
           )}
           {activeTab === 'files' && (

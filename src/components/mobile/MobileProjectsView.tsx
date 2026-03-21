@@ -15,14 +15,14 @@ import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   ArrowLeft, Bell, FolderOpen, CheckSquare,
-  StickyNote, MessageCircle, LayoutGrid, Pencil,
+  StickyNote, MessageCircle, LayoutGrid, Pencil, FileText,
 } from 'lucide-react';
 
 // Lazy-load widget components
 const TodosWidget = lazy(() => import('@/components/widgets/TodosWidget'));
 const FilesWidget = lazy(() => import('@/components/widgets/FilesWidget'));
 const ChatWidget = lazy(() => import('@/components/widgets/ChatWidget'));
-const ImportantNotesWidget = lazy(() => import('@/components/widgets/ImportantNotesWidget'));
+const LivingNotesWidget = lazy(() => import('@/components/widgets/LivingNotesWidget'));
 const NotificationsWidget = lazy(() => import('@/components/widgets/NotificationsWidget'));
 const ProjectBoardWidget = lazy(() => import('@/components/widgets/ProjectBoardWidget'));
 
@@ -33,7 +33,7 @@ const WIDGET_DEFS = [
   { key: 'files', labelKo: '파일', labelEn: 'Files', icon: FolderOpen, badge: 0 },
   { key: 'todos', labelKo: '할 일', labelEn: 'ToDos', icon: CheckSquare, badge: 0 },
   { key: 'chat', labelKo: '채팅', labelEn: 'Chat', icon: MessageCircle, badge: 0 },
-  { key: 'notes', labelKo: '중요기록', labelEn: 'Notes', icon: StickyNote, badge: 0 },
+  { key: 'notes', labelKo: '기록', labelEn: 'Notes', icon: FileText, badge: 0 },
   { key: 'board', labelKo: '보드', labelEn: 'Board', icon: LayoutGrid, badge: 0 },
 ] as const;
 
@@ -41,7 +41,7 @@ const WIDGET_MAP: Record<string, React.LazyExoticComponent<React.ComponentType<a
   notifications: NotificationsWidget,
   files: FilesWidget,
   todos: TodosWidget,
-  notes: ImportantNotesWidget,
+  notes: LivingNotesWidget,
   chat: ChatWidget,
   board: ProjectBoardWidget,
 };
