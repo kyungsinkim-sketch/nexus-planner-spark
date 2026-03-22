@@ -68,6 +68,105 @@ function formatDate(dateStr: string) {
   return `${d.getMonth() + 1}/${d.getDate()}`;
 }
 
+// ─── Simple Markdown Renderer ───
+// Handles: paragraphs (\n\n), bullets (- ), numbered lists (1. ), bold (**text**)
+// No editing — read-only rendering for AI-generated content.
+
+function NoteContent({ text, className = '' }: { text: string; className?: string }) {
+  if (!text) return null;
+
+  // Split by double newline into paragraphs, then process each
+  const paragraphs = text.split(/\n{2,}/);
+
+  const renderInline = (line: string) => {
+    // Bold: **text**
+    const parts = line.split(/(\*\*[^*]+\*\*)/g);
+    return parts.map((part, i) => {
+      if (part.startsWith('**') && part.endsWith('**')) {
+        return <strong key={i} className="font-semibold">{part.slice(2, -2)}</strong>;
+      }
+      return <span key={i}>{part}</span>;
+    });
+  };
+
+  const elements: React.ReactNode[] = [];
+
+  paragraphs.forEach((para, pi) => {
+    const lines = para.split('\n');
+
+    // Check if this paragraph is a list
+    const bulletLines: string[] = [];
+    const numberLines: string[] = [];
+    const textLines: string[] = [];
+
+    lines.forEach(line => {
+      const trimmed = line.trimStart();
+      if (/^[-•]\s/.test(trimmed)) {
+        bulletLines.push(trimmed.replace(/^[-•]\s+/, ''));
+      } else if (/^\d+[.)]\s/.test(trimmed)) {
+        numberLines.push(trimmed.replace(/^\d+[.)]\s+/, ''));
+      } else {
+        textLines.push(line);
+      }
+    });
+
+    if (bulletLines.length > 0 && textLines.filter(l => l.trim()).length === 0) {
+      // Pure bullet list
+      elements.push(
+        <ul key={`ul-${pi}`} className="pl-5 space-y-1 my-1">
+          {bulletLines.map((item, i) => (
+            <li key={i} className="list-disc">{renderInline(item)}</li>
+          ))}
+        </ul>
+      );
+    } else if (numberLines.length > 0 && textLines.filter(l => l.trim()).length === 0) {
+      // Pure numbered list
+      elements.push(
+        <ol key={`ol-${pi}`} className="pl-5 space-y-1 my-1 list-decimal">
+          {numberLines.map((item, i) => (
+            <li key={i}>{renderInline(item)}</li>
+          ))}
+        </ol>
+      );
+    } else {
+      // Mixed: render line by line, treating bullets inline
+      const content: React.ReactNode[] = [];
+      lines.forEach((line, li) => {
+        const trimmed = line.trimStart();
+        if (/^[-•]\s/.test(trimmed)) {
+          content.push(
+            <span key={`b-${li}`} className="flex gap-1.5 items-start pl-2">
+              <span className="text-muted-foreground/50 mt-[2px]">•</span>
+              <span>{renderInline(trimmed.replace(/^[-•]\s+/, ''))}</span>
+            </span>
+          );
+        } else if (/^\d+[.)]\s/.test(trimmed)) {
+          const num = trimmed.match(/^(\d+)/)?.[1];
+          content.push(
+            <span key={`n-${li}`} className="flex gap-1.5 items-start pl-2">
+              <span className="text-muted-foreground/50 mt-[2px] tabular-nums">{num}.</span>
+              <span>{renderInline(trimmed.replace(/^\d+[.)]\s+/, ''))}</span>
+            </span>
+          );
+        } else if (line.trim()) {
+          if (content.length > 0) content.push(<br key={`br-${li}`} />);
+          content.push(<span key={`t-${li}`}>{renderInline(line)}</span>);
+        }
+      });
+      if (content.length > 0) {
+        elements.push(<p key={`p-${pi}`} className="[&+p]:mt-3 [&+ul]:mt-2 [&+ol]:mt-2">{content}</p>);
+      }
+    }
+  });
+
+  return (
+    <div className={`space-y-3 leading-[1.75] ${className}`}
+      style={{ overflowWrap: 'break-word', wordBreak: 'normal', fontSize: '15px' }}>
+      {elements}
+    </div>
+  );
+}
+
 // ─── Component ───
 
 export default function LivingNotesWidget({ context }: { context?: WidgetDataContext; projectId?: string }) {
@@ -225,7 +324,7 @@ export default function LivingNotesWidget({ context }: { context?: WidgetDataCon
         <ScrollArea className="flex-1">
           <div className="p-4 space-y-4">
             {/* ── Current State Card ── */}
-            <div className="rounded-xl p-3.5"
+            <div className="rounded-xl p-4"
               style={{
                 background: 'linear-gradient(135deg, hsl(var(--primary) / 0.06), hsl(var(--primary) / 0.02))',
                 border: '1px solid hsl(var(--primary) / 0.15)',
@@ -253,13 +352,13 @@ export default function LivingNotesWidget({ context }: { context?: WidgetDataCon
                   </div>
                 </div>
               ) : (
-                <p className="typo-body-dense font-medium" style={{ overflowWrap: 'break-word', wordBreak: 'normal' }}>
-                  {selectedNote.currentState || (
-                    <span className="text-muted-foreground/50 italic">
-                      {ko ? '아직 결론이 없어요' : 'No conclusion yet'}
-                    </span>
-                  )}
-                </p>
+                {selectedNote.currentState ? (
+                  <NoteContent text={selectedNote.currentState} className="font-semibold" />
+                ) : (
+                  <p className="text-muted-foreground/50 italic" style={{ fontSize: '15px' }}>
+                    {ko ? '아직 결론이 없어요' : 'No conclusion yet'}
+                  </p>
+                )}
               )}
             </div>
 
@@ -291,7 +390,7 @@ export default function LivingNotesWidget({ context }: { context?: WidgetDataCon
                           <div className={`w-[15px] h-[15px] rounded-full ${config.dot} shrink-0 mt-0.5 z-10 ring-2 ring-background`} />
 
                           {/* Content */}
-                          <div className={`flex-1 min-w-0 rounded-xl ${config.bg} border ${config.border} p-3`}>
+                          <div className={`flex-1 min-w-0 rounded-xl ${config.bg} border ${config.border} p-4`}>
                             {/* Meta row */}
                             <div className="flex items-center gap-2 mb-1.5">
                               <span className={`typo-micro font-bold ${config.color} tracking-wide`}>
@@ -308,9 +407,7 @@ export default function LivingNotesWidget({ context }: { context?: WidgetDataCon
                               )}
                             </div>
                             {/* Body */}
-                            <p className="typo-widget-body" style={{ overflowWrap: 'break-word', wordBreak: 'normal' }}>
-                              {entry.content}
-                            </p>
+                            <NoteContent text={entry.content} />
                           </div>
                         </div>
                       );
