@@ -351,14 +351,12 @@ export default function LivingNotesWidget({ context }: { context?: WidgetDataCon
                     </Button>
                   </div>
                 </div>
+              ) : selectedNote.currentState ? (
+                <NoteContent text={selectedNote.currentState} className="font-semibold" />
               ) : (
-                {selectedNote.currentState ? (
-                  <NoteContent text={selectedNote.currentState} className="font-semibold" />
-                ) : (
-                  <p className="text-muted-foreground/50 italic" style={{ fontSize: '15px' }}>
-                    {ko ? '아직 결론이 없어요' : 'No conclusion yet'}
-                  </p>
-                )}
+                <p className="text-muted-foreground/50 italic" style={{ fontSize: '15px' }}>
+                  {ko ? '아직 결론이 없어요' : 'No conclusion yet'}
+                </p>
               )}
             </div>
 
