@@ -50,7 +50,7 @@ export function ProjectCalendarTab({ projectId }: ProjectCalendarTabProps) {
   const calendarRef = useRef<FullCalendar>(null);
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [isPanelOpen, setIsPanelOpen] = useState(false);
-  const [selectedTypes, setSelectedTypes] = useState<EventType[]>(['TASK', 'DEADLINE', 'MEETING', 'PT', 'DELIVERY', 'TODO', 'DELIVERABLE', 'R_TRAINING']);
+  const [selectedTypes, setSelectedTypes] = useState<EventType[]>(['TASK', 'DEADLINE', 'MEETING', 'PT', 'DELIVERY', 'DELIVERABLE', 'R_TRAINING']);
   const [currentView, setCurrentView] = useState<string>('dayGridMonth');
 
   // New event modal state

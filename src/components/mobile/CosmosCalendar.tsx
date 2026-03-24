@@ -43,7 +43,7 @@ export function CosmosCalendar() {
       const dateStr = format(date, 'yyyy-MM-dd');
       const dayStart = startOfDay(date);
       const dayEnd = addDays(dayStart, 1);
-      const dayEvents = events.filter(e => {
+      const dayEvents = events.filter(e => e.type !== 'TODO').filter(e => {
         try {
           const eDate = parseISO(e.startAt);
           return eDate >= dayStart && eDate < dayEnd;

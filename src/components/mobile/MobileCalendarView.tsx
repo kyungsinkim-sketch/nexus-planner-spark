@@ -479,6 +479,7 @@ export function MobileCalendarView() {
       projects.filter(p => userId && p.teamMemberIds?.includes(userId)).map(p => p.id)
     );
     const filtered = events
+      .filter((ev) => ev.type !== 'TODO')
       .filter((ev) => {
         // Only show events relevant to current user (same as PC web)
         if (userId) {

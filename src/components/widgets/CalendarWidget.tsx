@@ -94,6 +94,9 @@ function CalendarWidget({ context }: { context: WidgetDataContext }) {
   const [newEventStartTime, setNewEventStartTime] = useState<string | undefined>();
   const [newEventEndTime, setNewEventEndTime] = useState<string | undefined>();
 
+  // TODO visibility toggle (default OFF per team feedback)
+  const [showTodos, setShowTodos] = useState(false);
+
   // Build set of project IDs the current user is a member of (for dashboard filtering)
   const myProjectIds = useMemo(() => {
     if (!currentUser) return new Set<string>();
@@ -123,7 +126,7 @@ function CalendarWidget({ context }: { context: WidgetDataContext }) {
 
   const calendarEvents = useMemo(
     () =>
-      filteredEvents.map((event) => {
+      filteredEvents.filter((event) => showTodos || event.type !== 'TODO').map((event) => {
         const project = event.projectId ? getProjectById(event.projectId) : null;
         // R_TRAINING always uses purple; project events use keyColor;
         // Google events use teal; fallback to primary
@@ -148,7 +151,7 @@ function CalendarWidget({ context }: { context: WidgetDataContext }) {
           },
         };
       }),
-    [filteredEvents, getProjectById],
+    [filteredEvents, getProjectById, showTodos],
   );
 
   // Custom event rendering — desktop: color dot + time + title; mobile: clean title only
@@ -269,14 +272,20 @@ function CalendarWidget({ context }: { context: WidgetDataContext }) {
         <FullCalendar
           plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin, listPlugin]}
           initialView={isMobile ? 'listWeek' : 'dayGridMonth'}
+          customButtons={{
+            todoToggle: {
+              text: showTodos ? '☑ Todo' : '☐ Todo',
+              click: () => setShowTodos(prev => !prev),
+            },
+          }}
           headerToolbar={isMobile ? {
             left: 'prev,next',
             center: 'title',
-            right: 'listWeek,dayGridMonth',
+            right: 'todoToggle listWeek,dayGridMonth',
           } : {
             left: 'prev,next today',
             center: 'title',
-            right: 'dayGridMonth,timeGridWeek,listDay',
+            right: 'todoToggle dayGridMonth,timeGridWeek,listDay',
           }}
           views={{
             listWeek: { buttonText: language === 'ko' ? '목록' : 'List' },
