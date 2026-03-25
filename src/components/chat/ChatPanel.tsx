@@ -1376,9 +1376,7 @@ export function ChatPanel({ defaultProjectId, defaultDmUserId, defaultGroupRoomI
 
   // File upload handler for chat
   const handleFileUploadConfirm = async (category: FileCategory, isImportant: boolean, comment: string, file?: File) => {
-    console.log('[FileUpload] Start', { hasUser: !!currentUser, hasChat: !!selectedChat, hasFile: !!file, fileName: file?.name, fileSize: file?.size, fileType: file?.type });
     if (!currentUser || !selectedChat) {
-      console.error('[FileUpload] Aborted — no currentUser or selectedChat', { currentUser: !!currentUser, selectedChat: !!selectedChat });
       return;
     }
 
@@ -1399,9 +1397,7 @@ export function ChatPanel({ defaultProjectId, defaultDmUserId, defaultGroupRoomI
       if (isSupabaseConfigured() && file) {
         const storageBucket = (isDM || isGroup) ? 'dm-files' : 'project-files';
         const storageFolder = (isDM || isGroup) ? currentUser.id : projectId;
-        console.log('[FileUpload] Uploading to', { storageBucket, storageFolder, fileName: file.name, fileSize: file.size });
         const { path: storagePath } = await fileService.uploadFile(file, storageFolder, currentUser.id, storageBucket);
-        console.log('[FileUpload] Upload success', { storagePath });
 
         const fileExt = file.name.split('.').pop() || '';
         const fileSize = file.size < 1024 * 1024
@@ -1471,7 +1467,6 @@ export function ChatPanel({ defaultProjectId, defaultDmUserId, defaultGroupRoomI
           fileItemId = fileItem.id;
         }
 
-        console.log('[FileUpload] Sending message', { isDM, isGroup, projectId, roomId: selectedChat.roomId, fileItemId });
         if (isDM) {
           await sendDirectMessage(selectedChat.id, `📎 Uploaded file: ${file.name}`, fileItemId);
         } else if (selectedChat.roomId) {
@@ -1482,7 +1477,6 @@ export function ChatPanel({ defaultProjectId, defaultDmUserId, defaultGroupRoomI
         } else {
           await sendProjectMessage(projectId, `📎 Uploaded file: ${file.name}`, fileItemId);
         }
-        console.log('[FileUpload] Message sent successfully');
       } else {
         const newFileId = `f${Date.now()}`;
         addFile({

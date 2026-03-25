@@ -1,6 +1,6 @@
 [package]
 name = "re-be-app"
-version = "0.2.0"
+version = "0.7.0"
 description = "Re-Be.io — Privacy-first creative collaboration with local RAG"
 authors = ["Paulus.ai"]
 license = "MIT"

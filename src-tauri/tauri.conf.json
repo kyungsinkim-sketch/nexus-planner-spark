@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "Re-Be.io",
-  "version": "0.2.0",
+  "version": "0.7.0",
   "identifier": "io.re-be.app",
   "build": {
     "frontendDist": "../dist",
