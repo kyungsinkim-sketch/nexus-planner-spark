@@ -158,6 +158,7 @@ function LinksWidget({ context }: { context: WidgetDataContext }) {
             type="text"
             value={addUrl}
             onChange={e => setAddUrl(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter' && addUrl.trim()) handleAdd(); }}
             placeholder="https://..."
             className="w-full text-xs px-2 py-1.5 rounded-md border border-input bg-background outline-none focus:ring-1 focus:ring-primary"
             autoFocus
@@ -166,6 +167,7 @@ function LinksWidget({ context }: { context: WidgetDataContext }) {
             type="text"
             value={addName}
             onChange={e => setAddName(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter' && addUrl.trim()) handleAdd(); }}
             placeholder={language === 'ko' ? '링크 이름 (선택)' : 'Link name (optional)'}
             className="w-full text-xs px-2 py-1.5 rounded-md border border-input bg-background outline-none focus:ring-1 focus:ring-primary"
           />
@@ -173,6 +175,7 @@ function LinksWidget({ context }: { context: WidgetDataContext }) {
             type="text"
             value={addMemo}
             onChange={e => setAddMemo(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter' && addUrl.trim()) handleAdd(); }}
             placeholder={language === 'ko' ? '메모 (선택)' : 'Memo (optional)'}
             className="w-full text-xs px-2 py-1.5 rounded-md border border-input bg-background outline-none focus:ring-1 focus:ring-primary"
           />
@@ -180,7 +183,7 @@ function LinksWidget({ context }: { context: WidgetDataContext }) {
             <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => { setShowAdd(false); setAddUrl(''); setAddName(''); setAddMemo(''); }}>
               <X className="w-3 h-3 mr-1" />{language === 'ko' ? '취소' : 'Cancel'}
             </Button>
-            <Button size="sm" className="h-7 text-xs" onClick={handleAdd} disabled={!addUrl.trim()}>
+            <Button size="sm" className="h-7 text-xs bg-primary text-primary-foreground hover:bg-primary/90" onClick={handleAdd} disabled={!addUrl.trim()}>
               <Check className="w-3 h-3 mr-1" />{language === 'ko' ? '추가' : 'Add'}
             </Button>
           </div>
