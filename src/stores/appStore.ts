@@ -2797,27 +2797,29 @@ export const useAppStore = create<AppState>()(
         const myId = state.currentUser?.id;
         if (!myId) return 0;
 
-        // Primary: count from realtime messages (in-session)
         const lastRead = state.chatLastReadTimestamps[key];
 
-        let realtimeCount = 0;
-        if (lastRead) {
-          let msgs: typeof state.messages;
-          if (key.startsWith('dm:')) {
-            const otherUserId = key.slice(3);
-            msgs = state.messages.filter(m =>
-              m.userId !== myId &&
-              ((m.userId === otherUserId && m.directChatUserId === myId) ||
-               (m.directChatUserId === otherUserId && m.userId === otherUserId))
-            );
-          } else if (key.startsWith('room:')) {
-            const roomId = key.slice(5);
-            msgs = state.messages.filter(m => m.roomId === roomId && m.userId !== myId);
-          } else {
-            msgs = [];
-          }
-          realtimeCount = msgs.filter(m => m.createdAt > lastRead).length;
+        // Get relevant messages from others
+        let msgs: typeof state.messages;
+        if (key.startsWith('dm:')) {
+          const otherUserId = key.slice(3);
+          msgs = state.messages.filter(m =>
+            m.userId !== myId &&
+            ((m.userId === otherUserId && m.directChatUserId === myId) ||
+             (m.directChatUserId === otherUserId && m.userId === otherUserId))
+          );
+        } else if (key.startsWith('room:')) {
+          const roomId = key.slice(5);
+          msgs = state.messages.filter(m => m.roomId === roomId && m.userId !== myId);
+        } else {
+          msgs = [];
         }
+
+        // If lastRead exists, count messages after that timestamp
+        // If no lastRead (never opened this chat), all messages from others are unread
+        const realtimeCount = lastRead
+          ? msgs.filter(m => m.createdAt > lastRead).length
+          : msgs.length;
 
         // Fallback: count from persisted appNotifications (survives page reload)
         let notifCount = 0;

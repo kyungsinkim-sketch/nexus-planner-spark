@@ -211,7 +211,7 @@ export function ChatPanel({ defaultProjectId, defaultDmUserId, defaultGroupRoomI
     return projects.filter(p => p.status === 'ACTIVE' || p.status === 'IN_PROGRESS' || p.status === 'PLANNING');
   }, [projects]);
 
-  // Filter projects by search, sorted by most recent message
+  // Filter projects by search, sorted by most recent message (using pre-built index)
   const filteredProjects = useMemo(() => {
     let filtered = allProjects;
     if (searchQuery) {
@@ -222,13 +222,13 @@ export function ChatPanel({ defaultProjectId, defaultDmUserId, defaultGroupRoomI
       );
     }
     return [...filtered].sort((a, b) => {
-      const aMsg = messages.filter(m => m.projectId === a.id && !m.directChatUserId);
-      const bMsg = messages.filter(m => m.projectId === b.id && !m.directChatUserId);
-      const aLast = aMsg.length > 0 ? new Date(aMsg[aMsg.length - 1].createdAt).getTime() : 0;
-      const bLast = bMsg.length > 0 ? new Date(bMsg[bMsg.length - 1].createdAt).getTime() : 0;
-      return bLast - aLast;
+      const aMsg = messageIndex.byProject.get(a.id);
+      const bMsg = messageIndex.byProject.get(b.id);
+      const aLast = aMsg ? aMsg.reduce((max, m) => m.createdAt > max ? m.createdAt : max, '') : '';
+      const bLast = bMsg ? bMsg.reduce((max, m) => m.createdAt > max ? m.createdAt : max, '') : '';
+      return bLast.localeCompare(aLast);
     });
-  }, [allProjects, searchQuery, messages]);
+  }, [allProjects, searchQuery, messageIndex]);
 
   // Filter users (excluding current user) + prepend AI persona virtual users
   const otherUsers = useMemo(() => {
@@ -246,7 +246,7 @@ export function ChatPanel({ defaultProjectId, defaultDmUserId, defaultGroupRoomI
     return [...aiUsers, ...realUsers];
   }, [users, currentUser]);
 
-  // Filter users by search, sorted by most recent DM
+  // Filter users by search, sorted by most recent DM (using pre-built index)
   const filteredUsers = useMemo(() => {
     let filtered = otherUsers;
     if (searchQuery) {
@@ -255,17 +255,11 @@ export function ChatPanel({ defaultProjectId, defaultDmUserId, defaultGroupRoomI
     }
     if (!currentUser) return filtered;
     return [...filtered].sort((a, b) => {
-      const aDms = messages.filter(m =>
-        (m.userId === currentUser.id && m.directChatUserId === a.id) ||
-        (m.userId === a.id && m.directChatUserId === currentUser.id)
-      );
-      const bDms = messages.filter(m =>
-        (m.userId === currentUser.id && m.directChatUserId === b.id) ||
-        (m.userId === b.id && m.directChatUserId === currentUser.id)
-      );
-      const aLast = aDms.length > 0 ? new Date(aDms[aDms.length - 1].createdAt).getTime() : 0;
-      const bLast = bDms.length > 0 ? new Date(bDms[bDms.length - 1].createdAt).getTime() : 0;
-      return bLast - aLast;
+      const aDms = messageIndex.byDm.get(`${currentUser.id}:${a.id}`);
+      const bDms = messageIndex.byDm.get(`${currentUser.id}:${b.id}`);
+      const aLast = aDms ? aDms.reduce((max, m) => m.createdAt > max ? m.createdAt : max, '') : '';
+      const bLast = bDms ? bDms.reduce((max, m) => m.createdAt > max ? m.createdAt : max, '') : '';
+      return bLast.localeCompare(aLast);
     });
   }, [otherUsers, searchQuery, currentUser, messages]);
 
