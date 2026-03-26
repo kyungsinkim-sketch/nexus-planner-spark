@@ -133,7 +133,7 @@ export function WidgetContainer({
   return (
     <div
       ref={containerRef}
-      className={cn('glass-widget flex flex-col h-full', className)}
+      className={cn('glass-widget flex flex-col h-full overflow-hidden', className)}
       data-widget-id={widgetId}
       style={{
         ...style,
@@ -181,7 +181,7 @@ export function WidgetContainer({
       {/* Content — wrapped in error boundary so one widget crash doesn't break dashboard */}
       {!collapsed && (
         <div
-          className="widget-content flex-1 min-h-0 p-0 origin-top-left"
+          className="widget-content flex-1 min-h-0 p-0 origin-top-left overflow-hidden"
           style={scale < 0.95 ? {
             transform: `scale(${scale})`,
             width: `${100 / scale}%`,
