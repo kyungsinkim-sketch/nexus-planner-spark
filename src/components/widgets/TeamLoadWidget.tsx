@@ -77,8 +77,9 @@ function TeamLoadWidget({ context }: { context: WidgetDataContext }) {
       ).length;
 
       // Board tasks with dates (Gantt items) overlapping this week
+      // Include tasks where user is owner OR reviewer
       const boardTaskCount = boardTasks.filter(bt =>
-        bt.ownerId === userId &&
+        (bt.ownerId === userId || bt.reviewerIds?.includes(userId)) &&
         bt.startDate && bt.endDate &&
         bt.status !== 'done' && (
           isInWeek(bt.startDate) || isInWeek(bt.endDate) ||

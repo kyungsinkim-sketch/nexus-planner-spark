@@ -47,7 +47,7 @@ export function TeamLoadSnapshot({ project }: TeamLoadSnapshotProps) {
 
       const boardTaskCount = boardTasks.filter(bt =>
         bt.projectId === project.id &&
-        bt.ownerId === userId &&
+        (bt.ownerId === userId || bt.reviewerIds?.includes(userId)) &&
         bt.startDate && bt.endDate &&
         bt.status !== 'done' && (
           isInWeek(bt.startDate) || isInWeek(bt.endDate) ||
