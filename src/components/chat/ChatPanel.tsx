@@ -211,6 +211,36 @@ export function ChatPanel({ defaultProjectId, defaultDmUserId, defaultGroupRoomI
     return projects.filter(p => p.status === 'ACTIVE' || p.status === 'IN_PROGRESS' || p.status === 'PLANNING');
   }, [projects]);
 
+  // Pre-index messages by room/project/DM for O(1) lookup instead of O(N) filter
+  const messageIndex = useMemo(() => {
+    const byRoom = new Map<string, ChatMessage[]>();
+    const byProject = new Map<string, ChatMessage[]>();
+    const byDm = new Map<string, ChatMessage[]>();
+
+    for (const m of messages) {
+      if (m.roomId) {
+        const arr = byRoom.get(m.roomId);
+        if (arr) arr.push(m); else byRoom.set(m.roomId, [m]);
+      }
+      if (m.projectId && !m.directChatUserId) {
+        const arr = byProject.get(m.projectId);
+        if (arr) arr.push(m); else byProject.set(m.projectId, [m]);
+      }
+      if (m.directChatUserId) {
+        // Index by both participants so lookup from either side works
+        const key1 = `${m.userId}:${m.directChatUserId}`;
+        const key2 = `${m.directChatUserId}:${m.userId}`;
+        const arr1 = byDm.get(key1);
+        if (arr1) arr1.push(m); else byDm.set(key1, [m]);
+        if (key1 !== key2) {
+          const arr2 = byDm.get(key2);
+          if (arr2) arr2.push(m); else byDm.set(key2, [m]);
+        }
+      }
+    }
+    return { byRoom, byProject, byDm };
+  }, [messages]);
+
   // Filter projects by search, sorted by most recent message (using pre-built index)
   const filteredProjects = useMemo(() => {
     let filtered = allProjects;
@@ -268,36 +298,6 @@ export function ChatPanel({ defaultProjectId, defaultDmUserId, defaultGroupRoomI
     if (!expandedProjectId) return [];
     return getChatRoomsByProject(expandedProjectId);
   }, [expandedProjectId, chatRooms, getChatRoomsByProject]);
-
-  // Pre-index messages by room/project/DM for O(1) lookup instead of O(N) filter
-  const messageIndex = useMemo(() => {
-    const byRoom = new Map<string, ChatMessage[]>();
-    const byProject = new Map<string, ChatMessage[]>();
-    const byDm = new Map<string, ChatMessage[]>();
-
-    for (const m of messages) {
-      if (m.roomId) {
-        const arr = byRoom.get(m.roomId);
-        if (arr) arr.push(m); else byRoom.set(m.roomId, [m]);
-      }
-      if (m.projectId && !m.directChatUserId) {
-        const arr = byProject.get(m.projectId);
-        if (arr) arr.push(m); else byProject.set(m.projectId, [m]);
-      }
-      if (m.directChatUserId) {
-        // Index by both participants so lookup from either side works
-        const key1 = `${m.userId}:${m.directChatUserId}`;
-        const key2 = `${m.directChatUserId}:${m.userId}`;
-        const arr1 = byDm.get(key1);
-        if (arr1) arr1.push(m); else byDm.set(key1, [m]);
-        if (key1 !== key2) {
-          const arr2 = byDm.get(key2);
-          if (arr2) arr2.push(m); else byDm.set(key2, [m]);
-        }
-      }
-    }
-    return { byRoom, byProject, byDm };
-  }, [messages]);
 
   // Get messages for selected chat — uses pre-built index
   const chatMessages = useMemo(() => {
