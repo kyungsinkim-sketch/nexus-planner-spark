@@ -139,7 +139,7 @@ function LinksWidget({ context }: { context: WidgetDataContext }) {
   }
 
   return (
-    <ScrollArea className="h-full p-2">
+    <ScrollArea className="h-full p-2 overflow-hidden">
       {/* Add button */}
       {!showAdd && (
         <button
@@ -153,7 +153,7 @@ function LinksWidget({ context }: { context: WidgetDataContext }) {
 
       {/* Add form */}
       {showAdd && (
-        <div className="mb-3 p-2.5 rounded-lg border border-border/50 bg-muted/30 space-y-2">
+        <div className="mb-3 p-2.5 rounded-lg border border-border/50 bg-muted/30 space-y-2 overflow-hidden">
           <input
             type="text"
             value={addUrl}
@@ -237,10 +237,10 @@ function LinksWidget({ context }: { context: WidgetDataContext }) {
           return (
             <div
               key={link.id}
-              className="flex items-start gap-2.5 px-2 py-1.5 rounded-lg hover:bg-white/5 transition-colors group"
+              className="flex items-start gap-2.5 px-2 py-1.5 rounded-lg hover:bg-white/5 transition-colors group overflow-hidden"
             >
               <Link2 className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />
-              <div className="flex-1 min-w-0">
+              <div className="flex-1 min-w-0 overflow-hidden">
                 {link.name && (
                   <p className="typo-widget-body font-medium text-foreground truncate">{link.name}</p>
                 )}
@@ -251,7 +251,7 @@ function LinksWidget({ context }: { context: WidgetDataContext }) {
                   <p className="typo-micro text-muted-foreground/60 truncate">{link.url}</p>
                 )}
                 {link.memo && (
-                  <p className="typo-micro text-muted-foreground/80 mt-0.5">{link.memo}</p>
+                  <p className="typo-micro text-muted-foreground/80 mt-0.5 truncate">{link.memo}</p>
                 )}
                 <p className="typo-micro text-muted-foreground/60">
                   {creator?.name || ''}{creator ? ' · ' : ''}{new Date(link.createdAt).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })}
@@ -282,10 +282,10 @@ function LinksWidget({ context }: { context: WidgetDataContext }) {
           return (
             <div
               key={link.messageId + link.url}
-              className="flex items-center gap-2.5 px-2 py-1.5 rounded-lg hover:bg-white/5 transition-colors group"
+              className="flex items-center gap-2.5 px-2 py-1.5 rounded-lg hover:bg-white/5 transition-colors group overflow-hidden"
             >
               <Link2 className="w-4 h-4 text-muted-foreground/50 shrink-0" />
-              <div className="flex-1 min-w-0">
+              <div className="flex-1 min-w-0 overflow-hidden">
                 <a href={link.url} target="_blank" rel="noopener noreferrer" className="typo-widget-body text-foreground hover:underline truncate block">
                   {link.domain}
                 </a>
