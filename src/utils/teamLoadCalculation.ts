@@ -2,11 +2,11 @@
  * Team Load 계산 유틸리티
  *
  * 수식: 가중 합산 방식 (2026-03-09 업데이트)
- * - To-do 할당: 30% (주간 부여받은 업무량)
- * - 캘린더 이벤트: 30% (등록된 스케줄 수)
- * - 보드 업무(Gantt): 40% (Projectboard에 입력된 참여 업무)
+ * - To-do 할당: 20% (주간 부여받은 업무량)
+ * - 캘린더 이벤트: 50% (등록된 스케줄 수)
+ * - 보드 업무(Gantt): 30% (Projectboard에 입력된 참여 업무)
  *
- * loadScore = (todoRatio * 0.30) + (calendarRatio * 0.30) + (boardTaskRatio * 0.40)
+ * loadScore = (todoRatio * 0.20) + (calendarRatio * 0.50) + (boardTaskRatio * 0.30)
  */
 
 export interface TeamLoadInput {
@@ -25,9 +25,9 @@ export interface TeamLoadResult {
 }
 
 export const WEIGHTS = {
-  todo: 0.30,
-  calendar: 0.30,
-  board: 0.40,
+  todo: 0.20,
+  calendar: 0.50,
+  board: 0.30,
 } as const;
 
 export function calculateTeamLoad(inputs: TeamLoadInput[]): TeamLoadResult[] {
