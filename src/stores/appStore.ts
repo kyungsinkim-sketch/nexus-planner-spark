@@ -2816,10 +2816,14 @@ export const useAppStore = create<AppState>()(
         }
 
         // If lastRead exists, count messages after that timestamp
-        // If no lastRead (never opened this chat), all messages from others are unread
-        const realtimeCount = lastRead
-          ? msgs.filter(m => m.createdAt > lastRead).length
-          : msgs.length;
+        // If no lastRead (never opened this chat), show unread for messages in last 24h
+        let realtimeCount = 0;
+        if (lastRead) {
+          realtimeCount = msgs.filter(m => m.createdAt > lastRead).length;
+        } else if (msgs.length > 0) {
+          const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+          realtimeCount = msgs.filter(m => m.createdAt > oneDayAgo).length;
+        }
 
         // Fallback: count from persisted appNotifications (survives page reload)
         let notifCount = 0;

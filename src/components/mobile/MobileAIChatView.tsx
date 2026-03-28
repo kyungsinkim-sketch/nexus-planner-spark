@@ -577,11 +577,15 @@ export function MobileAIChatView() {
 
   // iOS keyboard: track visual viewport height for fixed layout
   const [viewH, setViewH] = useState(() => window.visualViewport?.height || window.innerHeight);
+  const [keyboardOpen, setKeyboardOpen] = useState(false);
   useEffect(() => {
     const vv = window.visualViewport;
     if (!vv) return;
+    const fullH = window.innerHeight;
     const update = () => {
       setViewH(vv.height);
+      // Keyboard is open if viewport is significantly smaller than window
+      setKeyboardOpen(fullH - vv.height > 100);
       // Prevent iOS body scroll
       window.scrollTo(0, 0);
     };
@@ -961,7 +965,7 @@ export function MobileAIChatView() {
 
       {/* ═══ Universal Chat Bar — flex bottom, above nav ═══ */}
       <div
-        className="shrink-0 px-4 py-2 pb-[calc(64px+env(safe-area-inset-bottom,0px))]"
+        className={`shrink-0 px-4 py-2 ${keyboardOpen ? 'pb-2' : 'pb-[calc(64px+env(safe-area-inset-bottom,0px))]'}`}
       >
         {/* Selected target badge */}
         {selectedTarget && (
