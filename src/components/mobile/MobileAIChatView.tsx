@@ -581,12 +581,11 @@ export function MobileAIChatView() {
   useEffect(() => {
     const vv = window.visualViewport;
     if (!vv) return;
+    const fullH = window.innerHeight;
     const update = () => {
       setViewH(vv.height);
-      // Keyboard is open if viewport is significantly smaller than screen
-      // Use screen.height as stable reference (window.innerHeight can change)
-      const stableH = window.screen.height;
-      setKeyboardOpen(stableH - vv.height > 150);
+      // Keyboard is open if viewport is significantly smaller than window
+      setKeyboardOpen(fullH - vv.height > 100);
       // Prevent iOS body scroll
       window.scrollTo(0, 0);
     };
@@ -756,16 +755,11 @@ export function MobileAIChatView() {
         if (target.type === 'user') {
           console.log('[UniversalChat] Sending DM', { from: currentUser.id, to: target.id, msg: msg.substring(0, 50) });
           const { sendDirectMessage } = await import('@/services/chatService');
-          const savedMsg = await sendDirectMessage(currentUser.id, target.id, msg);
-          console.log('[UniversalChat] DM sent successfully', savedMsg?.id);
-          // Add to store immediately so ChatPanel shows it
-          if (savedMsg) {
-            useAppStore.setState(state => ({
-              messages: [...state.messages, savedMsg],
-            }));
-          }
+          await sendDirectMessage(currentUser.id, target.id, msg);
+          console.log('[UniversalChat] DM sent successfully');
           setSelectedTarget(null);
-          // Navigate to DM view
+          // Small delay to let DB write propagate before loading chat
+          await new Promise(r => setTimeout(r, 300));
           openMobileDm(target.id);
           return;
         } else if (target.type === 'project' || target.type === 'group') {
@@ -779,13 +773,9 @@ export function MobileAIChatView() {
           if (roomId) {
             const { sendRoomMessage } = await import('@/services/chatService');
             const projectId = target.type === 'project' ? target.id : null;
-            const savedMsg = await sendRoomMessage(roomId, projectId, currentUser.id, msg);
-            if (savedMsg) {
-              useAppStore.setState(state => ({
-                messages: [...state.messages, savedMsg],
-              }));
-            }
+            await sendRoomMessage(roomId, projectId, currentUser.id, msg);
             setSelectedTarget(null);
+            await new Promise(r => setTimeout(r, 300));
             if (target.type === 'project') {
               useWidgetStore.getState().openMobileProjectChat(target.id);
             } else {
