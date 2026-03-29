@@ -242,18 +242,18 @@ export function ChatMessageBubble({ message, isCurrentUser, onVoteDecision, onAc
 
   return (
     <MessageWrapper isCurrentUser={isCurrentUser} onDelete={onDelete} onPin={onPin} onUnpin={onUnpin} onEdit={onEdit} onReply={onReply} messageId={message.id} content={message.content} reactions={message.reactions} onReactionToggle={onReactionToggle}>
-      <div className="max-w-full">
+      <div className="max-w-full" style={{ display: 'flex', flexDirection: 'column', alignItems: isCurrentUser ? 'flex-end' : 'flex-start' }}>
         {/* Reply quote block */}
         {replyMsg && (
           <ReplyQuote message={replyMsg} isCurrentUser={isCurrentUser} />
         )}
         <div
-          className={`inline-block rounded-2xl px-4 py-2 text-sm max-w-full whitespace-pre-wrap text-left ${
+          className={`rounded-2xl px-4 py-2 text-sm whitespace-pre-wrap text-left ${
             isCurrentUser
               ? 'bg-primary text-primary-foreground'
               : 'bg-muted text-foreground'
           } ${replyMsg ? 'rounded-tl-md' : ''}`}
-          style={{ overflowWrap: 'break-word', wordBreak: 'normal' }}
+          style={{ overflowWrap: 'break-word', wordBreak: 'normal', maxWidth: '100%', width: 'fit-content' }}
         >
           {renderContentWithMentions(message.content, isCurrentUser)}
         </div>
