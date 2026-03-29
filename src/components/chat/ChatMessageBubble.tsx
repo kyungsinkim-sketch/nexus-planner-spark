@@ -273,7 +273,7 @@ function ReactionBar({ reactions, messageId, onToggle, isCurrentUser }: {
   if (!reactions || reactions.length === 0) return null;
 
   return (
-    <div className={`flex flex-wrap gap-1 mt-1.5 ${isCurrentUser ? 'justify-start text-left' : ''}`}>
+    <div className={`flex flex-wrap gap-1 mt-1.5 ${isCurrentUser ? 'justify-end' : ''}`}>
       {reactions.map((r) => {
         const isMine = currentUser ? r.userIds.includes(currentUser.id) : false;
         const reactUsers = r.userIds.map(id => getUserById(id)).filter(Boolean);
