@@ -465,8 +465,8 @@ function HoverActionBar({ messageId, content, canEdit, canDelete, canPin, isCurr
 
   return (
     <>
-      {/* Floating action bar — below message bubble, right-aligned */}
-      <div className={`absolute top-full mt-1 right-0 flex items-center rounded-lg shadow-md z-20 transition-opacity bg-white dark:bg-zinc-800 border border-black/10 dark:border-white/10 ${showMenu || showEmoji || showFullEmoji ? 'opacity-100' : 'opacity-0 group-hover/msg:opacity-100'}`}
+      {/* Floating action bar — below message bubble, aligned to bubble edge */}
+      <div className={`absolute top-full mt-1 ${isCurrentUser ? 'right-0' : 'left-0'} flex items-center rounded-lg shadow-md z-20 transition-opacity bg-white dark:bg-zinc-800 border border-black/10 dark:border-white/10 ${showMenu || showEmoji || showFullEmoji ? 'opacity-100' : 'opacity-0 group-hover/msg:opacity-100'}`}
       >
         {/* Emoji */}
         <button ref={emojiRef} onClick={(e) => {
