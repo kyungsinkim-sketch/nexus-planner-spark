@@ -263,16 +263,17 @@ export function ChatMessageBubble({ message, isCurrentUser, onVoteDecision, onAc
 }
 
 // Reaction display bar with consistent styling
-function ReactionBar({ reactions, messageId, onToggle }: {
+function ReactionBar({ reactions, messageId, onToggle, isCurrentUser }: {
   reactions?: ChatReaction[];
   messageId: string;
   onToggle?: (messageId: string, emoji: string) => void;
+  isCurrentUser?: boolean;
 }) {
   const { currentUser, getUserById } = useAppStore();
   if (!reactions || reactions.length === 0) return null;
 
   return (
-    <div className="flex flex-wrap gap-1 mt-1.5">
+    <div className={`flex flex-wrap gap-1 mt-1.5 ${isCurrentUser ? 'justify-start text-left' : ''}`}>
       {reactions.map((r) => {
         const isMine = currentUser ? r.userIds.includes(currentUser.id) : false;
         const reactUsers = r.userIds.map(id => getUserById(id)).filter(Boolean);
@@ -598,7 +599,7 @@ function MessageWrapper({ children, isCurrentUser, onDelete, onEdit, onPin, onUn
   return (
     <div className={`group/msg relative max-w-[85%] overflow-visible ${isCurrentUser ? 'ml-auto' : ''}`}>
       {children}
-      <ReactionBar reactions={reactions} messageId={messageId} onToggle={onReactionToggle} />
+      <ReactionBar reactions={reactions} messageId={messageId} onToggle={onReactionToggle} isCurrentUser={isCurrentUser} />
       <HoverActionBar language={useAppStore.getState().language}
         messageId={messageId}
         content={content}
