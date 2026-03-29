@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useCallback } from 'react';
+import { useState, useMemo, useRef, useCallback, useEffect } from 'react';
 import { useAppStore } from '@/stores/appStore';
 import { useTranslation } from '@/hooks/useTranslation';
 import { cn } from '@/lib/utils';
@@ -41,6 +41,14 @@ export function MobileMembersView() {
     () => (selectedUserId ? users.find(u => u.id === selectedUserId) ?? null : null),
     [selectedUserId, users],
   );
+
+  // Scroll to top when member detail opens
+  const detailRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (selectedUserId && detailRef.current) {
+      detailRef.current.scrollTop = 0;
+    }
+  }, [selectedUserId]);
 
   // Sorted users for swipe navigation (가나다순)
   const sortedUsers = useMemo(() => [...users].sort((a, b) => a.name.localeCompare(b.name, 'ko')), [users]);
@@ -134,6 +142,7 @@ export function MobileMembersView() {
 
     return (
       <div
+        ref={detailRef}
         className="flex flex-col h-full widget-area-bg overflow-y-auto"
         onTouchStart={handleMemberTouchStart}
         onTouchEnd={handleMemberTouchEnd}
