@@ -39,8 +39,8 @@ export function MobileDmChatView() {
 
   return (
     <div
-      className="fixed top-0 left-0 right-0 flex flex-col bg-background overflow-hidden"
-      style={{ height: `${viewH}px` }}
+      className={`flex flex-col bg-background overflow-hidden ${keyboardOpen ? 'fixed top-0 left-0 right-0' : 'h-full'}`}
+      style={keyboardOpen ? { height: `${viewH}px` } : undefined}
     >
       <div className="flex-1 min-h-0 overflow-hidden">
         <Suspense fallback={
