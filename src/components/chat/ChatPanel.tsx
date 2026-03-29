@@ -420,6 +420,13 @@ export function ChatPanel({ defaultProjectId, defaultDmUserId, defaultGroupRoomI
     }
   };
 
+  // When keyboard opens/closes, scroll to bottom so latest messages stay visible
+  useEffect(() => {
+    if (keyboardOpen) {
+      setTimeout(() => scrollToBottom(false), 150);
+    }
+  }, [keyboardOpen]);
+
   // Load reactions for visible messages
   useEffect(() => {
     if (chatMessages.length === 0) return;
