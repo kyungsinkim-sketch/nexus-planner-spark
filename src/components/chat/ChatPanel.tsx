@@ -554,17 +554,22 @@ export function ChatPanel({ defaultProjectId, defaultDmUserId, defaultGroupRoomI
     const trimmed = newMessage.trim();
 
     // ── Route @user or #room messages from Brain AI DM ──
+    console.log('[ChatRoute] selectedChat:', selectedChat.type, selectedChat.id, 'isBrain:', selectedChat.type === 'direct' && isBrainAIUser(selectedChat.id));
+    console.log('[ChatRoute] trimmed:', JSON.stringify(trimmed));
     if (selectedChat.type === 'direct' && isBrainAIUser(selectedChat.id)) {
       // @username message — send DM to that user
       const dmMatch = trimmed.match(/^@(\S+)\s+([\s\S]+)/);
+      console.log('[ChatRoute] dmMatch:', dmMatch);
       if (dmMatch) {
         const targetName = dmMatch[1];
         const msgBody = dmMatch[2].trim();
+        console.log('[ChatRoute] targetName:', targetName, 'msgBody:', msgBody);
         const targetUser = users.find(u =>
           u.name === targetName ||
           u.name.toLowerCase() === targetName.toLowerCase() ||
           u.name.replace(/\s/g, '') === targetName
         );
+        console.log('[ChatRoute] targetUser:', targetUser?.name, targetUser?.id);
         if (targetUser && msgBody) {
           try {
             await sendDirectMessage(targetUser.id, msgBody);
@@ -582,9 +587,11 @@ export function ChatPanel({ defaultProjectId, defaultDmUserId, defaultGroupRoomI
       }
       // #room message — send to chat room
       const roomMatch = trimmed.match(/^#(\S+)\s+([\s\S]+)/);
+      console.log('[ChatRoute] roomMatch:', roomMatch);
       if (roomMatch) {
         const targetRoomName = roomMatch[1];
         const msgBody = roomMatch[2].trim();
+        console.log('[ChatRoute] roomName:', targetRoomName, 'rooms:', chatRooms.map(r => r.name));
         const targetRoom = chatRooms.find(r =>
           r.name === targetRoomName ||
           r.name.toLowerCase() === targetRoomName.toLowerCase() ||
