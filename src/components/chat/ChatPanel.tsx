@@ -77,9 +77,11 @@ interface ChatPanelProps {
   defaultDmUserId?: string;
   /** When provided (mobile group), auto-select this group room */
   defaultGroupRoomId?: string;
+  /** When true, keyboard is open — remove bottom padding for tab bar */
+  keyboardOpen?: boolean;
 }
 
-export function ChatPanel({ defaultProjectId, defaultDmUserId, defaultGroupRoomId }: ChatPanelProps = {}) {
+export function ChatPanel({ defaultProjectId, defaultDmUserId, defaultGroupRoomId, keyboardOpen }: ChatPanelProps = {}) {
   const { t, language } = useTranslation();
   const isMobile = useIsMobile();
   const {
@@ -2293,7 +2295,7 @@ export function ChatPanel({ defaultProjectId, defaultDmUserId, defaultGroupRoomI
           )}
 
           {/* Message Input — Enter=send, @AiAssistant=Brain AI, @pablo/@cd/@pd=Persona */}
-          <div className={`p-2.5 bg-background shrink-0 min-w-0 ${isMobile ? 'sticky bottom-0 z-20 border-t pb-20' : ''}`}>
+          <div className={`p-2.5 bg-background shrink-0 min-w-0 ${isMobile ? `sticky bottom-0 z-20 border-t ${keyboardOpen ? 'pb-2' : 'pb-20'}` : ''}`}>
             <div className="flex items-center gap-1.5 min-w-0">
               <Button
                 variant="ghost"
