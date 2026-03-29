@@ -18,6 +18,7 @@ import { useTranslation } from '@/hooks/useTranslation';
 import { format, parseISO, startOfDay, endOfDay, isBefore, isAfter } from 'date-fns';
 import { ko, enUS } from 'date-fns/locale';
 import { Brain, Send, Loader2, Mic, Cloud, Sun, CloudRain, CheckCircle2, Clock as ClockIcon, XCircle, MessageSquare, Bell, ChevronRight, Hash, AtSign, Sparkles, ListTodo, Calendar as CalIcon } from 'lucide-react';
+import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { WEATHER_CITIES, CONDITION_ICONS, CONDITION_COLORS, CONDITION_LABELS_KO, CONDITION_LABELS_EN, generateForecast } from '@/components/widgets/weatherUtils';
 import type { AppNotification } from '@/types/core';
@@ -747,6 +748,53 @@ export function MobileAIChatView() {
     if (!input.trim() || loading || !currentUser?.id) return;
     const msg = input.trim();
     setInput('');
+
+    // ── Parse @user or #room from message text (no dropdown selection needed) ──
+    const dmTextMatch = msg.match(/^@(\S+)\s+([\s\S]+)/);
+    if (dmTextMatch && !selectedTarget) {
+      const targetName = dmTextMatch[1];
+      const msgBody = dmTextMatch[2].trim();
+      const { users: allUsers } = useAppStore.getState();
+      const matchedUser = allUsers.find(u =>
+        u.id !== currentUser.id &&
+        (u.name === targetName || u.name.toLowerCase() === targetName.toLowerCase() || u.name.replace(/\s/g, '') === targetName)
+      );
+      if (matchedUser && msgBody) {
+        try {
+          const { sendDirectMessage } = await import('@/services/chatService');
+          await sendDirectMessage(currentUser.id, matchedUser.id, msgBody);
+          toast.success(language === 'ko' ? `${matchedUser.name}에게 전송됨` : `Sent to ${matchedUser.name}`);
+          await new Promise(r => setTimeout(r, 300));
+          openMobileDm(matchedUser.id);
+          return;
+        } catch (err) {
+          console.error('[TextRoute] DM failed:', err);
+          toast.error(language === 'ko' ? '전송 실패' : 'Send failed');
+          return;
+        }
+      }
+    }
+    const roomTextMatch = msg.match(/^#(\S+)\s+([\s\S]+)/);
+    if (roomTextMatch && !selectedTarget) {
+      const targetRoomName = roomTextMatch[1];
+      const msgBody = roomTextMatch[2].trim();
+      const { chatRooms } = useAppStore.getState();
+      const matchedRoom = chatRooms.find(r =>
+        r.name === targetRoomName || r.name.toLowerCase() === targetRoomName.toLowerCase() || r.name.replace(/\s/g, '') === targetRoomName
+      );
+      if (matchedRoom && msgBody) {
+        try {
+          const { sendRoomMessage } = await import('@/services/chatService');
+          await sendRoomMessage(matchedRoom.id, matchedRoom.projectId, currentUser.id, msgBody);
+          toast.success(language === 'ko' ? `#${matchedRoom.name}에 전송됨` : `Sent to #${matchedRoom.name}`);
+          return;
+        } catch (err) {
+          console.error('[TextRoute] Room failed:', err);
+          toast.error(language === 'ko' ? '전송 실패' : 'Send failed');
+          return;
+        }
+      }
+    }
 
     // If target is not Brain AI, send to that target and navigate
     const target = selectedTarget;
