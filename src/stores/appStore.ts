@@ -2788,9 +2788,19 @@ export const useAppStore = create<AppState>()(
       getUnreadAppNotificationCount: () =>
         get().appNotifications.filter(n => !n.read).length,
 
-      markChatRead: (key: string) => set((state) => ({
-        chatLastReadTimestamps: { ...state.chatLastReadTimestamps, [key]: new Date().toISOString() },
-      })),
+      markChatRead: (key: string) => set((state) => {
+        // Also mark related appNotifications as read so getUnreadCount notifCount resets
+        const updatedNotifs = state.appNotifications.map(n => {
+          if (n.read || n.type !== 'chat') return n;
+          if (key.startsWith('dm:') && n.directUserId === key.slice(3)) return { ...n, read: true };
+          if (key.startsWith('room:') && n.roomId === key.slice(5) && !n.directUserId) return { ...n, read: true };
+          return n;
+        });
+        return {
+          chatLastReadTimestamps: { ...state.chatLastReadTimestamps, [key]: new Date().toISOString() },
+          appNotifications: updatedNotifs,
+        };
+      }),
 
       getUnreadCount: (key: string) => {
         const state = get();
@@ -2803,10 +2813,9 @@ export const useAppStore = create<AppState>()(
         let msgs: typeof state.messages;
         if (key.startsWith('dm:')) {
           const otherUserId = key.slice(3);
+          // Only count messages FROM the other user TO me
           msgs = state.messages.filter(m =>
-            m.userId !== myId &&
-            ((m.userId === otherUserId && m.directChatUserId === myId) ||
-             (m.directChatUserId === otherUserId && m.userId === otherUserId))
+            m.userId === otherUserId && m.directChatUserId === myId
           );
         } else if (key.startsWith('room:')) {
           const roomId = key.slice(5);
