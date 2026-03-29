@@ -553,6 +553,60 @@ export function ChatPanel({ defaultProjectId, defaultDmUserId, defaultGroupRoomI
 
     const trimmed = newMessage.trim();
 
+    // ── Route @user or #room messages from Brain AI DM ──
+    if (selectedChat.type === 'direct' && isBrainAIUser(selectedChat.id)) {
+      // @username message — send DM to that user
+      const dmMatch = trimmed.match(/^@(\S+)\s+([\s\S]+)/);
+      if (dmMatch) {
+        const targetName = dmMatch[1];
+        const msgBody = dmMatch[2].trim();
+        const targetUser = users.find(u =>
+          u.name === targetName ||
+          u.name.toLowerCase() === targetName.toLowerCase() ||
+          u.name.replace(/\s/g, '') === targetName
+        );
+        if (targetUser && msgBody) {
+          try {
+            await sendDirectMessage(targetUser.id, msgBody);
+            toast.success(language === 'ko' ? `${targetUser.name}에게 전송됨` : `Sent to ${targetUser.name}`);
+            setNewMessage('');
+            setIsSending(false);
+            return;
+          } catch (e) {
+            console.error('DM route failed:', e);
+            toast.error(language === 'ko' ? '전송 실패' : 'Send failed');
+            setIsSending(false);
+            return;
+          }
+        }
+      }
+      // #room message — send to chat room
+      const roomMatch = trimmed.match(/^#(\S+)\s+([\s\S]+)/);
+      if (roomMatch) {
+        const targetRoomName = roomMatch[1];
+        const msgBody = roomMatch[2].trim();
+        const targetRoom = chatRooms.find(r =>
+          r.name === targetRoomName ||
+          r.name.toLowerCase() === targetRoomName.toLowerCase() ||
+          r.name.replace(/\s/g, '') === targetRoomName
+        );
+        if (targetRoom && msgBody) {
+          try {
+            await sendRoomMessage(targetRoom.id, targetRoom.projectId, msgBody);
+            toast.success(language === 'ko' ? `#${targetRoom.name}에 전송됨` : `Sent to #${targetRoom.name}`);
+            setNewMessage('');
+            setIsSending(false);
+            return;
+          } catch (e) {
+            console.error('Room route failed:', e);
+            toast.error(language === 'ko' ? '전송 실패' : 'Send failed');
+            setIsSending(false);
+            return;
+          }
+        }
+      }
+    }
+
     // 1. Check for ANY persona mention (@pablo, @cd, @pd) — takes priority over brain
     const { isPersonaMention, cleanContent: personaCleanContent, personaId } = personaService.detectPersonaMention(trimmed);
 
