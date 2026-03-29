@@ -761,10 +761,19 @@ export function MobileAIChatView() {
       );
       if (matchedUser && msgBody) {
         try {
-          const { sendDirectMessage } = await import('@/services/chatService');
+          const { sendDirectMessage, getDirectMessages } = await import('@/services/chatService');
           await sendDirectMessage(currentUser.id, matchedUser.id, msgBody);
+          // Refresh messages in store so ChatPanel shows the new message
+          const freshMsgs = await getDirectMessages(currentUser.id, matchedUser.id);
+          if (freshMsgs.length > 0) {
+            const { messages: storeMessages } = useAppStore.getState();
+            const otherMsgs = storeMessages.filter(m =>
+              !(m.userId === currentUser.id && m.directChatUserId === matchedUser.id) &&
+              !(m.userId === matchedUser.id && m.directChatUserId === currentUser.id)
+            );
+            useAppStore.setState({ messages: [...otherMsgs, ...freshMsgs] });
+          }
           toast.success(language === 'ko' ? `${matchedUser.name}에게 전송됨` : `Sent to ${matchedUser.name}`);
-          await new Promise(r => setTimeout(r, 300));
           openMobileDm(matchedUser.id);
           return;
         } catch (err) {
