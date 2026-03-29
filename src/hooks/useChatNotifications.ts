@@ -76,9 +76,13 @@ export function useChatNotifications() {
         },
         (payload) => {
           const msg = payload.new as MessageRow;
+          console.log('[ChatNotif] Realtime INSERT received:', { id: msg.id, from: msg.user_id, dm: msg.direct_chat_user_id, room: msg.room_id, content: msg.content?.slice(0, 30) });
 
           // Skip own messages
-          if (msg.user_id === currentUser.id) return;
+          if (msg.user_id === currentUser.id) {
+            console.log('[ChatNotif] Skipped: own message');
+            return;
+          }
 
           // Skip brain bot DM messages from the global subscription — they are loaded
           // through getDirectMessages() when the DM is opened, which scopes by
@@ -111,6 +115,7 @@ export function useChatNotifications() {
           // Add to global store (creates appNotification for bell icon if not in active chat)
           // addMessage() handles duplicate prevention and active-chat suppression internally
           const chatMessage = rowToChatMessage(msg);
+          console.log('[ChatNotif] Adding to store:', { id: chatMessage.id, existing: useAppStore.getState().messages.some(m => m.id === chatMessage.id) });
           useAppStore.getState().addMessage(chatMessage);
 
           // addMessage() internally creates appNotification for the bell icon
@@ -118,7 +123,9 @@ export function useChatNotifications() {
           // No toast popup — notification shown only in navbar bell + OS native.
         },
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('[ChatNotif] Subscription status:', status);
+      });
 
     channelRef.current = channel;
 
