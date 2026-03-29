@@ -21,12 +21,12 @@ export function MobileDmChatView() {
   useEffect(() => {
     const vv = window.visualViewport;
     if (!vv) return;
+    // Capture initial height (before keyboard) as baseline
+    const initialH = vv.height;
     const update = () => {
-      const fullH = window.screen.height;
-      const vpH = vv.height;
-      setViewH(vpH);
-      setKeyboardOpen(fullH - vpH > 150);
-      // Prevent iOS body scroll when keyboard opens
+      setViewH(vv.height);
+      // Keyboard open = viewport shrunk significantly from initial
+      setKeyboardOpen(initialH - vv.height > 100);
       window.scrollTo(0, 0);
     };
     vv.addEventListener('resize', update);

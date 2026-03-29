@@ -581,11 +581,11 @@ export function MobileAIChatView() {
   useEffect(() => {
     const vv = window.visualViewport;
     if (!vv) return;
+    const initialH = vv.height;
     const update = () => {
-      const fullH = window.screen.height;
       setViewH(vv.height);
-      // Keyboard is open if viewport is significantly smaller than screen
-      setKeyboardOpen(fullH - vv.height > 150);
+      // Keyboard open = viewport shrunk significantly from initial
+      setKeyboardOpen(initialH - vv.height > 100);
       // Prevent iOS body scroll
       window.scrollTo(0, 0);
     };
