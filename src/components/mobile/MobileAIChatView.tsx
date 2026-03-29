@@ -1116,7 +1116,7 @@ export function MobileAIChatView() {
                   return;
                 }
               }
-              if (e.key === 'Enter') { e.preventDefault(); handleSubmit(); }
+              if (e.key === 'Enter' && !e.nativeEvent.isComposing) { e.preventDefault(); handleSubmit(); }
             }}
             onFocus={() => { /* no-op: body overflow hidden prevents scroll */ }}
             placeholder={
