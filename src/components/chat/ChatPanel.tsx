@@ -2211,7 +2211,7 @@ export function ChatPanel({ defaultProjectId, defaultDmUserId, defaultGroupRoomI
                               )}
                               <div
                                 className={`group/msg-actions relative max-w-full pt-2 pb-2 ${isCurrentUser ? 'ml-auto' : ''}`}
-                                style={{ width: message.messageType === 'brain_action' ? '100%' : 'fit-content' }}
+                                style={{ width: message.messageType === 'brain_action' ? '100%' : undefined }}
                               >
                                 <ChatMessageBubble
                                   message={message}
