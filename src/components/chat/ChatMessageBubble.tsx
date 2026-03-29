@@ -464,8 +464,8 @@ function HoverActionBar({ messageId, content, canEdit, canDelete, canPin, isCurr
 
   return (
     <>
-      {/* Floating action bar — bottom-right of message bubble */}
-      <div className={`absolute flex items-center rounded-lg shadow-md z-20 transition-opacity bg-white dark:bg-zinc-800 border border-black/10 dark:border-white/10 -bottom-5 right-0 ${showMenu || showEmoji || showFullEmoji ? 'opacity-100' : 'opacity-0 group-hover/msg:opacity-100'}`}
+      {/* Floating action bar — below message bubble, right-aligned */}
+      <div className={`absolute top-full mt-1 right-0 flex items-center rounded-lg shadow-md z-20 transition-opacity bg-white dark:bg-zinc-800 border border-black/10 dark:border-white/10 ${showMenu || showEmoji || showFullEmoji ? 'opacity-100' : 'opacity-0 group-hover/msg:opacity-100'}`}
       >
         {/* Emoji */}
         <button ref={emojiRef} onClick={(e) => {
@@ -544,7 +544,7 @@ function HoverActionBar({ messageId, content, canEdit, canDelete, canPin, isCurr
         <>
           <div className="fixed inset-0 z-[9998]" onClick={() => setShowMenu(false)} />
           <div className="fixed z-[9999] rounded-xl py-1 min-w-[120px] whitespace-nowrap bg-white dark:bg-zinc-800 border border-black/10 dark:border-white/10 shadow-[0_4px_24px_rgba(0,0,0,0.15)]"
-            style={{ top: menuPos.top, left: Math.min(menuPos.left, window.innerWidth - 140), transform: 'translateX(-100%)' }}
+            style={{ top: menuPos.top, right: Math.max(8, window.innerWidth - menuPos.left) }}
             onClick={e => e.stopPropagation()}>
             {canEdit && onEdit && (
               <button onClick={startEdit}
