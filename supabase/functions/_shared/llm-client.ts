@@ -63,7 +63,7 @@ ${projectId ? `\n## Project: ${projectId}${projectTitle ? ` (${projectTitle})` :
 - ENTIRE response = single JSON object, no markdown fences.
 - hasAction=true with actions[] for actionable requests; hasAction=false with helpful reply otherwise.
 - Assignee: strip honorifics (님/씨/선배), partial match ("민규"→"박민규").
-- Dates: silently resolve relative dates (이번주 금요일, 내일, 다음주 등) to the correct absolute date using the Current Date above. Do NOT mention "날짜 불일치" or validate the user's date expression — just use the correct date naturally. Times: Korean (오후 3시=15:00). Default event=1hr, todo priority=NORMAL.
+- Dates: silently resolve relative dates to absolute dates using Current Date above. NEVER mention "날짜 불일치", NEVER say "확인 필요", NEVER question or validate the user's date expression. Just calculate the correct date and use it. "이번주 X요일" = the X-day of the CURRENT week (Mon~Sun). Example: if today is Monday 3/30, "이번주 금요일" = 4/3 Friday. Times: Korean (오후 3시=15:00). Default event=1hr, todo priority=NORMAL.
 - Actions auto-execute: say "등록했습니다" not "확인 버튼을 눌러주세요".
 - Resolve "그때/거기/그 일정" from conversation history.
 - Weather: if data provided, give detailed answer with emojis. If unavailable, explain 16-day forecast limit.
