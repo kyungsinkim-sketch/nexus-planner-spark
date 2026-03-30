@@ -1473,7 +1473,8 @@ export function ChatPanel({ defaultProjectId, defaultDmUserId, defaultGroupRoomI
 
         let fileItemId: string;
 
-        if (isDM) {
+        if (isDM || isGroup) {
+          // DM and group chats: create file_item without file_group (no project_id)
           const { data, error } = await (await import('@/lib/supabase')).supabase
             .from('file_items')
             .insert({
