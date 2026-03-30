@@ -97,6 +97,23 @@ function initPushAndSync(userId: string, get: () => AppState): void {
         get().loadTodos();
       })
       .subscribe();
+
+    // Chat read status — cross-device sync
+    supabase
+      .channel('realtime_chat_read')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'chat_read_status' }, (payload) => {
+        const row = payload.new as { user_id?: string; chat_key?: string; last_read_at?: string };
+        const myId = get().currentUser?.id;
+        if (row && row.user_id === myId && row.chat_key && row.last_read_at) {
+          const current = get().chatLastReadTimestamps[row.chat_key];
+          if (!current || row.last_read_at > current) {
+            set((state) => ({
+              chatLastReadTimestamps: { ...state.chatLastReadTimestamps, [row.chat_key]: row.last_read_at! },
+            }));
+          }
+        }
+      })
+      .subscribe();
   }).catch(() => {});
 }
 
@@ -606,6 +623,30 @@ export const useAppStore = create<AppState>()(
             await get().loadTodos();
             await get().loadImportantNotes();
             await get().loadGroupRooms();
+            // Load chat read status from DB for cross-device sync
+            try {
+              const { supabase: sb } = await import('@/lib/supabase');
+              const { data: readData } = await sb
+                .from('chat_read_status')
+                .select('chat_key, last_read_at')
+                .eq('user_id', user.id);
+              if (readData && readData.length > 0) {
+                const dbTimestamps: Record<string, string> = {};
+                for (const row of readData) {
+                  dbTimestamps[row.chat_key] = row.last_read_at;
+                }
+                // Merge: use the LATEST timestamp from either localStorage or DB
+                const merged = { ...get().chatLastReadTimestamps };
+                for (const [key, dbTs] of Object.entries(dbTimestamps)) {
+                  if (!merged[key] || dbTs > merged[key]) {
+                    merged[key] = dbTs;
+                  }
+                }
+                set({ chatLastReadTimestamps: merged });
+              }
+            } catch (e) {
+              console.warn('[ChatRead] Failed to load read status from DB:', e);
+            }
             // Load voice recordings from DB
             try {
               const { supabase: sb } = await import('@/lib/supabase');
@@ -2788,19 +2829,35 @@ export const useAppStore = create<AppState>()(
       getUnreadAppNotificationCount: () =>
         get().appNotifications.filter(n => !n.read).length,
 
-      markChatRead: (key: string) => set((state) => {
-        // Also mark related appNotifications as read so getUnreadCount notifCount resets
-        const updatedNotifs = state.appNotifications.map(n => {
-          if (n.read || n.type !== 'chat') return n;
-          if (key.startsWith('dm:') && n.directUserId === key.slice(3)) return { ...n, read: true };
-          if (key.startsWith('room:') && n.roomId === key.slice(5) && !n.directUserId) return { ...n, read: true };
-          return n;
+      markChatRead: (key: string) => {
+        const now = new Date().toISOString();
+        // Persist to DB for cross-device sync
+        const userId = get().currentUser?.id;
+        if (userId) {
+          import('@/lib/supabase').then(({ supabase, isSupabaseConfigured }) => {
+            if (!isSupabaseConfigured()) return;
+            supabase.from('chat_read_status').upsert(
+              { user_id: userId, chat_key: key, last_read_at: now },
+              { onConflict: 'user_id,chat_key' }
+            ).then(({ error }) => {
+              if (error) console.warn('[ChatRead] DB sync failed:', error.message);
+            });
+          });
+        }
+        set((state) => {
+          // Also mark related appNotifications as read so getUnreadCount notifCount resets
+          const updatedNotifs = state.appNotifications.map(n => {
+            if (n.read || n.type !== 'chat') return n;
+            if (key.startsWith('dm:') && n.directUserId === key.slice(3)) return { ...n, read: true };
+            if (key.startsWith('room:') && n.roomId === key.slice(5) && !n.directUserId) return { ...n, read: true };
+            return n;
+          });
+          return {
+            chatLastReadTimestamps: { ...state.chatLastReadTimestamps, [key]: now },
+            appNotifications: updatedNotifs,
+          };
         });
-        return {
-          chatLastReadTimestamps: { ...state.chatLastReadTimestamps, [key]: new Date().toISOString() },
-          appNotifications: updatedNotifs,
-        };
-      }),
+      },
 
       getUnreadCount: (key: string) => {
         const state = get();
