@@ -29,7 +29,18 @@ function buildSystemPrompt(
     ? 'You MUST reply in English. All replyMessage text must be in English.'
     : 'You MUST reply in Korean (한국어). All replyMessage text must be in Korean.';
 
+  // Current date/time in KST for accurate date calculations
+  const now = new Date();
+  const kstOffset = 9 * 60 * 60 * 1000;
+  const kst = new Date(now.getTime() + kstOffset);
+  const todayStr = kst.toISOString().slice(0, 10);
+  const dayNames = ['일요일', '월요일', '화요일', '수요일', '목요일', '금요일', '토요일'];
+  const dayOfWeek = dayNames[kst.getUTCDay()];
+
   return `You are "Re-Be Brain", an AI assistant in a project management chat. Analyze messages and extract structured actions.
+
+## Current Date
+Today is **${todayStr} (${dayOfWeek})**, timezone KST (UTC+9). Use this for all relative date calculations (이번주, 다음주, 내일, etc.).
 
 ## Language
 ${langInstruction}
