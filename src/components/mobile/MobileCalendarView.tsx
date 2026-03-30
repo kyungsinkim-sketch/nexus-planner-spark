@@ -434,12 +434,18 @@ export function MobileCalendarView() {
   const locale = language === 'ko' ? ko : enUS;
   const today = useMemo(() => new Date(), []);
 
-  // Days of current month
+  // Days: current month + next 14 days beyond month end (seamless scrolling)
   const visibleDays = useMemo(() => {
-    return eachDayOfInterval({
+    const monthDays = eachDayOfInterval({
       start: startOfMonth(currentMonth),
       end: endOfMonth(currentMonth),
     });
+    // Add 14 days after month end for seamless scroll
+    const extra = eachDayOfInterval({
+      start: addDays(endOfMonth(currentMonth), 1),
+      end: addDays(endOfMonth(currentMonth), 14),
+    });
+    return [...monthDays, ...extra];
   }, [currentMonth]);
 
   // Scroll strip: selected date always at leftmost position
@@ -544,7 +550,13 @@ export function MobileCalendarView() {
                 key={day.toISOString()}
                 data-selected={isSelected}
                 data-today={isToday || undefined}
-                onClick={() => setSelectedDate(day)}
+                onClick={() => {
+                  setSelectedDate(day);
+                  // Update month header if selected date crosses month boundary
+                  if (day.getMonth() !== currentMonth.getMonth() || day.getFullYear() !== currentMonth.getFullYear()) {
+                    setCurrentMonth(startOfMonth(day));
+                  }
+                }}
                 className={cn(
                   'flex flex-col items-center min-w-[42px] py-2 px-1 rounded-2xl transition-all shrink-0',
                   isSelected
@@ -573,8 +585,7 @@ export function MobileCalendarView() {
               </button>
             );
           })}
-          {/* Right padding so end-of-month dates can scroll to leftmost */}
-          <div className="shrink-0" style={{ minWidth: 'calc(100vw - 60px)' }} />
+
         </div>
       </div>
 
