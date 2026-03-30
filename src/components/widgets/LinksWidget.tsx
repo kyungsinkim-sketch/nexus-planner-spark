@@ -245,14 +245,11 @@ function LinksWidget({ context }: { context: WidgetDataContext }) {
                 {link.name && (
                   <p className="typo-widget-body font-medium text-foreground truncate">{link.name}</p>
                 )}
-                <a href={link.url} target="_blank" rel="noopener noreferrer" className="typo-widget-sub text-blue-400 hover:underline truncate block break-all">
-                  {link.name ? link.url : getDomain(link.url)}
+                <a href={link.url} target="_blank" rel="noopener noreferrer" className="typo-widget-sub text-blue-400 hover:underline block truncate" title={link.url}>
+                  {link.name ? getDomain(link.url) : getDomain(link.url)}
                 </a>
-                {!link.name && (
-                  <p className="typo-micro text-muted-foreground/60 truncate break-all">{link.url}</p>
-                )}
                 {link.memo && (
-                  <p className="typo-micro text-muted-foreground/80 mt-0.5 truncate break-all">{link.memo}</p>
+                  <p className="typo-micro text-muted-foreground/80 mt-0.5 truncate">{link.memo}</p>
                 )}
                 <p className="typo-micro text-muted-foreground/60">
                   {creator?.name || ''}{creator ? ' · ' : ''}{new Date(link.createdAt).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })}
@@ -287,10 +284,9 @@ function LinksWidget({ context }: { context: WidgetDataContext }) {
             >
               <Link2 className="w-4 h-4 text-muted-foreground/50 shrink-0" />
               <div className="flex-1 min-w-0 overflow-hidden">
-                <a href={link.url} target="_blank" rel="noopener noreferrer" className="typo-widget-body text-foreground hover:underline truncate block break-all">
+                <a href={link.url} target="_blank" rel="noopener noreferrer" className="typo-widget-body text-foreground hover:underline block truncate" title={link.url}>
                   {link.domain}
                 </a>
-                <p className="typo-widget-sub truncate break-all">{link.url}</p>
                 <p className="typo-micro text-muted-foreground/60">
                   {creator?.name || 'Unknown'} · {new Date(link.sharedAt).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })}
                 </p>
