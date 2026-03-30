@@ -2834,7 +2834,13 @@ export const useAppStore = create<AppState>()(
           realtimeCount = msgs.filter(m => m.createdAt > oneDayAgo).length;
         }
 
-        // Fallback: count from persisted appNotifications (survives page reload)
+        // If we have a lastRead timestamp, trust realtimeCount (based on actual messages)
+        // Only use appNotifications as fallback when no lastRead exists (first-time chat)
+        if (lastRead) {
+          return realtimeCount;
+        }
+
+        // Fallback: count from persisted appNotifications (for chats never opened)
         let notifCount = 0;
         if (key.startsWith('dm:')) {
           const otherUserId = key.slice(3);
