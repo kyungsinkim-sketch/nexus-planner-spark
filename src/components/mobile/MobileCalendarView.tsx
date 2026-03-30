@@ -447,11 +447,18 @@ export function MobileCalendarView() {
     const timer = setTimeout(() => {
       if (!stripRef.current) return;
       const container = stripRef.current;
-      const selectedBtn = container.querySelector('[data-selected="true"]') as HTMLElement;
+      // Debug: check all data-selected values
+      const allBtns = container.querySelectorAll('button[data-selected]');
+      console.log('[CalStrip] buttons with data-selected:', allBtns.length, 
+        'values:', Array.from(allBtns).map(b => b.getAttribute('data-selected')).filter(v => v === 'true').length, 'true');
+      const selectedBtn = container.querySelector('button[data-selected="true"]') as HTMLElement;
+      console.log('[CalStrip] selectedBtn:', selectedBtn, 'offsetLeft:', selectedBtn?.offsetLeft, 'containerLeft:', container.offsetLeft, 'scrollWidth:', container.scrollWidth);
       if (selectedBtn) {
-        container.scrollTo({ left: selectedBtn.offsetLeft - container.offsetLeft, behavior: 'instant' as ScrollBehavior });
+        const scrollPos = selectedBtn.offsetLeft - container.offsetLeft;
+        console.log('[CalStrip] scrolling to:', scrollPos);
+        container.scrollLeft = scrollPos;
       }
-    }, 50);
+    }, 100);
     return () => clearTimeout(timer);
   }, [selectedDate, currentMonth]);
 
