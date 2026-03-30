@@ -454,7 +454,18 @@ export function MobileAIChatView() {
   const BRAIN_BOT_ID = '00000000-0000-0000-0000-000000000099';
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [historyLoaded, setHistoryLoaded] = useState(false);
-  const allMessages = useMemo(() => historyLoaded ? messages : [...seedMessages, ...messages], [seedMessages, messages, historyLoaded]);
+  // Only show the most recent user question + Brain AI answer
+  const allMessages = useMemo(() => {
+    const src = historyLoaded ? messages : [...seedMessages, ...messages];
+    // Find last user message and last assistant message after it
+    const lastUserIdx = src.findLastIndex(m => m.role === 'user');
+    if (lastUserIdx < 0) return src.slice(-1); // no user msg, show last seed/assistant
+    const lastAssistantIdx = src.findLastIndex((m, i) => i > lastUserIdx && m.role === 'assistant');
+    if (lastAssistantIdx >= 0) {
+      return [src[lastUserIdx], src[lastAssistantIdx]];
+    }
+    return [src[lastUserIdx]]; // user asked, AI hasn't replied yet
+  }, [seedMessages, messages, historyLoaded]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -467,7 +478,7 @@ export function MobileAIChatView() {
       const { getDirectMessages } = await import('@/services/chatService');
       const history = await getDirectMessages(currentUser.id, BRAIN_BOT_ID);
       if (history.length > 0) {
-        const recent = history.slice(-10);
+        const recent = history.slice(-2); // Only last Q&A pair
         setMessages(recent.map(m => ({
           id: m.id,
           role: m.userId === BRAIN_BOT_ID ? 'assistant' as const : 'user' as const,
