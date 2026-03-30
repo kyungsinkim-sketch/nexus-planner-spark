@@ -46,6 +46,7 @@ import {
   Phone,
   Video,
   Trash2,
+  Loader2,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { useTranslation } from '@/hooks/useTranslation';
@@ -124,6 +125,7 @@ export function ChatPanel({ defaultProjectId, defaultDmUserId, defaultGroupRoomI
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const [showFileUpload, setShowFileUpload] = useState(false);
+  const [fileUploading, setFileUploading] = useState<string | null>(null); // filename while uploading
   const [isDragOver, setIsDragOver] = useState(false);
   const dragCounterRef = useRef(0);
   // /analyze command removed — no longer available in chat
@@ -1457,6 +1459,7 @@ export function ChatPanel({ defaultProjectId, defaultDmUserId, defaultGroupRoomI
 
     try {
       const fileName = file?.name || `Document_${Date.now().toString().slice(-6)}.pdf`;
+      setFileUploading(fileName);
 
       if (isSupabaseConfigured() && file) {
         const storageBucket = (isDM || isGroup) ? 'dm-files' : 'project-files';
@@ -1568,8 +1571,10 @@ export function ChatPanel({ defaultProjectId, defaultDmUserId, defaultGroupRoomI
         });
       }
 
+      setFileUploading(null);
       toast.success(`${fileName} ${t('uploadComplete')}`);
     } catch (error) {
+      setFileUploading(null);
       console.error('[FileUpload] FAILED:', error, { selectedChat: selectedChat?.type, selectedChatId: selectedChat?.id });
       toast.error(t('failedToUploadFile'));
     }
@@ -2359,6 +2364,21 @@ export function ChatPanel({ defaultProjectId, defaultDmUserId, defaultGroupRoomI
               <button onClick={() => setReplyingTo(null)} className="p-1 hover:bg-muted rounded shrink-0">
                 <X className="w-3.5 h-3.5 text-muted-foreground" />
               </button>
+            </div>
+          )}
+
+          {/* File upload progress indicator */}
+          {fileUploading && (
+            <div className="px-3 py-2 bg-primary/5 border-t border-primary/20 shrink-0">
+              <div className="flex items-center gap-2">
+                <Loader2 className="w-4 h-4 text-primary animate-spin shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-medium text-foreground truncate">{fileUploading}</p>
+                  <div className="mt-1 h-1.5 bg-muted rounded-full overflow-hidden">
+                    <div className="h-full bg-primary rounded-full animate-pulse" style={{ width: '70%' }} />
+                  </div>
+                </div>
+              </div>
             </div>
           )}
 
