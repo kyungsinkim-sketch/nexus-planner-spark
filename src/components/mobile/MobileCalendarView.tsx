@@ -444,17 +444,15 @@ export function MobileCalendarView() {
 
   // Scroll strip: selected date always at leftmost position
   useEffect(() => {
-    if (!stripRef.current) return;
-    // Small delay to ensure DOM is rendered
-    requestAnimationFrame(() => {
+    const timer = setTimeout(() => {
       if (!stripRef.current) return;
-      const selectedBtn = stripRef.current.querySelector('[data-selected="true"]');
+      const container = stripRef.current;
+      const selectedBtn = container.querySelector('[data-selected="true"]') as HTMLElement;
       if (selectedBtn) {
-        const container = stripRef.current;
-        const btnLeft = (selectedBtn as HTMLElement).offsetLeft - container.offsetLeft;
-        container.scrollLeft = btnLeft;
+        container.scrollTo({ left: selectedBtn.offsetLeft - container.offsetLeft, behavior: 'instant' as ScrollBehavior });
       }
-    });
+    }, 50);
+    return () => clearTimeout(timer);
   }, [selectedDate, currentMonth]);
 
   const goToPrevMonth = useCallback(() => {
