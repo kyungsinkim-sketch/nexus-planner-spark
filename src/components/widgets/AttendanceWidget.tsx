@@ -117,7 +117,7 @@ function AttendanceWidget({ context: _context }: { context: WidgetDataContext })
   }
 
   return (
-    <div className="flex flex-wrap gap-2 p-2 overflow-y-auto h-full">
+    <div className="grid grid-cols-[repeat(auto-fill,minmax(64px,1fr))] gap-1 p-2 overflow-y-auto h-full">
       {workingUsers.map(user => {
         const cfg = STATUS_CONFIG[user.liveStatus] || STATUS_CONFIG.AT_WORK;
         const Icon = cfg.icon;
@@ -171,7 +171,7 @@ function AttendanceWidget({ context: _context }: { context: WidgetDataContext })
                   )}
                   <div className={`w-3 h-3 rounded-full absolute -bottom-0.5 -right-0.5 border-2 border-background ${dotColor}`} />
                 </div>
-                <span className="text-xs font-medium truncate max-w-[48px]">{user.name}</span>
+                <span className="text-xs font-medium truncate w-full text-center">{user.name}</span>
               </button>
             </PopoverTrigger>
             <PopoverContent className="w-48 p-3 space-y-2">
