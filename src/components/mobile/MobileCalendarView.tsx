@@ -447,16 +447,9 @@ export function MobileCalendarView() {
     const timer = setTimeout(() => {
       if (!stripRef.current) return;
       const container = stripRef.current;
-      // Debug: check all data-selected values
-      const allBtns = container.querySelectorAll('button[data-selected]');
-      console.log('[CalStrip] buttons with data-selected:', allBtns.length, 
-        'values:', Array.from(allBtns).map(b => b.getAttribute('data-selected')).filter(v => v === 'true').length, 'true');
       const selectedBtn = container.querySelector('button[data-selected="true"]') as HTMLElement;
-      console.log('[CalStrip] selectedBtn:', selectedBtn, 'offsetLeft:', selectedBtn?.offsetLeft, 'containerLeft:', container.offsetLeft, 'scrollWidth:', container.scrollWidth);
       if (selectedBtn) {
-        const scrollPos = selectedBtn.offsetLeft - container.offsetLeft;
-        console.log('[CalStrip] scrolling to:', scrollPos);
-        container.scrollLeft = scrollPos;
+        container.scrollLeft = selectedBtn.offsetLeft - container.offsetLeft;
       }
     }, 100);
     return () => clearTimeout(timer);
@@ -553,7 +546,7 @@ export function MobileCalendarView() {
                 data-today={isToday || undefined}
                 onClick={() => setSelectedDate(day)}
                 className={cn(
-                  'flex flex-col items-center min-w-[42px] py-2 px-1 rounded-2xl transition-all',
+                  'flex flex-col items-center min-w-[42px] py-2 px-1 rounded-2xl transition-all shrink-0',
                   isSelected
                     ? 'bg-foreground text-background'
                     : isToday
@@ -580,6 +573,8 @@ export function MobileCalendarView() {
               </button>
             );
           })}
+          {/* Right padding so end-of-month dates can scroll to leftmost */}
+          <div className="shrink-0" style={{ minWidth: 'calc(100vw - 60px)' }} />
         </div>
       </div>
 
