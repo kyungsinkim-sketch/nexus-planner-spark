@@ -55,7 +55,7 @@ export function MobileBottomNav() {
   return (
     <div
       className="md:hidden fixed bottom-0 left-0 right-0 z-50 mobile-bottom-nav-wrapper"
-      style={{ paddingBottom: 'env(safe-area-inset-bottom)', backgroundColor: '#0C0A1E' }}
+      style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
     >
       {/* Popup menu */}
       {popupOpen && (

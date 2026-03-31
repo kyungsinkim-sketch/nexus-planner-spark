@@ -68,15 +68,6 @@
       overflow: hidden;
     }
 
-    /* iOS PWA standalone — prevent white gap below content */
-    @media all and (display-mode: standalone) {
-      html, body, #root {
-        background: #0C0A1E !important;
-        min-height: 100vh;
-        min-height: 100dvh;
-      }
-    }
-
     /* Prevent white gap when keyboard pushes content (resizes-visual mode) */
     #root {
       height: 100%;
