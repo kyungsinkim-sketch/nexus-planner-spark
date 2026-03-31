@@ -248,7 +248,7 @@ export function ChatMessageBubble({ message, isCurrentUser, onVoteDecision, onAc
           <ReplyQuote message={replyMsg} isCurrentUser={isCurrentUser} />
         )}
         <div
-          className={`inline-block rounded-2xl px-4 py-2 text-sm whitespace-pre-wrap text-left ${
+          className={`inline-block rounded-2xl px-4 py-2 typo-chat-message whitespace-pre-wrap text-left ${
             isCurrentUser
               ? 'bg-primary text-primary-foreground'
               : 'bg-muted text-foreground'
