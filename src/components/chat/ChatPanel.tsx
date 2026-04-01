@@ -178,19 +178,9 @@ export function ChatPanel({ defaultProjectId, defaultDmUserId, defaultGroupRoomI
     }
   }, [defaultGroupRoomId, chatRooms]);
 
-  // Mark chat as read when selected — only when this chat is the active context
-  // Prevents markChatRead from firing when user is looking at other widgets
+  // Mark chat as read when selected
   useEffect(() => {
     if (!selectedChat) return;
-    // Only mark read if this chat is the active chat context (user is actually looking at it)
-    const ctx = useAppStore.getState().activeChatContext;
-    const isActive = ctx && (
-      (ctx.type === 'direct' && selectedChat.type === 'direct' && ctx.id === selectedChat.id) ||
-      (ctx.type === 'project' && selectedChat.type === 'project' && ctx.roomId === selectedChat.roomId) ||
-      (ctx.type === 'group' && selectedChat.type === 'group' && ctx.roomId === selectedChat.roomId)
-    );
-    if (!isActive) return;
-
     if (selectedChat.type === 'direct' || selectedChat.type === 'dm') {
       markChatRead(`dm:${selectedChat.id}`);
     } else if (selectedChat.type === 'group' && selectedChat.roomId) {
