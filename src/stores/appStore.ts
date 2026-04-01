@@ -1311,6 +1311,9 @@ export const useAppStore = create<AppState>()(
             return message.directChatUserId === ctx.id ||
               (message.userId === ctx.id && message.directChatUserId === state.currentUser?.id);
           }
+          if ((ctx as any).type === 'group') {
+            return ctx.roomId && message.roomId === ctx.roomId;
+          }
           return false;
         })();
 

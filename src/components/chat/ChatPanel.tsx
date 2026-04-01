@@ -178,7 +178,8 @@ export function ChatPanel({ defaultProjectId, defaultDmUserId, defaultGroupRoomI
     }
   }, [defaultGroupRoomId, chatRooms]);
 
-  // Mark chat as read when selected
+  // Mark chat as read when user SELECTS a chat (not on every new message)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!selectedChat) return;
     if (selectedChat.type === 'direct' || selectedChat.type === 'dm') {
@@ -188,7 +189,7 @@ export function ChatPanel({ defaultProjectId, defaultDmUserId, defaultGroupRoomI
     } else if (selectedChat.type === 'project' && selectedChat.roomId) {
       markChatRead(`room:${selectedChat.roomId}`);
     }
-  }, [selectedChat, markChatRead, messages.length]);
+  }, [selectedChat?.type, selectedChat?.id, selectedChat?.roomId]);
 
   // Load group rooms on mount
   useEffect(() => {
