@@ -199,7 +199,23 @@ function NotificationsWidget({ context }: { context: WidgetDataContext }) {
         store.setChatPanelCollapsed(false);
       }
     } else if (n.type === 'chat' && n.roomId && !n.projectId && !n.directUserId) {
-      // Group chat navigation
+      // Group or project room chat — try to resolve projectId from chatRooms
+      const room = store.chatRooms.find(r => r.id === n.roomId);
+      if (room?.projectId) {
+        // It's actually a project room — open project tab
+        const project = store.projects.find(p => p.id === room.projectId);
+        if (project) {
+          if (!widgetStore.openTabs.find(t => t.projectId === room.projectId)) {
+            widgetStore.openProjectTab(project.id, project.title, project.keyColor);
+          }
+          const tab = widgetStore.openTabs.find(t => t.projectId === room.projectId);
+          if (tab) widgetStore.setActiveTab(tab.id);
+          store.setPendingChatNavigation({ type: 'project', id: room.projectId, roomId: n.roomId });
+          store.setChatPanelCollapsed(false);
+          return;
+        }
+      }
+      // Pure group chat
       store.setPendingChatNavigation({ type: 'group', id: n.roomId, roomId: n.roomId });
       store.setChatPanelCollapsed(false);
       widgetStore.setActiveTab('dashboard');

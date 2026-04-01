@@ -18,7 +18,7 @@ function formatUserInfo(user: User, _language: string): { position: string; team
 }
 
 export function MobileMembersView() {
-  const { users, projects, events, boardTasks, boardGroups, currentUser, getGroupRooms, getUnreadCount } = useAppStore();
+  const { users, projects, events, boardTasks, boardGroups, currentUser, getGroupRooms, getUnreadCount, loadBoardData } = useAppStore();
   const { openMobileDm, openMobileGroupChat, setMobileView } = useWidgetStore();
   const { t, language } = useTranslation();
   const locale = language === 'ko' ? ko : enUS;
@@ -42,13 +42,24 @@ export function MobileMembersView() {
     [selectedUserId, users],
   );
 
-  // Scroll to top when member detail opens
+  // Scroll to top when member detail opens + load board data for their projects
   const detailRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (selectedUserId && detailRef.current) {
       detailRef.current.scrollTop = 0;
     }
-  }, [selectedUserId]);
+    // Load board data for projects this user belongs to (so tasks show in detail view)
+    if (selectedUserId) {
+      const userProjects = projects.filter(p => p.teamMemberIds?.includes(selectedUserId));
+      for (const p of userProjects) {
+        // Only load if we don't have tasks for this project yet
+        const hasTasks = boardTasks.some(t => t.projectId === p.id);
+        if (!hasTasks) {
+          loadBoardData(p.id);
+        }
+      }
+    }
+  }, [selectedUserId, projects, boardTasks, loadBoardData]);
 
   // Sorted users for swipe navigation (가나다순)
   const sortedUsers = useMemo(() => [...users].sort((a, b) => a.name.localeCompare(b.name, 'ko')), [users]);
