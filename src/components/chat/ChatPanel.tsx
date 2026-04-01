@@ -499,35 +499,25 @@ export function ChatPanel({ defaultProjectId, defaultDmUserId, defaultGroupRoomI
     setTimeout(() => scrollToBottom(false), 600);
   }, [pendingChatNavigation]);
 
-  // Track active chat context globally (for notification suppression)
-  // Only update context — do NOT auto-clear notifications here
-  // Notifications are cleared by markChatRead when user actually reads the chat
-  const prevSelectedRef = useRef<string | null>(null);
+  // Track active chat context globally (for notification suppression) + auto-clear notifications
   useEffect(() => {
     if (!selectedChat) {
       setActiveChatContext(null);
-      prevSelectedRef.current = null;
       return;
     }
-    const chatKey = `${selectedChat.type}:${selectedChat.id}:${selectedChat.roomId || ''}`;
-    
     // Set active context so addMessage() knows not to create notifications for this chat
     setActiveChatContext({
       type: selectedChat.type,
       id: selectedChat.id,
       roomId: selectedChat.roomId,
     });
-    
-    // Only clear notifications when user SWITCHES to a different chat (not on every render)
-    if (prevSelectedRef.current !== chatKey) {
-      prevSelectedRef.current = chatKey;
-      if (selectedChat.type === 'group') {
-        clearChatNotificationsForRoom(selectedChat.roomId);
-      } else if (selectedChat.type === 'project') {
-        clearChatNotificationsForRoom(selectedChat.roomId, selectedChat.id);
-      } else if (selectedChat.type === 'direct') {
-        clearChatNotificationsForRoom(undefined, undefined, selectedChat.id);
-      }
+    // Auto-clear existing notifications for this chat
+    if (selectedChat.type === 'group') {
+      clearChatNotificationsForRoom(selectedChat.roomId);
+    } else if (selectedChat.type === 'project') {
+      clearChatNotificationsForRoom(selectedChat.roomId, selectedChat.id);
+    } else if (selectedChat.type === 'direct') {
+      clearChatNotificationsForRoom(undefined, undefined, selectedChat.id);
     }
     // Clear active context on unmount
     return () => setActiveChatContext(null);
