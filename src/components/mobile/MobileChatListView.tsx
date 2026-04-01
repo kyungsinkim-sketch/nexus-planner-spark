@@ -19,7 +19,7 @@ function MobileChatListView() {
     users, messages, currentUser, getGroupRooms, getUnreadCount,
     chatRooms, projects,
   } = useAppStore();
-  const { openMobileDm, openMobileGroupChat, openMobileProjectChat, setMobileView } = useWidgetStore();
+  const { openMobileDm, openMobileGroupChat } = useWidgetStore();
   const [searchQuery, setSearchQuery] = useState('');
 
   // Build unified conversation list sorted by last message time
@@ -164,10 +164,11 @@ function MobileChatListView() {
       openMobileDm(c.userId);
     } else if (c.type === 'group' && c.roomId) {
       openMobileGroupChat(c.roomId);
-    } else if (c.type === 'project' && c.projectId) {
-      openMobileProjectChat(c.projectId);
+    } else if (c.type === 'project' && c.roomId) {
+      // Open project chat directly (no project banner) — same as group chat
+      openMobileGroupChat(c.roomId);
     }
-  }, [openMobileDm, openMobileGroupChat, openMobileProjectChat]);
+  }, [openMobileDm, openMobileGroupChat]);
 
   const handleAvatarClick = useCallback((e: React.MouseEvent, userId?: string) => {
     if (!userId) return;
