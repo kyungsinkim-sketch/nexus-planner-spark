@@ -255,13 +255,13 @@ export function TabBar() {
                 )}
               </div>
               <div className="overflow-y-auto max-h-80">
-                {appNotifications.length === 0 ? (
+                {appNotifications.filter(n => !n.read).length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-8 text-muted-foreground/60">
                     <Bell className="w-5 h-5 mb-1" />
                     <span className="text-xs">{t('noNotifications')}</span>
                   </div>
                 ) : (
-                  appNotifications.slice(0, 30).map((n) => {
+                  appNotifications.filter(n => !n.read).slice(0, 30).map((n) => {
                     const Icon = notifIconMap[n.type] || Bell;
                     return (
                       <button
