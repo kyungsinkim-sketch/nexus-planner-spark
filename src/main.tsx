@@ -2,6 +2,10 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
+import { useAppStore } from "./stores/appStore";
+
+// Debug: expose store for console inspection
+(window as any).__store = useAppStore;
 
 // ─── Stale chunk auto-recovery ───
 // After Vercel redeploy, old hashed chunks no longer exist.
