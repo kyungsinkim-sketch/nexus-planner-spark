@@ -2719,7 +2719,11 @@ export const useAppStore = create<AppState>()(
 
         // Skip if this notification ID already exists (prevents duplicates)
         const existing = get().appNotifications.find(n => n.id === deterministicId);
-        if (existing) return;
+        if (existing) {
+          console.log('[Notif] SKIPPED duplicate:', deterministicId, 'read:', existing.read);
+          return;
+        }
+        console.log('[Notif] CREATED:', deterministicId, notification.title, notification.message?.slice(0, 30));
 
         const newNotif: AppNotification = {
           ...notification,
