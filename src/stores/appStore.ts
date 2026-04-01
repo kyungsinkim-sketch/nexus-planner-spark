@@ -1314,6 +1314,11 @@ export const useAppStore = create<AppState>()(
           return false;
         })();
 
+        // Debug: log active chat context for notification diagnosis
+        if (state.currentUser && message.userId !== state.currentUser.id) {
+          console.log('[Notif] activeChatContext:', ctx, 'isInActiveChat:', isInActiveChat, 'msg:', { from: message.userId?.slice(0, 8), dm: message.directChatUserId?.slice(0, 8), room: message.roomId?.slice(0, 8), project: message.projectId?.slice(0, 8) });
+        }
+
         // Play notification sound only for messages NOT in the active chat
         if (!isInActiveChat && state.notificationSoundEnabled && state.currentUser && message.userId !== state.currentUser.id) {
           playNotificationSound('message');
