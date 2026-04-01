@@ -44,22 +44,24 @@ export function MobileMembersView() {
 
   // Scroll to top when member detail opens + load board data for their projects
   const detailRef = useRef<HTMLDivElement>(null);
+  const loadedBoardProjects = useRef<Set<string>>(new Set());
   useEffect(() => {
     if (selectedUserId && detailRef.current) {
       detailRef.current.scrollTop = 0;
     }
     // Load board data for projects this user belongs to (so tasks show in detail view)
+    // Use ref to prevent re-fetching same projects
     if (selectedUserId) {
       const userProjects = projects.filter(p => p.teamMemberIds?.includes(selectedUserId));
       for (const p of userProjects) {
-        // Only load if we don't have tasks for this project yet
-        const hasTasks = boardTasks.some(t => t.projectId === p.id);
-        if (!hasTasks) {
+        if (!loadedBoardProjects.current.has(p.id)) {
+          loadedBoardProjects.current.add(p.id);
           loadBoardData(p.id);
         }
       }
     }
-  }, [selectedUserId, projects, boardTasks, loadBoardData]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedUserId]);
 
   // Sorted users for swipe navigation (가나다순)
   const sortedUsers = useMemo(() => [...users].sort((a, b) => a.name.localeCompare(b.name, 'ko')), [users]);
