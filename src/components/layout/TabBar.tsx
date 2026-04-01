@@ -272,44 +272,60 @@ export function TabBar() {
                           if (n.type === 'chat') {
                             // Find the original message to determine chat context
                             const sourceMsg = n.sourceId ? messages.find(m => m.id === n.sourceId) : null;
+                            
+                            // Resolve navigation target from sourceMsg or notification metadata
+                            const isDm = sourceMsg?.directChatUserId || (!n.projectId && !n.roomId && n.directUserId);
+                            const pid = sourceMsg?.projectId || n.projectId;
+                            const rid = sourceMsg?.roomId || n.roomId;
 
-                            if (sourceMsg?.directChatUserId) {
-                              // DM notification → navigate to DM with the other user
-                              const otherUserId = sourceMsg.userId === useAppStore.getState().currentUser?.id
-                                ? sourceMsg.directChatUserId
-                                : sourceMsg.userId;
-                              setPendingChatNavigation({ type: 'direct', id: otherUserId });
-                              setChatPanelCollapsed(false);
-                              navigate('/');
-                            } else if (sourceMsg?.roomId || sourceMsg?.projectId) {
-                              // Project/room notification → open project tab + navigate to room
-                              const pid = sourceMsg.projectId || n.projectId;
-                              if (pid) {
-                                const { openTabs, openProjectTab } = useWidgetStore.getState();
-                                const project = projects.find(p => p.id === pid);
-                                if (project) {
-                                  const existing = openTabs.find(t => t.projectId === pid);
-                                  if (!existing) {
-                                    openProjectTab(project.id, project.title, project.keyColor);
-                                  }
-                                }
-                                setPendingChatNavigation({
-                                  type: 'project',
-                                  id: pid,
-                                  roomId: sourceMsg.roomId || undefined,
-                                });
+                            if (isDm) {
+                              // DM notification
+                              const otherUserId = n.directUserId || (
+                                sourceMsg ? (sourceMsg.userId === useAppStore.getState().currentUser?.id
+                                  ? sourceMsg.directChatUserId
+                                  : sourceMsg.userId) : undefined
+                              );
+                              if (otherUserId) {
+                                setPendingChatNavigation({ type: 'direct', id: otherUserId });
                                 setChatPanelCollapsed(false);
                                 navigate('/');
                               }
-                            } else if (n.projectId) {
-                              // Fallback: navigate to project
-                              const { openTabs, openProjectTab } = useWidgetStore.getState();
-                              const project = projects.find(p => p.id === n.projectId);
+                            } else if (pid) {
+                              // Project/room notification
+                              const { openTabs, openProjectTab, setActiveTab } = useWidgetStore.getState();
+                              const project = projects.find(p => p.id === pid);
                               if (project) {
-                                const existing = openTabs.find(t => t.projectId === n.projectId);
+                                const existing = openTabs.find(t => t.projectId === pid);
                                 if (!existing) {
                                   openProjectTab(project.id, project.title, project.keyColor);
                                 }
+                                // Switch to project tab
+                                const tab = useWidgetStore.getState().openTabs.find(t => t.projectId === pid);
+                                if (tab) setActiveTab(tab.id);
+                              }
+                              setPendingChatNavigation({
+                                type: 'project',
+                                id: pid,
+                                roomId: rid || undefined,
+                              });
+                              setChatPanelCollapsed(false);
+                              navigate('/');
+                            } else if (rid) {
+                              // Group room without project
+                              const room = useAppStore.getState().chatRooms.find(r => r.id === rid);
+                              if (room?.projectId) {
+                                const project = projects.find(p => p.id === room.projectId);
+                                if (project) {
+                                  const { openTabs, openProjectTab, setActiveTab } = useWidgetStore.getState();
+                                  if (!openTabs.find(t => t.projectId === room.projectId)) {
+                                    openProjectTab(project.id, project.title, project.keyColor);
+                                  }
+                                  const tab = useWidgetStore.getState().openTabs.find(t => t.projectId === room.projectId);
+                                  if (tab) setActiveTab(tab.id);
+                                }
+                                setPendingChatNavigation({ type: 'project', id: room.projectId, roomId: rid });
+                              } else {
+                                setPendingChatNavigation({ type: 'group', id: rid, roomId: rid });
                               }
                               setChatPanelCollapsed(false);
                               navigate('/');
