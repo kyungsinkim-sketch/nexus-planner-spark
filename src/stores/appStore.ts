@@ -2816,11 +2816,16 @@ export const useAppStore = create<AppState>()(
           clearBadge();
         }).catch(() => {});
       },
-      clearChatNotificationsForRoom: (roomId, projectId, directUserId) => set((state) => ({
+      clearChatNotificationsForRoom: (roomId, projectId, directUserId) => {
+        const before = get().appNotifications.filter(n => !n.read && n.type === 'chat').length;
+        set((state) => ({
         appNotifications: state.appNotifications.filter(n => {
           if (n.type !== 'chat') return true;
           // Match by roomId
-          if (roomId && n.roomId === roomId) return false;
+          if (roomId && n.roomId === roomId) {
+            console.log('[Notif] CLEARED by roomId:', roomId, 'notif:', n.id, n.title);
+            return false;
+          }
           // Match by projectId (project-level chat without room)
           if (projectId && !roomId && n.projectId === projectId && !n.roomId) return false;
           // Match DM notifications — sourceId is the message id, check via the messages
@@ -2834,7 +2839,10 @@ export const useAppStore = create<AppState>()(
           }
           return true;
         }),
-      })),
+      }));
+        const after = get().appNotifications.filter(n => !n.read && n.type === 'chat').length;
+        if (before !== after) console.log('[Notif] clearChat: before:', before, 'after:', after, { roomId, projectId, directUserId });
+      },
       getUnreadAppNotificationCount: () =>
         get().appNotifications.filter(n => !n.read).length,
 
