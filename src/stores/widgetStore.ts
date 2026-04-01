@@ -92,7 +92,7 @@ function debouncedSaveToDB() {
 
 // ─── Store ───────────────────────────────────────────────────────
 
-export type MobileView = 'ai-chat' | 'projects' | 'members' | 'calendar' | 'dm-chat';
+export type MobileView = 'ai-chat' | 'projects' | 'members' | 'calendar' | 'dm-chat' | 'chat-list';
 
 interface WidgetState {
   // Tab management
@@ -145,7 +145,7 @@ export const useWidgetStore = create<WidgetState>()(
       // Initial state
       openTabs: [DASHBOARD_TAB],
       activeTabId: 'dashboard',
-      mobileView: 'ai-chat' as MobileView,
+      mobileView: 'chat-list' as MobileView,
       mobileDmTargetUserId: null,
       mobileGroupRoomId: null,
       mobileProjectNav: null,

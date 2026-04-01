@@ -10,12 +10,12 @@ import { useAppStore } from '@/stores/appStore';
 import { useTranslation } from '@/hooks/useTranslation';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Sparkles, FolderKanban, Users, Calendar, Sun, Moon, Languages, Settings } from 'lucide-react';
+import { Sparkles, FolderKanban, MessageSquare, Calendar, Sun, Moon, Languages, Settings } from 'lucide-react';
 
 const tabs: { id: MobileView; icon: typeof Sparkles; labelKo: string; labelEn: string }[] = [
-  { id: 'ai-chat', icon: Sparkles, labelKo: 'My Agent', labelEn: 'My Agent' },
+  { id: 'chat-list', icon: MessageSquare, labelKo: '채팅', labelEn: 'Chat' },
   { id: 'projects', icon: FolderKanban, labelKo: '프로젝트', labelEn: 'Projects' },
-  { id: 'members', icon: Users, labelKo: '멤버', labelEn: 'Members' },
+  { id: 'ai-chat', icon: Sparkles, labelKo: 'My Agent', labelEn: 'My Agent' },
   { id: 'calendar', icon: Calendar, labelKo: '캘린더', labelEn: 'Calendar' },
 ];
 

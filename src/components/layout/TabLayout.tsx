@@ -39,6 +39,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import type { WidgetDataContext } from '@/types/widget';
 
 // Lazy load mobile components — only loaded on mobile (Phase 3 redesign)
+const MobileChatListView = lazy(() => import('@/components/mobile/MobileChatListView'));
 const MobileAIChatView = lazy(() => import('@/components/mobile/MobileAIChatView'));
 const MobileProjectsView = lazy(() => import('@/components/mobile/MobileProjectsView'));
 const MobileMembersView = lazy(() => import('@/components/mobile/MobileMembersView'));
@@ -133,7 +134,9 @@ export function TabLayout() {
               <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
             </div>
           }>
-            {mobileView === 'ai-chat' ? (
+            {mobileView === 'chat-list' ? (
+              <MobileChatListView />
+            ) : mobileView === 'ai-chat' ? (
               <MobileAIChatView />
             ) : mobileView === 'projects' ? (
               <MobileProjectsView />
@@ -144,7 +147,7 @@ export function TabLayout() {
             ) : mobileView === 'dm-chat' ? (
               <MobileDmChatView />
             ) : (
-              <MobileAIChatView />
+              <MobileChatListView />
             )}
           </Suspense>
         </div>

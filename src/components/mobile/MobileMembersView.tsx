@@ -25,6 +25,15 @@ export function MobileMembersView() {
 
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
 
+  // Handle pending member detail navigation (from chat list avatar tap)
+  const pendingMemberDetailId = useAppStore(s => s.pendingMemberDetailId);
+  useEffect(() => {
+    if (pendingMemberDetailId) {
+      setSelectedUserId(pendingMemberDetailId);
+      useAppStore.setState({ pendingMemberDetailId: null });
+    }
+  }, [pendingMemberDetailId]);
+
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [calendarMonth, setCalendarMonth] = useState(new Date());

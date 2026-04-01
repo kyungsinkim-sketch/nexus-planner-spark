@@ -174,6 +174,7 @@ interface AppState {
 
   // Pending chat navigation target — set by notification click, consumed by ChatPanel
   pendingChatNavigation: { type: 'project' | 'direct' | 'group'; id: string; roomId?: string } | null;
+  pendingMemberDetailId: string | null;
 
   // Notification Sound
   notificationSoundEnabled: boolean;
@@ -485,6 +486,7 @@ export const useAppStore = create<AppState>()(
       activeChatContext: null,
       chatLastReadTimestamps: {},
       pendingChatNavigation: null,
+      pendingMemberDetailId: null,
       worldClockSettingsOpen: false,
       weatherSettingsOpen: false,
       notificationSoundEnabled: true,
