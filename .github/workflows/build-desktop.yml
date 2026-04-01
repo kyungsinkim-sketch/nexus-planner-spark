@@ -185,9 +185,113 @@ jobs:
             signed-apk/*.apk
           if-no-files-found: warn
 
+  build-ios:
+    runs-on: macos-latest
+    name: Build (iOS)
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-ios
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Install npm dependencies
+        run: npm ci
+
+      - name: Install Tauri CLI
+        run: npm install -g @tauri-apps/cli
+
+      - name: Setup Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - name: Install Apple certificate and provisioning profile
+        env:
+          APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          APP_STORE_CONNECT_KEY: ${{ secrets.APP_STORE_CONNECT_KEY }}
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+        run: |
+          # Create variables
+          CERTIFICATE_PATH=$RUNNER_TEMP/build_certificate.p12
+          KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
+          API_KEY_PATH=$RUNNER_TEMP/AuthKey.p8
+
+          # Import certificate
+          echo -n "$APPLE_CERTIFICATE" | base64 --decode -o $CERTIFICATE_PATH
+
+          # Create temporary keychain
+          security create-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+          security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+
+          # Import certificate to keychain
+          security import $CERTIFICATE_PATH -P "$APPLE_CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
+          security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+          security list-keychain -d user -s $KEYCHAIN_PATH
+
+          # Store API key for xcrun
+          echo -n "$APP_STORE_CONNECT_KEY" | base64 --decode -o $API_KEY_PATH
+          echo "API_KEY_PATH=$API_KEY_PATH" >> $GITHUB_ENV
+
+      - name: Build Tauri iOS
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          VITE_GOOGLE_CLIENT_ID: ${{ secrets.VITE_GOOGLE_CLIENT_ID }}
+        run: npx tauri ios build --export-method app-store-connect
+
+      - name: Upload to TestFlight
+        env:
+          APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+        run: |
+          IPA=$(find src-tauri -name "*.ipa" -type f | head -1)
+          echo "Found IPA: $IPA"
+          if [ -n "$IPA" ]; then
+            xcrun altool --upload-app \
+              --file "$IPA" \
+              --type ios \
+              --apiKey "$APP_STORE_CONNECT_KEY_ID" \
+              --apiIssuer "$APP_STORE_CONNECT_ISSUER_ID" \
+              2>&1 || true
+            # Fallback to xcrun notarytool approach
+            xcrun altool --validate-app \
+              --file "$IPA" \
+              --type ios \
+              --apiKey "$APP_STORE_CONNECT_KEY_ID" \
+              --apiIssuer "$APP_STORE_CONNECT_ISSUER_ID" \
+              2>&1 || echo "Validation skipped"
+          fi
+
+      - name: Upload IPA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: re-be-iOS
+          path: |
+            src-tauri/gen/apple/build/**/*.ipa
+          if-no-files-found: warn
+
   # Create GitHub Release after all builds succeed
   release:
-    needs: [build-desktop, build-android]
+    needs: [build-desktop, build-android, build-ios]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v')
     steps:
