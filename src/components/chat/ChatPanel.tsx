@@ -502,17 +502,19 @@ export function ChatPanel({ defaultProjectId, defaultDmUserId, defaultGroupRoomI
       id: selectedChat.id,
       roomId: selectedChat.roomId,
     });
-    // Auto-clear existing notifications for this chat
+    // Auto-clear existing notifications for this chat (only on actual chat switch)
+    const clear = useAppStore.getState().clearChatNotificationsForRoom;
     if (selectedChat.type === 'group') {
-      clearChatNotificationsForRoom(selectedChat.roomId);
+      clear(selectedChat.roomId);
     } else if (selectedChat.type === 'project') {
-      clearChatNotificationsForRoom(selectedChat.roomId, selectedChat.id);
+      clear(selectedChat.roomId, selectedChat.id);
     } else if (selectedChat.type === 'direct') {
-      clearChatNotificationsForRoom(undefined, undefined, selectedChat.id);
+      clear(undefined, undefined, selectedChat.id);
     }
     // Clear active context on unmount
     return () => setActiveChatContext(null);
-  }, [selectedChat?.type, selectedChat?.id, selectedChat?.roomId, clearChatNotificationsForRoom, setActiveChatContext]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedChat?.type, selectedChat?.id, selectedChat?.roomId]);
 
   // Subscribe to realtime DELETE events for the active chat room.
   // INSERT events are handled by the global useChatNotifications hook
