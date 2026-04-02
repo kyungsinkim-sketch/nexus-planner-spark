@@ -145,7 +145,7 @@ export const useWidgetStore = create<WidgetState>()(
       // Initial state
       openTabs: [DASHBOARD_TAB],
       activeTabId: 'dashboard',
-      mobileView: 'chat-list' as MobileView,
+      mobileView: 'ai-chat' as MobileView,
       mobileDmTargetUserId: null,
       mobileGroupRoomId: null,
       mobileProjectNav: null,
