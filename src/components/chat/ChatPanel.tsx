@@ -2230,7 +2230,7 @@ export function ChatPanel({ defaultProjectId, defaultDmUserId, defaultGroupRoomI
           )}
 
           {/* Messages */}
-          <ScrollArea className="flex-1 p-3 min-w-0 overflow-x-hidden">
+          <ScrollArea className="flex-1 p-3 min-w-0 overflow-x-hidden chat-messages-scroll">
             {chatMessages.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full text-center py-8">
                 <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center mb-3">
