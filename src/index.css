@@ -1529,12 +1529,6 @@ body.keyboard-open .mobile-bottom-nav-wrapper {
   display: none !important;
 }
 
-/* Fix: prevent chat messages from overflowing on narrow screens (<605px) */
-
-
-/* Fix: force all chat content to stay within viewport width */
-.chat-messages-scroll [data-radix-scroll-area-viewport] > div {
-
 /* ── Chat overflow protection ── */
 /* Clip horizontal overflow on the scroll viewport — does NOT affect vertical
    overflow (hover menus, reactions etc. still render above/below). */
