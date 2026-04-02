@@ -2246,11 +2246,11 @@ export function ChatPanel({ defaultProjectId, defaultDmUserId, defaultGroupRoomI
                 {groupedMessages.dateOrder.map((date) => {
                   const dateMessages = groupedMessages.groups[date];
                   return (
-                  <div key={date} className="max-w-full overflow-hidden">
-                    <div className="flex items-center gap-2 mb-3 max-w-full overflow-hidden">
-                      <Separator className="flex-1 min-w-0" />
-                      <span className="text-xs font-medium text-muted-foreground whitespace-nowrap shrink-0">{date}</span>
-                      <Separator className="flex-1 min-w-0" />
+                  <div key={date} className="max-w-full">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Separator className="flex-1" />
+                      <span className="text-xs font-medium text-muted-foreground">{date}</span>
+                      <Separator className="flex-1" />
                     </div>
                     <div className="space-y-3">
                       {dateMessages.map((message, index) => {
