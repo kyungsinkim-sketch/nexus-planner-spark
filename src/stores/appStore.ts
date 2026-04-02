@@ -522,11 +522,14 @@ export const useAppStore = create<AppState>()(
 
           // Load users FIRST so loadProjects can do domain-based filtering
           await get().loadUsers();
-          await get().loadProjects();
-          await get().loadEvents();
-          await get().loadMessages();
-          await get().loadTodos();
-          await get().loadImportantNotes();
+          // Load remaining data in parallel for faster startup
+          await Promise.all([
+            get().loadProjects(),
+            get().loadEvents(),
+            get().loadMessages(),
+            get().loadTodos(),
+            get().loadImportantNotes(),
+          ]);
           useWidgetStore.getState().loadLayoutFromDB();
 
           // Initialize push notifications & cross-device sync
@@ -619,12 +622,15 @@ export const useAppStore = create<AppState>()(
             if (enrichedUser) {
               set({ currentUser: { ...user, ...enrichedUser } });
             }
-            await get().loadProjects();
-            await get().loadEvents();
-            await get().loadMessages();
-            await get().loadTodos();
-            await get().loadImportantNotes();
-            await get().loadGroupRooms();
+            // Load remaining data in parallel for faster startup
+            await Promise.all([
+              get().loadProjects(),
+              get().loadEvents(),
+              get().loadMessages(),
+              get().loadTodos(),
+              get().loadImportantNotes(),
+              get().loadGroupRooms(),
+            ]);
             // Load chat read status from DB for cross-device sync
             try {
               const { supabase: sb } = await import('@/lib/supabase');
