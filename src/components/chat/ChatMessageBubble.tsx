@@ -843,7 +843,7 @@ function FileBubble({ message, isCurrentUser }: { message: ChatMessage; isCurren
 
   return (
     <>
-      <div className={`rounded-2xl overflow-hidden border max-w-full w-full ${isCurrentUser ? 'bg-primary/5 border-primary/20' : 'bg-muted border-border'}`} style={{ maxWidth: 'min(320px, 100%)' }}>
+      <div className={`rounded-2xl overflow-hidden border ${isCurrentUser ? 'bg-primary/5 border-primary/20' : 'bg-muted border-border'}`} style={{ maxWidth: '320px', width: '100%' }}>
         {/* Image preview thumbnail */}
         {isImage && downloadUrl && (
           <div
