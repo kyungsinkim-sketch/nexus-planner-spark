@@ -135,7 +135,11 @@ export function MobileBottomNav() {
           <div className="mobile-bottom-nav flex items-center justify-around px-2 h-14">
           {tabs.map(tab => {
             const Icon = tab.icon;
-            const active = !isSubRoute && mobileView === tab.id;
+            const active = !isSubRoute && (
+              mobileView === tab.id ||
+              // Chat sub-views (DM, group) should highlight the Chat tab
+              (tab.id === 'chat-list' && mobileView === 'dm-chat')
+            );
             return (
               <button
                 key={tab.id}
