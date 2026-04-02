@@ -1528,3 +1528,14 @@ html *:not(.react-grid-item):not(.react-grid-layout):not(.glass-widget):not(.wid
 body.keyboard-open .mobile-bottom-nav-wrapper {
   display: none !important;
 }
+
+/* Fix: prevent chat messages from overflowing on narrow screens (<605px) */
+
+/* Fix: chat bubble overflow on narrow mobile screens */
+/* Uses clip instead of hidden so hover menus still show vertically */
+.chat-messages-scroll [data-radix-scroll-area-viewport] {
+  overflow-x: clip !important;
+}
+.chat-messages-scroll a {
+  word-break: break-all;
+}
