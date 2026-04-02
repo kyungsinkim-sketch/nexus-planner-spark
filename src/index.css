@@ -1528,18 +1528,3 @@ html *:not(.react-grid-item):not(.react-grid-layout):not(.glass-widget):not(.wid
 body.keyboard-open .mobile-bottom-nav-wrapper {
   display: none !important;
 }
-
-
-
-/* Prevent chat messages from overflowing on mobile */
-.chat-messages-scroll [data-radix-scroll-area-viewport] {
-  overflow-x: hidden !important;
-}
-.chat-messages-scroll [data-radix-scroll-area-viewport] > div {
-  max-width: 100% !important;
-  overflow-x: hidden !important;
-}
-.chat-messages-scroll a {
-  word-break: break-all;
-  overflow-wrap: anywhere;
-}
