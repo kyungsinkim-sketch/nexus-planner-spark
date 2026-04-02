@@ -2277,7 +2277,7 @@ export function ChatPanel({ defaultProjectId, defaultDmUserId, defaultGroupRoomI
                             ) : (
                               <div className="w-7" />
                             )}
-                            <div className={`flex-1 min-w-0 overflow-visible ${isCurrentUser ? 'text-right' : ''}`}>
+                            <div className={`flex-1 min-w-0 overflow-hidden ${isCurrentUser ? 'text-right' : ''}`}>
                               {showAvatar && (
                                 <div className={`flex items-center gap-1.5 mb-0.5 ${isCurrentUser ? 'flex-row-reverse' : ''}`}>
                                   <span className="text-xs font-medium text-foreground">
