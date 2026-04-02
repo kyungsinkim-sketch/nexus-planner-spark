@@ -1531,11 +1531,39 @@ body.keyboard-open .mobile-bottom-nav-wrapper {
 
 /* Fix: prevent chat messages from overflowing on narrow screens (<605px) */
 
-/* Fix: chat bubble overflow on narrow mobile screens */
-/* Uses clip instead of hidden so hover menus still show vertically */
+
+/* Fix: force all chat content to stay within viewport width */
+.chat-messages-scroll [data-radix-scroll-area-viewport] > div {
+
+/* ── Chat overflow protection ── */
+/* Clip horizontal overflow on the scroll viewport — does NOT affect vertical
+   overflow (hover menus, reactions etc. still render above/below). */
 .chat-messages-scroll [data-radix-scroll-area-viewport] {
   overflow-x: clip !important;
 }
+/* Force the inner content wrapper to respect viewport width */
+.chat-messages-scroll [data-radix-scroll-area-viewport] > div {
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+/* Message rows: avatar(28px) + gap(8px) + content = must fit in container */
+.chat-messages-scroll .flex.gap-2 {
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+/* Inline-block bubbles must not exceed their parent */
+.chat-messages-scroll .inline-block {
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+/* Links inside chat: allow breaking anywhere */
 .chat-messages-scroll a {
   word-break: break-all;
+  overflow-wrap: anywhere;
+}
+/* Media: always fit */
+.chat-messages-scroll img,
+.chat-messages-scroll video {
+  max-width: 100% !important;
+  height: auto;
 }
