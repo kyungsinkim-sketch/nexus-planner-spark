@@ -2262,7 +2262,7 @@ export function ChatPanel({ defaultProjectId, defaultDmUserId, defaultGroupRoomI
                           <div
                             key={message.id}
                             data-message-id={message.id}
-                            className={`flex gap-2 min-w-0 ${isCurrentUser ? 'flex-row-reverse' : ''}`}
+                            className={`flex gap-2 min-w-0 w-full overflow-x-hidden ${isCurrentUser ? 'flex-row-reverse' : ''}`}
                           >
                             {showAvatar ? (
                               <Avatar className="w-7 h-7 shrink-0">

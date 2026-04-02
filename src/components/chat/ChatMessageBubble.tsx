@@ -597,7 +597,7 @@ function MessageWrapper({ children, isCurrentUser, onDelete, onEdit, onPin, onUn
   onReactionToggle?: (messageId: string, emoji: string) => void;
 }) {
   return (
-    <div className={`group/msg relative max-w-[85%] overflow-visible ${isCurrentUser ? 'ml-auto' : ''}`}>
+    <div className={`group/msg relative max-w-[85%] ${isCurrentUser ? 'ml-auto' : ''}`} style={{ overflowWrap: 'anywhere' }}>
       {children}
       <ReactionBar reactions={reactions} messageId={messageId} onToggle={onReactionToggle} isCurrentUser={isCurrentUser} />
       <HoverActionBar language={useAppStore.getState().language}
