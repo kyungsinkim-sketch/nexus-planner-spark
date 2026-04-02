@@ -291,7 +291,7 @@ jobs:
 
   # Create GitHub Release after all builds succeed
   release:
-    needs: [build-desktop, build-android, build-ios]
+    needs: [build-desktop, build-android]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v')
     steps:
