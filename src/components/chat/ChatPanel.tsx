@@ -1481,7 +1481,7 @@ export function ChatPanel({ defaultProjectId, defaultDmUserId, defaultGroupRoomI
           const { data, error } = await (await import('@/lib/supabase')).supabase
             .from('file_items')
             .insert({
-              name: file.name,
+              name: file.name.normalize('NFC'),
               uploaded_by: currentUser.id,
               size: fileSize,
               type: fileExt,
@@ -1499,7 +1499,7 @@ export function ChatPanel({ defaultProjectId, defaultDmUserId, defaultGroupRoomI
           addFile({
             id: data.id,
             fileGroupId: null,
-            name: file.name,
+            name: file.name.normalize('NFC'),
             uploadedBy: currentUser.id,
             createdAt: data.created_at,
             size: fileSize,
@@ -1524,7 +1524,7 @@ export function ChatPanel({ defaultProjectId, defaultDmUserId, defaultGroupRoomI
 
           const fileItem = await fileService.createFileItem({
             fileGroupId: fileGroup.id,
-            name: file.name,
+            name: file.name.normalize('NFC'),
             uploadedBy: currentUser.id,
             size: fileSize,
             type: fileExt,

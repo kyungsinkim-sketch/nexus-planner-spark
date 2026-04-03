@@ -799,8 +799,9 @@ function FileBubble({ message, isCurrentUser }: { message: ChatMessage; isCurren
   const fileSize = fileItem?.size;
 
   const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp'].includes(fileExt);
+  const isVideo = ['mp4', 'webm', 'mov', 'avi', 'mkv'].includes(fileExt);
   const isPdf = fileExt === 'pdf';
-  const isPreviewable = isImage || isPdf;
+  const isPreviewable = isImage || isPdf || isVideo;
 
   // DM/group files are stored in 'dm-files' bucket; project files in 'project-files'
   const isDmOrGroup = !!message.directChatUserId || (!!message.roomId && !message.projectId);
@@ -809,6 +810,8 @@ function FileBubble({ message, isCurrentUser }: { message: ChatMessage; isCurren
 
   const handleDownload = async () => {
     if (!downloadUrl) return;
+    // Normalize Korean filenames (NFD → NFC) to prevent consonant separation
+    const normalizedName = fileName.normalize('NFC');
     try {
       const response = await fetch(downloadUrl, { mode: 'cors' });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -817,7 +820,7 @@ function FileBubble({ message, isCurrentUser }: { message: ChatMessage; isCurren
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = fileName;
+      a.download = normalizedName;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -826,7 +829,7 @@ function FileBubble({ message, isCurrentUser }: { message: ChatMessage; isCurren
       // Fallback: direct link download or new tab
       const a = document.createElement('a');
       a.href = downloadUrl;
-      a.download = fileName;
+      a.download = normalizedName;
       a.target = '_blank';
       a.rel = 'noopener noreferrer';
       document.body.appendChild(a);
@@ -837,6 +840,7 @@ function FileBubble({ message, isCurrentUser }: { message: ChatMessage; isCurren
 
   const getFileIcon = () => {
     if (isImage) return <ImageIcon className="w-5 h-5 text-green-500" />;
+    if (isVideo) return <FileType className="w-5 h-5 text-purple-500" />;
     if (isPdf) return <FileType className="w-5 h-5 text-red-500" />;
     return <FileText className="w-5 h-5 text-blue-500" />;
   };
@@ -855,6 +859,19 @@ function FileBubble({ message, isCurrentUser }: { message: ChatMessage; isCurren
               alt={fileName}
               className="w-full h-full object-cover hover:opacity-90 transition-opacity"
               loading="lazy"
+            />
+          </div>
+        )}
+
+        {/* Video preview */}
+        {isVideo && downloadUrl && (
+          <div className="w-full max-h-64 overflow-hidden bg-black">
+            <video
+              src={downloadUrl}
+              controls
+              preload="metadata"
+              className="w-full max-h-64 object-contain"
+              playsInline
             />
           </div>
         )}
