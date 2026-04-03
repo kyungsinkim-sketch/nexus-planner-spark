@@ -34,6 +34,7 @@ function BrainChatWidget({ context }: { context: WidgetDataContext }) {
   const [input, setInput] = useState('');
   const [processing, setProcessing] = useState(false);
   const [history, setHistory] = useState<BrainHistoryItem[]>([]);
+  const [briefingItem, setBriefingItem] = useState<BrainHistoryItem | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const processingRef = useRef(false); // Ref-based guard to prevent concurrent submissions
@@ -65,11 +66,7 @@ function BrainChatWidget({ context }: { context: WidgetDataContext }) {
             content: m.content,
             timestamp: m.createdAt,
           }));
-          setHistory(prev => {
-            // Preserve briefing message if it exists (keep at end for visibility)
-            const briefing = prev.find(h => h.id?.startsWith('briefing_'));
-            return briefing ? [...items, briefing] : items;
-          });
+          setHistory(items);
         }
       } catch (err) {
         console.error('[BrainWidget] Failed to load DM history:', err);
@@ -150,16 +147,13 @@ function BrainChatWidget({ context }: { context: WidgetDataContext }) {
         briefing += isKo ? '오늘도 좋은 하루 보내세요! 궁금한 게 있으면 언제든 물어보세요 😊' : 'Have a great day! Feel free to ask me anything 😊';
 
         console.log('[Briefing] Text ready, length:', briefing.length);
-        setHistory(prev => {
-          if (prev.some(h => h.id === `briefing_${todayStr}`)) return prev;
-          console.log('[Briefing] Added to history!');
-          return [...prev, {
-            id: `briefing_${todayStr}`,
-            type: 'brain' as const,
-            content: briefing,
-            timestamp: new Date().toISOString(),
-          }];
+        setBriefingItem({
+          id: `briefing_${todayStr}`,
+          type: 'brain' as const,
+          content: briefing,
+          timestamp: new Date().toISOString(),
         });
+        console.log('[Briefing] Set as separate state!');
 
         localStorage.setItem(storageKey, todayKey);
       } catch (err) {
@@ -416,13 +410,13 @@ function BrainChatWidget({ context }: { context: WidgetDataContext }) {
         onMouseDown={(e) => e.stopPropagation()}
         className="flex-1 min-h-0 overflow-y-auto px-3 py-2 space-y-2"
       >
-        {history.length === 0 ? (
+        {history.length === 0 && !briefingItem ? (
           <div className="flex flex-col items-center justify-center h-full text-muted-foreground/50 gap-1.5">
             <Brain className="w-5 h-5 text-violet-400/50" />
             <span className="text-xs font-medium">Brain AI</span>
           </div>
         ) : (
-          history.map((item) => (
+          [...history, ...(briefingItem ? [briefingItem] : [])].map((item) => (
             <div
               key={item.id}
               className={`flex ${item.type === 'user' ? 'justify-end' : 'justify-start'}`}
