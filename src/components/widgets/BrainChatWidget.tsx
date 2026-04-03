@@ -115,8 +115,16 @@ function BrainChatWidget({ context }: { context: WidgetDataContext }) {
 
         if (todayEvents.length > 0) {
           briefing += `📅 ${isKo ? '오늘 일정' : "Today's Schedule"} (${todayEvents.length}${isKo ? '건' : ''})\n`;
-          todayEvents.sort((a, b) => (a.startAt || '').localeCompare(b.startAt || ''));
-          for (const e of todayEvents.slice(0, 5)) {
+          // Deduplicate by title+time
+          const seen = new Set<string>();
+          const uniqueEvents = todayEvents.filter(e => {
+            const key = `${e.title}|${e.startAt}`;
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return true;
+          });
+          uniqueEvents.sort((a, b) => (a.startAt || '').localeCompare(b.startAt || ''));
+          for (const e of uniqueEvents.slice(0, 5)) {
             const time = e.startAt ? new Date(e.startAt).toLocaleTimeString(isKo ? 'ko-KR' : 'en-US', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Seoul', hour12: !isKo }) : '';
             briefing += `• ${time} ${e.title}\n`;
           }
@@ -432,7 +440,7 @@ function BrainChatWidget({ context }: { context: WidgetDataContext }) {
                     <span className="typo-chat-name text-violet-600 dark:text-violet-400">Brain AI</span>
                   </div>
                 )}
-                <p className="typo-chat-message leading-relaxed" style={{ overflowWrap: 'anywhere', wordBreak: 'break-word' }}>
+                <p className="typo-widget-body leading-relaxed" style={{ overflowWrap: 'anywhere', wordBreak: 'break-word' }}>
                   {item.content}
                 </p>
                 {/* Action badges */}

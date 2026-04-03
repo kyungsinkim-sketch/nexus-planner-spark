@@ -2952,9 +2952,7 @@ export const useAppStore = create<AppState>()(
         return state.events.filter(e => {
           if (e.ownerId === myId) return true;
           if (e.attendeeIds?.includes(myId)) return true;
-          // R_TRAINING from others: excluded from personal calendar (shown in admin/booking grid)
-          if (e.type === 'R_TRAINING' && e.ownerId !== myId) return false;
-          return true;
+          return false;
         });
       },
       getMessagesByProject: (projectId) => get().messages.filter((m) => m.projectId === projectId),

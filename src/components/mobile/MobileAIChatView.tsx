@@ -550,8 +550,15 @@ export function MobileAIChatView() {
           // Events
           if (todayEvents.length > 0) {
             briefing += `📅 오늘 일정 (${todayEvents.length}건)\n`;
-            todayEvents.sort((a, b) => (a.startAt || '').localeCompare(b.startAt || ''));
-            for (const e of todayEvents.slice(0, 5)) {
+            const seen = new Set<string>();
+            const uniqueEvents = todayEvents.filter(e => {
+              const key = \`\${e.title}|\${e.startAt}\`;
+              if (seen.has(key)) return false;
+              seen.add(key);
+              return true;
+            });
+            uniqueEvents.sort((a, b) => (a.startAt || '').localeCompare(b.startAt || ''));
+            for (const e of uniqueEvents.slice(0, 5)) {
               const time = e.startAt ? new Date(e.startAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Seoul', hour12: false }) : '';
               briefing += `• ${time} ${e.title}\n`;
             }
@@ -582,8 +589,15 @@ export function MobileAIChatView() {
 
           if (todayEvents.length > 0) {
             briefing += `📅 Today's Schedule (${todayEvents.length})\n`;
-            todayEvents.sort((a, b) => (a.startAt || '').localeCompare(b.startAt || ''));
-            for (const e of todayEvents.slice(0, 5)) {
+            const seen2 = new Set<string>();
+            const uniqueEvents2 = todayEvents.filter(e => {
+              const key = \`\${e.title}|\${e.startAt}\`;
+              if (seen2.has(key)) return false;
+              seen2.add(key);
+              return true;
+            });
+            uniqueEvents2.sort((a, b) => (a.startAt || '').localeCompare(b.startAt || ''));
+            for (const e of uniqueEvents2.slice(0, 5)) {
               const time = e.startAt ? new Date(e.startAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Seoul', hour12: true }) : '';
               briefing += `• ${time} ${e.title}\n`;
             }
