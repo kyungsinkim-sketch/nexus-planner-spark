@@ -311,7 +311,8 @@ function FilesWidget({ context }: { context: WidgetDataContext }) {
             const info = getFileInfo(f.name, f.type);
             const Icon = info.icon;
             const isImage = isImageFile(f.name, f.type);
-            const fileUrl = isImage ? getFileUrl(f.storagePath) : null;
+            const isVideo = /\.(mp4|mov|avi|mkv|webm)$/i.test(f.name);
+            const fileUrl = (isImage || isVideo) ? getFileUrl(f.storagePath) : null;
 
             return (
               <div
@@ -327,6 +328,14 @@ function FilesWidget({ context }: { context: WidgetDataContext }) {
                       src={fileUrl} alt={f.name}
                       className="w-full h-full object-cover" loading="lazy"
                       onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                    />
+                  ) : isVideo && fileUrl ? (
+                    <video
+                      src={fileUrl}
+                      className="w-full h-full object-cover"
+                      preload="metadata"
+                      muted
+                      playsInline
                     />
                   ) : (
                     <Icon className={`w-8 h-8 ${info.color} opacity-80`} />
@@ -355,8 +364,9 @@ function FilesWidget({ context }: { context: WidgetDataContext }) {
           const info = getFileInfo(f.name, f.type);
           const Icon = info.icon;
           const isImage = isImageFile(f.name, f.type);
+          const isVideo = /\.(mp4|mov|avi|mkv|webm)$/i.test(f.name);
           const isPdf = isPdfFile(f.name, f.type);
-          const fileUrl = (isImage || isPdf) ? getFileUrl(f.storagePath) : null;
+          const fileUrl = (isImage || isVideo || isPdf) ? getFileUrl(f.storagePath) : null;
 
           return (
             <div
@@ -373,6 +383,10 @@ function FilesWidget({ context }: { context: WidgetDataContext }) {
                     className="w-full h-full object-cover" loading="lazy"
                     onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
                   />
+                </div>
+              ) : isVideo && fileUrl ? (
+                <div className="shrink-0 w-8 h-8 rounded overflow-hidden bg-black">
+                  <video src={fileUrl} className="w-full h-full object-cover" preload="metadata" muted playsInline />
                 </div>
               ) : isPdf ? (
                 <div className="shrink-0 w-8 h-8 rounded bg-red-50 dark:bg-red-950/30 flex items-center justify-center border border-red-200/50 dark:border-red-800/30">
