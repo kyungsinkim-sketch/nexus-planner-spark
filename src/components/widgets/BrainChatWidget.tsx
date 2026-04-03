@@ -73,6 +73,84 @@ function BrainChatWidget({ context }: { context: WidgetDataContext }) {
     })();
   }, [currentUser?.id]);
 
+  // ── Morning Briefing: generate once per day on first access ──
+  useEffect(() => {
+    if (!currentUser?.id || processing) return;
+    
+    const todayKey = new Date().toLocaleDateString('ko-KR', { timeZone: 'Asia/Seoul' });
+    const storageKey = `briefing_${currentUser.id}`;
+    const lastBriefing = localStorage.getItem(storageKey);
+    if (lastBriefing === todayKey) return;
+
+    const timer = setTimeout(() => {
+      try {
+        const state = useAppStore.getState();
+        const myEvents = state.getMyEvents();
+        const myTodos = state.personalTodos || [];
+        const unreadNotifs = state.appNotifications.filter(n => !n.read);
+
+        const today = new Date();
+        const todayStr = today.toISOString().split('T')[0];
+        const kstHour = today.getUTCHours() + 9;
+
+        const todayEvents = myEvents.filter(e => e.startAt?.split('T')[0] === todayStr);
+        const pendingTodos = myTodos.filter(t => !t.completed);
+        const dueTodayTodos = pendingTodos.filter(t => t.dueDate?.split('T')[0] === todayStr);
+        const unreadChats = unreadNotifs.filter(n => n.type === 'chat');
+
+        const name = currentUser.name?.split(' ')[0] || '';
+        const greeting = (kstHour < 12) ? '🌅 Good Morning' : (kstHour < 18) ? '☀️ Good Afternoon' : '🌙 Good Evening';
+        const isKo = language === 'ko';
+
+        let briefing = `${greeting}, ${name}${isKo ? '님' : ''}!\n\n`;
+
+        if (todayEvents.length > 0) {
+          briefing += `📅 ${isKo ? '오늘 일정' : "Today's Schedule"} (${todayEvents.length}${isKo ? '건' : ''})\n`;
+          todayEvents.sort((a, b) => (a.startAt || '').localeCompare(b.startAt || ''));
+          for (const e of todayEvents.slice(0, 5)) {
+            const time = e.startAt ? new Date(e.startAt).toLocaleTimeString(isKo ? 'ko-KR' : 'en-US', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Seoul', hour12: !isKo }) : '';
+            briefing += `• ${time} ${e.title}\n`;
+          }
+          briefing += '\n';
+        } else {
+          briefing += `📅 ${isKo ? '오늘 예정된 일정이 없습니다.' : 'No events scheduled for today.'}\n\n`;
+        }
+
+        if (pendingTodos.length > 0) {
+          briefing += `✅ ${isKo ? '할 일' : 'To-dos'} (${pendingTodos.length}${isKo ? '건' : ''}`;
+          if (dueTodayTodos.length > 0) briefing += `, ${isKo ? '오늘 마감' : 'due today'} ${dueTodayTodos.length}${isKo ? '건' : ''}`;
+          briefing += ')\n';
+          for (const t of (dueTodayTodos.length > 0 ? dueTodayTodos : pendingTodos).slice(0, 5)) {
+            briefing += `• ${t.title}\n`;
+          }
+          briefing += '\n';
+        }
+
+        if (unreadChats.length > 0) {
+          briefing += `💬 ${isKo ? `읽지 않은 메시지 ${unreadChats.length}건` : `${unreadChats.length} unread message(s)`}\n\n`;
+        }
+
+        briefing += isKo ? '오늘도 좋은 하루 보내세요! 궁금한 게 있으면 언제든 물어보세요 😊' : 'Have a great day! Feel free to ask me anything 😊';
+
+        setHistory(prev => {
+          if (prev.some(h => h.id === `briefing_${todayStr}`)) return prev;
+          return [{
+            id: `briefing_${todayStr}`,
+            type: 'brain' as const,
+            content: briefing,
+            timestamp: new Date().toISOString(),
+          }, ...prev];
+        });
+
+        localStorage.setItem(storageKey, todayKey);
+      } catch (err) {
+        console.error('[Briefing] Failed:', err);
+      }
+    }, 2000);
+
+    return () => clearTimeout(timer);
+  }, [currentUser?.id, processing, language]);
+
   // Web Speech API voice recognition
   const toggleVoice = useCallback(() => {
     if (isListening && recognitionRef.current) {

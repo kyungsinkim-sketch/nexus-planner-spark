@@ -496,6 +496,141 @@ export function MobileAIChatView() {
     loadBrainHistory();
   }, [loadBrainHistory]);
 
+  // ── Morning Briefing: generate once per day on first access ──
+  useEffect(() => {
+    if (!currentUser?.id || loading) return;
+
+    const todayKey = new Date().toLocaleDateString('ko-KR', { timeZone: 'Asia/Seoul' });
+    const storageKey = `briefing_${currentUser.id}`;
+    const lastBriefing = localStorage.getItem(storageKey);
+    if (lastBriefing === todayKey) return; // Already shown today
+
+    // Check if it's morning-ish (before 2 PM KST = before 05:00 UTC)
+    const kstHour = new Date().getUTCHours() + 9; // rough KST
+    // Generate briefing anytime on first access of the day
+
+    const generateBriefing = async () => {
+      try {
+        const state = useAppStore.getState();
+        const myEvents = state.getMyEvents();
+        const myTodos = state.personalTodos || [];
+        const unreadNotifs = state.appNotifications.filter(n => !n.read);
+
+        // Build today's data
+        const today = new Date();
+        const todayStr = today.toISOString().split('T')[0];
+        const tomorrowStr = new Date(today.getTime() + 86400000).toISOString().split('T')[0];
+
+        const todayEvents = myEvents.filter(e => {
+          const eDate = e.startAt?.split('T')[0];
+          return eDate === todayStr;
+        });
+
+        const pendingTodos = myTodos.filter(t => !t.completed);
+        const dueTodayTodos = pendingTodos.filter(t => {
+          if (!t.dueDate) return false;
+          return t.dueDate.split('T')[0] === todayStr;
+        });
+
+        const unreadChats = unreadNotifs.filter(n => n.type === 'chat');
+
+        // Build briefing text
+        const name = currentUser.name?.split(' ')[0] || '';
+        const greeting = (kstHour < 12) ? '🌅 Good Morning' : (kstHour < 18) ? '☀️ Good Afternoon' : '🌙 Good Evening';
+        const lang = state.language || 'ko';
+
+        let briefing = '';
+        if (lang === 'ko') {
+          briefing = `${greeting}, ${name}님!\n\n`;
+
+          // Events
+          if (todayEvents.length > 0) {
+            briefing += `📅 오늘 일정 (${todayEvents.length}건)\n`;
+            todayEvents.sort((a, b) => (a.startAt || '').localeCompare(b.startAt || ''));
+            for (const e of todayEvents.slice(0, 5)) {
+              const time = e.startAt ? new Date(e.startAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Seoul', hour12: false }) : '';
+              briefing += `• ${time} ${e.title}\n`;
+            }
+            briefing += '\n';
+          } else {
+            briefing += '📅 오늘 예정된 일정이 없습니다.\n\n';
+          }
+
+          // TODOs
+          if (pendingTodos.length > 0) {
+            briefing += `✅ 할 일 (${pendingTodos.length}건`;
+            if (dueTodayTodos.length > 0) briefing += `, 오늘 마감 ${dueTodayTodos.length}건`;
+            briefing += ')\n';
+            for (const t of (dueTodayTodos.length > 0 ? dueTodayTodos : pendingTodos).slice(0, 5)) {
+              briefing += `• ${t.title}${t.dueDate ? ` (마감: ${new Date(t.dueDate).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })})` : ''}\n`;
+            }
+            briefing += '\n';
+          }
+
+          // Unread
+          if (unreadChats.length > 0) {
+            briefing += `💬 읽지 않은 메시지 ${unreadChats.length}건\n\n`;
+          }
+
+          briefing += '오늘도 좋은 하루 보내세요! 궁금한 게 있으면 언제든 물어보세요 😊';
+        } else {
+          briefing = `${greeting}, ${name}!\n\n`;
+
+          if (todayEvents.length > 0) {
+            briefing += `📅 Today's Schedule (${todayEvents.length})\n`;
+            todayEvents.sort((a, b) => (a.startAt || '').localeCompare(b.startAt || ''));
+            for (const e of todayEvents.slice(0, 5)) {
+              const time = e.startAt ? new Date(e.startAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Seoul', hour12: true }) : '';
+              briefing += `• ${time} ${e.title}\n`;
+            }
+            briefing += '\n';
+          } else {
+            briefing += '📅 No events scheduled for today.\n\n';
+          }
+
+          if (pendingTodos.length > 0) {
+            briefing += `✅ To-dos (${pendingTodos.length}`;
+            if (dueTodayTodos.length > 0) briefing += `, ${dueTodayTodos.length} due today`;
+            briefing += ')\n';
+            for (const t of (dueTodayTodos.length > 0 ? dueTodayTodos : pendingTodos).slice(0, 5)) {
+              briefing += `• ${t.title}\n`;
+            }
+            briefing += '\n';
+          }
+
+          if (unreadChats.length > 0) {
+            briefing += `💬 ${unreadChats.length} unread message(s)\n\n`;
+          }
+
+          briefing += "Have a great day! Feel free to ask me anything 😊";
+        }
+
+        // Add as Brain AI message (local only — no DB save, just display)
+        const briefingMsg: ChatMessage = {
+          id: `briefing_${todayStr}`,
+          role: 'assistant',
+          content: briefing,
+          timestamp: new Date(),
+        };
+
+        setMessages(prev => {
+          // Don't add if already exists
+          if (prev.some(m => m.id === briefingMsg.id)) return prev;
+          return [briefingMsg, ...prev];
+        });
+
+        // Mark today as briefed
+        localStorage.setItem(storageKey, todayKey);
+      } catch (err) {
+        console.error('[Briefing] Failed:', err);
+      }
+    };
+
+    // Small delay to let data load first
+    const timer = setTimeout(generateBriefing, 2000);
+    return () => clearTimeout(timer);
+  }, [currentUser?.id, loading]);
+
   // Realtime subscription for Brain AI DM messages
   useEffect(() => {
     if (!currentUser?.id) return;
