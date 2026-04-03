@@ -65,7 +65,11 @@ function BrainChatWidget({ context }: { context: WidgetDataContext }) {
             content: m.content,
             timestamp: m.createdAt,
           }));
-          setHistory(items);
+          setHistory(prev => {
+            // Preserve briefing message if it exists
+            const briefing = prev.find(h => h.id?.startsWith('briefing_'));
+            return briefing ? [briefing, ...items] : items;
+          });
         }
       } catch (err) {
         console.error('[BrainWidget] Failed to load DM history:', err);
@@ -75,11 +79,12 @@ function BrainChatWidget({ context }: { context: WidgetDataContext }) {
 
   // ── Morning Briefing: generate once per day on first access ──
   useEffect(() => {
-    if (!currentUser?.id || processing) return;
+    if (!currentUser?.id) return;
     
     const todayKey = new Date().toLocaleDateString('ko-KR', { timeZone: 'Asia/Seoul' });
     const storageKey = `briefing_${currentUser.id}`;
     const lastBriefing = localStorage.getItem(storageKey);
+    console.log('[Briefing] Desktop check:', { todayKey, storageKey, lastBriefing, match: lastBriefing === todayKey });
     if (lastBriefing === todayKey) return;
 
     const timer = setTimeout(() => {
@@ -149,7 +154,8 @@ function BrainChatWidget({ context }: { context: WidgetDataContext }) {
     }, 2000);
 
     return () => clearTimeout(timer);
-  }, [currentUser?.id, processing, language]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUser?.id]);
 
   // Web Speech API voice recognition
   const toggleVoice = useCallback(() => {
