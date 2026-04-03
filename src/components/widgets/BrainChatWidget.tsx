@@ -66,9 +66,9 @@ function BrainChatWidget({ context }: { context: WidgetDataContext }) {
             timestamp: m.createdAt,
           }));
           setHistory(prev => {
-            // Preserve briefing message if it exists
+            // Preserve briefing message if it exists (keep at end for visibility)
             const briefing = prev.find(h => h.id?.startsWith('briefing_'));
-            return briefing ? [briefing, ...items] : items;
+            return briefing ? [...items, briefing] : items;
           });
         }
       } catch (err) {
@@ -141,14 +141,16 @@ function BrainChatWidget({ context }: { context: WidgetDataContext }) {
 
         briefing += isKo ? '오늘도 좋은 하루 보내세요! 궁금한 게 있으면 언제든 물어보세요 😊' : 'Have a great day! Feel free to ask me anything 😊';
 
+        console.log('[Briefing] Text ready, length:', briefing.length);
         setHistory(prev => {
           if (prev.some(h => h.id === `briefing_${todayStr}`)) return prev;
-          return [{
+          console.log('[Briefing] Added to history!');
+          return [...prev, {
             id: `briefing_${todayStr}`,
             type: 'brain' as const,
             content: briefing,
             timestamp: new Date().toISOString(),
-          }, ...prev];
+          }];
         });
 
         localStorage.setItem(storageKey, todayKey);
