@@ -502,6 +502,7 @@ export function MobileAIChatView() {
     const todayKey = new Date().toLocaleDateString('ko-KR', { timeZone: 'Asia/Seoul' });
     const storageKey = `briefing_${currentUser.id}`;
     const lastBriefing = localStorage.getItem(storageKey);
+    console.log('[Briefing] Check:', { todayKey, storageKey, lastBriefing, match: lastBriefing === todayKey });
     if (lastBriefing === todayKey) return; // Already shown today
 
     // Check if it's morning-ish (before 2 PM KST = before 05:00 UTC)
@@ -509,6 +510,7 @@ export function MobileAIChatView() {
     // Generate briefing anytime on first access of the day
 
     const generateBriefing = async () => {
+      console.log('[Briefing] Generating...');
       try {
         const state = useAppStore.getState();
         const myEvents = state.getMyEvents();
@@ -612,9 +614,11 @@ export function MobileAIChatView() {
           timestamp: new Date(),
         };
 
+        console.log('[Briefing] Generated text length:', briefing.length);
         setMessages(prev => {
           // Don't add if already exists
           if (prev.some(m => m.id === briefingMsg.id)) return prev;
+          console.log('[Briefing] Added to messages!');
           return [briefingMsg, ...prev];
         });
 
