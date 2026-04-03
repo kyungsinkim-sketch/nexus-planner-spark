@@ -4,7 +4,7 @@
 import type { LLMResponse, ProcessRequest } from './brain-types.ts';
 
 const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
-const MODEL = 'claude-haiku-4-5-20251001';
+const MODEL = 'claude-sonnet-4-5-20250514';
 const MAX_TOKENS = 2048; // Must accommodate large attendeeIds arrays (10+ UUIDs)
 const MAX_RETRIES = 3;
 const BASE_RETRY_DELAY_MS = 15_000; // 15s base — rate limit is per minute, so wait longer

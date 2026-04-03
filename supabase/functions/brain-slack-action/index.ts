@@ -12,7 +12,7 @@ import { createClient } from 'jsr:@supabase/supabase-js@2';
 import { authenticateOrFallback } from '../_shared/auth.ts';
 
 const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
-const MODEL = 'claude-haiku-4-5-20251001';
+const MODEL = 'claude-sonnet-4-5-20250514';
 const MAX_TOKENS = 1536;
 
 const corsHeaders = {
