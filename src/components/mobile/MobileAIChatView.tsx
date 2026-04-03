@@ -440,31 +440,28 @@ export function MobileAIChatView() {
 
   const BRAIN_BOT_ID = '00000000-0000-0000-0000-000000000099';
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [briefingMsg, setBriefingMsg] = useState<ChatMessage | null>(null);
   const [historyLoaded, setHistoryLoaded] = useState(false);
-  // Show: briefing (if exists) + most recent user question + Brain AI answer
+  // Show: most recent user Q + Brain AI answer + briefing at end
   const allMessages = useMemo(() => {
     const src = historyLoaded ? messages : [...seedMessages, ...messages];
     
-    // Always include briefing message at the top
-    const briefingMsg = src.find(m => m.id?.startsWith('briefing_'));
-    
-    // Find last user message and last assistant message after it
-    const nonBriefing = src.filter(m => !m.id?.startsWith('briefing_'));
-    const lastUserIdx = nonBriefing.findLastIndex(m => m.role === 'user');
-    
+    const lastUserIdx = src.findLastIndex(m => m.role === 'user');
     const result: typeof src = [];
-    if (briefingMsg) result.push(briefingMsg);
     
     if (lastUserIdx >= 0) {
-      result.push(nonBriefing[lastUserIdx]);
-      const lastAssistantIdx = nonBriefing.findLastIndex((m, i) => i > lastUserIdx && m.role === 'assistant');
-      if (lastAssistantIdx >= 0) result.push(nonBriefing[lastAssistantIdx]);
-    } else if (!briefingMsg && nonBriefing.length > 0) {
-      result.push(nonBriefing[nonBriefing.length - 1]);
+      result.push(src[lastUserIdx]);
+      const lastAssistantIdx = src.findLastIndex((m, i) => i > lastUserIdx && m.role === 'assistant');
+      if (lastAssistantIdx >= 0) result.push(src[lastAssistantIdx]);
+    } else if (src.length > 0) {
+      result.push(src[src.length - 1]);
     }
     
+    // Append briefing at end (separate state, survives history reload)
+    if (briefingMsg) result.push(briefingMsg);
+    
     return result;
-  }, [seedMessages, messages, historyLoaded]);
+  }, [seedMessages, messages, historyLoaded, briefingMsg]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -623,21 +620,15 @@ export function MobileAIChatView() {
           briefing += "Have a great day! Feel free to ask me anything 😊";
         }
 
-        // Add as Brain AI message (local only — no DB save, just display)
-        const briefingMsg: ChatMessage = {
+        console.log('[Briefing] Generated text length:', briefing.length);
+        const bMsg: ChatMessage = {
           id: `briefing_${todayStr}`,
           role: 'assistant',
           content: briefing,
           timestamp: new Date(),
         };
-
-        console.log('[Briefing] Generated text length:', briefing.length);
-        setMessages(prev => {
-          // Don't add if already exists
-          if (prev.some(m => m.id === briefingMsg.id)) return prev;
-          console.log('[Briefing] Added to messages!');
-          return [briefingMsg, ...prev];
-        });
+        setBriefingMsg(bMsg);
+        console.log('[Briefing] Set as separate state!');
 
         // Mark today as briefed
         localStorage.setItem(storageKey, todayKey);
