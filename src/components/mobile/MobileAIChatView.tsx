@@ -232,21 +232,8 @@ function UpdatesWidget({
   const items = useMemo<UpdateItem[]>(() => {
     const result: UpdateItem[] = [];
 
-    // Today's events
-    for (const ev of todayEvents) {
-      let timeStr = '';
-      try { timeStr = format(parseISO(ev.startAt), 'HH:mm'); } catch (_) { /* ignore */ }
-      result.push({
-        id: `ev-${ev.id}`,
-        kind: 'event',
-        icon: <CalIcon className="w-3.5 h-3.5 text-purple-400/70" />,
-        iconBg: 'bg-purple-500/10',
-        title: ev.title || (language === 'ko' ? '일정' : 'Event'),
-        subtitle: timeStr,
-        time: timeStr,
-        onClick: onEventClick,
-      });
-    }
+    // Calendar events excluded — view them in Calendar tab
+    // Only show: chat messages, todos, important notes, new event invitations (via notifications)
 
     // Pending todos (due today or overdue, max 5)
     const now = new Date();
@@ -454,17 +441,29 @@ export function MobileAIChatView() {
   const BRAIN_BOT_ID = '00000000-0000-0000-0000-000000000099';
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [historyLoaded, setHistoryLoaded] = useState(false);
-  // Only show the most recent user question + Brain AI answer
+  // Show: briefing (if exists) + most recent user question + Brain AI answer
   const allMessages = useMemo(() => {
     const src = historyLoaded ? messages : [...seedMessages, ...messages];
+    
+    // Always include briefing message at the top
+    const briefingMsg = src.find(m => m.id?.startsWith('briefing_'));
+    
     // Find last user message and last assistant message after it
-    const lastUserIdx = src.findLastIndex(m => m.role === 'user');
-    if (lastUserIdx < 0) return src.slice(-1); // no user msg, show last seed/assistant
-    const lastAssistantIdx = src.findLastIndex((m, i) => i > lastUserIdx && m.role === 'assistant');
-    if (lastAssistantIdx >= 0) {
-      return [src[lastUserIdx], src[lastAssistantIdx]];
+    const nonBriefing = src.filter(m => !m.id?.startsWith('briefing_'));
+    const lastUserIdx = nonBriefing.findLastIndex(m => m.role === 'user');
+    
+    const result: typeof src = [];
+    if (briefingMsg) result.push(briefingMsg);
+    
+    if (lastUserIdx >= 0) {
+      result.push(nonBriefing[lastUserIdx]);
+      const lastAssistantIdx = nonBriefing.findLastIndex((m, i) => i > lastUserIdx && m.role === 'assistant');
+      if (lastAssistantIdx >= 0) result.push(nonBriefing[lastAssistantIdx]);
+    } else if (!briefingMsg && nonBriefing.length > 0) {
+      result.push(nonBriefing[nonBriefing.length - 1]);
     }
-    return [src[lastUserIdx]]; // user asked, AI hasn't replied yet
+    
+    return result;
   }, [seedMessages, messages, historyLoaded]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -498,7 +497,7 @@ export function MobileAIChatView() {
 
   // ── Morning Briefing: generate once per day on first access ──
   useEffect(() => {
-    if (!currentUser?.id || loading) return;
+    if (!currentUser?.id) return;
 
     const todayKey = new Date().toLocaleDateString('ko-KR', { timeZone: 'Asia/Seoul' });
     const storageKey = `briefing_${currentUser.id}`;
@@ -629,7 +628,8 @@ export function MobileAIChatView() {
     // Small delay to let data load first
     const timer = setTimeout(generateBriefing, 2000);
     return () => clearTimeout(timer);
-  }, [currentUser?.id, loading]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUser?.id]);
 
   // Realtime subscription for Brain AI DM messages
   useEffect(() => {
