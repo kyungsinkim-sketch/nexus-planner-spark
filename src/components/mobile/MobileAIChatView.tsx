@@ -552,7 +552,7 @@ export function MobileAIChatView() {
             briefing += `📅 오늘 일정 (${todayEvents.length}건)\n`;
             const seen = new Set<string>();
             const uniqueEvents = todayEvents.filter(e => {
-              const key = \`\${e.title}|\${e.startAt}\`;
+              const key = `${e.title}|${e.startAt}`;
               if (seen.has(key)) return false;
               seen.add(key);
               return true;
@@ -591,7 +591,7 @@ export function MobileAIChatView() {
             briefing += `📅 Today's Schedule (${todayEvents.length})\n`;
             const seen2 = new Set<string>();
             const uniqueEvents2 = todayEvents.filter(e => {
-              const key = \`\${e.title}|\${e.startAt}\`;
+              const key = `${e.title}|${e.startAt}`;
               if (seen2.has(key)) return false;
               seen2.add(key);
               return true;
