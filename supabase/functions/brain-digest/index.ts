@@ -175,7 +175,7 @@ Deno.serve(async (req) => {
             message_range_start: messageRangeStart,
             message_range_end: messageRangeEnd,
             message_count: messages.length,
-            model_used: 'claude-haiku-4-5-20251001',
+            model_used: 'claude-sonnet-4-5-20250514',
             confidence: digestResult.decisions.reduce((sum: number, d: { confidence: number }) => sum + d.confidence, 0) / digestResult.decisions.length,
           });
         }
@@ -189,7 +189,7 @@ Deno.serve(async (req) => {
             message_range_start: messageRangeStart,
             message_range_end: messageRangeEnd,
             message_count: messages.length,
-            model_used: 'claude-haiku-4-5-20251001',
+            model_used: 'claude-sonnet-4-5-20250514',
             confidence: digestResult.actionItems.reduce((sum: number, a: { confidence: number }) => sum + a.confidence, 0) / digestResult.actionItems.length,
           });
         }
@@ -203,7 +203,7 @@ Deno.serve(async (req) => {
             message_range_start: messageRangeStart,
             message_range_end: messageRangeEnd,
             message_count: messages.length,
-            model_used: 'claude-haiku-4-5-20251001',
+            model_used: 'claude-sonnet-4-5-20250514',
             confidence: digestResult.risks.reduce((sum: number, r: { confidence: number }) => sum + r.confidence, 0) / digestResult.risks.length,
           });
         }
@@ -217,7 +217,7 @@ Deno.serve(async (req) => {
             message_range_start: messageRangeStart,
             message_range_end: messageRangeEnd,
             message_count: messages.length,
-            model_used: 'claude-haiku-4-5-20251001',
+            model_used: 'claude-sonnet-4-5-20250514',
             confidence: 0.8,
           });
         }

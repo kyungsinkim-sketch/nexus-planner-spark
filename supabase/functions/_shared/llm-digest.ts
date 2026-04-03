@@ -5,7 +5,7 @@
 import type { DigestResult } from './brain-types.ts';
 
 const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
-const MODEL = 'claude-haiku-4-5-20251001';
+const MODEL = 'claude-sonnet-4-5-20250514';
 const MAX_TOKENS = 2048;
 
 interface MessageForAnalysis {
