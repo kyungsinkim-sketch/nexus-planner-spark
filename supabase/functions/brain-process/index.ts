@@ -84,6 +84,8 @@ Deno.serve(async (req) => {
         .limit(HISTORY_LIMIT);
 
       // Filter by room, project, or DM context
+      // IMPORTANT: Only include current user's messages + Brain AI responses
+      // to prevent other users' messages from confusing the LLM
       if (directChatUserId) {
         // DM: load messages between the two users (+ bot messages)
         query = query.or(
@@ -92,9 +94,13 @@ Deno.serve(async (req) => {
           `and(user_id.eq.${BRAIN_BOT_USER_ID},direct_chat_user_id.in.(${userId},${directChatUserId}))`
         );
       } else if (roomId) {
-        query = query.eq('room_id', roomId);
+        // Room chat: only current user's messages + Brain AI in this room
+        query = query.eq('room_id', roomId)
+          .or(`user_id.eq.${userId},user_id.eq.${BRAIN_BOT_USER_ID}`);
       } else if (projectId) {
-        query = query.eq('project_id', projectId);
+        // Project chat: only current user's messages + Brain AI
+        query = query.eq('project_id', projectId)
+          .or(`user_id.eq.${userId},user_id.eq.${BRAIN_BOT_USER_ID}`);
       }
 
       const { data: recentMsgs, error: histErr } = await query;
