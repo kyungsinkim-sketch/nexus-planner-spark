@@ -527,7 +527,10 @@ export function MobileAIChatView() {
           return eDate === todayStr;
         });
 
-        const pendingTodos = myTodos.filter(t => !t.completed);
+        const pendingTodos = myTodos.filter(t => {
+          const s = (t as any).status?.toUpperCase?.() || '';
+          return s !== 'COMPLETED' && s !== 'DONE' && s !== 'CANCELLED';
+        });
         const dueTodayTodos = pendingTodos.filter(t => {
           if (!t.dueDate) return false;
           return t.dueDate.split('T')[0] === todayStr;

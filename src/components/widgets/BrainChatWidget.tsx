@@ -88,6 +88,7 @@ function BrainChatWidget({ context }: { context: WidgetDataContext }) {
     if (lastBriefing === todayKey) return;
 
     const timer = setTimeout(() => {
+      console.log('[Briefing] Desktop generating...');
       try {
         const state = useAppStore.getState();
         const myEvents = state.getMyEvents();
@@ -99,7 +100,10 @@ function BrainChatWidget({ context }: { context: WidgetDataContext }) {
         const kstHour = today.getUTCHours() + 9;
 
         const todayEvents = myEvents.filter(e => e.startAt?.split('T')[0] === todayStr);
-        const pendingTodos = myTodos.filter(t => !t.completed);
+        const pendingTodos = myTodos.filter(t => {
+          const s = (t as any).status?.toUpperCase?.() || '';
+          return s !== 'COMPLETED' && s !== 'DONE' && s !== 'CANCELLED';
+        });
         const dueTodayTodos = pendingTodos.filter(t => t.dueDate?.split('T')[0] === todayStr);
         const unreadChats = unreadNotifs.filter(n => n.type === 'chat');
 
