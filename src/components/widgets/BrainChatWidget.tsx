@@ -440,7 +440,7 @@ function BrainChatWidget({ context }: { context: WidgetDataContext }) {
                     <span className="typo-chat-name text-violet-600 dark:text-violet-400">Brain AI</span>
                   </div>
                 )}
-                <p className="typo-widget-body leading-relaxed" style={{ overflowWrap: 'anywhere', wordBreak: 'break-word' }}>
+                <p className="typo-widget-body leading-relaxed whitespace-pre-wrap" style={{ overflowWrap: 'anywhere', wordBreak: 'break-word' }}>
                   {item.content}
                 </p>
                 {/* Action badges */}
