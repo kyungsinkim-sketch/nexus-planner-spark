@@ -257,6 +257,14 @@ export function ChatMessageBubble({ message, isCurrentUser, onVoteDecision, onAc
         >
           {renderContentWithMentions(message.content, isCurrentUser)}
         </div>
+        {/* Link previews for URLs in message */}
+        {(() => {
+          const urls = message.content.match(/https?:\/\/[^\s<>"{}|\\^`[\]]+/g);
+          if (!urls || urls.length === 0) return null;
+          // Show preview for first URL only (to avoid clutter)
+          const cleanUrl = urls[0].replace(/[.,;:!?)]+$/, '');
+          return <LinkPreview url={cleanUrl} isCurrentUser={isCurrentUser} />;
+        })()}
       </div>
     </MessageWrapper>
   );
@@ -1102,5 +1110,62 @@ function DecisionBubble({ data, messageId, isCurrentUser, onVote }: {
         )}
       </div>
     </div>
+  );
+}
+
+// ── Link Preview Component ──
+function LinkPreview({ url, isCurrentUser }: { url: string; isCurrentUser: boolean }) {
+  const [meta, setMeta] = useState<{ title?: string; description?: string; image?: string; siteName?: string; favicon?: string } | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const cacheKey = `og_${url}`;
+    const cached = sessionStorage.getItem(cacheKey);
+    if (cached) {
+      try { setMeta(JSON.parse(cached)); setLoading(false); return; } catch {}
+    }
+
+    const fetchMeta = async () => {
+      try {
+        const { supabase } = await import('@/lib/supabase');
+        const { data } = await supabase.functions.invoke('og-meta', {
+          body: { url },
+        });
+        if (data && (data.title || data.image)) {
+          setMeta(data);
+          sessionStorage.setItem(cacheKey, JSON.stringify(data));
+        }
+      } catch {}
+      setLoading(false);
+    };
+    fetchMeta();
+  }, [url]);
+
+  if (loading || !meta || (!meta.title && !meta.image)) return null;
+
+  return (
+    <a
+      href={url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className={`block mt-1 rounded-lg overflow-hidden border max-w-[280px] hover:opacity-80 transition-opacity ${
+        isCurrentUser ? 'border-white/20 ml-auto' : 'border-border'
+      }`}
+      onClick={(e) => e.stopPropagation()}
+    >
+      {meta.image && (
+        <img src={meta.image} alt="" className="w-full h-32 object-cover bg-muted" loading="lazy" />
+      )}
+      <div className="px-2.5 py-2 bg-muted/50">
+        {meta.siteName && (
+          <div className="flex items-center gap-1.5 mb-0.5">
+            {meta.favicon && <img src={meta.favicon} alt="" className="w-3 h-3 rounded-sm" />}
+            <span className="text-[10px] text-muted-foreground truncate">{meta.siteName}</span>
+          </div>
+        )}
+        {meta.title && <p className="text-xs font-medium text-foreground line-clamp-2">{meta.title}</p>}
+        {meta.description && <p className="text-[10px] text-muted-foreground line-clamp-2 mt-0.5">{meta.description}</p>}
+      </div>
+    </a>
   );
 }
