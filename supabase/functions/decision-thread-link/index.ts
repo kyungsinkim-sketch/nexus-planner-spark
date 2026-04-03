@@ -84,7 +84,7 @@ async function generateThreadMeta(
       'anthropic-version': '2023-06-01',
     },
     body: JSON.stringify({
-      model: 'claude-sonnet-4-5-20250514',
+      model: 'claude-sonnet-4-5-20250929',
       max_tokens: 500,
       system: `You summarize decision threads for a Korean creative production company.
 Given related decision items from different sources (meetings, emails, chats), generate:

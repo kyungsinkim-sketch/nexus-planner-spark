@@ -28,7 +28,7 @@ const corsHeaders = {
 };
 
 const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
-const MODEL = 'claude-sonnet-4-5-20250514';
+const MODEL = 'claude-sonnet-4-5-20250929';
 const MAX_TOKENS = 4096;
 
 interface TranscriptSegment {

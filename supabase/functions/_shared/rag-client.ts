@@ -241,7 +241,7 @@ function generatePseudoEmbedding(text: string, dims?: number): number[] {
 // ─── Knowledge Extraction ───────────────────────────
 
 const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
-const MODEL = 'claude-sonnet-4-5-20250514';
+const MODEL = 'claude-sonnet-4-5-20250929';
 
 /**
  * Extract knowledge items from a chat digest result.
