@@ -84,10 +84,9 @@ export function useChatNotifications() {
             return;
           }
 
-          // Skip brain bot DM messages from the global subscription — they are loaded
-          // through getDirectMessages() when the DM is opened, which scopes by
-          // conversation pair. This prevents cross-user AI response leakage.
-          if (msg.user_id === BRAIN_BOT_USER_ID && msg.direct_chat_user_id) return;
+          // Skip brain bot DM messages NOT addressed to the current user.
+          // Allow bot DMs addressed to this user so they appear in real-time.
+          if (msg.user_id === BRAIN_BOT_USER_ID && msg.direct_chat_user_id && msg.direct_chat_user_id !== currentUser.id) return;
 
           const state = useAppStore.getState();
 

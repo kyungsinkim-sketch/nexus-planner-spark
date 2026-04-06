@@ -53,7 +53,7 @@ import { useTranslation } from '@/hooks/useTranslation';
 // ChatShareMenu removed — replaced by Brain AI (@AiAssistant mention)
 import { ChatMessageBubble } from '@/components/chat/ChatMessageBubble';
 import { FileUploadModal } from '@/components/project/FileUploadModal';
-import type { LocationShare, ScheduleShare, DecisionShare, ChatMessage, ChatRoom, FileCategory } from '@/types/core';
+import type { LocationShare, ScheduleShare, DecisionShare, ChatMessage, ChatMessageType, ChatRoom, FileCategory } from '@/types/core';
 import { BRAIN_BOT_USER_ID, BRAIN_AI_USER_ID, isBrainAIUser, extractEmailDomain, isFreelancerDomain, isAIPersonaUser, PERSONA_ID_MAP, PERSONA_PABLO_USER_ID, PERSONA_CD_USER_ID, PERSONA_PD_USER_ID } from '@/types/core';
 import { CallStartDialog } from '@/components/chat/CallStartDialog';
 import * as chatService from '@/services/chatService';
@@ -725,6 +725,24 @@ export function ChatPanel({ defaultProjectId, defaultDmUserId, defaultGroupRoomI
           chatMembers,
           language,
         });
+
+        // Add bot message to store so it persists across reconnects
+        // (Realtime subscription skips brain bot DM messages for security)
+        const botMsg = brainResult.message as Record<string, unknown> | undefined;
+        if (botMsg?.id) {
+          const { addMessage: addMsg } = useAppStore.getState();
+          addMsg({
+            id: botMsg.id as string,
+            userId: (botMsg.user_id as string) || BRAIN_BOT_USER_ID,
+            content: (botMsg.content as string) || brainResult.llmResponse.replyMessage,
+            messageType: ((botMsg.message_type as string) || 'brain_action') as ChatMessageType,
+            projectId: (botMsg.project_id as string) || '',
+            roomId: (botMsg.room_id as string) || undefined,
+            directChatUserId: (botMsg.direct_chat_user_id as string) || currentUser.id,
+            createdAt: (botMsg.created_at as string) || new Date().toISOString(),
+            brainActionData: (botMsg.brain_action_data as Record<string, unknown>) || undefined,
+          });
+        }
 
         // Auto-execute all pending actions (same as regular Brain processing)
         const brainActions = brainResult.actions || [];
