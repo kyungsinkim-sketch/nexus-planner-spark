@@ -1032,14 +1032,18 @@ export function MobileAIChatView() {
 
       const upcomingEvents = allEvents
         .filter(e => {
-          const d = e.startAt.slice(0, 10);
+          const d = new Date(e.startAt).toLocaleDateString('en-CA', { timeZone: 'Asia/Seoul' });
           const inRange = d >= todayStr && d <= weekLater;
           const isMine = e.ownerId === currentUser.id || e.attendeeIds?.includes(currentUser.id) || e.createdBy === currentUser.id;
           return inRange && isMine;
         })
         .sort((a, b) => a.startAt.localeCompare(b.startAt))
         .slice(0, 15)
-        .map(e => `- ${e.startAt.slice(0, 16)} ${e.title}${e.location ? ` (${e.location})` : ''}`)
+        .map(e => {
+          const kstDate = new Date(e.startAt).toLocaleDateString('en-CA', { timeZone: 'Asia/Seoul' });
+          const kstTime = new Date(e.startAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Seoul', hour12: false });
+          return `- ${kstDate} ${kstTime} ${e.title}${e.location ? ` (${e.location})` : ''}`;
+        })
         .join('\n');
 
       const pendingTodos = allTodos
