@@ -1022,8 +1022,43 @@ export function MobileAIChatView() {
 
     try {
       const brainService = await import('@/services/brainService');
+
+      // Build calendar & todo context for Brain AI
+      const now = new Date();
+      const todayStr = now.toISOString().slice(0, 10);
+      const weekLater = new Date(now.getTime() + 7 * 86400000).toISOString().slice(0, 10);
+      const { events: allEvents, personalTodos: allTodos } = useAppStore.getState();
+
+      const upcomingEvents = allEvents
+        .filter(e => {
+          const d = e.startAt.slice(0, 10);
+          const inRange = d >= todayStr && d <= weekLater;
+          const isMine = e.ownerId === currentUser.id || e.attendeeIds?.includes(currentUser.id) || e.createdBy === currentUser.id;
+          return inRange && isMine;
+        })
+        .sort((a, b) => a.startAt.localeCompare(b.startAt))
+        .slice(0, 15)
+        .map(e => `- ${e.startAt.slice(0, 16)} ${e.title}${e.location ? ` (${e.location})` : ''}`)
+        .join('\n');
+
+      const pendingTodos = allTodos
+        .filter(t => t.status === 'PENDING' &&
+          (t.assigneeIds?.includes(currentUser.id) || t.requestedById === currentUser.id))
+        .slice(0, 10)
+        .map(t => `- ${t.title}${t.dueDate ? ` (마감: ${t.dueDate.slice(0, 10)})` : ''}`)
+        .join('\n');
+
+      const dataContext = [
+        upcomingEvents ? `[📅 내 일정 (${todayStr} ~ ${weekLater})]\n${upcomingEvents}` : '',
+        pendingTodos ? `[✅ 내 할 일]\n${pendingTodos}` : '',
+      ].filter(Boolean).join('\n\n');
+
+      const contextualMessage = dataContext
+        ? `${dataContext}\n\n[Current request]\n${msg}`
+        : msg;
+
       const result = await brainService.processMessageWithLLM({
-        messageContent: msg,
+        messageContent: contextualMessage,
         userId: currentUser.id,
         directChatUserId: BRAIN_BOT_ID,
         chatMembers: [],
