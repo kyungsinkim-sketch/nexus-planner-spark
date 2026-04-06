@@ -1122,7 +1122,7 @@ function LinkPreview({ url, isCurrentUser }: { url: string; isCurrentUser: boole
     const cacheKey = `og_${url}`;
     const cached = sessionStorage.getItem(cacheKey);
     if (cached) {
-      try { setMeta(JSON.parse(cached)); setLoading(false); return; } catch {}
+      try { setMeta(JSON.parse(cached)); setLoading(false); return; } catch { /* ignore parse error */ }
     }
 
     const fetchMeta = async () => {
@@ -1135,7 +1135,7 @@ function LinkPreview({ url, isCurrentUser }: { url: string; isCurrentUser: boole
           setMeta(data);
           sessionStorage.setItem(cacheKey, JSON.stringify(data));
         }
-      } catch {}
+      } catch { /* ignore fetch error */ }
       setLoading(false);
     };
     fetchMeta();
