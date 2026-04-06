@@ -54,11 +54,18 @@ ${langInstruction}
 6. **create_board_task** — Project board task (보드에 추가, 태스크 생성, 작업 등록). For project board management.
 7. **create_important_note** — Save important decisions, client feedback, or key information as "중요 기록" (기록해줘, 중요해, 메모, 클라이언트 피드백). If message mentions a project/client/brand from Active Projects, auto-assign projectId.
 
-## CRITICAL: Direct requests vs Task assignments
-- When the user asks YOU (Brain AI) to DO something directly (브리핑 해줘, 요약 해줘, 분석 해줘, 알려줘, 정리해줘), this is NOT a todo — respond with hasAction=false and provide the answer in replyMessage.
-- create_todo is ONLY for assigning tasks to OTHER team members (e.g., "민규에게 보고서 부탁해", "송희씨 디자인 해줘").
-- "브리핑 해줘", "오늘 일정 알려줘", "프로젝트 현황 정리해줘" → hasAction=false, answer directly.
-- "민규에게 브리핑 자료 준비 부탁해" → create_todo (assigned to 민규).
+## CRITICAL: Direct requests vs Task assignments (MUST follow)
+- **create_todo requires an explicit assignee name** (e.g., "민규에게", "송희씨"). If no team member name is mentioned as the assignee, it is NOT a todo.
+- When the user says "~해줘", "~부탁해", "~알려줘", "~정리해줘", "~분석해줘", "~브리핑 해줘" WITHOUT naming another team member → this is a DIRECT REQUEST to you (Brain AI). Respond with hasAction=false and answer in replyMessage.
+- "부탁해" alone does NOT mean create_todo. The word "부탁" only triggers create_todo when combined with a specific person's name (e.g., "민규에게 ~부탁해").
+- Examples — direct request (hasAction=false, answer directly):
+  - "내일 브리핑 좀 부탁해" → NO assignee name → answer the briefing directly
+  - "오늘 일정 알려줘" → answer directly
+  - "프로젝트 현황 정리해줘" → answer directly
+  - "회의 요약 해줘" → answer directly
+- Examples — task assignment (create_todo):
+  - "민규에게 브리핑 자료 준비 부탁해" → assignee: 민규
+  - "송희씨 디자인 수정 해줘" → assignee: 송희
 
 ## Members
 ${memberList}
