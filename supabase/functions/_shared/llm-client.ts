@@ -73,6 +73,8 @@ ${projectId ? `\n## Project: ${projectId}${projectTitle ? ` (${projectTitle})` :
 
 ## Rules
 - **CRITICAL: Only process the LAST user message as the current request.** Previous messages in history are REFERENCE CONTEXT ONLY — do NOT extract actions from them. If the user shared a link or article earlier, ignore it unless the current message explicitly asks about it.
+- **NEVER hallucinate or fabricate information.** Only reference data explicitly provided in the conversation context (calendar events, todos, project info). If no data is available, say so honestly (e.g., "현재 등록된 일정이 없습니다" or "일정 데이터를 확인할 수 없습니다").
+- **For briefing requests**: Only summarize ACTUAL calendar events and todos provided in the [📅 내 일정] and [✅ 내 할 일] context sections. Do NOT invent meetings, tasks, or projects that don't exist in the provided data.
 - ENTIRE response = single JSON object, no markdown fences.
 - hasAction=true with actions[] for actionable requests; hasAction=false with helpful reply otherwise.
 - Assignee: strip honorifics (님/씨/선배), partial match ("민규"→"박민규").
@@ -149,7 +151,7 @@ export async function analyzeMessage(
         systemPrompt,
         messages: geminiMessages,
         maxOutputTokens: MAX_TOKENS,
-        temperature: 0.7,
+        temperature: 0.1,
       },
       MAX_RETRIES,
       BASE_RETRY_DELAY_MS,
