@@ -678,8 +678,8 @@ export function ChatPanel({ defaultProjectId, defaultDmUserId, defaultGroupRoomI
 
         // Build calendar & todo context for Brain AI
         const now = new Date();
-        const todayStr = now.toISOString().slice(0, 10);
-        const weekLater = new Date(now.getTime() + 7 * 86400000).toISOString().slice(0, 10);
+        const todayStr = now.toLocaleDateString('en-CA', { timeZone: 'Asia/Seoul' }); // KST YYYY-MM-DD
+        const weekLater = new Date(now.getTime() + 7 * 86400000).toLocaleDateString('en-CA', { timeZone: 'Asia/Seoul' });
         const { events: allEvents, personalTodos: allTodos } = useAppStore.getState();
 
         console.log(`[BrainDM] Events total: ${allEvents.length}, user: ${currentUser.id}, today: ${todayStr}`);

@@ -262,8 +262,8 @@ function BrainChatWidget({ context }: { context: WidgetDataContext }) {
 
       // Build calendar & todo context for Brain AI (same as Brain DM path)
       const now = new Date();
-      const todayStr = now.toISOString().slice(0, 10);
-      const weekLater = new Date(now.getTime() + 7 * 86400000).toISOString().slice(0, 10);
+      const todayStr = now.toLocaleDateString('en-CA', { timeZone: 'Asia/Seoul' }); // KST YYYY-MM-DD
+      const weekLater = new Date(now.getTime() + 7 * 86400000).toLocaleDateString('en-CA', { timeZone: 'Asia/Seoul' });
       const { events: allEvents, personalTodos: allTodos } = useAppStore.getState();
 
       const upcomingEvents = allEvents

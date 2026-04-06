@@ -503,7 +503,7 @@ export function MobileAIChatView() {
     if (lastBriefing === todayKey) return; // Already shown today
 
     // Check if it's morning-ish (before 2 PM KST = before 05:00 UTC)
-    const kstHour = new Date().getUTCHours() + 9; // rough KST
+    const kstHour = parseInt(new Date().toLocaleTimeString('en-US', { timeZone: 'Asia/Seoul', hour: 'numeric', hour12: false }), 10);
     // Generate briefing anytime on first access of the day
 
     const generateBriefing = async () => {
@@ -516,8 +516,9 @@ export function MobileAIChatView() {
 
         // Build today's data
         const today = new Date();
-        const todayStr = today.toISOString().split('T')[0];
-        const tomorrowStr = new Date(today.getTime() + 86400000).toISOString().split('T')[0];
+        const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Seoul' }); // KST YYYY-MM-DD
+        const tomorrow = new Date(today.getTime() + 86400000);
+        const tomorrowStr = tomorrow.toLocaleDateString('en-CA', { timeZone: 'Asia/Seoul' });
 
         const todayEvents = myEvents.filter(e => {
           const eDate = e.startAt?.split('T')[0];
@@ -1025,8 +1026,8 @@ export function MobileAIChatView() {
 
       // Build calendar & todo context for Brain AI
       const now = new Date();
-      const todayStr = now.toISOString().slice(0, 10);
-      const weekLater = new Date(now.getTime() + 7 * 86400000).toISOString().slice(0, 10);
+      const todayStr = now.toLocaleDateString('en-CA', { timeZone: 'Asia/Seoul' }); // KST YYYY-MM-DD
+      const weekLater = new Date(now.getTime() + 7 * 86400000).toLocaleDateString('en-CA', { timeZone: 'Asia/Seoul' });
       const { events: allEvents, personalTodos: allTodos } = useAppStore.getState();
 
       const upcomingEvents = allEvents
