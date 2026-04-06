@@ -34,10 +34,10 @@ Deno.serve(async (req) => {
     // Auth: try JWT first, fall back for cron/server-to-server calls
     const { supabase } = await authenticateOrFallback(req);
 
-    const apiKey = Deno.env.get('ANTHROPIC_API_KEY');
+    const apiKey = Deno.env.get('GEMINI_API_KEY');
     if (!apiKey) {
       return new Response(
-        JSON.stringify({ error: 'ANTHROPIC_API_KEY not configured' }),
+        JSON.stringify({ error: 'GEMINI_API_KEY not configured' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       );
     }
@@ -175,7 +175,7 @@ Deno.serve(async (req) => {
             message_range_start: messageRangeStart,
             message_range_end: messageRangeEnd,
             message_count: messages.length,
-            model_used: 'claude-sonnet-4-5-20250929',
+            model_used: 'gemini-2.0-flash',
             confidence: digestResult.decisions.reduce((sum: number, d: { confidence: number }) => sum + d.confidence, 0) / digestResult.decisions.length,
           });
         }
@@ -189,7 +189,7 @@ Deno.serve(async (req) => {
             message_range_start: messageRangeStart,
             message_range_end: messageRangeEnd,
             message_count: messages.length,
-            model_used: 'claude-sonnet-4-5-20250929',
+            model_used: 'gemini-2.0-flash',
             confidence: digestResult.actionItems.reduce((sum: number, a: { confidence: number }) => sum + a.confidence, 0) / digestResult.actionItems.length,
           });
         }
@@ -203,7 +203,7 @@ Deno.serve(async (req) => {
             message_range_start: messageRangeStart,
             message_range_end: messageRangeEnd,
             message_count: messages.length,
-            model_used: 'claude-sonnet-4-5-20250929',
+            model_used: 'gemini-2.0-flash',
             confidence: digestResult.risks.reduce((sum: number, r: { confidence: number }) => sum + r.confidence, 0) / digestResult.risks.length,
           });
         }
@@ -217,7 +217,7 @@ Deno.serve(async (req) => {
             message_range_start: messageRangeStart,
             message_range_end: messageRangeEnd,
             message_count: messages.length,
-            model_used: 'claude-sonnet-4-5-20250929',
+            model_used: 'gemini-2.0-flash',
             confidence: 0.8,
           });
         }

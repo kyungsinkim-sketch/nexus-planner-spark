@@ -15,14 +15,13 @@
  */
 
 import { authenticateOrFallback } from '../_shared/auth.ts';
+import { callGemini, GeminiRateLimitError } from '../_shared/gemini-client.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
-const MODEL = 'claude-sonnet-4-5-20250929';
 const MAX_TOKENS = 4096;
 
 interface GmailMessage {
@@ -348,29 +347,24 @@ ${emailsContext}`;
     : '';
   const systemPrompt = SYSTEM_PROMPT_BASE + langSection + buildContextPrompt(context) + buildFeedbackPrompt(feedback);
 
-  const requestBody = JSON.stringify({
-    model: MODEL,
-    max_tokens: MAX_TOKENS,
-    system: systemPrompt,
-    messages: [{ role: 'user', content: userMessage }],
-  });
-
-  // ── Retry wrapper (max 2 retries for 429/529) ──
+  // ── Retry wrapper (max 2 retries for 429/503) ──
   let lastError: Error | null = null;
   for (let attempt = 0; attempt < 3; attempt++) {
-    const response = await fetch(ANTHROPIC_API_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': anthropicKey,
-        'anthropic-version': '2023-06-01',
-      },
-      body: requestBody,
-    });
+    if (attempt > 0) {
+      const delay = 10_000 * Math.pow(2, attempt - 1);
+      console.warn(`[gmail-brain-analyze] Rate limited, retry ${attempt}/2 after ${delay}ms`);
+      await sleep(delay);
+    }
 
-    if (response.ok) {
-      const data = await response.json();
-      const content = data.content?.[0]?.text || '[]';
+    try {
+      const geminiResponse = await callGemini(anthropicKey, {
+        systemPrompt,
+        messages: [{ role: 'user', content: userMessage }],
+        maxOutputTokens: MAX_TOKENS,
+        temperature: 0.7,
+      });
+
+      const content = geminiResponse.text || '[]';
 
       // Extract JSON from response (may be wrapped in ```json blocks)
       const jsonMatch = content.match(/\[[\s\S]*\]/);
@@ -386,28 +380,16 @@ ${emailsContext}`;
         return [];
       }
       return parsed;
+    } catch (err) {
+      if (err instanceof GeminiRateLimitError && attempt < 2) {
+        lastError = new ApiError(err.message, 429);
+        continue;
+      }
+      if (err instanceof GeminiRateLimitError) {
+        throw new ApiError(err.message, 429);
+      }
+      throw new ApiError((err as Error).message, 500);
     }
-
-    // Handle retryable errors
-    const status = response.status;
-    const errText = await response.text();
-
-    if (status === 429 && attempt < 2) {
-      console.warn(`[gmail-brain-analyze] Rate limited (429), retry ${attempt + 1}/2 after 10s`);
-      await sleep(10_000);
-      lastError = new ApiError(`Claude API rate limited: ${errText}`, 429);
-      continue;
-    }
-
-    if (status === 529 && attempt < 2) {
-      console.warn(`[gmail-brain-analyze] API overloaded (529), retry ${attempt + 1}/2 after 5s`);
-      await sleep(5_000);
-      lastError = new ApiError(`Claude API overloaded: ${errText}`, 529);
-      continue;
-    }
-
-    // Non-retryable error — throw immediately
-    throw new ApiError(`Claude API error: ${status} - ${errText}`, status);
   }
 
   // All retries exhausted
@@ -433,10 +415,10 @@ Deno.serve(async (req) => {
       );
     }
 
-    const anthropicKey = Deno.env.get('ANTHROPIC_API_KEY');
+    const anthropicKey = Deno.env.get('GEMINI_API_KEY');
     if (!anthropicKey) {
       return new Response(
-        JSON.stringify({ error: 'ANTHROPIC_API_KEY not configured', suggestions: [] }),
+        JSON.stringify({ error: 'GEMINI_API_KEY not configured', suggestions: [] }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       );
     }

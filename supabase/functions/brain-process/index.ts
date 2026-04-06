@@ -37,11 +37,11 @@ Deno.serve(async (req) => {
     const { user: authUser, supabase } = await authenticateRequest(req);
 
     // 1. Validate API key
-    const anthropicKey = Deno.env.get('ANTHROPIC_API_KEY');
+    const anthropicKey = Deno.env.get('GEMINI_API_KEY');
     if (!anthropicKey) {
-      console.error('ANTHROPIC_API_KEY not found in env');
+      console.error('GEMINI_API_KEY not found in env');
       return new Response(
-        JSON.stringify({ error: 'ANTHROPIC_API_KEY not configured' }),
+        JSON.stringify({ error: 'GEMINI_API_KEY not configured' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       );
     }

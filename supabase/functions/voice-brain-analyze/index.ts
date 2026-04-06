@@ -27,8 +27,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
-const MODEL = 'claude-sonnet-4-5-20250929';
+import { callGemini, GeminiRateLimitError } from '../_shared/gemini-client.ts';
 const MAX_TOKENS = 4096;
 
 interface TranscriptSegment {
@@ -160,7 +159,7 @@ function tryParseJson(raw: string): Record<string, unknown> | null {
 
 async function analyzeWithClaude(
   transcript: TranscriptSegment[],
-  anthropicKey: string,
+  apiKey: string,
   context?: BrainContext,
 ): Promise<Record<string, unknown>> {
   const transcriptText = transcript
@@ -177,26 +176,23 @@ ${transcriptText}`;
 
   const systemPrompt = buildSystemPrompt(context);
 
-  // Retry up to 2 times for 429/529
+  // Retry up to 2 times for 429/503
   for (let attempt = 0; attempt < 3; attempt++) {
-    const response = await fetch(ANTHROPIC_API_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': anthropicKey,
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify({
-        model: MODEL,
-        max_tokens: MAX_TOKENS,
-        system: systemPrompt,
-        messages: [{ role: 'user', content: userMessage }],
-      }),
-    });
+    if (attempt > 0) {
+      const waitMs = (attempt) * 10_000;
+      console.warn(`[voice-brain-analyze] Rate limited, retry ${attempt}/2 after ${waitMs / 1000}s`);
+      await sleep(waitMs);
+    }
 
-    if (response.ok) {
-      const data = await response.json();
-      const content = data.content?.[0]?.text || '{}';
+    try {
+      const geminiResponse = await callGemini(apiKey, {
+        systemPrompt,
+        messages: [{ role: 'user', content: userMessage }],
+        maxOutputTokens: MAX_TOKENS,
+        temperature: 0.7,
+      });
+
+      const content = geminiResponse.text || '{}';
 
       // Extract JSON object from response
       const jsonMatch = content.match(/\{[\s\S]*\}/);
@@ -212,27 +208,15 @@ ${transcriptText}`;
       }
 
       return parsed;
+    } catch (err) {
+      if (err instanceof GeminiRateLimitError && attempt < 2) {
+        continue;
+      }
+      if (err instanceof GeminiRateLimitError) {
+        throw new ApiError(err.message, 429);
+      }
+      throw new ApiError((err as Error).message, 500);
     }
-
-    const status = response.status;
-    if (status === 429 && attempt < 2) {
-      const waitMs = (attempt + 1) * 10_000; // 10s, 20s
-      console.warn(`[voice-brain-analyze] Rate limited, retry ${attempt + 1}/2 after ${waitMs / 1000}s`);
-      await sleep(waitMs);
-      continue;
-    }
-    if (status === 529 && attempt < 2) {
-      const waitMs = (attempt + 1) * 5_000; // 5s, 10s
-      console.warn(`[voice-brain-analyze] Overloaded, retry ${attempt + 1}/2 after ${waitMs / 1000}s`);
-      await sleep(waitMs);
-      continue;
-    }
-
-    // Propagate status code for proper client-side handling
-    const errText = await response.text();
-    if (status === 429) throw new ApiError(`Rate limited: ${errText}`, 429);
-    if (status === 529) throw new ApiError(`Overloaded: ${errText}`, 503);
-    throw new ApiError(`Claude API error: ${status} - ${errText}`, 500);
   }
 
   throw new ApiError('All retries exhausted', 503);
@@ -276,10 +260,10 @@ Deno.serve(async (req) => {
       );
     }
 
-    const anthropicKey = Deno.env.get('ANTHROPIC_API_KEY');
+    const anthropicKey = Deno.env.get('GEMINI_API_KEY');
     if (!anthropicKey) {
       return new Response(
-        JSON.stringify({ error: 'ANTHROPIC_API_KEY not configured' }),
+        JSON.stringify({ error: 'GEMINI_API_KEY not configured' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       );
     }

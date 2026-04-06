@@ -1,12 +1,9 @@
-// Anthropic Claude API client for conversation batch analysis (Deno)
+// Gemini Flash API client for conversation batch analysis (Deno)
 // Used by brain-digest Edge Function for passive intelligence.
 // Analyzes batches of chat messages to extract decisions, action items, risks, and summaries.
 
 import type { DigestResult } from './brain-types.ts';
-
-const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
-const MODEL = 'claude-sonnet-4-5-20250929';
-const MAX_TOKENS = 2048;
+import { callGemini, GeminiRateLimitError } from './gemini-client.ts';
 
 interface MessageForAnalysis {
   userId: string;
@@ -84,7 +81,7 @@ Always respond with valid JSON only.`;
 }
 
 /**
- * Call Claude to analyze a batch of conversation messages.
+ * Call Gemini Flash to analyze a batch of conversation messages.
  */
 export async function analyzeConversation(
   messages: MessageForAnalysis[],
@@ -108,46 +105,32 @@ export async function analyzeConversation(
 
   const userMessage = `다음 ${messages.length}개의 메시지를 분석해주세요:\n\n${conversationText}`;
 
-  const response = await fetch(ANTHROPIC_API_URL, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
-    },
-    body: JSON.stringify({
-      model: MODEL,
-      max_tokens: MAX_TOKENS,
-      system: systemPrompt,
+  let responseText: string;
+  try {
+    const response = await callGemini(apiKey, {
+      systemPrompt,
       messages: [{ role: 'user', content: userMessage }],
-    }),
-  });
-
-  if (!response.ok) {
-    const errorBody = await response.text();
-    throw new Error(`Anthropic API error (${response.status}): ${errorBody}`);
-  }
-
-  const result = await response.json();
-
-  // Extract text content
-  const textBlock = result.content?.find(
-    (block: { type: string }) => block.type === 'text',
-  );
-  if (!textBlock?.text) {
-    throw new Error('No text content in Anthropic response');
+      maxOutputTokens: 2048,
+      temperature: 0.7,
+    });
+    responseText = response.text;
+  } catch (err) {
+    if (err instanceof GeminiRateLimitError) {
+      throw new Error(`Gemini API rate limited: ${err.message}`);
+    }
+    throw err;
   }
 
   // Parse JSON response
   let parsed: DigestResult;
   try {
-    let jsonText = textBlock.text.trim();
+    let jsonText = responseText.trim();
     if (jsonText.startsWith('```')) {
       jsonText = jsonText.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '');
     }
     parsed = JSON.parse(jsonText);
   } catch {
-    console.error('Failed to parse digest LLM response:', textBlock.text);
+    console.error('Failed to parse digest LLM response:', responseText);
     // Return safe fallback
     parsed = {
       decisions: [],

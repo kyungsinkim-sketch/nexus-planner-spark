@@ -37,9 +37,9 @@ Deno.serve(async (req) => {
     const { user, supabase } = await authenticateRequest(req);
     const userId = user.id;
 
-    const anthropicKey = Deno.env.get('ANTHROPIC_API_KEY');
+    const anthropicKey = Deno.env.get('GEMINI_API_KEY');
     if (!anthropicKey) {
-      return jsonResponse({ error: 'ANTHROPIC_API_KEY not configured' }, 500);
+      return jsonResponse({ error: 'GEMINI_API_KEY not configured' }, 500);
     }
 
     const body = await req.json();
@@ -116,31 +116,22 @@ Rules:
 - Return [] if no clear patterns emerge
 - Always respond with valid JSON array only`;
 
-        const claudeResponse = await fetch('https://api.anthropic.com/v1/messages', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-api-key': anthropicKey,
-            'anthropic-version': '2023-06-01',
-          },
-          body: JSON.stringify({
-            model: 'claude-sonnet-4-5-20250929',
-            max_tokens: 2000,
-            system: systemPrompt,
+        const { callGemini: callGeminiApi } = await import('../_shared/gemini-client.ts');
+        let responseText: string;
+        try {
+          const geminiResp = await callGeminiApi(anthropicKey, {
+            systemPrompt,
             messages: [
               { role: 'user', content: `다음 ${knowledgeItems.length}개의 지식 항목을 분석해주세요:\n\n${knowledgeText}` },
             ],
-          }),
-        });
-
-        if (!claudeResponse.ok) {
-          const errText = await claudeResponse.text();
-          console.error('Claude API error:', errText);
+            maxOutputTokens: 2000,
+            temperature: 0.7,
+          });
+          responseText = geminiResp.text || '[]';
+        } catch (err) {
+          console.error('Gemini API error:', err);
           return jsonResponse({ error: 'LLM analysis failed' }, 500);
         }
-
-        const claudeData = await claudeResponse.json();
-        const responseText = claudeData.content?.[0]?.text || '[]';
 
         // Parse the JSON array from Claude's response
         let patterns: Array<{

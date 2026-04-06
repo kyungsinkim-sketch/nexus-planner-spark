@@ -23,7 +23,7 @@ const corsHeaders = {
 
 const VOYAGE_API_URL = 'https://api.voyageai.com/v1/embeddings';
 const VOYAGE_MODEL = 'voyage-3-lite';
-const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
+import { callGemini } from '../_shared/gemini-client.ts';
 const SIMILARITY_THRESHOLD = 0.78; // minimum cosine similarity to consider "related"
 const MAX_CANDIDATES = 10;
 
@@ -76,17 +76,9 @@ async function generateThreadMeta(
     `[${i + 1}] (${item.source_type}, ${item.created_at.split('T')[0]})\n${item.content}`
   ).join('\n\n');
 
-  const resp = await fetch(ANTHROPIC_API_URL, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': anthropicKey,
-      'anthropic-version': '2023-06-01',
-    },
-    body: JSON.stringify({
-      model: 'claude-sonnet-4-5-20250929',
-      max_tokens: 500,
-      system: `You summarize decision threads for a Korean creative production company.
+  try {
+    const geminiResp = await callGemini(anthropicKey, {
+      systemPrompt: `You summarize decision threads for a Korean creative production company.
 Given related decision items from different sources (meetings, emails, chats), generate:
 1. A concise Korean title (max 30 chars) summarizing the decision topic
 2. A Korean summary (2-3 sentences) of the full decision arc
@@ -94,20 +86,15 @@ Given related decision items from different sources (meetings, emails, chats), g
 
 Return JSON only: { "title": "...", "summary": "...", "category": "..." }`,
       messages: [{ role: 'user', content: `다음 관련 의사결정 항목들을 분석해주세요:\n\n${itemsText}` }],
-    }),
-  });
+      maxOutputTokens: 500,
+      temperature: 0.7,
+    });
 
-  if (!resp.ok) {
-    console.warn('[decision-thread-link] Claude meta generation failed:', resp.status);
-    return { title: '의사결정 스레드', summary: '', category: 'other' };
-  }
-
-  const data = await resp.json();
-  const text = data.content?.[0]?.text || '{}';
-  try {
+    const text = geminiResp.text || '{}';
     const match = text.match(/\{[\s\S]*\}/);
     return match ? JSON.parse(match[0]) : { title: '의사결정 스레드', summary: '', category: 'other' };
-  } catch {
+  } catch (err) {
+    console.warn('[decision-thread-link] Gemini meta generation failed:', err);
     return { title: '의사결정 스레드', summary: '', category: 'other' };
   }
 }
@@ -149,7 +136,7 @@ Deno.serve(async (req) => {
     }
 
     const voyageKey = Deno.env.get('VOYAGE_API_KEY');
-    const anthropicKey = Deno.env.get('ANTHROPIC_API_KEY');
+    const anthropicKey = Deno.env.get('GEMINI_API_KEY');
     if (!voyageKey || !anthropicKey) {
       return jsonResponse({ error: 'API keys not configured' }, 500);
     }

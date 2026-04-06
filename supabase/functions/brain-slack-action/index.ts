@@ -10,9 +10,8 @@
 
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 import { authenticateOrFallback } from '../_shared/auth.ts';
+import { callGemini, GeminiRateLimitError } from '../_shared/gemini-client.ts';
 
-const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
-const MODEL = 'claude-sonnet-4-5-20250929';
 const MAX_TOKENS = 1536;
 
 const corsHeaders = {
@@ -106,10 +105,10 @@ Deno.serve(async (req) => {
       );
     }
 
-    const anthropicKey = Deno.env.get('ANTHROPIC_API_KEY');
-    if (!anthropicKey) {
+    const geminiKey = Deno.env.get('GEMINI_API_KEY');
+    if (!geminiKey) {
       return new Response(
-        JSON.stringify({ error: 'ANTHROPIC_API_KEY not configured' }),
+        JSON.stringify({ error: 'GEMINI_API_KEY not configured' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       );
     }
@@ -118,43 +117,33 @@ Deno.serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // ─── Call Claude ───
+    // ─── Call Gemini Flash ───
     const prompt = buildPrompt(messageText, source, sourceMeta);
 
-    const llmResponse = await fetch(ANTHROPIC_API_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': anthropicKey,
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify({
-        model: MODEL,
-        max_tokens: MAX_TOKENS,
+    let llmText: string;
+    try {
+      const geminiResponse = await callGemini(geminiKey, {
+        systemPrompt: 'You are Re-Be Brain AI, a Korean project management assistant. Return only valid JSON.',
         messages: [{ role: 'user', content: prompt }],
-      }),
-    });
-
-    if (!llmResponse.ok) {
-      const errText = await llmResponse.text();
-      console.error('Anthropic API error:', llmResponse.status, errText);
-      return new Response(
-        JSON.stringify({ error: `LLM error (${llmResponse.status})` }),
-        { status: llmResponse.status === 429 ? 429 : 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
-      );
-    }
-
-    const llmResult = await llmResponse.json();
-    const textBlock = llmResult.content?.find((b: { type: string }) => b.type === 'text');
-    if (!textBlock?.text) {
-      throw new Error('No text in LLM response');
+        maxOutputTokens: MAX_TOKENS,
+        temperature: 0.7,
+      });
+      llmText = geminiResponse.text;
+    } catch (err) {
+      if (err instanceof GeminiRateLimitError) {
+        return new Response(
+          JSON.stringify({ error: 'LLM rate limited' }),
+          { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        );
+      }
+      throw err;
     }
 
     let extracted: Record<string, unknown>;
     try {
-      extracted = JSON.parse(textBlock.text.trim());
+      extracted = JSON.parse(llmText.trim());
     } catch {
-      const match = textBlock.text.match(/\{[\s\S]*\}/);
+      const match = llmText.match(/\{[\s\S]*\}/);
       if (match) {
         extracted = JSON.parse(match[0]);
       } else {

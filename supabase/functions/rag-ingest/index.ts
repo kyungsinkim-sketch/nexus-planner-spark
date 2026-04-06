@@ -51,7 +51,7 @@ Deno.serve(async (req) => {
     const body = await req.json();
     const { action } = body;
 
-    const anthropicKey = Deno.env.get('ANTHROPIC_API_KEY') || '';
+    const anthropicKey = Deno.env.get('GEMINI_API_KEY') || '';
     
 
     switch (action) {

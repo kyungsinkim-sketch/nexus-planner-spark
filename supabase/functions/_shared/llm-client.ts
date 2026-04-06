@@ -1,13 +1,13 @@
-// Anthropic Claude API client for Supabase Edge Functions (Deno)
-// Uses Claude 3.5 Haiku for cost-efficient Korean NLU
+// Gemini Flash API client for Supabase Edge Functions (Deno)
+// Uses Gemini 2.0 Flash for cost-efficient Korean NLU (free tier)
 
 import type { LLMResponse, ProcessRequest } from './brain-types.ts';
+import { callGeminiWithRetry, GeminiRateLimitError, toGeminiRole } from './gemini-client.ts';
+import type { GeminiMessage } from './gemini-client.ts';
 
-const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
-const MODEL = 'claude-sonnet-4-5-20250929';
 const MAX_TOKENS = 2048; // Must accommodate large attendeeIds arrays (10+ UUIDs)
 const MAX_RETRIES = 3;
-const BASE_RETRY_DELAY_MS = 15_000; // 15s base — rate limit is per minute, so wait longer
+const BASE_RETRY_DELAY_MS = 10_000; // 10s base for Gemini free tier
 const MAX_HISTORY_MESSAGES = 3; // Limit to 3 recent messages for context
 const MAX_HISTORY_CHARS = 200; // Truncate each history message to save tokens
 
@@ -91,7 +91,7 @@ export interface ConversationMessage {
 }
 
 /**
- * Call the Anthropic Claude API to analyze a chat message.
+ * Call the Gemini Flash API to analyze a chat message.
  * Optional weatherContext is injected into the system prompt for weather queries.
  * Optional conversationHistory provides recent messages for multi-turn context
  * (e.g., so "그때" references the previous message's date/location).
@@ -110,7 +110,7 @@ export async function analyzeMessage(
     request.language,
   );
 
-  // Trim conversation history to save input tokens (rate limit is 10k/min)
+  // Trim conversation history to save input tokens
   const trimmedHistory = (conversationHistory || [])
     .slice(-MAX_HISTORY_MESSAGES)
     .map(m => ({
@@ -121,74 +121,35 @@ export async function analyzeMessage(
     }));
 
   // Build messages array: conversation history + current user message
-  const messages: ConversationMessage[] = [
-    ...trimmedHistory,
-    { role: 'user', content: request.messageContent },
+  const geminiMessages: GeminiMessage[] = [
+    ...trimmedHistory.map(m => ({
+      role: toGeminiRole(m.role),
+      content: m.content,
+    })),
+    { role: 'user' as const, content: request.messageContent },
   ];
 
-  const requestBody = JSON.stringify({
-    model: MODEL,
-    max_tokens: MAX_TOKENS,
-    system: systemPrompt,
-    messages,
-  });
-
-  // Retry with exponential backoff for rate limit (429) errors
-  // Rate limit is per-minute, so delays must be long enough to clear the window
-  let lastError: Error | null = null;
-  let retryAfterMs = 0; // Set by retry-after header from Anthropic
-
-  for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
-    if (attempt > 0) {
-      // Use retry-after header if available, otherwise exponential backoff
-      const delay = retryAfterMs || BASE_RETRY_DELAY_MS * Math.pow(2, attempt - 1);
-      console.log(`[LLM] Rate limited — retry ${attempt}/${MAX_RETRIES} after ${delay}ms`);
-      await new Promise(r => setTimeout(r, delay));
-      retryAfterMs = 0; // Reset for next attempt
-    }
-
-    const response = await fetch(ANTHROPIC_API_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
+  try {
+    const response = await callGeminiWithRetry(
+      apiKey,
+      {
+        systemPrompt,
+        messages: geminiMessages,
+        maxOutputTokens: MAX_TOKENS,
+        temperature: 0.7,
       },
-      body: requestBody,
-    });
-
-    if (response.status === 429) {
-      const errorBody = await response.text();
-      // Read retry-after header (seconds) from Anthropic
-      const retryAfterSec = response.headers.get('retry-after');
-      if (retryAfterSec) {
-        retryAfterMs = Math.min(parseFloat(retryAfterSec) * 1000, 120_000); // cap at 2 min
-      }
-      lastError = new RateLimitError(`Anthropic API rate limited (429): ${errorBody}`);
-      continue; // retry
-    }
-
-    if (!response.ok) {
-      const errorBody = await response.text();
-      throw new Error(`Anthropic API error (${response.status}): ${errorBody}`);
-    }
-
-    const result = await response.json();
-
-    // Extract text content from the response
-    const textBlock = result.content?.find(
-      (block: { type: string }) => block.type === 'text',
+      MAX_RETRIES,
+      BASE_RETRY_DELAY_MS,
     );
-    if (!textBlock?.text) {
-      throw new Error('No text content in Anthropic response');
-    }
 
     // Parse the JSON response — robust extraction handles mixed text + JSON
-    return extractJSON(textBlock.text);
+    return extractJSON(response.text);
+  } catch (err) {
+    if (err instanceof GeminiRateLimitError) {
+      throw new RateLimitError(err.message);
+    }
+    throw err;
   }
-
-  // All retries exhausted
-  throw lastError || new RateLimitError('Rate limited after max retries');
 }
 
 /** Custom error class for rate limit errors so brain-process can return 429 */

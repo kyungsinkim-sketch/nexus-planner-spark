@@ -240,8 +240,7 @@ function generatePseudoEmbedding(text: string, dims?: number): number[] {
 
 // ─── Knowledge Extraction ───────────────────────────
 
-const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
-const MODEL = 'claude-sonnet-4-5-20250929';
+import { callGemini } from './gemini-client.ts';
 
 /**
  * Extract knowledge items from a chat digest result.
@@ -325,7 +324,7 @@ async function extractDeepKnowledge(
     userId?: string;
     projectTitle?: string;
   },
-  anthropicKey: string,
+  geminiKey: string,
 ): Promise<KnowledgeItem[]> {
   const systemPrompt = `You are a knowledge extraction engine for a Korean creative production management system.
 Analyze the following conversation insights and extract reusable knowledge patterns.
@@ -355,31 +354,18 @@ Rules:
 - Max 5 items per analysis
 - Always respond with valid JSON array only`;
 
-  const response = await fetch(ANTHROPIC_API_URL, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': anthropicKey,
-      'anthropic-version': '2023-06-01',
-    },
-    body: JSON.stringify({
-      model: MODEL,
-      max_tokens: 1024,
-      system: systemPrompt,
-      messages: [{ role: 'user', content: `${context.projectTitle ? `[프로젝트: ${context.projectTitle}]\n` : ''}${text.slice(0, 2000)}` }],
-    }),
+  const geminiResponse = await callGemini(geminiKey, {
+    systemPrompt,
+    messages: [{ role: 'user', content: `${context.projectTitle ? `[프로젝트: ${context.projectTitle}]\n` : ''}${text.slice(0, 2000)}` }],
+    maxOutputTokens: 1024,
+    temperature: 0.7,
   });
 
-  if (!response.ok) {
-    throw new Error(`LLM extraction failed: ${response.status}`);
-  }
-
-  const result = await response.json();
-  const textBlock = result.content?.find((b: { type: string }) => b.type === 'text');
-  if (!textBlock?.text) return [];
+  const responseText = geminiResponse.text;
+  if (!responseText) return [];
 
   try {
-    let jsonText = textBlock.text.trim();
+    let jsonText = responseText.trim();
     if (jsonText.startsWith('```')) {
       jsonText = jsonText.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '');
     }
@@ -399,7 +385,7 @@ Rules:
       confidence: Number(item.confidence) || 0.5,
     }));
   } catch {
-    console.warn('Failed to parse deep knowledge extraction:', textBlock.text.slice(0, 200));
+    console.warn('Failed to parse deep knowledge extraction:', responseText.slice(0, 200));
     return [];
   }
 }

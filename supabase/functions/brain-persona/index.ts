@@ -26,11 +26,13 @@ import {
 } from '../_shared/rag-client.ts';
 import { authenticateRequest, authenticateOrFallback, createServiceClient } from '../_shared/auth.ts';
 
+import { callGeminiWithRetry, GeminiRateLimitError, toGeminiRole } from '../_shared/gemini-client.ts';
+import type { GeminiMessage } from '../_shared/gemini-client.ts';
+
 const BRAIN_BOT_USER_ID = '00000000-0000-0000-0000-000000000099';
-const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
 const HISTORY_LIMIT = 4;
-const MAX_RETRIES = 2;
-const RETRY_DELAY_MS = 5000;
+const MAX_RETRIES = 3;
+const RETRY_DELAY_MS = 10_000;
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -72,9 +74,9 @@ function mergeConsecutiveRoles(messages: ConversationMessage[]): ConversationMes
   return merged;
 }
 
-// ─── Claude API call ────────────────────────────────
+// ─── Gemini API call ────────────────────────────────
 
-async function callClaude(
+async function callLLM(
   systemPrompt: string,
   messages: ConversationMessage[],
   config: {
@@ -82,51 +84,30 @@ async function callClaude(
     temperature?: number;
     maxTokens?: number;
   },
-  anthropicKey: string,
+  apiKey: string,
 ): Promise<string> {
-  const model = config.model || 'claude-sonnet-4-20250514';
   const temperature = config.temperature ?? 0.7;
   const maxTokens = config.maxTokens || 2048;
 
-  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-    if (attempt > 0) {
-      const delay = RETRY_DELAY_MS * Math.pow(2, attempt - 1);
-      console.log(`[brain-persona] Retry ${attempt}/${MAX_RETRIES} after ${delay}ms`);
-      await new Promise(r => setTimeout(r, delay));
-    }
+  // Convert to Gemini message format
+  const geminiMessages: GeminiMessage[] = messages.map(m => ({
+    role: toGeminiRole(m.role),
+    content: m.content,
+  }));
 
-    const response = await fetch(ANTHROPIC_API_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': anthropicKey,
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify({
-        model,
-        max_tokens: maxTokens,
-        temperature,
-        system: systemPrompt,
-        messages: messages.map(m => ({ role: m.role, content: m.content })),
-      }),
-    });
+  const response = await callGeminiWithRetry(
+    apiKey,
+    {
+      systemPrompt,
+      messages: geminiMessages,
+      maxOutputTokens: maxTokens,
+      temperature,
+    },
+    MAX_RETRIES,
+    RETRY_DELAY_MS,
+  );
 
-    if (response.status === 429) {
-      if (attempt < MAX_RETRIES) continue;
-      throw new Error('Rate limit exceeded');
-    }
-
-    if (!response.ok) {
-      const errText = await response.text();
-      throw new Error(`Claude API error ${response.status}: ${errText.slice(0, 200)}`);
-    }
-
-    const data = await response.json();
-    const textBlock = data.content?.find((b: { type: string }) => b.type === 'text');
-    return textBlock?.text || '';
-  }
-
-  throw new Error('All retries exhausted');
+  return response.text;
 }
 
 // ─── Main handler ───────────────────────────────────
@@ -157,7 +138,7 @@ Deno.serve(async (req) => {
       supabase = auth.supabase;
     }
 
-    const anthropicKey = Deno.env.get('ANTHROPIC_API_KEY') || '';
+    const anthropicKey = Deno.env.get('GEMINI_API_KEY') || '';
     // Embedding API key handled internally by rag-client (Voyage AI → OpenAI fallback)
 
     switch (action) {
@@ -176,7 +157,7 @@ Deno.serve(async (req) => {
         }
 
         if (!anthropicKey) {
-          return jsonResponse({ error: 'ANTHROPIC_API_KEY not configured' }, 500);
+          return jsonResponse({ error: 'GEMINI_API_KEY not configured' }, 500);
         }
 
         const startTime = Date.now();
@@ -371,7 +352,7 @@ Deno.serve(async (req) => {
         // 6. Call Claude
         let responseText: string;
         try {
-          responseText = await callClaude(
+          responseText = await callLLM(
             systemPrompt,
             validMessages,
             {
@@ -567,7 +548,7 @@ Deno.serve(async (req) => {
         }
 
         if (!anthropicKey) {
-          return jsonResponse({ error: 'ANTHROPIC_API_KEY not configured' }, 500);
+          return jsonResponse({ error: 'GEMINI_API_KEY not configured' }, 500);
         }
 
         const startTime = Date.now();
@@ -627,7 +608,7 @@ Rules:
 
         for (let i = 0; i < chunks.length; i++) {
           try {
-            const chunkResult = await callClaude(
+            const chunkResult = await callLLM(
               extractionPrompt,
               [{ role: 'user', content: `[파일: ${fileName || '대화록'}] [청크 ${i + 1}/${chunks.length}]\n\n${chunks[i]}` }],
               { model: 'claude-sonnet-4-20250514', temperature: 0.2, maxTokens: 2048 },
