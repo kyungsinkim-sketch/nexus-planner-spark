@@ -158,6 +158,7 @@ export function useTodoSync() {
     channelRef.current = channel;
 
     // ── Calendar event subscription: popup when someone invites me ──
+    console.log('[EventInvite] Setting up calendar_events subscription for user:', currentUser.id);
     const eventChannel = supabase
       .channel('event_invite_popup')
       .on(
@@ -169,14 +170,19 @@ export function useTodoSync() {
         },
         (payload) => {
           const row = payload.new as EventRow | null;
-          if (!row) return;
+          console.log('[EventInvite] Realtime payload received:', JSON.stringify(payload));
+          if (!row) { console.log('[EventInvite] No row in payload'); return; }
+
+          console.log('[EventInvite] row.owner_id:', row.owner_id, 'currentUser.id:', currentUser.id);
+          console.log('[EventInvite] row.attendee_ids:', row.attendee_ids);
 
           // Skip events I created myself
-          if (row.owner_id === currentUser.id) return;
+          if (row.owner_id === currentUser.id) { console.log('[EventInvite] Skipped: own event'); return; }
 
           // Only show popup if I'm in attendee_ids
           const isAttendee = row.attendee_ids?.includes(currentUser.id);
-          if (!isAttendee) return;
+          console.log('[EventInvite] isAttendee:', isAttendee);
+          if (!isAttendee) { console.log('[EventInvite] Skipped: not in attendee_ids'); return; }
 
           const store = useAppStore.getState();
           const creator = store.users.find(u => u.id === row.owner_id);
@@ -207,7 +213,9 @@ export function useTodoSync() {
           });
         },
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('[EventInvite] Subscription status:', status);
+      });
 
     return () => {
       if (channelRef.current) {
