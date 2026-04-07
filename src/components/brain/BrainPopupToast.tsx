@@ -5,13 +5,11 @@
  *   - Glass background with backdrop blur
  *   - Blue primary button (#3B82F6)
  *   - Policy-matching typography (typo-widget-body / typo-widget-sub)
- * Mobile: centered overlay with backdrop
- * Desktop: top-center Sonner toast
+ * Both mobile & desktop: centered overlay with dim backdrop
  * Duration: stays until user clicks a button (no auto-dismiss)
  */
 
 import { Brain, Check, X, MessageSquare } from 'lucide-react';
-import { toast } from 'sonner';
 
 export interface BrainPopupData {
   id: string;
@@ -48,7 +46,7 @@ function BrainPopupCard({
   };
 
   return (
-    <div className="w-[320px] sm:w-[360px] rounded-2xl border border-border/50 bg-background/80 backdrop-blur-xl p-5 shadow-lg">
+    <div className="w-[320px] sm:w-[360px] rounded-2xl border border-border/50 bg-background backdrop-blur-xl p-5 shadow-xl">
       {/* Header */}
       <div className="flex items-center gap-2.5 mb-3">
         <div className="w-8 h-8 rounded-full bg-violet-500/15 flex items-center justify-center shrink-0">
@@ -113,22 +111,10 @@ function BrainPopupCard({
 }
 
 /**
- * Desktop toast wrapper — rendered inside Sonner
+ * Centered overlay — fixed position center of screen with dim backdrop.
+ * Used for BOTH mobile and desktop to avoid Sonner wrapper artifacts.
  */
-export function BrainPopupToast({
-  data,
-  toastId,
-}: {
-  data: BrainPopupData;
-  toastId: string | number;
-}) {
-  return <BrainPopupCard data={data} onDismiss={() => toast.dismiss(toastId)} />;
-}
-
-/**
- * Mobile centered overlay — fixed position center of screen
- */
-function BrainPopupMobileOverlay({
+function BrainPopupOverlay({
   data,
   onDismiss,
 }: {
@@ -150,66 +136,40 @@ function BrainPopupMobileOverlay({
   );
 }
 
-// Track mobile overlay root
-let mobileOverlayCleanup: (() => void) | null = null;
-
-function isMobileDevice(): boolean {
-  return window.innerWidth < 768;
-}
+// Track overlay root for cleanup
+let overlayCleanup: (() => void) | null = null;
 
 /**
  * Show a Brain AI popup.
- * Mobile: centered overlay with backdrop
- * Desktop: Sonner toast (top-center)
- * Duration: Infinity — stays until user clicks a button
+ * Both mobile & desktop: centered overlay with dim backdrop.
+ * No auto-dismiss — stays until user clicks a button.
  */
 export function showBrainPopup(data: BrainPopupData): string | number {
   const id = data.id || `brain_${Date.now()}`;
 
-  if (isMobileDevice()) {
-    // Mobile: render centered overlay (no auto-dismiss)
-    if (mobileOverlayCleanup) mobileOverlayCleanup();
+  // Clean up any existing popup
+  if (overlayCleanup) overlayCleanup();
 
-    const container = document.createElement('div');
-    container.id = `brain-popup-${id}`;
-    document.body.appendChild(container);
+  const container = document.createElement('div');
+  container.id = `brain-popup-${id}`;
+  document.body.appendChild(container);
 
-    const cleanup = () => {
+  // Use React 18 createRoot
+  import('react-dom/client').then(({ createRoot }) => {
+    const root = createRoot(container);
+
+    const dismiss = () => {
+      root.unmount();
       container.remove();
-      if (mobileOverlayCleanup === cleanup) mobileOverlayCleanup = null;
+      if (overlayCleanup === dismiss) overlayCleanup = null;
     };
 
-    mobileOverlayCleanup = cleanup;
+    overlayCleanup = dismiss;
 
-    // Use React 18 createRoot
-    import('react-dom/client').then(({ createRoot }) => {
-      const root = createRoot(container);
-      root.render(
-        <BrainPopupMobileOverlay data={data} onDismiss={() => {
-          root.unmount();
-          container.remove();
-          if (mobileOverlayCleanup) mobileOverlayCleanup = null;
-        }} />
-      );
-      // Update cleanup to use root.unmount
-      mobileOverlayCleanup = () => {
-        root.unmount();
-        container.remove();
-        mobileOverlayCleanup = null;
-      };
-    });
+    root.render(
+      <BrainPopupOverlay data={data} onDismiss={dismiss} />
+    );
+  });
 
-    return id;
-  }
-
-  // Desktop: Sonner toast — Infinity duration, dismiss only on button click
-  toast.custom(
-    (toastId) => <BrainPopupToast data={data} toastId={toastId} />,
-    {
-      id,
-      duration: Infinity,
-      position: 'top-center',
-    },
-  );
   return id;
 }
