@@ -12,6 +12,7 @@
 import { useEffect, useRef } from 'react';
 import { useAppStore } from '@/stores/appStore';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
+import { showBrainPopup } from '@/components/brain/BrainPopupToast';
 
 interface TodoRow {
   id: string;
@@ -98,14 +99,28 @@ export function useTodoSync() {
                 personalTodos: [todo, ...store.personalTodos],
               });
 
-              // Create notification if assigned to me by someone else
+              // Create notification + Brain popup if assigned to me by someone else
               if (isAssignee && row.requested_by_id !== currentUser.id) {
                 const requester = store.users.find(u => u.id === row.requested_by_id);
+                const requesterName = requester?.name || '팀원';
                 store.addAppNotification({
                   type: 'todo',
-                  title: requester?.name || '새 할 일',
+                  title: requesterName,
                   message: `할 일 할당: ${row.title}`,
                   projectId: row.project_id || undefined,
+                });
+
+                // Brain AI popup for the assignee
+                showBrainPopup({
+                  id: `todo_${row.id}`,
+                  title: `${requesterName}님의 요청`,
+                  message: row.title + (row.due_date ? ` (마감: ${row.due_date.slice(0, 10)})` : ''),
+                  source: 'todo_assignment',
+                  fromUserName: requesterName,
+                  actionLabel: '확인',
+                  onAccept: () => {
+                    // Mark as acknowledged — todo already exists in store
+                  },
                 });
               }
             }

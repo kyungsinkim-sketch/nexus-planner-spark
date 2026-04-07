@@ -1068,7 +1068,7 @@ export function MobileAIChatView() {
         messageContent: contextualMessage,
         userId: currentUser.id,
         directChatUserId: BRAIN_BOT_ID,
-        chatMembers: [],
+        chatMembers: users.map(u => ({ id: u.id, name: u.name })),
         language,
       });
       const reply = result.llmResponse?.replyMessage || (language === 'ko' ? '처리 완료' : 'Done');
