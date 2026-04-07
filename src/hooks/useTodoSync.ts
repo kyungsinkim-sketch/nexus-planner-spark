@@ -28,6 +28,19 @@ interface TodoRow {
   source_task_id?: string | null;
 }
 
+interface EventRow {
+  id: string;
+  title: string;
+  owner_id: string;
+  attendee_ids?: string[] | null;
+  start_at: string;
+  end_at?: string;
+  location?: string;
+  type?: string;
+  project_id?: string | null;
+  created_at: string;
+}
+
 export function useTodoSync() {
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const currentUser = useAppStore((s) => s.currentUser);
@@ -144,11 +157,64 @@ export function useTodoSync() {
 
     channelRef.current = channel;
 
+    // ── Calendar event subscription: popup when someone invites me ──
+    const eventChannel = supabase
+      .channel('event_invite_popup')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'calendar_events',
+        },
+        (payload) => {
+          const row = payload.new as EventRow | null;
+          if (!row) return;
+
+          // Skip events I created myself
+          if (row.owner_id === currentUser.id) return;
+
+          // Only show popup if I'm in attendee_ids
+          const isAttendee = row.attendee_ids?.includes(currentUser.id);
+          if (!isAttendee) return;
+
+          const store = useAppStore.getState();
+          const creator = store.users.find(u => u.id === row.owner_id);
+          const creatorName = creator?.name || '팀원';
+
+          const kstTime = new Date(row.start_at).toLocaleTimeString('ko-KR', {
+            hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Seoul', hour12: false,
+          });
+          const kstDate = new Date(row.start_at).toLocaleDateString('ko-KR', {
+            month: 'short', day: 'numeric', timeZone: 'Asia/Seoul',
+          });
+
+          showBrainPopup({
+            id: `event_${row.id}`,
+            title: `${creatorName}님의 미팅 요청`,
+            message: `${row.title}\n${kstDate} ${kstTime}${row.location ? ` · ${row.location}` : ''}`,
+            source: 'event_request',
+            fromUserName: creatorName,
+            actionLabel: '확인',
+            onAccept: () => {},
+          });
+
+          store.addAppNotification({
+            type: 'event',
+            title: creatorName,
+            message: `미팅 초대: ${row.title} (${kstDate} ${kstTime})`,
+            projectId: row.project_id || undefined,
+          });
+        },
+      )
+      .subscribe();
+
     return () => {
       if (channelRef.current) {
         supabase.removeChannel(channelRef.current);
         channelRef.current = null;
       }
+      supabase.removeChannel(eventChannel);
     };
   }, [currentUser?.id]);
 }
