@@ -783,7 +783,9 @@ export function MobileAIChatView() {
   // ── Updates: chat messages, todo alerts, brain suggestions, emails ──
   const unreadNotifs = useMemo(() => {
     if (!appNotifications) return [];
-    return appNotifications.filter(n => !n.read).slice(0, 10);
+    return appNotifications
+      .filter(n => !n.read && n.directUserId !== BRAIN_BOT_ID)
+      .slice(0, 10);
   }, [appNotifications]);
 
   const pendingTodos = useMemo(() => {
