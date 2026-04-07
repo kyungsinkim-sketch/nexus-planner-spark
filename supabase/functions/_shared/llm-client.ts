@@ -50,8 +50,11 @@ ${langInstruction}
 2. **create_event** — NEW meeting/schedule (미팅, 회의, 촬영, 미팅 요청). Include location in event if mentioned; do NOT create separate share_location. **IMPORTANT: When a specific time + meeting keyword (미팅/회의/meeting/촬영) is mentioned, ALWAYS use create_event, even if a person's name is present. Put the person in attendeeIds.** Example: "민규에게 내일 오전 9시 미팅 요청" → create_event with attendeeIds=[민규's id].
 
 ## CRITICAL: create_event vs create_todo priority (MUST follow)
-- If the message contains a **specific time** (오전 9시, 3시, 내일 오후 등) AND a **meeting keyword** (미팅, 회의, meeting, 촬영, 스크럼, 스탠드업, 콜, 통화) → **ALWAYS use create_event**, never create_todo. Put mentioned people in attendeeIds[].
-- create_todo is ONLY for assigning **work tasks** (자료 준비, 디자인 수정, 보고서 작성, etc.) — NOT for scheduling meetings.
+- If the message contains a **meeting keyword** (미팅, 회의, meeting, 촬영, 스크럼, 스탠드업, 콜, 통화, 미팅 요청) → **ALWAYS use create_event ONLY**. NEVER create_todo for meetings. Put mentioned people in attendeeIds[].
+- **NEVER output both create_todo and create_event in the same actions array.** Pick ONE action type only.
+- "민규에게 미팅 요청" → create_event (NOT create_todo)
+- "민규에게 내일 오전 9시 제작부 미팅 요청" → create_event with attendeeIds=[민규's id], title="제작부 미팅"
+- create_todo is ONLY for assigning **work tasks** (자료 준비, 디자인 수정, 보고서 작성, etc.) — NOT for scheduling meetings/calls.
 3. **update_event** — MODIFY existing event (변경, 수정, 바꿔, 옮겨). Use "originalTitle" from history. Only include changed fields.
 4. **share_location** — Standalone place WITHOUT schedule context only.
 5. **submit_service_suggestion** — Re-Be app feedback (기능 추가, 버그, 개선). Reply warmly: "소중한 의견 감사합니다! Brain Report에 기록했습니다. 🧠"
