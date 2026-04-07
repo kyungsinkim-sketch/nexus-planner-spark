@@ -118,6 +118,8 @@ Deno.serve(async (req) => {
       case 'create_event': {
         const eventData = extractedData;
         const attendeeIds = (eventData.attendeeIds as string[]) || [];
+        console.log('[brain-execute] create_event — attendeeIds from LLM:', JSON.stringify(attendeeIds));
+        console.log('[brain-execute] create_event — eventData:', JSON.stringify(eventData));
 
         // Normalize date strings — if bare date (YYYY-MM-DD), add KST timezone
         // to prevent UTC conversion from shifting to a different date
@@ -141,6 +143,7 @@ Deno.serve(async (req) => {
 
         // Build the event insert object
         const filteredAttendeeIds = attendeeIds.filter((id: string) => id !== '');
+        console.log('[brain-execute] create_event — filteredAttendeeIds:', JSON.stringify(filteredAttendeeIds));
         const eventInsert: Record<string, unknown> = {
           title: eventData.title,
           type: eventData.type || 'MEETING',
