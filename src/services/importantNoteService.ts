@@ -9,7 +9,7 @@ import type { ImportantNote } from '@/types/core';
 
 interface NoteRow {
   id: string;
-  project_id: string;
+  project_id: string | null;
   title: string | null;
   content: string;
   source_message_id: string | null;
@@ -19,7 +19,7 @@ interface NoteRow {
 
 const transformNote = (row: NoteRow): ImportantNote => ({
   id: row.id,
-  projectId: row.project_id,
+  projectId: row.project_id || '',
   title: row.title || undefined,
   content: row.content,
   sourceMessageId: row.source_message_id || undefined,
@@ -111,13 +111,14 @@ export async function deleteNote(noteId: string): Promise<boolean> {
 }
 
 export async function getAllNotesForProjects(projectIds: string[]): Promise<ImportantNote[]> {
-  if (!isSupabaseConfigured() || projectIds.length === 0) return [];
+  if (!isSupabaseConfigured()) return [];
 
+  // Fetch project-scoped notes + notes with NULL project_id (created from DM/Brain AI)
   const { data, error } = await withSupabaseRetry(
     () => supabase
       .from('important_notes')
       .select('*')
-      .in('project_id', projectIds)
+      .or(`project_id.in.(${projectIds.join(',')}),project_id.is.null`)
       .order('created_at', { ascending: false }),
     { label: 'getAllNotesForProjects' },
   );
