@@ -13,6 +13,7 @@ import { toast } from 'sonner';
 import { useAppStore } from '@/stores/appStore';
 import { useTranslation } from '@/hooks/useTranslation';
 import * as brainService from '@/services/brainService';
+import { formatBrainMessage } from '@/lib/formatBrainMessage';
 import { isSupabaseConfigured } from '@/lib/supabase';
 import type { WidgetDataContext } from '@/types/widget';
 
@@ -479,7 +480,7 @@ function BrainChatWidget({ context }: { context: WidgetDataContext }) {
                   </div>
                 )}
                 <p className="typo-chat-message leading-relaxed whitespace-pre-wrap" style={{ overflowWrap: 'anywhere', wordBreak: 'break-word' }}>
-                  {item.content}
+                  {item.type === 'brain' ? formatBrainMessage(item.content) : item.content}
                 </p>
                 {/* Action badges */}
                 {item.actions && item.actions.length > 0 && (

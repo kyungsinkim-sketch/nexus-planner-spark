@@ -22,6 +22,7 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { WEATHER_CITIES, CONDITION_ICONS, CONDITION_COLORS, CONDITION_LABELS_KO, CONDITION_LABELS_EN, generateForecast } from '@/components/widgets/weatherUtils';
 import type { AppNotification } from '@/types/core';
+import { formatBrainMessage } from '@/lib/formatBrainMessage';
 
 // ── Types ────────────────────────────────────────────────────
 
@@ -1181,7 +1182,7 @@ export function MobileAIChatView() {
                       </div>
                     )}
                     <p className="text-[13px] leading-relaxed whitespace-pre-wrap" style={{ overflowWrap: 'anywhere', wordBreak: 'break-word' }}>
-                      {displayContent}
+                      {msg.role === 'assistant' ? formatBrainMessage(displayContent) : displayContent}
                       {isTyping && <span className="inline-block w-[2px] h-[14px] bg-violet-500 ml-0.5 animate-pulse align-text-bottom" />}
                     </p>
                     {msg.actions && msg.actions.length > 0 && !isTyping && (
