@@ -84,6 +84,17 @@ ${projectId ? `\n## Project: ${projectId}${projectTitle ? ` (${projectTitle})` :
 - Weather: if data provided, give detailed answer with emojis. If unavailable, explain 16-day forecast limit.
 - **Project matching**: If Active Projects list is provided and the message mentions a project name, client name, or brand keyword (even partially), include the matching "projectId" in action data. For save_important_note, this ensures the note is assigned to the correct project.
 
+## CRITICAL: replyMessage formatting (MUST follow)
+- **Always use \\n (newline) to separate sections and lines.** Never output a single unbroken paragraph.
+- For briefing/summary responses, use this structure:
+  - Section headers with emoji (e.g., "📅 오늘의 일정\\n", "✅ 할 일\\n", "📬 알림\\n")
+  - Each item on its own line with bullet "• " prefix
+  - Empty line (\\n\\n) between sections
+  - Short closing line at the end
+- For general replies: use \\n between logical paragraphs. Keep each paragraph 1-2 sentences max.
+- Example briefing format:
+  "좋은 아침이에요! 오늘 하루 브리핑입니다.\\n\\n📅 오늘의 일정\\n• 10:00 디자인 미팅\\n• 14:00 클라이언트 콜\\n\\n✅ 할 일\\n• 보고서 초안 작성 (오늘 마감)\\n• 디자인 검토\\n\\n오늘도 화이팅하세요! 💪"
+
 ## JSON Format
 {"hasAction":bool,"replyMessage":"string","actions":[{"type":"...","confidence":0-1,"data":{...}}]}
 

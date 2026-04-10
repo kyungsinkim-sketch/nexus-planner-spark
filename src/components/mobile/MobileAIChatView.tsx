@@ -1180,7 +1180,7 @@ export function MobileAIChatView() {
                         <span className="text-[11px] font-semibold text-violet-600 dark:text-violet-400">Brain AI</span>
                       </div>
                     )}
-                    <p className="text-[13px] leading-relaxed" style={{ overflowWrap: 'anywhere', wordBreak: 'break-word' }}>
+                    <p className="text-[13px] leading-relaxed whitespace-pre-wrap" style={{ overflowWrap: 'anywhere', wordBreak: 'break-word' }}>
                       {displayContent}
                       {isTyping && <span className="inline-block w-[2px] h-[14px] bg-violet-500 ml-0.5 animate-pulse align-text-bottom" />}
                     </p>
