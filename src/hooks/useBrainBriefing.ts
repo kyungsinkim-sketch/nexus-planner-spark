@@ -33,10 +33,15 @@ export function useBrainBriefing() {
         return eDate === todayStr;
       });
 
-      // Pending todos
+      // Pending todos — only todos assigned to current user
+      const myId = currentUser.id;
       const pendingTodos = myTodos.filter(t => {
         const s = (t.status || '').toUpperCase();
-        return s !== 'COMPLETED' && s !== 'DONE' && s !== 'CANCELLED';
+        if (s === 'COMPLETED' || s === 'DONE' || s === 'CANCELLED') return false;
+        // Only include todos assigned to me (exclude todos I requested for others)
+        const isAssignee = t.assigneeIds?.includes(myId);
+        if (!isAssignee) return false;
+        return true;
       });
 
       const dueTodayTodos = pendingTodos.filter(t => {

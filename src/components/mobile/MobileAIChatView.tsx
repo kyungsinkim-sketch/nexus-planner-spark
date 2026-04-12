@@ -526,9 +526,13 @@ export function MobileAIChatView() {
           return eDate === todayStr;
         });
 
+        const myId = currentUser.id;
         const pendingTodos = myTodos.filter(t => {
           const s = (t as any).status?.toUpperCase?.() || '';
-          return s !== 'COMPLETED' && s !== 'DONE' && s !== 'CANCELLED';
+          if (s === 'COMPLETED' || s === 'DONE' || s === 'CANCELLED') return false;
+          // Only include todos assigned to me (exclude todos I requested for others)
+          if (!t.assigneeIds?.includes(myId)) return false;
+          return true;
         });
         const dueTodayTodos = pendingTodos.filter(t => {
           if (!t.dueDate) return false;
