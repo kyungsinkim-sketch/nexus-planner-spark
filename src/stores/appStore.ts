@@ -257,7 +257,7 @@ interface AppState {
   setProjectSearchOpen: (open: boolean) => void;
   setShowAutoCheckInDialog: (open: boolean) => void;
   setActiveChatContext: (ctx: { type: 'project' | 'direct' | 'group'; id: string; roomId?: string } | null) => void;
-  setPendingChatNavigation: (nav: { type: 'project' | 'direct'; id: string; roomId?: string } | null) => void;
+  setPendingChatNavigation: (nav: { type: 'project' | 'direct' | 'group'; id: string; roomId?: string } | null) => void;
   setWorldClockSettingsOpen: (open: boolean) => void;
   setWeatherSettingsOpen: (open: boolean) => void;
   setNotificationSoundEnabled: (enabled: boolean) => void;
