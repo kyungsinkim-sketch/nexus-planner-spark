@@ -464,9 +464,13 @@ export function ChatPanel({ defaultProjectId, defaultDmUserId, defaultGroupRoomI
   }, [chatMessages, selectedChat, isMobile]);
 
   // Consume pending chat navigation from notification click
+  // Only the MAIN ChatPanel (no defaultProjectId) should consume this.
+  // Project-tab ChatPanel (with defaultProjectId) must ignore to avoid race conditions.
   useEffect(() => {
+    if (defaultProjectId) return; // Project-tab ChatPanel — skip
     if (!pendingChatNavigation) return;
     const nav = pendingChatNavigation;
+    console.log('[ChatPanel] pendingChatNavigation received:', JSON.stringify(nav));
     setPendingChatNavigation(null); // Consume immediately
 
     if (nav.type === 'direct') {
@@ -488,7 +492,7 @@ export function ChatPanel({ defaultProjectId, defaultDmUserId, defaultGroupRoomI
     // Scroll to bottom after navigation + render
     setTimeout(() => scrollToBottom(true), 300);
     setTimeout(() => scrollToBottom(false), 600);
-  }, [pendingChatNavigation]);
+  }, [defaultProjectId, pendingChatNavigation]);
 
   // Track active chat context globally (for notification suppression) + auto-clear notifications
   useEffect(() => {

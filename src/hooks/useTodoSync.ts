@@ -160,14 +160,19 @@ export function useTodoSync() {
         },
         (payload) => {
           const row = payload.new as EventRow | null;
-          if (!row) return;
+          console.log('[EventInvite] Realtime payload received:', JSON.stringify(payload));
+          if (!row) { console.log('[EventInvite] No row in payload'); return; }
+
+          console.log('[EventInvite] row.owner_id:', row.owner_id, 'currentUser.id:', currentUser.id);
+          console.log('[EventInvite] row.attendee_ids:', row.attendee_ids);
 
           // Skip events I created myself
-          if (row.owner_id === currentUser.id) return;
+          if (row.owner_id === currentUser.id) { console.log('[EventInvite] Skipped: own event'); return; }
 
           // Only show popup if I'm in attendee_ids
           const isAttendee = row.attendee_ids?.includes(currentUser.id);
-          if (!isAttendee) return;
+          console.log('[EventInvite] isAttendee:', isAttendee);
+          if (!isAttendee) { console.log('[EventInvite] Skipped: not in attendee_ids'); return; }
 
           // Skip if already shown
           if (shownEventPopups.has(row.id)) return;

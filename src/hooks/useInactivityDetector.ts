@@ -1,9 +1,10 @@
 /**
- * useInactivityDetector — Detects 30 minutes of inactivity and auto-checks out.
+ * useInactivityDetector — Detects 30 minutes of inactivity AFTER 5 PM and auto-checks out.
  *
  * Features:
  * - Monitors: mousemove, mousedown, keydown, scroll, touchstart, click
- * - After 30 min idle → auto checkout + set NOT_AT_WORK
+ * - After 5 PM local time + 30 min idle → auto checkout + set NOT_AT_WORK
+ * - Before 5 PM: only sends heartbeats, no auto-checkout
  * - On beforeunload → attempt checkout via sendBeacon
  * - Sends heartbeat every 5 min to keep last_active_at fresh
  * - Re-activates when user returns after auto-checkout
@@ -18,6 +19,7 @@ import { toast } from 'sonner';
 
 const INACTIVITY_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
 const HEARTBEAT_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
+const AUTO_CHECKOUT_HOUR = 17; // 5 PM — auto checkout only after this hour
 
 export function useInactivityDetector() {
   const { currentUser, userWorkStatus, setUserWorkStatus } = useAppStore();
@@ -60,15 +62,21 @@ export function useInactivityDetector() {
       if (timerRef.current) clearTimeout(timerRef.current);
 
       timerRef.current = setTimeout(async () => {
-        // 30 minutes of inactivity
-        console.log('[InactivityDetector] 30min idle, auto checkout');
+        // Only auto-checkout after 5 PM local time
+        const currentHour = new Date().getHours();
+        if (currentHour < AUTO_CHECKOUT_HOUR) {
+          console.log(`[InactivityDetector] 30min idle but only ${currentHour}:00 (before ${AUTO_CHECKOUT_HOUR}:00), skipping auto checkout`);
+          return;
+        }
+
+        console.log('[InactivityDetector] 30min idle after 5 PM, auto checkout');
         hasCheckedOutRef.current = true;
 
         setUserWorkStatus('NOT_AT_WORK');
 
         if (isSupabaseConfigured()) {
           try {
-            await attendanceService.checkOut({ note: 'Auto checkout (30min idle)' });
+            await attendanceService.checkOut({ note: 'Auto checkout (30min idle after 5PM)' });
           } catch (e) {
             console.warn('[InactivityDetector] Failed to record checkout:', e);
           }

@@ -418,7 +418,17 @@ Deno.serve(async (req) => {
     const resolvedProjectId = messageInsert.project_id || projectId || null;
 
     if (llmResponse.hasAction && llmResponse.actions && llmResponse.actions.length > 0) {
-      for (const action of llmResponse.actions) {
+      // Deduplicate: if create_event exists, remove create_todo (meetings should not create todos)
+      let filteredActions = llmResponse.actions;
+      const hasEvent = filteredActions.some(a => a.type === 'create_event');
+      if (hasEvent) {
+        filteredActions = filteredActions.filter(a => a.type !== 'create_todo');
+        if (filteredActions.length !== llmResponse.actions.length) {
+          console.log('[brain-process] Removed create_todo — create_event takes priority for meetings');
+        }
+      }
+
+      for (const action of filteredActions) {
         // Merge projectId into extracted_data so brain-execute
         // can create events/todos with the correct project_id
         const enrichedData = {

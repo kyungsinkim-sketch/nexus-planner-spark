@@ -185,6 +185,7 @@ function NotificationsWidget({ context }: { context: WidgetDataContext }) {
     // Navigate based on notification type
     const store = useAppStore.getState();
     const widgetStore = useWidgetStore.getState();
+    console.log('[NotifClick]', { type: n.type, projectId: n.projectId, roomId: n.roomId, directUserId: n.directUserId });
 
     if (n.type === 'chat' && n.projectId) {
       // Open project tab + navigate to chat

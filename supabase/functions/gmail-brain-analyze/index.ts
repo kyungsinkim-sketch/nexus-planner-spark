@@ -62,9 +62,43 @@ For each email, extract:
 3. **Date Inconsistency** — If the email mentions a date with a day-of-week (e.g., "3/6(금)"), verify if the day matches. If wrong, flag it with the correct day.
 4. **Suggested Event** — If the email requests a meeting or schedule, extract event details (title, startAt, endAt, location, type, attendeeIds)
 5. **Suggested Todo** — If there's an action item or request, extract todo details (title, assigneeIds, dueDate, priority, projectId)
-6. **Suggested Note** — If the email contains decision-relevant info (e.g., comparing locations, pricing options), extract as a note
+6. **Suggested Note** — Extract important business info that should be saved as a "중요 기록". See detailed rules below.
 7. **Decision Context** — If the email involves a decision (choosing between options, confirming/rejecting a proposal, changing plans), extract the structured decision context
 8. **Reply Draft** — Generate a concise, professional Korean reply draft
+
+## CRITICAL: Important Notes (suggestedNote) Extraction Rules
+suggestedNote is for saving key business information that the team should remember. Be THOROUGH and DETAILED.
+
+### ALWAYS create a suggestedNote when the email contains:
+- **Client feedback or requests** (클라이언트 피드백, 수정 요청, 방향 변경)
+- **Pricing, budget, or cost info** (견적, 예산, 비용, 단가)
+- **Key decisions or approvals** (결정, 승인, 컨펌, 확정)
+- **Schedule changes or deadlines** (일정 변경, 마감일, 납품일)
+- **Contact info or vendor details** (연락처, 업체 정보, 담당자)
+- **Technical specifications or requirements** (사양, 스펙, 요구사항)
+- **Location/venue comparisons or details** (장소 비교, 장소 정보)
+- **Contract or legal terms** (계약 조건, 법적 사항)
+- **Project status updates** (프로젝트 현황, 진행 상황)
+- **Creative direction or brand guidelines** (크리에이티브 방향, 브랜드 가이드)
+- **Meeting outcomes or action items** (회의 결과, 후속 조치)
+
+### suggestedNote format (MUST be structured and detailed):
+{
+  "title": "핵심 제목 (프로젝트명 포함)",
+  "content": "상세 내용 — 구체적 수치, 날짜, 이름, 조건 등을 모두 포함. 이메일의 핵심 정보를 빠짐없이 정리.",
+  "category": "client_feedback|decision|reference|milestone",
+  "projectId": "매칭된 프로젝트 ID (있을 경우)"
+}
+
+### Example good suggestedNote:
+{
+  "title": "JG 테크 Q2 캠페인 — 클라이언트 수정 요청",
+  "content": "1) 메인 비주얼 컬러 톤을 네이비→딥그린으로 변경 요청\\n2) 카피 수정: '혁신' → '신뢰'로 키워드 변경\\n3) 납품일 4/15에서 4/20으로 연장 가능 여부 문의\\n4) 다음 리뷰 미팅: 4/12(금) 오후 3시",
+  "category": "client_feedback",
+  "projectId": "matched-project-id"
+}
+
+### DO NOT skip suggestedNote for emails that contain substantive business information. Simple "확인했습니다" or "감사합니다" only emails may skip notes.
 
 ## Response Format
 Return a JSON array of suggestions. Each suggestion:
@@ -76,7 +110,7 @@ Return a JSON array of suggestions. Each suggestion:
   "dateInconsistency": { "mentioned": "3/6(금)", "actualDay": "목요일", "correction": "수정 안내" } | null,
   "suggestedEvent": { "title": "", "startAt": "ISO", "endAt": "ISO", "location": "", "locationUrl": "", "type": "MEETING|TASK|DEADLINE|DELIVERY", "attendeeIds": ["user-id-1"], "projectId": "proj-id" } | null,
   "suggestedTodo": { "title": "", "assigneeIds": ["user-id-1"], "assigneeNames": ["홍길동"], "dueDate": "ISO", "priority": "LOW|NORMAL|HIGH", "projectId": "proj-id" } | null,
-  "suggestedNote": "중요 기록 내용" | null,
+  "suggestedNote": { "title": "핵심 제목", "content": "상세 정리 내용", "category": "client_feedback|decision|reference|milestone", "projectId": "proj-id" } | null,
   "decisionContext": { "content": "결정 내용", "alternatives": ["대안들"], "chosen": "선택된 옵션", "reasoning": "이유", "category": "scope_change|timeline_change|budget_change|quality_tradeoff|client_negotiation|creative_direction|other" } | null,
   "suggestedReplyDraft": "답장 초안",
   "confidence": 0.0-1.0
@@ -361,7 +395,7 @@ ${emailsContext}`;
         systemPrompt,
         messages: [{ role: 'user', content: userMessage }],
         maxOutputTokens: MAX_TOKENS,
-        temperature: 0.7,
+        temperature: 0.3,
       });
 
       const content = geminiResponse.text || '[]';

@@ -24,7 +24,7 @@ export function useBrainBriefing() {
     const timer = setTimeout(() => {
       const state = useAppStore.getState();
       const myEvents = state.getMyEvents?.() || state.events || [];
-      const myTodos = state.personalTodos || [];
+      const allTodos = state.personalTodos || [];
 
       // Filter today's events (KST)
       const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Seoul' });
@@ -33,12 +33,11 @@ export function useBrainBriefing() {
         return eDate === todayStr;
       });
 
-      // Pending todos — only todos assigned to current user
+      // Pending todos — only todos assigned to current user (exclude todos I requested for others)
       const myId = currentUser.id;
-      const pendingTodos = myTodos.filter(t => {
+      const pendingTodos = allTodos.filter(t => {
         const s = (t.status || '').toUpperCase();
         if (s === 'COMPLETED' || s === 'DONE' || s === 'CANCELLED') return false;
-        // Only include todos assigned to me (exclude todos I requested for others)
         const isAssignee = t.assigneeIds?.includes(myId);
         if (!isAssignee) return false;
         return true;

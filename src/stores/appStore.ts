@@ -1909,7 +1909,7 @@ export const useAppStore = create<AppState>()(
           // This prevents data loss when project visibility changes or network issues return partial data
           const loadedProjectSet = new Set(projectIds);
           const existingNotes = get().importantNotes;
-          const keptNotes = existingNotes.filter(n => !loadedProjectSet.has(n.projectId));
+          const keptNotes = existingNotes.filter(n => n.projectId && !loadedProjectSet.has(n.projectId));
           set({ importantNotes: [...notes, ...keptNotes] });
         } catch (error) {
           console.error('Failed to load important notes:', error);
