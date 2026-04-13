@@ -287,9 +287,16 @@ function BrainChatWidget({ context }: { context: WidgetDataContext }) {
         })
         .join('\n');
 
+      // Same strict filter as useBrainBriefing.ts — excludes COMPLETED/DONE/
+      // CANCELLED (case-insensitive) and only includes todos actually assigned
+      // to me (delegated todos with me as requester-only are NOT my pending work).
       const pendingTodos = allTodos
-        .filter(t => t.status === 'PENDING' &&
-          (t.assigneeIds?.includes(currentUser.id) || t.requestedById === currentUser.id))
+        .filter(t => {
+          const s = (t.status || '').toUpperCase();
+          if (s === 'COMPLETED' || s === 'DONE' || s === 'CANCELLED') return false;
+          if (!t.assigneeIds?.includes(currentUser.id)) return false;
+          return true;
+        })
         .slice(0, 10)
         .map(t => `- ${t.title}${t.dueDate ? ` (마감: ${t.dueDate.slice(0, 10)})` : ''}`)
         .join('\n');
