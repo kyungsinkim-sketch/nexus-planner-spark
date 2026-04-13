@@ -85,7 +85,7 @@ export function startRealtimeNotifications(userId: string): () => void {
         });
       }
     )
-    // Important notes — INSERT: sync local state + notify (if not author)
+    // Important notes — INSERT: sync local state + notify (project members only)
     .on(
       'postgres_changes',
       { event: 'INSERT', schema: 'public', table: 'important_notes' },
@@ -93,13 +93,21 @@ export function startRealtimeNotifications(userId: string): () => void {
         const row = payload.new as Record<string, unknown>;
         const store = useAppStore.getState();
         const noteId = row.id as string;
+        const projectId = row.project_id as string;
 
-        // Sync store regardless of author (cross-device, cross-tab)
+        // Membership guard — only sync/notify for projects the user actually
+        // belongs to. SELECT RLS (migration 102) also enforces this server-side
+        // so most off-limits broadcasts will never arrive, but the guard keeps
+        // client state sane even if realtime and RLS fall out of step.
+        const project = store.projects.find(p => p.id === projectId);
+        if (!project) return;
+
+        // Sync store (cross-device, cross-tab)
         const existing = store.importantNotes || [];
         if (!existing.some(n => n.id === noteId)) {
           const note = {
             id: noteId,
-            projectId: (row.project_id as string) || '',
+            projectId: projectId || '',
             title: (row.title as string) || undefined,
             content: (row.content as string) || '',
             sourceMessageId: (row.source_message_id as string) || undefined,
@@ -109,21 +117,19 @@ export function startRealtimeNotifications(userId: string): () => void {
           useAppStore.setState({ importantNotes: [note, ...existing] });
         }
 
-        // Notification: skip if I created it, skip if no project context
+        // Notification: skip if I created it
         if (row.created_by === userId) return;
-        const project = store.projects.find(p => p.id === row.project_id);
-        if (!project) return;
 
         store.addAppNotification({
           type: 'todo', // reuse todo type for now
           title: project.title,
           message: `📌 새 중요 기록: ${(row.title as string) || (row.content as string)?.slice(0, 60) || ''}`,
-          projectId: row.project_id as string,
+          projectId,
           sourceId: `note-${row.id}`,
         });
       }
     )
-    // Important notes — UPDATE: sync local state + notify (if not editor/author)
+    // Important notes — UPDATE: sync local state + notify (project members only)
     .on(
       'postgres_changes',
       { event: 'UPDATE', schema: 'public', table: 'important_notes' },
@@ -131,8 +137,13 @@ export function startRealtimeNotifications(userId: string): () => void {
         const row = payload.new as Record<string, unknown>;
         const store = useAppStore.getState();
         const noteId = row.id as string;
+        const projectId = row.project_id as string;
 
-        // Sync store — always replace in-place with fresh fields
+        // Membership guard (see INSERT note above)
+        const project = store.projects.find(p => p.id === projectId);
+        if (!project) return;
+
+        // Sync store — replace in-place with fresh fields
         const existing = store.importantNotes || [];
         const idx = existing.findIndex(n => n.id === noteId);
         if (idx >= 0) {
@@ -145,20 +156,44 @@ export function startRealtimeNotifications(userId: string): () => void {
           useAppStore.setState({ importantNotes: updated });
         }
 
-        if (row.updated_by === userId || row.created_by === userId) return;
-        const project = store.projects.find(p => p.id === row.project_id);
-        if (!project) return;
+        // Skip notification for the author's own edits. We cannot identify
+        // the editor separately because the schema has no `updated_by`
+        // column, so co-edits by other members still notify the author —
+        // that's acceptable since the author usually wants to know.
+        if (row.created_by === userId) return;
 
-        // Use updated_at in sourceId so each distinct edit is a separate
-        // dedup key — otherwise legit UPDATE notifications are swallowed
-        // by the `an-${sourceId}` dedup used in addAppNotification.
-        const updateKey = (row.updated_at as string) || String(Date.now());
+        // Supabase broadcasts include a commit_timestamp at the payload
+        // level — use it when available so each edit has a unique dedup
+        // sourceId, otherwise fall back to wall-clock.
+        const commitTs = (payload as { commit_timestamp?: string }).commit_timestamp;
+        const updateKey = commitTs || String(Date.now());
         store.addAppNotification({
           type: 'todo',
           title: project.title,
           message: `📝 중요 기록 수정: ${(row.title as string) || (row.content as string)?.slice(0, 60) || ''}`,
-          projectId: row.project_id as string,
+          projectId,
           sourceId: `note-update-${row.id}-${updateKey}`,
+        });
+      }
+    )
+    // Important notes — DELETE: sync local state (no notification)
+    .on(
+      'postgres_changes',
+      { event: 'DELETE', schema: 'public', table: 'important_notes' },
+      (payload) => {
+        // DELETE payloads only include the primary key columns (old.id),
+        // not project_id — Supabase strips non-PK columns on delete. We
+        // therefore cannot do a membership guard here, but removing by id
+        // from local state is always safe: if the id isn't in our state
+        // we silently no-op.
+        const old = payload.old as Record<string, unknown>;
+        const deletedId = old.id as string;
+        if (!deletedId) return;
+        const store = useAppStore.getState();
+        const existing = store.importantNotes || [];
+        if (!existing.some(n => n.id === deletedId)) return;
+        useAppStore.setState({
+          importantNotes: existing.filter(n => n.id !== deletedId),
         });
       }
     )

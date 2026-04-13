@@ -315,6 +315,7 @@ interface AppState {
   // Important Notes Actions
   loadImportantNotes: () => Promise<void>;
   addImportantNote: (note: Omit<ImportantNote, 'id' | 'createdAt'>) => Promise<void>;
+  updateImportantNote: (noteId: string, updates: { title?: string; content?: string }) => Promise<void>;
   removeImportantNote: (noteId: string) => Promise<void>;
   getImportantNotesByProject: (projectId: string) => ImportantNote[];
 
@@ -1913,16 +1914,14 @@ export const useAppStore = create<AppState>()(
       loadImportantNotes: async () => {
         if (!isSupabaseConfigured()) return;
         try {
-          const { getAllNotesForProjects } = await import('@/services/importantNoteService');
-          const projectIds = get().projects.map(p => p.id);
-          // Always fetch — even with no projects, user may have NULL project_id notes (DM/Brain AI).
-          const notes = await getAllNotesForProjects(projectIds);
-          // Merge: replace notes for loaded projects, keep notes for any projects not in current list
-          // This prevents data loss when project visibility changes or network issues return partial data
-          const loadedProjectSet = new Set(projectIds);
-          const existingNotes = get().importantNotes;
-          const keptNotes = existingNotes.filter(n => n.projectId && !loadedProjectSet.has(n.projectId));
-          set({ importantNotes: [...notes, ...keptNotes] });
+          const { getAllAccessibleNotes } = await import('@/services/importantNoteService');
+          // Server-side RLS (migration 102) now filters to project members,
+          // so we can replace state directly with the authoritative DB result.
+          // The previous "keptNotes" merge silently preserved stale entries
+          // whenever projects state was partial, which was a primary cause of
+          // notes appearing/disappearing inconsistently across members.
+          const notes = await getAllAccessibleNotes();
+          set({ importantNotes: notes });
         } catch (error) {
           console.error('Failed to load important notes:', error);
           // On error, keep existing notes — never wipe on failure
@@ -1934,8 +1933,13 @@ export const useAppStore = create<AppState>()(
           const { createNote } = await import('@/services/importantNoteService');
           const created = await createNote(note);
           if (created) {
+            // Dedup guard — realtime INSERT broadcast may race the client
+            // response and have already added the row. Without this check
+            // the note would appear twice until the next loadImportantNotes.
             set((state) => ({
-              importantNotes: [...state.importantNotes, created],
+              importantNotes: state.importantNotes.some((n) => n.id === created.id)
+                ? state.importantNotes
+                : [...state.importantNotes, created],
             }));
           } else {
             // Surface the failure instead of silently swallowing it. RLS

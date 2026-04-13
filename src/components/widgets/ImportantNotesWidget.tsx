@@ -22,7 +22,18 @@ function ImportantNotesWidget({ context }: { context: WidgetDataContext }) {
     importantNotes, addImportantNote, removeImportantNote, updateImportantNote,
     currentUser, getUserById,
     importantNoteAddOpen, setImportantNoteAddOpen,
+    loadImportantNotes,
   } = useAppStore();
+
+  // Re-fetch on mount so that opening a project tab (especially after joining
+  // a project mid-session, or after another member edited notes while this
+  // tab was inactive) always reflects the latest server state. The previous
+  // behavior loaded notes once at login and relied on realtime, which silently
+  // missed any changes that happened before the realtime channel was up.
+  useEffect(() => {
+    loadImportantNotes();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [context.projectId]);
   const [newTitle, setNewTitle] = useState('');
   const [newContent, setNewContent] = useState('');
   const [expandedNoteId, setExpandedNoteId] = useState<string | null>(null);
