@@ -1186,7 +1186,13 @@ export function MobileAIChatView() {
                       </div>
                     )}
                     <p className="text-[13px] leading-relaxed whitespace-pre-wrap" style={{ overflowWrap: 'anywhere', wordBreak: 'break-word' }}>
-                      {msg.role === 'assistant' ? renderBrainMessage(displayContent) : displayContent}
+                      {msg.role === 'assistant'
+                        // While typewriter is revealing, render plain text to
+                        // avoid reflow jitter each time the revealed slice
+                        // crosses a time-token boundary and formatBrainMessage
+                        // re-introduces bullets/line breaks.
+                        ? (isTyping ? displayContent : renderBrainMessage(displayContent))
+                        : displayContent}
                       {isTyping && <span className="inline-block w-[2px] h-[14px] bg-violet-500 ml-0.5 animate-pulse align-text-bottom" />}
                     </p>
                     {msg.actions && msg.actions.length > 0 && !isTyping && (

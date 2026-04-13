@@ -524,11 +524,15 @@ export const useAppStore = create<AppState>()(
           await get().loadUsers();
           // Load remaining data in parallel for faster startup.
           // loadImportantNotes depends on projects being loaded, so chain it after loadProjects.
+          // Each branch is wrapped in .catch() so a single failure doesn't abort the whole init
+          // sequence (e.g. subsequent loadLayoutFromDB / initPushAndSync must still run).
           await Promise.all([
-            get().loadProjects().then(() => get().loadImportantNotes()),
-            get().loadEvents(),
-            get().loadMessages(),
-            get().loadTodos(),
+            get().loadProjects()
+              .then(() => get().loadImportantNotes())
+              .catch((e) => console.error('[signIn] projects/notes load failed:', e)),
+            get().loadEvents().catch((e) => console.error('[signIn] events load failed:', e)),
+            get().loadMessages().catch((e) => console.error('[signIn] messages load failed:', e)),
+            get().loadTodos().catch((e) => console.error('[signIn] todos load failed:', e)),
           ]);
           useWidgetStore.getState().loadLayoutFromDB();
 
@@ -624,12 +628,16 @@ export const useAppStore = create<AppState>()(
             }
             // Load remaining data in parallel for faster startup.
             // loadImportantNotes depends on projects being loaded, so chain it after loadProjects.
+            // Each branch is wrapped in .catch() so a single failure doesn't abort the whole init
+            // sequence (subsequent chat-read-status load + push init must still run).
             await Promise.all([
-              get().loadProjects().then(() => get().loadImportantNotes()),
-              get().loadEvents(),
-              get().loadMessages(),
-              get().loadTodos(),
-              get().loadGroupRooms(),
+              get().loadProjects()
+                .then(() => get().loadImportantNotes())
+                .catch((e) => console.error('[initAuth] projects/notes load failed:', e)),
+              get().loadEvents().catch((e) => console.error('[initAuth] events load failed:', e)),
+              get().loadMessages().catch((e) => console.error('[initAuth] messages load failed:', e)),
+              get().loadTodos().catch((e) => console.error('[initAuth] todos load failed:', e)),
+              get().loadGroupRooms().catch((e) => console.error('[initAuth] group rooms load failed:', e)),
             ]);
             // Load chat read status from DB for cross-device sync
             try {
@@ -1793,14 +1801,16 @@ export const useAppStore = create<AppState>()(
               if (state.personalTodos.some(t => t.id === newTodo.id)) return state;
               return { personalTodos: [...state.personalTodos, newTodo] };
             });
-            // Push app notification only if assigned to me by someone else
+            // Push app notification only if assigned to me by someone else.
+            // sourceId uses `todo-${id}` so it dedups against the Realtime path
+            // in realtimeNotificationService.ts (which also writes `todo-${id}`).
             if (newTodo.assigneeIds?.includes(currentUser.id) && newTodo.requestedById !== currentUser.id) {
               get().addAppNotification({
                 type: 'todo',
                 title: newTodo.title,
                 message: `마감: ${new Date(newTodo.dueDate).toLocaleDateString('ko-KR')}`,
                 projectId: newTodo.projectId,
-                sourceId: newTodo.id,
+                sourceId: `todo-${newTodo.id}`,
               });
             }
           } catch (error) {
@@ -1927,6 +1937,16 @@ export const useAppStore = create<AppState>()(
             set((state) => ({
               importantNotes: [...state.importantNotes, created],
             }));
+          } else {
+            // Surface the failure instead of silently swallowing it. RLS
+            // violations and network errors both return null from createNote;
+            // most callers are fire-and-forget (`handleAdd` in widgets) so we
+            // can't rely on throwing — use a toast like other store actions.
+            try {
+              const { toast } = await import('sonner');
+              toast.error('중요 기록 저장에 실패했습니다');
+            } catch { /* noop */ }
+            console.error('[addImportantNote] createNote returned null', note);
           }
         } else {
           set((state) => ({

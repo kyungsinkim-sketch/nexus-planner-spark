@@ -15,10 +15,22 @@ import { useAppStore } from '@/stores/appStore';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 
 let _channel: RealtimeChannel | null = null;
+let _channelUserId: string | null = null;
 
 export function startRealtimeNotifications(userId: string): () => void {
-  if (!isSupabaseConfigured() || _channel) return () => {};
+  if (!isSupabaseConfigured()) return () => {};
 
+  // Same user already subscribed — return no-op cleanup (keep shared channel alive)
+  if (_channel && _channelUserId === userId) return () => {};
+
+  // Different user (account switch) or stale channel — tear down first
+  if (_channel) {
+    supabase.removeChannel(_channel);
+    _channel = null;
+    _channelUserId = null;
+  }
+
+  _channelUserId = userId;
   const channelName = `activity_notifs_${userId.slice(0, 8)}`;
 
   _channel = supabase
@@ -73,14 +85,32 @@ export function startRealtimeNotifications(userId: string): () => void {
         });
       }
     )
-    // Important notes — updates by others
+    // Important notes — INSERT: sync local state + notify (if not author)
     .on(
       'postgres_changes',
       { event: 'INSERT', schema: 'public', table: 'important_notes' },
       (payload) => {
         const row = payload.new as Record<string, unknown>;
-        if (row.created_by === userId) return;
         const store = useAppStore.getState();
+        const noteId = row.id as string;
+
+        // Sync store regardless of author (cross-device, cross-tab)
+        const existing = store.importantNotes || [];
+        if (!existing.some(n => n.id === noteId)) {
+          const note = {
+            id: noteId,
+            projectId: (row.project_id as string) || '',
+            title: (row.title as string) || undefined,
+            content: (row.content as string) || '',
+            sourceMessageId: (row.source_message_id as string) || undefined,
+            createdBy: row.created_by as string,
+            createdAt: row.created_at as string,
+          };
+          useAppStore.setState({ importantNotes: [note, ...existing] });
+        }
+
+        // Notification: skip if I created it, skip if no project context
+        if (row.created_by === userId) return;
         const project = store.projects.find(p => p.id === row.project_id);
         if (!project) return;
 
@@ -93,31 +123,52 @@ export function startRealtimeNotifications(userId: string): () => void {
         });
       }
     )
+    // Important notes — UPDATE: sync local state + notify (if not editor/author)
     .on(
       'postgres_changes',
       { event: 'UPDATE', schema: 'public', table: 'important_notes' },
       (payload) => {
         const row = payload.new as Record<string, unknown>;
-        if (row.updated_by === userId || row.created_by === userId) return;
         const store = useAppStore.getState();
+        const noteId = row.id as string;
+
+        // Sync store — always replace in-place with fresh fields
+        const existing = store.importantNotes || [];
+        const idx = existing.findIndex(n => n.id === noteId);
+        if (idx >= 0) {
+          const updated = [...existing];
+          updated[idx] = {
+            ...updated[idx],
+            title: (row.title as string) || undefined,
+            content: (row.content as string) || updated[idx].content,
+          };
+          useAppStore.setState({ importantNotes: updated });
+        }
+
+        if (row.updated_by === userId || row.created_by === userId) return;
         const project = store.projects.find(p => p.id === row.project_id);
         if (!project) return;
 
+        // Use updated_at in sourceId so each distinct edit is a separate
+        // dedup key — otherwise legit UPDATE notifications are swallowed
+        // by the `an-${sourceId}` dedup used in addAppNotification.
+        const updateKey = (row.updated_at as string) || String(Date.now());
         store.addAppNotification({
           type: 'todo',
           title: project.title,
           message: `📝 중요 기록 수정: ${(row.title as string) || (row.content as string)?.slice(0, 60) || ''}`,
           projectId: row.project_id as string,
-          sourceId: `note-${row.id}`,
+          sourceId: `note-update-${row.id}-${updateKey}`,
         });
       }
     )
     .subscribe();
 
   return () => {
-    if (_channel) {
+    if (_channel && _channelUserId === userId) {
       supabase.removeChannel(_channel);
       _channel = null;
+      _channelUserId = null;
     }
   };
 }

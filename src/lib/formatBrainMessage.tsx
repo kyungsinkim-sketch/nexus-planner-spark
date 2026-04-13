@@ -39,6 +39,9 @@ const INTRO_ENDINGS = [
 ];
 
 export function formatBrainMessage(text: string): string {
+  // Null/empty guard — some call sites may pass undefined (e.g. streaming partial)
+  if (!text) return '';
+
   // Check if this looks like a schedule/briefing text
   const hasTimePattern = TIME_REGEX.test(text) || TIME_24H_REGEX.test(text);
 
@@ -50,11 +53,21 @@ export function formatBrainMessage(text: string): string {
 
   let result = text;
 
-  // 1. Add line break after intro sentence endings
+  // 1a. Add line break after intro sentence endings
   for (const ending of INTRO_ENDINGS) {
     const regex = new RegExp(`(${ending}[.!。]?)\\s*`, 'g');
     result = result.replace(regex, '$1\n\n');
   }
+
+  // 1b. Colon-then-time: many briefings end with ":" instead of a full intro
+  // phrase (e.g. "오늘 일정: 오전 11시 미팅, 오후 3시 PT"). Insert a break so
+  // step 3 can bullet the first item.
+  const colonTimeRegex = new RegExp(
+    `(:)\\s*((?:${TIME_PREFIXES})\\s*\\d{1,2}시)`,
+    'g',
+  );
+  result = result.replace(colonTimeRegex, '$1\n\n$2');
+  result = result.replace(/(:)\s*(\d{1,2}:\d{2}\s)/g, '$1\n\n$2');
 
   // 2. Replace ", 오전/오후/... N시" with "\n• 오전/오후/... N시"
   const commaTimeRegex = new RegExp(
@@ -86,7 +99,8 @@ export function formatBrainMessage(text: string): string {
  * This bypasses CSS whitespace-pre-wrap and guarantees line breaks render
  * correctly regardless of the parent container's CSS.
  */
-export function renderBrainMessage(text: string): ReactNode {
+export function renderBrainMessage(text: string | null | undefined): ReactNode {
+  if (!text) return null;
   const formatted = formatBrainMessage(text);
   const lines = formatted.split('\n');
   return lines.map((line, i) => (
