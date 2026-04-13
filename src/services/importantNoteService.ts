@@ -113,12 +113,19 @@ export async function deleteNote(noteId: string): Promise<boolean> {
 export async function getAllNotesForProjects(projectIds: string[]): Promise<ImportantNote[]> {
   if (!isSupabaseConfigured()) return [];
 
-  // Fetch project-scoped notes + notes with NULL project_id (created from DM/Brain AI)
+  // Build OR filter:
+  // - project_id IN (my projects) — notes for projects I'm a member of
+  // - project_id IS NULL — notes from DM/Brain AI (no project scope)
+  // When the user has no projects yet, we still need the IS NULL branch.
+  const orFilter = projectIds.length > 0
+    ? `project_id.in.(${projectIds.join(',')}),project_id.is.null`
+    : `project_id.is.null`;
+
   const { data, error } = await withSupabaseRetry(
     () => supabase
       .from('important_notes')
       .select('*')
-      .or(`project_id.in.(${projectIds.join(',')}),project_id.is.null`)
+      .or(orFilter)
       .order('created_at', { ascending: false }),
     { label: 'getAllNotesForProjects' },
   );

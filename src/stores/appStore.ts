@@ -167,7 +167,7 @@ interface AppState {
   weatherSettingsOpen: boolean;
 
   // Currently active/open chat context — used to suppress notifications for visible chat
-  activeChatContext: { type: 'project' | 'direct'; id: string; roomId?: string } | null;
+  activeChatContext: { type: 'project' | 'direct' | 'group'; id: string; roomId?: string } | null;
 
   // Chat unread tracking — key: "room:{roomId}" or "dm:{userId}", value: ISO timestamp
   chatLastReadTimestamps: Record<string, string>;
@@ -256,7 +256,7 @@ interface AppState {
   setImportantNoteAddOpen: (open: boolean) => void;
   setProjectSearchOpen: (open: boolean) => void;
   setShowAutoCheckInDialog: (open: boolean) => void;
-  setActiveChatContext: (ctx: { type: 'project' | 'direct'; id: string; roomId?: string } | null) => void;
+  setActiveChatContext: (ctx: { type: 'project' | 'direct' | 'group'; id: string; roomId?: string } | null) => void;
   setPendingChatNavigation: (nav: { type: 'project' | 'direct'; id: string; roomId?: string } | null) => void;
   setWorldClockSettingsOpen: (open: boolean) => void;
   setWeatherSettingsOpen: (open: boolean) => void;
@@ -522,13 +522,13 @@ export const useAppStore = create<AppState>()(
 
           // Load users FIRST so loadProjects can do domain-based filtering
           await get().loadUsers();
-          // Load remaining data in parallel for faster startup
+          // Load remaining data in parallel for faster startup.
+          // loadImportantNotes depends on projects being loaded, so chain it after loadProjects.
           await Promise.all([
-            get().loadProjects(),
+            get().loadProjects().then(() => get().loadImportantNotes()),
             get().loadEvents(),
             get().loadMessages(),
             get().loadTodos(),
-            get().loadImportantNotes(),
           ]);
           useWidgetStore.getState().loadLayoutFromDB();
 
@@ -622,13 +622,13 @@ export const useAppStore = create<AppState>()(
             if (enrichedUser) {
               set({ currentUser: { ...user, ...enrichedUser } });
             }
-            // Load remaining data in parallel for faster startup
+            // Load remaining data in parallel for faster startup.
+            // loadImportantNotes depends on projects being loaded, so chain it after loadProjects.
             await Promise.all([
-              get().loadProjects(),
+              get().loadProjects().then(() => get().loadImportantNotes()),
               get().loadEvents(),
               get().loadMessages(),
               get().loadTodos(),
-              get().loadImportantNotes(),
               get().loadGroupRooms(),
             ]);
             // Load chat read status from DB for cross-device sync
@@ -1319,8 +1319,8 @@ export const useAppStore = create<AppState>()(
             return message.directChatUserId === ctx.id ||
               (message.userId === ctx.id && message.directChatUserId === state.currentUser?.id);
           }
-          if ((ctx as any).type === 'group') {
-            return ctx.roomId && message.roomId === ctx.roomId;
+          if (ctx.type === 'group') {
+            return !!ctx.roomId && message.roomId === ctx.roomId;
           }
           return false;
         })();
@@ -1385,6 +1385,8 @@ export const useAppStore = create<AppState>()(
               get().clearChatNotificationsForRoom(message.roomId, message.projectId || undefined);
             } else if (ctx?.type === 'direct') {
               get().clearChatNotificationsForRoom(undefined, undefined, ctx.id);
+            } else if (ctx?.type === 'group') {
+              get().clearChatNotificationsForRoom(ctx.roomId);
             }
           }
         }
@@ -1903,7 +1905,7 @@ export const useAppStore = create<AppState>()(
         try {
           const { getAllNotesForProjects } = await import('@/services/importantNoteService');
           const projectIds = get().projects.map(p => p.id);
-          if (projectIds.length === 0) return;
+          // Always fetch — even with no projects, user may have NULL project_id notes (DM/Brain AI).
           const notes = await getAllNotesForProjects(projectIds);
           // Merge: replace notes for loaded projects, keep notes for any projects not in current list
           // This prevents data loss when project visibility changes or network issues return partial data
@@ -2684,7 +2686,7 @@ export const useAppStore = create<AppState>()(
       setImportantNoteAddOpen: (open) => set({ importantNoteAddOpen: open }),
       setProjectSearchOpen: (open) => set({ projectSearchOpen: open }),
       setShowAutoCheckInDialog: (open) => set({ showAutoCheckInDialog: open }),
-      setActiveChatContext: (ctx: { type: 'project' | 'direct'; id: string; roomId?: string } | null) => set({ activeChatContext: ctx }),
+      setActiveChatContext: (ctx: { type: 'project' | 'direct' | 'group'; id: string; roomId?: string } | null) => set({ activeChatContext: ctx }),
       setPendingChatNavigation: (nav: { type: 'project' | 'direct' | 'group'; id: string; roomId?: string } | null) => set({ pendingChatNavigation: nav }),
       setWorldClockSettingsOpen: (open) => set({ worldClockSettingsOpen: open }),
       setWeatherSettingsOpen: (open) => set({ weatherSettingsOpen: open }),

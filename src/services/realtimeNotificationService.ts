@@ -39,11 +39,13 @@ export function startRealtimeNotifications(userId: string): () => void {
         const isAttendee = attendeeIds.includes(userId);
         if (!isInProject && !isAttendee) return;
 
+        // Title fallback: attendee who isn't in the project won't have project lookup
+        const notifTitle = project?.title || '캘린더';
         store.addAppNotification({
           type: 'event',
-          title: project.title,
+          title: notifTitle,
           message: `📅 새 일정: ${(row.title as string) || '제목 없음'}`,
-          projectId: row.project_id as string,
+          projectId: (row.project_id as string) || undefined,
           sourceId: `cal-${row.id}`,
         });
       }
@@ -106,6 +108,7 @@ export function startRealtimeNotifications(userId: string): () => void {
           title: project.title,
           message: `📝 중요 기록 수정: ${(row.title as string) || (row.content as string)?.slice(0, 60) || ''}`,
           projectId: row.project_id as string,
+          sourceId: `note-${row.id}`,
         });
       }
     )
