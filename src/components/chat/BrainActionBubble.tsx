@@ -28,7 +28,7 @@ import {
 import { useAppStore } from '@/stores/appStore';
 import { useTranslation } from '@/hooks/useTranslation';
 import * as brainService from '@/services/brainService';
-import { formatBrainMessage } from '@/lib/formatBrainMessage';
+import { renderBrainMessage } from '@/lib/formatBrainMessage';
 import type {
   ChatMessage,
   BrainAction,
@@ -198,7 +198,7 @@ export function BrainActionBubble({
           <Brain className="w-3.5 h-3.5 text-violet-500 shrink-0" />
           <span className="text-xs font-semibold text-violet-600 dark:text-violet-400">Brain AI</span>
         </div>
-        <p className="text-foreground leading-relaxed whitespace-pre-wrap">{formatBrainMessage(brainData.replyMessage)}</p>
+        <p className="text-foreground leading-relaxed whitespace-pre-wrap">{renderBrainMessage(brainData.replyMessage)}</p>
 
         {/* Inline compact completion badges — shown when all actions finished */}
         {allTerminal && (
