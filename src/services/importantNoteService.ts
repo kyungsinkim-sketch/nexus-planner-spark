@@ -73,9 +73,10 @@ export async function createNote(note: Omit<ImportantNote, 'id' | 'createdAt'>):
 export async function updateNote(noteId: string, updates: { title?: string; content?: string }): Promise<ImportantNote | null> {
   if (!isSupabaseConfigured()) return null;
 
-  const payload: Record<string, unknown> = {
-    updated_at: new Date().toISOString(),
-  };
+  // IMPORTANT: important_notes table has no `updated_at` column (see mig 066).
+  // Setting it here would fail with a PGRST schema error and the update would
+  // be rejected silently — leading to the "edits never persist" symptom.
+  const payload: Record<string, unknown> = {};
   if (updates.title !== undefined) payload.title = updates.title;
   if (updates.content !== undefined) payload.content = updates.content;
 
@@ -110,21 +111,28 @@ export async function deleteNote(noteId: string): Promise<boolean> {
   return true;
 }
 
-export async function getAllNotesForProjects(projectIds: string[]): Promise<ImportantNote[]> {
+/**
+ * Fetch every important note the current user can see.
+ *
+ * Previously this function filtered by `project_id IN (<client-side projects>)`,
+ * which meant the client's stale/partial `projects` state would silently drop
+ * notes from projects the user was legitimately a member of. After migration
+ * 102 tightened the SELECT RLS to project members only, we can safely let the
+ * database decide visibility and drop the client filter entirely.
+ */
+export async function getAllAccessibleNotes(): Promise<ImportantNote[]> {
   if (!isSupabaseConfigured()) return [];
 
-  // Fetch project-scoped notes + notes with NULL project_id (created from DM/Brain AI)
   const { data, error } = await withSupabaseRetry(
     () => supabase
       .from('important_notes')
       .select('*')
-      .or(`project_id.in.(${projectIds.join(',')}),project_id.is.null`)
       .order('created_at', { ascending: false }),
-    { label: 'getAllNotesForProjects' },
+    { label: 'getAllAccessibleNotes' },
   );
 
   if (error) {
-    console.error('Failed to load all important notes:', error);
+    console.error('Failed to load important notes:', error);
     return [];
   }
 

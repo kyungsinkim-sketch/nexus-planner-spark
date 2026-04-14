@@ -1,0 +1,110 @@
+/**
+ * Example skill handler — copy to `handler.ts` in your new skill folder.
+ *
+ * The runtime loads this module exactly once per cold start and reuses the
+ * exported `execute` function for every invocation. Keep the module
+ * side-effect-free: do all I/O inside `execute`, not at import time.
+ *
+ * The `_runtime/types.ts` module does not exist yet — it will be added in
+ * Phase 2 along with the loader. The shapes below are the contract we are
+ * committing to. You can stub them locally while developing:
+ *
+ *   import type { SkillContext, SkillResult } from '../../_runtime/types.ts';
+ */
+
+// ---------------------------------------------------------------------------
+// Phase 2 will provide the real types from `_runtime/types.ts`. Until then,
+// this block documents the contract so editors can typecheck against it.
+// ---------------------------------------------------------------------------
+
+interface SkillUser {
+  id: string;
+  tenantId: string;
+  language: 'en' | 'ko' | 'ja' | 'th';
+}
+
+interface SkillContext {
+  // Authenticated service-role Supabase client scoped to the user's tenant.
+  supabase: unknown;
+  user: SkillUser;
+  project: { id: string; title: string } | null;
+  room: { id: string; type: string } | null;
+  // Translator bound to user.language. Falls back to default_language on miss.
+  t: (key: string, vars?: Record<string, string | number>) => string;
+}
+
+interface SkillResult {
+  success: boolean;
+  // Structured payload — must conform to the skill's `output_schema`.
+  data?: Record<string, unknown>;
+  // User-facing message in the user's language. Use `context.t()` to localize.
+  userMessage?: string;
+  // Optional handoff: ask the router to invoke another skill instead.
+  handoff?: string;
+}
+
+// ---------------------------------------------------------------------------
+// Manifest export — must match `name` and `version` in SKILL.md frontmatter.
+// The loader cross-checks these at boot and refuses to register a skill whose
+// handler manifest disagrees with its SKILL.md.
+// ---------------------------------------------------------------------------
+
+export const manifest = {
+  name: 'example-skill',
+  version: '0.1.0',
+} as const;
+
+// ---------------------------------------------------------------------------
+// Handler — invoked by the runtime after the router has selected this skill
+// and validated `params` against `output_schema`. Treat `params` as trusted
+// SHAPE-wise but UNTRUSTED content-wise — re-validate any IDs against the
+// caller's tenant and project before mutating data.
+// ---------------------------------------------------------------------------
+
+export async function execute(
+  params: Record<string, unknown>,
+  context: SkillContext,
+): Promise<SkillResult> {
+  // 1. Pull typed values from params. The router has already validated shape
+  //    against output_schema, so a missing `message` here is a runtime bug,
+  //    not a user error.
+  const message = typeof params.message === 'string' ? params.message : '';
+  if (!message) {
+    return {
+      success: false,
+      userMessage: context.t('example.missingMessage'),
+    };
+  }
+
+  // 2. Guard on context. If your skill `requires_project_context: true` in
+  //    SKILL.md the router won't call you without a project, but be defensive.
+  if (!context.project) {
+    return {
+      success: false,
+      userMessage: context.t('example.needsProject'),
+    };
+  }
+
+  // 3. Perform the action. Keep this idempotent where possible — the router
+  //    may retry on transient failures. Use deterministic source IDs so your
+  //    inserts are deduplicated by the persistence layer.
+  //
+  //    const { data, error } = await context.supabase
+  //      .from('your_table')
+  //      .insert({ ... })
+  //      .select()
+  //      .single();
+  //
+  //    if (error) {
+  //      return { success: false, userMessage: context.t('example.failed') };
+  //    }
+
+  // 4. Return success with a localized user message and the structured data
+  //    that satisfies output_schema. The runtime logs `data` to action_log
+  //    and renders `userMessage` in the chat thread.
+  return {
+    success: true,
+    data: { message },
+    userMessage: context.t('example.done', { message }),
+  };
+}

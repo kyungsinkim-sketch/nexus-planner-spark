@@ -174,19 +174,50 @@ Deno.serve(async (req) => {
           throw new Error(`Failed to create event: ${eventError.message}`);
         }
 
-        // Insert attendees into calendar_event_attendees
-        if (attendeeIds.length > 0) {
-          const attendeeInserts = attendeeIds
-            .filter((id: string) => id !== '')
+        // Insert attendees into calendar_event_attendees + send notifications
+        if (filteredAttendeeIds.length > 0) {
+          const attendeeInserts = filteredAttendeeIds
             .map((attendeeId: string) => ({
               event_id: event.id,
               user_id: attendeeId,
             }));
 
-          if (attendeeInserts.length > 0) {
-            await supabase
-              .from('calendar_event_attendees')
-              .insert(attendeeInserts);
+          await supabase
+            .from('calendar_event_attendees')
+            .insert(attendeeInserts);
+
+          // Fetch creator name for notification
+          const { data: creatorProfile } = await supabase
+            .from('profiles')
+            .select('name')
+            .eq('id', userId)
+            .single();
+          const creatorName = creatorProfile?.name || '팀원';
+
+          // Format event time in KST
+          const eventStart = eventStartAt ? new Date(eventStartAt) : null;
+          const kstTimeStr = eventStart
+            ? eventStart.toLocaleString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Seoul', hour12: false })
+            : '';
+
+          // Insert DB notifications for each attendee (persistent — works even if offline)
+          const notifInserts = filteredAttendeeIds.map((attendeeId: string) => ({
+            type: 'mention',
+            title: `${creatorName}님의 미팅 초대`,
+            description: `${eventData.title}${kstTimeStr ? ` (${kstTimeStr})` : ''}`,
+            project_id: eventData.projectId || null,
+            from_user_id: userId,
+            user_id: attendeeId,
+          }));
+
+          const { error: notifError } = await supabase
+            .from('notifications')
+            .insert(notifInserts);
+
+          if (notifError) {
+            console.warn('Failed to insert attendee notifications (non-fatal):', notifError.message);
+          } else {
+            console.log(`Inserted ${notifInserts.length} attendee notification(s) for event ${event.id}`);
           }
         }
 

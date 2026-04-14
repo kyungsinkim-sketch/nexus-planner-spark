@@ -11,8 +11,13 @@ const ChatPanel = lazy(() =>
 );
 
 export function MobileDmChatView() {
-  const { mobileDmTargetUserId, mobileGroupRoomId } = useWidgetStore();
+  const { mobileDmTargetUserId, mobileGroupRoomId, setMobileView } = useWidgetStore();
   const { chatRooms } = useAppStore();
+
+  // Back from a DM/group thread should return to the unified mobile chat
+  // list (image #2 styling) rather than fall through to ChatPanel's internal
+  // desktop-styled Projects/Direct/Groups list.
+  const handleBackToList = () => setMobileView('chat-list');
 
   // Track visual viewport for keyboard handling
   const [viewH, setViewH] = useState(() => window.visualViewport?.height || window.innerHeight);
@@ -49,10 +54,18 @@ export function MobileDmChatView() {
           </div>
         }>
           {mobileDmTargetUserId && (
-            <ChatPanel defaultDmUserId={mobileDmTargetUserId} keyboardOpen={keyboardOpen} />
+            <ChatPanel
+              defaultDmUserId={mobileDmTargetUserId}
+              keyboardOpen={keyboardOpen}
+              onBackToList={handleBackToList}
+            />
           )}
           {mobileGroupRoomId && (
-            <ChatPanel defaultGroupRoomId={mobileGroupRoomId} keyboardOpen={keyboardOpen} />
+            <ChatPanel
+              defaultGroupRoomId={mobileGroupRoomId}
+              keyboardOpen={keyboardOpen}
+              onBackToList={handleBackToList}
+            />
           )}
         </Suspense>
       </div>

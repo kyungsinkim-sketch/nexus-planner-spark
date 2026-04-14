@@ -167,7 +167,7 @@ interface AppState {
   weatherSettingsOpen: boolean;
 
   // Currently active/open chat context — used to suppress notifications for visible chat
-  activeChatContext: { type: 'project' | 'direct'; id: string; roomId?: string } | null;
+  activeChatContext: { type: 'project' | 'direct' | 'group'; id: string; roomId?: string } | null;
 
   // Chat unread tracking — key: "room:{roomId}" or "dm:{userId}", value: ISO timestamp
   chatLastReadTimestamps: Record<string, string>;
@@ -256,8 +256,8 @@ interface AppState {
   setImportantNoteAddOpen: (open: boolean) => void;
   setProjectSearchOpen: (open: boolean) => void;
   setShowAutoCheckInDialog: (open: boolean) => void;
-  setActiveChatContext: (ctx: { type: 'project' | 'direct'; id: string; roomId?: string } | null) => void;
-  setPendingChatNavigation: (nav: { type: 'project' | 'direct'; id: string; roomId?: string } | null) => void;
+  setActiveChatContext: (ctx: { type: 'project' | 'direct' | 'group'; id: string; roomId?: string } | null) => void;
+  setPendingChatNavigation: (nav: { type: 'project' | 'direct' | 'group'; id: string; roomId?: string } | null) => void;
   setWorldClockSettingsOpen: (open: boolean) => void;
   setWeatherSettingsOpen: (open: boolean) => void;
   setNotificationSoundEnabled: (enabled: boolean) => void;
@@ -315,6 +315,7 @@ interface AppState {
   // Important Notes Actions
   loadImportantNotes: () => Promise<void>;
   addImportantNote: (note: Omit<ImportantNote, 'id' | 'createdAt'>) => Promise<void>;
+  updateImportantNote: (noteId: string, updates: { title?: string; content?: string }) => Promise<void>;
   removeImportantNote: (noteId: string) => Promise<void>;
   getImportantNotesByProject: (projectId: string) => ImportantNote[];
 
@@ -522,13 +523,17 @@ export const useAppStore = create<AppState>()(
 
           // Load users FIRST so loadProjects can do domain-based filtering
           await get().loadUsers();
-          // Load remaining data in parallel for faster startup
+          // Load remaining data in parallel for faster startup.
+          // loadImportantNotes depends on projects being loaded, so chain it after loadProjects.
+          // Each branch is wrapped in .catch() so a single failure doesn't abort the whole init
+          // sequence (e.g. subsequent loadLayoutFromDB / initPushAndSync must still run).
           await Promise.all([
-            get().loadProjects(),
-            get().loadEvents(),
-            get().loadMessages(),
-            get().loadTodos(),
-            get().loadImportantNotes(),
+            get().loadProjects()
+              .then(() => get().loadImportantNotes())
+              .catch((e) => console.error('[signIn] projects/notes load failed:', e)),
+            get().loadEvents().catch((e) => console.error('[signIn] events load failed:', e)),
+            get().loadMessages().catch((e) => console.error('[signIn] messages load failed:', e)),
+            get().loadTodos().catch((e) => console.error('[signIn] todos load failed:', e)),
           ]);
           useWidgetStore.getState().loadLayoutFromDB();
 
@@ -622,14 +627,18 @@ export const useAppStore = create<AppState>()(
             if (enrichedUser) {
               set({ currentUser: { ...user, ...enrichedUser } });
             }
-            // Load remaining data in parallel for faster startup
+            // Load remaining data in parallel for faster startup.
+            // loadImportantNotes depends on projects being loaded, so chain it after loadProjects.
+            // Each branch is wrapped in .catch() so a single failure doesn't abort the whole init
+            // sequence (subsequent chat-read-status load + push init must still run).
             await Promise.all([
-              get().loadProjects(),
-              get().loadEvents(),
-              get().loadMessages(),
-              get().loadTodos(),
-              get().loadImportantNotes(),
-              get().loadGroupRooms(),
+              get().loadProjects()
+                .then(() => get().loadImportantNotes())
+                .catch((e) => console.error('[initAuth] projects/notes load failed:', e)),
+              get().loadEvents().catch((e) => console.error('[initAuth] events load failed:', e)),
+              get().loadMessages().catch((e) => console.error('[initAuth] messages load failed:', e)),
+              get().loadTodos().catch((e) => console.error('[initAuth] todos load failed:', e)),
+              get().loadGroupRooms().catch((e) => console.error('[initAuth] group rooms load failed:', e)),
             ]);
             // Load chat read status from DB for cross-device sync
             try {
@@ -1319,8 +1328,8 @@ export const useAppStore = create<AppState>()(
             return message.directChatUserId === ctx.id ||
               (message.userId === ctx.id && message.directChatUserId === state.currentUser?.id);
           }
-          if ((ctx as any).type === 'group') {
-            return ctx.roomId && message.roomId === ctx.roomId;
+          if (ctx.type === 'group') {
+            return !!ctx.roomId && message.roomId === ctx.roomId;
           }
           return false;
         })();
@@ -1385,6 +1394,8 @@ export const useAppStore = create<AppState>()(
               get().clearChatNotificationsForRoom(message.roomId, message.projectId || undefined);
             } else if (ctx?.type === 'direct') {
               get().clearChatNotificationsForRoom(undefined, undefined, ctx.id);
+            } else if (ctx?.type === 'group') {
+              get().clearChatNotificationsForRoom(ctx.roomId);
             }
           }
         }
@@ -1791,14 +1802,16 @@ export const useAppStore = create<AppState>()(
               if (state.personalTodos.some(t => t.id === newTodo.id)) return state;
               return { personalTodos: [...state.personalTodos, newTodo] };
             });
-            // Push app notification only if assigned to me by someone else
+            // Push app notification only if assigned to me by someone else.
+            // sourceId uses `todo-${id}` so it dedups against the Realtime path
+            // in realtimeNotificationService.ts (which also writes `todo-${id}`).
             if (newTodo.assigneeIds?.includes(currentUser.id) && newTodo.requestedById !== currentUser.id) {
               get().addAppNotification({
                 type: 'todo',
                 title: newTodo.title,
                 message: `마감: ${new Date(newTodo.dueDate).toLocaleDateString('ko-KR')}`,
                 projectId: newTodo.projectId,
-                sourceId: newTodo.id,
+                sourceId: `todo-${newTodo.id}`,
               });
             }
           } catch (error) {
@@ -1901,16 +1914,14 @@ export const useAppStore = create<AppState>()(
       loadImportantNotes: async () => {
         if (!isSupabaseConfigured()) return;
         try {
-          const { getAllNotesForProjects } = await import('@/services/importantNoteService');
-          const projectIds = get().projects.map(p => p.id);
-          if (projectIds.length === 0) return;
-          const notes = await getAllNotesForProjects(projectIds);
-          // Merge: replace notes for loaded projects, keep notes for any projects not in current list
-          // This prevents data loss when project visibility changes or network issues return partial data
-          const loadedProjectSet = new Set(projectIds);
-          const existingNotes = get().importantNotes;
-          const keptNotes = existingNotes.filter(n => n.projectId && !loadedProjectSet.has(n.projectId));
-          set({ importantNotes: [...notes, ...keptNotes] });
+          const { getAllAccessibleNotes } = await import('@/services/importantNoteService');
+          // Server-side RLS (migration 102) now filters to project members,
+          // so we can replace state directly with the authoritative DB result.
+          // The previous "keptNotes" merge silently preserved stale entries
+          // whenever projects state was partial, which was a primary cause of
+          // notes appearing/disappearing inconsistently across members.
+          const notes = await getAllAccessibleNotes();
+          set({ importantNotes: notes });
         } catch (error) {
           console.error('Failed to load important notes:', error);
           // On error, keep existing notes — never wipe on failure
@@ -1922,9 +1933,24 @@ export const useAppStore = create<AppState>()(
           const { createNote } = await import('@/services/importantNoteService');
           const created = await createNote(note);
           if (created) {
+            // Dedup guard — realtime INSERT broadcast may race the client
+            // response and have already added the row. Without this check
+            // the note would appear twice until the next loadImportantNotes.
             set((state) => ({
-              importantNotes: [...state.importantNotes, created],
+              importantNotes: state.importantNotes.some((n) => n.id === created.id)
+                ? state.importantNotes
+                : [...state.importantNotes, created],
             }));
+          } else {
+            // Surface the failure instead of silently swallowing it. RLS
+            // violations and network errors both return null from createNote;
+            // most callers are fire-and-forget (`handleAdd` in widgets) so we
+            // can't rely on throwing — use a toast like other store actions.
+            try {
+              const { toast } = await import('sonner');
+              toast.error('중요 기록 저장에 실패했습니다');
+            } catch { /* noop */ }
+            console.error('[addImportantNote] createNote returned null', note);
           }
         } else {
           set((state) => ({
@@ -2684,7 +2710,7 @@ export const useAppStore = create<AppState>()(
       setImportantNoteAddOpen: (open) => set({ importantNoteAddOpen: open }),
       setProjectSearchOpen: (open) => set({ projectSearchOpen: open }),
       setShowAutoCheckInDialog: (open) => set({ showAutoCheckInDialog: open }),
-      setActiveChatContext: (ctx: { type: 'project' | 'direct'; id: string; roomId?: string } | null) => set({ activeChatContext: ctx }),
+      setActiveChatContext: (ctx: { type: 'project' | 'direct' | 'group'; id: string; roomId?: string } | null) => set({ activeChatContext: ctx }),
       setPendingChatNavigation: (nav: { type: 'project' | 'direct' | 'group'; id: string; roomId?: string } | null) => set({ pendingChatNavigation: nav }),
       setWorldClockSettingsOpen: (open) => set({ worldClockSettingsOpen: open }),
       setWeatherSettingsOpen: (open) => set({ weatherSettingsOpen: open }),

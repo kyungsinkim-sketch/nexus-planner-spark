@@ -10,6 +10,7 @@
  */
 
 import { Brain, Check, X, MessageSquare } from 'lucide-react';
+import { renderBrainMessage } from '@/lib/formatBrainMessage';
 
 export interface BrainPopupData {
   id: string;
@@ -63,9 +64,10 @@ function BrainPopupCard({
       {/* Title */}
       <p className="typo-widget-body font-medium text-foreground leading-snug mb-1.5">{data.title}</p>
 
-      {/* Message */}
-      <p className="typo-widget-sub leading-relaxed mb-4 whitespace-pre-line">
-        {data.message}
+      {/* Message — renderBrainMessage emits explicit <br> tags so line breaks
+          render regardless of CSS whitespace handling */}
+      <p className="typo-widget-sub leading-relaxed mb-4">
+        {renderBrainMessage(data.message)}
       </p>
 
       {/* Actions */}

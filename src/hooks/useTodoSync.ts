@@ -1,12 +1,14 @@
 /**
- * useTodoSync — Global hook for real-time todo synchronization.
+ * useTodoSync — Global hook for real-time todo + event invite synchronization.
  *
- * Subscribes to Supabase Realtime changes on `personal_todos` table and
- * refreshes the Zustand store so that todos assigned by OTHER users appear
- * without a page reload.
+ * Subscribes to Supabase Realtime changes on `personal_todos` and
+ * `calendar_events` tables via a single channel.
  *
- * Also generates an AppNotification when someone assigns a new todo to the
- * current user.
+ * Features:
+ * - Refreshes Zustand store on todo INSERT/UPDATE/DELETE
+ * - Shows Brain popup when someone assigns a new todo
+ * - Shows Brain popup when someone invites user to a calendar event
+ * - Fallback: on mount, queries recent event invites in case Realtime missed them
  */
 
 import { useEffect, useRef } from 'react';
@@ -41,6 +43,9 @@ interface EventRow {
   created_at: string;
 }
 
+/** Track event IDs we've already shown popups for (persists across re-renders) */
+const shownEventPopups = new Set<string>();
+
 export function useTodoSync() {
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const currentUser = useAppStore((s) => s.currentUser);
@@ -55,8 +60,10 @@ export function useTodoSync() {
       channelRef.current = null;
     }
 
+    // ── Single channel for both todo + event subscriptions ──
     const channel = supabase
-      .channel('todo_sync_global')
+      .channel('brain_sync_global')
+      // ─── personal_todos subscription ───
       .on(
         'postgres_changes',
         {
@@ -65,14 +72,13 @@ export function useTodoSync() {
           table: 'personal_todos',
         },
         (payload) => {
-          const event = payload.eventType; // INSERT | UPDATE | DELETE
+          const event = payload.eventType;
           const row = payload.new as TodoRow | null;
           const oldRow = payload.old as { id?: string } | null;
 
           const store = useAppStore.getState();
 
           if (event === 'DELETE' && oldRow?.id) {
-            // Remove from local state
             const existed = store.personalTodos.find(t => t.id === oldRow.id);
             if (existed) {
               useAppStore.setState({
@@ -84,12 +90,10 @@ export function useTodoSync() {
 
           if (!row) return;
 
-          // Check if this todo is relevant to the current user
           const isAssignee = row.assignee_ids?.includes(currentUser.id);
           const isCreator = row.requested_by_id === currentUser.id;
           if (!isAssignee && !isCreator) return;
 
-          // Transform row to PersonalTodo
           const todo = {
             id: row.id,
             title: row.title,
@@ -105,14 +109,12 @@ export function useTodoSync() {
           };
 
           if (event === 'INSERT') {
-            // Add if not already present
             const exists = store.personalTodos.some(t => t.id === todo.id);
             if (!exists) {
               useAppStore.setState({
                 personalTodos: [todo, ...store.personalTodos],
               });
 
-              // Create notification + Brain popup if assigned to me by someone else
               if (isAssignee && row.requested_by_id !== currentUser.id) {
                 const requester = store.users.find(u => u.id === row.requested_by_id);
                 const requesterName = requester?.name || '팀원';
@@ -123,7 +125,6 @@ export function useTodoSync() {
                   projectId: row.project_id || undefined,
                 });
 
-                // Brain AI popup for the assignee
                 showBrainPopup({
                   id: `todo_${row.id}`,
                   title: `${requesterName}님의 요청`,
@@ -131,21 +132,17 @@ export function useTodoSync() {
                   source: 'todo_assignment',
                   fromUserName: requesterName,
                   actionLabel: '확인',
-                  onAccept: () => {
-                    // Mark as acknowledged — todo already exists in store
-                  },
+                  onAccept: () => {},
                 });
               }
             }
           } else if (event === 'UPDATE') {
-            // Update in-place
             const idx = store.personalTodos.findIndex(t => t.id === todo.id);
             if (idx >= 0) {
               const updated = [...store.personalTodos];
               updated[idx] = todo;
               useAppStore.setState({ personalTodos: updated });
             } else {
-              // Might be newly assigned to us — add it
               useAppStore.setState({
                 personalTodos: [todo, ...store.personalTodos],
               });
@@ -153,14 +150,7 @@ export function useTodoSync() {
           }
         },
       )
-      .subscribe();
-
-    channelRef.current = channel;
-
-    // ── Calendar event subscription: popup when someone invites me ──
-    console.log('[EventInvite] Setting up calendar_events subscription for user:', currentUser.id);
-    const eventChannel = supabase
-      .channel('event_invite_popup')
+      // ─── calendar_events subscription (event invites) ───
       .on(
         'postgres_changes',
         {
@@ -184,45 +174,95 @@ export function useTodoSync() {
           console.log('[EventInvite] isAttendee:', isAttendee);
           if (!isAttendee) { console.log('[EventInvite] Skipped: not in attendee_ids'); return; }
 
-          const store = useAppStore.getState();
-          const creator = store.users.find(u => u.id === row.owner_id);
-          const creatorName = creator?.name || '팀원';
+          // Skip if already shown
+          if (shownEventPopups.has(row.id)) return;
+          shownEventPopups.add(row.id);
 
-          const kstTime = new Date(row.start_at).toLocaleTimeString('ko-KR', {
-            hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Seoul', hour12: false,
-          });
-          const kstDate = new Date(row.start_at).toLocaleDateString('ko-KR', {
-            month: 'short', day: 'numeric', timeZone: 'Asia/Seoul',
-          });
-
-          showBrainPopup({
-            id: `event_${row.id}`,
-            title: `${creatorName}님의 미팅 요청`,
-            message: `${row.title}\n${kstDate} ${kstTime}${row.location ? ` · ${row.location}` : ''}`,
-            source: 'event_request',
-            fromUserName: creatorName,
-            actionLabel: '확인',
-            onAccept: () => {},
-          });
-
-          store.addAppNotification({
-            type: 'event',
-            title: creatorName,
-            message: `미팅 초대: ${row.title} (${kstDate} ${kstTime})`,
-            projectId: row.project_id || undefined,
-          });
+          handleEventInvitePopup(row, currentUser.id);
         },
       )
-      .subscribe((status) => {
-        console.log('[EventInvite] Subscription status:', status);
+      .subscribe((status, err) => {
+        console.log(`[BrainSync] channel status: ${status}`, err ? `error: ${err.message}` : '');
       });
+
+    channelRef.current = channel;
+
+    // ── Fallback: check for recent event invites we might have missed ──
+    loadMissedEventInvites(currentUser.id);
 
     return () => {
       if (channelRef.current) {
         supabase.removeChannel(channelRef.current);
         channelRef.current = null;
       }
-      supabase.removeChannel(eventChannel);
     };
   }, [currentUser?.id]);
+}
+
+/**
+ * Show Brain popup + app notification for an event invite.
+ */
+function handleEventInvitePopup(row: EventRow, currentUserId: string) {
+  const store = useAppStore.getState();
+  const creator = store.users.find(u => u.id === row.owner_id);
+  const creatorName = creator?.name || '팀원';
+
+  const kstTime = new Date(row.start_at).toLocaleTimeString('ko-KR', {
+    hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Seoul', hour12: false,
+  });
+  const kstDate = new Date(row.start_at).toLocaleDateString('ko-KR', {
+    month: 'short', day: 'numeric', timeZone: 'Asia/Seoul',
+  });
+
+  showBrainPopup({
+    id: `event_${row.id}`,
+    title: `${creatorName}님의 미팅 요청`,
+    message: `${row.title}\n${kstDate} ${kstTime}${row.location ? ` · ${row.location}` : ''}`,
+    source: 'event_request',
+    fromUserName: creatorName,
+    actionLabel: '확인',
+    onAccept: () => {},
+  });
+
+  store.addAppNotification({
+    type: 'event',
+    title: creatorName,
+    message: `미팅 초대: ${row.title} (${kstDate} ${kstTime})`,
+    projectId: row.project_id || undefined,
+  });
+}
+
+/**
+ * Fallback: query recent calendar events (last 2 hours) where user is an attendee.
+ * Shows popups for any events the Realtime subscription might have missed.
+ */
+async function loadMissedEventInvites(userId: string) {
+  try {
+    const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
+
+    const { data: recentEvents, error } = await supabase
+      .from('calendar_events')
+      .select('*')
+      .contains('attendee_ids', [userId])
+      .neq('owner_id', userId)
+      .gte('created_at', twoHoursAgo)
+      .order('created_at', { ascending: false })
+      .limit(10);
+
+    if (error) {
+      console.warn('[BrainSync] Failed to load missed event invites:', error.message);
+      return;
+    }
+
+    if (recentEvents && recentEvents.length > 0) {
+      console.log(`[BrainSync] Found ${recentEvents.length} recent event invite(s) to check`);
+      for (const row of recentEvents) {
+        if (shownEventPopups.has(row.id)) continue;
+        shownEventPopups.add(row.id);
+        handleEventInvitePopup(row as EventRow, userId);
+      }
+    }
+  } catch (err) {
+    console.warn('[BrainSync] loadMissedEventInvites error:', err);
+  }
 }

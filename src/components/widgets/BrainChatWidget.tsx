@@ -13,7 +13,12 @@ import { toast } from 'sonner';
 import { useAppStore } from '@/stores/appStore';
 import { useTranslation } from '@/hooks/useTranslation';
 import * as brainService from '@/services/brainService';
+import { renderBrainMessage } from '@/lib/formatBrainMessage';
 import { isSupabaseConfigured } from '@/lib/supabase';
+import {
+  ensureTodaysBriefing,
+  stripBriefingMarker,
+} from '@/services/brainBriefingService';
 import type { WidgetDataContext } from '@/types/widget';
 
 interface BrainHistoryAction {
@@ -49,125 +54,46 @@ function BrainChatWidget({ context }: { context: WidgetDataContext }) {
 
   const BRAIN_BOT_ID = '00000000-0000-0000-0000-000000000099';
 
-  // Load recent Brain AI DM history from DB on mount
+  // Load recent Brain AI DM history from DB on mount. Today's briefing is
+  // now a normal persisted DM (see brainBriefingService), so we ensure it
+  // exists in the DB before fetching history — that way the briefing lands
+  // in the chat transcript naturally and survives reloads, account switches
+  // and cross-device use without any ephemeral-state workarounds.
   useEffect(() => {
     if (historyLoadedRef.current || !currentUser?.id) return;
     historyLoadedRef.current = true;
     (async () => {
       try {
+        // 1. Ensure today's briefing exists in DB (idempotent). Runs after a
+        //    short delay so events/todos have time to hydrate into the store.
+        await new Promise((r) => setTimeout(r, 2000));
+        const state = useAppStore.getState();
+        await ensureTodaysBriefing(currentUser, {
+          language: state.language,
+          events: state.getMyEvents?.() || state.events || [],
+          todos: state.personalTodos || [],
+          notifications: state.appNotifications || [],
+        });
+
+        // 2. Load Brain DM history. We fetch a larger window (30) than the
+        //    previous 10 so the briefing stays visible even after a handful
+        //    of follow-up exchanges during the day.
         const { getDirectMessages } = await import('@/services/chatService');
         const msgs = await getDirectMessages(currentUser.id, BRAIN_BOT_ID);
         if (msgs.length > 0) {
-          const recent = msgs.slice(-10);
-          const items: BrainHistoryItem[] = recent.map(m => ({
+          const recent = msgs.slice(-30);
+          const items: BrainHistoryItem[] = recent.map((m) => ({
             id: m.id,
-            type: m.userId === BRAIN_BOT_ID ? 'brain' as const : 'user' as const,
-            content: m.content,
+            type: m.userId === BRAIN_BOT_ID ? ('brain' as const) : ('user' as const),
+            content: stripBriefingMarker(m.content),
             timestamp: m.createdAt,
           }));
-          setHistory(prev => {
-            // Preserve briefing message if it exists (keep at end for visibility)
-            const briefing = prev.find(h => h.id?.startsWith('briefing_'));
-            return briefing ? [...items, briefing] : items;
-          });
+          setHistory(items);
         }
       } catch (err) {
         console.error('[BrainWidget] Failed to load DM history:', err);
       }
     })();
-  }, [currentUser?.id]);
-
-  // ── Morning Briefing: generate once per day on first access ──
-  useEffect(() => {
-    if (!currentUser?.id) return;
-    
-    const todayKey = new Date().toLocaleDateString('ko-KR', { timeZone: 'Asia/Seoul' });
-    const storageKey = `briefing_${currentUser.id}`;
-    const lastBriefing = localStorage.getItem(storageKey);
-    console.log('[Briefing] Desktop check:', { todayKey, storageKey, lastBriefing, match: lastBriefing === todayKey });
-    if (lastBriefing === todayKey) return;
-
-    const timer = setTimeout(() => {
-      console.log('[Briefing] Desktop generating...');
-      try {
-        const state = useAppStore.getState();
-        const myEvents = state.getMyEvents();
-        const myTodos = state.personalTodos || [];
-        const unreadNotifs = state.appNotifications.filter(n => !n.read);
-
-        const today = new Date();
-        const todayStr = today.toISOString().split('T')[0];
-        const kstHour = today.getUTCHours() + 9;
-
-        const todayEvents = myEvents.filter(e => e.startAt?.split('T')[0] === todayStr);
-        const pendingTodos = myTodos.filter(t => {
-          const s = (t as any).status?.toUpperCase?.() || '';
-          return s !== 'COMPLETED' && s !== 'DONE' && s !== 'CANCELLED';
-        });
-        const dueTodayTodos = pendingTodos.filter(t => t.dueDate?.split('T')[0] === todayStr);
-        const unreadChats = unreadNotifs.filter(n => n.type === 'chat');
-
-        const name = currentUser.name?.split(' ')[0] || '';
-        const greeting = (kstHour < 12) ? '🌅 Good Morning' : (kstHour < 18) ? '☀️ Good Afternoon' : '🌙 Good Evening';
-        const isKo = language === 'ko';
-
-        let briefing = `${greeting}, ${name}${isKo ? '님' : ''}!\n\n`;
-
-        if (todayEvents.length > 0) {
-          briefing += `📅 ${isKo ? '오늘 일정' : "Today's Schedule"} (${todayEvents.length}${isKo ? '건' : ''})\n`;
-          // Deduplicate by title+time
-          const seen = new Set<string>();
-          const uniqueEvents = todayEvents.filter(e => {
-            const key = `${e.title}|${e.startAt}`;
-            if (seen.has(key)) return false;
-            seen.add(key);
-            return true;
-          });
-          uniqueEvents.sort((a, b) => (a.startAt || '').localeCompare(b.startAt || ''));
-          for (const e of uniqueEvents.slice(0, 5)) {
-            const time = e.startAt ? new Date(e.startAt).toLocaleTimeString(isKo ? 'ko-KR' : 'en-US', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Seoul', hour12: !isKo }) : '';
-            briefing += `• ${time} ${e.title}\n`;
-          }
-          briefing += '\n';
-        } else {
-          briefing += `📅 ${isKo ? '오늘 예정된 일정이 없습니다.' : 'No events scheduled for today.'}\n\n`;
-        }
-
-        if (pendingTodos.length > 0) {
-          briefing += `✅ ${isKo ? '할 일' : 'To-dos'} (${pendingTodos.length}${isKo ? '건' : ''}`;
-          if (dueTodayTodos.length > 0) briefing += `, ${isKo ? '오늘 마감' : 'due today'} ${dueTodayTodos.length}${isKo ? '건' : ''}`;
-          briefing += ')\n';
-          for (const t of (dueTodayTodos.length > 0 ? dueTodayTodos : pendingTodos).slice(0, 5)) {
-            briefing += `• ${t.title}\n`;
-          }
-          briefing += '\n';
-        }
-
-        if (unreadChats.length > 0) {
-          briefing += `💬 ${isKo ? `읽지 않은 메시지 ${unreadChats.length}건` : `${unreadChats.length} unread message(s)`}\n\n`;
-        }
-
-        briefing += isKo ? '오늘도 좋은 하루 보내세요! 궁금한 게 있으면 언제든 물어보세요 😊' : 'Have a great day! Feel free to ask me anything 😊';
-
-        console.log('[Briefing] Text ready, length:', briefing.length);
-        setHistory(prev => {
-          if (prev.some(h => h.id === `briefing_${todayStr}`)) return prev;
-          console.log('[Briefing] Added to history!');
-          return [...prev, {
-            id: `briefing_${todayStr}`,
-            type: 'brain' as const,
-            content: briefing,
-            timestamp: new Date().toISOString(),
-          }];
-        });
-
-        localStorage.setItem(storageKey, todayKey);
-      } catch (err) {
-        console.error('[Briefing] Failed:', err);
-      }
-    }, 2000);
-
-    return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUser?.id]);
 
@@ -282,9 +208,16 @@ function BrainChatWidget({ context }: { context: WidgetDataContext }) {
         })
         .join('\n');
 
+      // Same strict filter as useBrainBriefing.ts — excludes COMPLETED/DONE/
+      // CANCELLED (case-insensitive) and only includes todos actually assigned
+      // to me (delegated todos with me as requester-only are NOT my pending work).
       const pendingTodos = allTodos
-        .filter(t => t.status === 'PENDING' &&
-          (t.assigneeIds?.includes(currentUser.id) || t.requestedById === currentUser.id))
+        .filter(t => {
+          const s = (t.status || '').toUpperCase();
+          if (s === 'COMPLETED' || s === 'DONE' || s === 'CANCELLED') return false;
+          if (!t.assigneeIds?.includes(currentUser.id)) return false;
+          return true;
+        })
         .slice(0, 10)
         .map(t => `- ${t.title}${t.dueDate ? ` (마감: ${t.dueDate.slice(0, 10)})` : ''}`)
         .join('\n');
@@ -479,7 +412,7 @@ function BrainChatWidget({ context }: { context: WidgetDataContext }) {
                   </div>
                 )}
                 <p className="typo-chat-message leading-relaxed whitespace-pre-wrap" style={{ overflowWrap: 'anywhere', wordBreak: 'break-word' }}>
-                  {item.content}
+                  {item.type === 'brain' ? renderBrainMessage(item.content) : item.content}
                 </p>
                 {/* Action badges */}
                 {item.actions && item.actions.length > 0 && (

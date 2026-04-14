@@ -1,0 +1,2 @@
+# Drop fixtures, prompts, datasets, or other read-only assets here.
+# Mounted at `context.resources` in Phase 2.
