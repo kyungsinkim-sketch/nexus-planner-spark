@@ -80,9 +80,17 @@ interface ChatPanelProps {
   defaultGroupRoomId?: string;
   /** When true, keyboard is open — remove bottom padding for tab bar */
   keyboardOpen?: boolean;
+  /**
+   * Optional override for the in-conversation "back" button. When provided,
+   * pressing back calls this instead of falling through to the internal
+   * Projects/Direct/Groups list. Mobile uses this to navigate back to
+   * `MobileChatListView` (mobileView='chat-list') so the user never sees the
+   * desktop-styled list inside a full-screen mobile route.
+   */
+  onBackToList?: () => void;
 }
 
-export function ChatPanel({ defaultProjectId, defaultDmUserId, defaultGroupRoomId, keyboardOpen }: ChatPanelProps = {}) {
+export function ChatPanel({ defaultProjectId, defaultDmUserId, defaultGroupRoomId, keyboardOpen, onBackToList }: ChatPanelProps = {}) {
   const { t, language } = useTranslation();
   const isMobile = useIsMobile();
   const {
@@ -1665,6 +1673,12 @@ export function ChatPanel({ defaultProjectId, defaultDmUserId, defaultGroupRoomI
   };
 
   const handleBackToList = () => {
+    // When the host (e.g. MobileDmChatView) provides an override, defer to
+    // it instead of revealing the internal Projects/Direct/Groups list.
+    if (onBackToList) {
+      onBackToList();
+      return;
+    }
     setSelectedChat(null);
   };
 
