@@ -1802,42 +1802,42 @@ export function ChatPanel({ defaultProjectId, defaultDmUserId, defaultGroupRoomI
     <div className="flex flex-col h-full bg-background overflow-hidden w-full max-w-full">
       {/* When no chat selected: show chat list */}
       {!selectedChat ? (
-        <div className="flex flex-col h-full">
+        <div className={`flex flex-col h-full ${isMobile ? 'pb-20' : ''}`}>
           {/* Search */}
-          <div className="p-3 border-b border-border shrink-0">
+          <div className="p-4 md:p-3 border-b border-border shrink-0">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 md:w-4 md:h-4 text-muted-foreground" />
               <Input
                 placeholder={t('searchChats')}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9 h-9 text-sm"
+                className="pl-10 md:pl-9 h-12 md:h-9 text-base md:text-sm"
               />
             </div>
           </div>
 
           {/* Tabs */}
           <Tabs value={selectedTab} onValueChange={(v) => setSelectedTab(v as 'projects' | 'direct' | 'groups')} className="flex-1 flex flex-col min-h-0">
-            <TabsList className="w-full rounded-none border-b border-border bg-transparent p-0 shrink-0">
+            <TabsList className="w-full rounded-none border-b border-border bg-transparent p-0 shrink-0 h-auto">
               <TabsTrigger
                 value="projects"
-                className="flex-1 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent gap-1.5 text-xs py-2"
+                className="flex-1 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent gap-2 md:gap-1.5 text-sm md:text-xs py-3 md:py-2"
               >
-                <FolderKanban className="w-3.5 h-3.5" />
+                <FolderKanban className="w-4 h-4 md:w-3.5 md:h-3.5" />
                 {t('projects')}
               </TabsTrigger>
               <TabsTrigger
                 value="groups"
-                className="flex-1 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent gap-1.5 text-xs py-2"
+                className="flex-1 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent gap-2 md:gap-1.5 text-sm md:text-xs py-3 md:py-2"
               >
-                <Hash className="w-3.5 h-3.5" />
+                <Hash className="w-4 h-4 md:w-3.5 md:h-3.5" />
                 {t('groups') || '그룹'}
               </TabsTrigger>
               <TabsTrigger
                 value="direct"
-                className="flex-1 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent gap-1.5 text-xs py-2"
+                className="flex-1 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent gap-2 md:gap-1.5 text-sm md:text-xs py-3 md:py-2"
               >
-                <Users className="w-3.5 h-3.5" />
+                <Users className="w-4 h-4 md:w-3.5 md:h-3.5" />
                 {t('direct')}
               </TabsTrigger>
             </TabsList>
@@ -1860,18 +1860,18 @@ export function ChatPanel({ defaultProjectId, defaultDmUserId, defaultGroupRoomI
                         <div key={project.id}>
                           <button
                             onClick={() => handleExpandProject(project.id)}
-                            className={`w-full flex items-start gap-2.5 p-3 hover:bg-muted/50 transition-colors group text-left ${isExpanded ? 'bg-muted/30' : ''}`}
+                            className={`w-full flex items-start gap-3 md:gap-2.5 p-4 md:p-3 hover:bg-muted/50 transition-colors group text-left ${isExpanded ? 'bg-muted/30' : ''}`}
                           >
-                            <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 overflow-hidden">
+                            <div className="w-12 h-12 md:w-8 md:h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 overflow-hidden">
                               {project.thumbnail ? (
                                 <img src={project.thumbnail} alt="" className="w-full h-full object-cover" />
                               ) : (
-                                <FolderKanban className="w-4 h-4 text-primary" />
+                                <FolderKanban className="w-5 h-5 md:w-4 md:h-4 text-primary" />
                               )}
                             </div>
                             <div className="flex-1 min-w-0 overflow-hidden">
                               <div className="flex items-center justify-between gap-1">
-                                <h3 className="font-medium text-foreground text-xs line-clamp-1">
+                                <h3 className="font-semibold md:font-medium text-foreground text-sm md:text-xs line-clamp-1">
                                   {project.title}
                                 </h3>
                                 <div className="flex items-center gap-1 shrink-0">
@@ -1880,14 +1880,14 @@ export function ChatPanel({ defaultProjectId, defaultDmUserId, defaultGroupRoomI
                                       {formatTime(lastMessage.createdAt)}
                                     </span>
                                   )}
-                                  <ChevronRight className={`w-3 h-3 text-muted-foreground transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
+                                  <ChevronRight className={`w-4 h-4 md:w-3 md:h-3 text-muted-foreground transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
                                 </div>
                               </div>
                               <p className="text-xs font-medium text-muted-foreground truncate mt-0.5">
                                 {project.client}
                               </p>
                               {lastMessage && (
-                                <p className="text-xs font-medium text-muted-foreground line-clamp-1 mt-0.5">
+                                <p className="text-sm md:text-xs font-medium text-muted-foreground line-clamp-1 mt-0.5">
                                   {lastMessage.content}
                                 </p>
                               )}
@@ -1910,12 +1910,12 @@ export function ChatPanel({ defaultProjectId, defaultDmUserId, defaultGroupRoomI
                                       }
                                       handleSelectRoom(project.id, room);
                                     }}
-                                    className={`w-full flex items-center gap-2 px-3 py-2 pl-12 hover:bg-muted/50 transition-colors text-left text-xs ${
+                                    className={`w-full flex items-center gap-2.5 md:gap-2 px-4 md:px-3 py-3 md:py-2 pl-16 md:pl-12 hover:bg-muted/50 transition-colors text-left text-sm md:text-xs ${
                                       isRoomLocked ? 'opacity-40 cursor-not-allowed' :
                                       isRoomSelected ? 'bg-primary/10 text-primary' : 'text-muted-foreground'
                                     }`}
                                   >
-                                    <Hash className="w-3 h-3 shrink-0" />
+                                    <Hash className="w-4 h-4 md:w-3 md:h-3 shrink-0" />
                                     <span className="truncate flex-1">{room.name}</span>
                                     {isDefaultRoom && (
                                       <span className="text-xs font-medium bg-muted px-1 py-0.5 rounded-full shrink-0">{t('defaultRoom')}</span>
@@ -1928,7 +1928,7 @@ export function ChatPanel({ defaultProjectId, defaultDmUserId, defaultGroupRoomI
                                     {(() => {
                                       const rUnread = getUnreadCount(`room:${room.id}`);
                                       return rUnread > 0 && !isRoomSelected ? (
-                                        <span className="min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-bold px-1 shrink-0">
+                                        <span className="min-w-[20px] md:min-w-[18px] h-[20px] md:h-[18px] flex items-center justify-center rounded-full bg-red-500 text-white text-[11px] md:text-[10px] font-bold px-1 shrink-0">
                                           {rUnread > 99 ? '99+' : rUnread}
                                         </span>
                                       ) : null;
@@ -1938,9 +1938,9 @@ export function ChatPanel({ defaultProjectId, defaultDmUserId, defaultGroupRoomI
                               })}
                               <button
                                 onClick={() => setShowCreateRoom(true)}
-                                className="w-full flex items-center gap-2 px-3 py-2 pl-12 hover:bg-muted/50 transition-colors text-left text-xs text-muted-foreground/70"
+                                className="w-full flex items-center gap-2.5 md:gap-2 px-4 md:px-3 py-3 md:py-2 pl-16 md:pl-12 hover:bg-muted/50 transition-colors text-left text-sm md:text-xs text-muted-foreground/70"
                               >
-                                <Plus className="w-3 h-3" />
+                                <Plus className="w-4 h-4 md:w-3 md:h-3" />
                                 <span>{t('newChatRoom')}</span>
                               </button>
                             </div>
@@ -1956,16 +1956,16 @@ export function ChatPanel({ defaultProjectId, defaultDmUserId, defaultGroupRoomI
                 {/* + New Group Room button */}
                 <button
                   onClick={() => setShowCreateGroupRoom(true)}
-                  className="w-full flex items-center gap-2 p-3 hover:bg-muted/50 transition-colors text-left text-xs text-primary border-b border-border"
+                  className="w-full flex items-center gap-2.5 md:gap-2 p-4 md:p-3 hover:bg-muted/50 transition-colors text-left text-sm md:text-xs text-primary border-b border-border"
                 >
-                  <Plus className="w-4 h-4" />
+                  <Plus className="w-5 h-5 md:w-4 md:h-4" />
                   <span className="font-medium">{t('newGroupChat') || '새 그룹 채팅'}</span>
                 </button>
                 {groupRooms.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-12 text-center">
-                    <Hash className="w-8 h-8 text-muted-foreground mb-2" />
-                    <p className="text-xs text-muted-foreground">{t('noGroupChats') || '그룹 채팅이 없습니다'}</p>
-                    <p className="text-xs text-muted-foreground mt-1">{t('createGroupChatHint') || '+ 버튼으로 새 그룹을 만들어보세요'}</p>
+                    <Hash className="w-10 h-10 md:w-8 md:h-8 text-muted-foreground mb-2" />
+                    <p className="text-sm md:text-xs text-muted-foreground">{t('noGroupChats') || '그룹 채팅이 없습니다'}</p>
+                    <p className="text-sm md:text-xs text-muted-foreground mt-1">{t('createGroupChatHint') || '+ 버튼으로 새 그룹을 만들어보세요'}</p>
                   </div>
                 ) : (
                   <div className="divide-y divide-border">
@@ -1979,14 +1979,14 @@ export function ChatPanel({ defaultProjectId, defaultDmUserId, defaultGroupRoomI
                           onClick={() => {
                             setSelectedChat({ type: 'group', id: room.id, roomId: room.id });
                           }}
-                          className={`w-full flex items-start gap-2.5 p-3 hover:bg-muted/50 transition-colors group/room text-left ${isSelected ? 'bg-muted' : ''}`}
+                          className={`w-full flex items-start gap-3 md:gap-2.5 p-4 md:p-3 hover:bg-muted/50 transition-colors group/room text-left ${isSelected ? 'bg-muted' : ''}`}
                         >
-                          <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                            <Hash className="w-4 h-4 text-primary" />
+                          <div className="w-12 h-12 md:w-8 md:h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                            <Hash className="w-5 h-5 md:w-4 md:h-4 text-primary" />
                           </div>
                           <div className="flex-1 min-w-0 overflow-hidden">
                             <div className="flex items-center justify-between gap-1">
-                              <h3 className="font-medium text-foreground text-xs line-clamp-1">{room.name}</h3>
+                              <h3 className="font-semibold md:font-medium text-foreground text-sm md:text-xs line-clamp-1">{room.name}</h3>
                               <div className="flex items-center gap-1 shrink-0">
                                 {lastMsg && (
                                   <span className="text-xs font-medium text-muted-foreground">
@@ -1994,7 +1994,7 @@ export function ChatPanel({ defaultProjectId, defaultDmUserId, defaultGroupRoomI
                                   </span>
                                 )}
                                 {roomUnread > 0 && !isSelected && (
-                                  <span className="min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-bold px-1">
+                                  <span className="min-w-[20px] md:min-w-[18px] h-[20px] md:h-[18px] flex items-center justify-center rounded-full bg-red-500 text-white text-[11px] md:text-[10px] font-bold px-1">
                                     {roomUnread > 99 ? '99+' : roomUnread}
                                   </span>
                                 )}
@@ -2011,15 +2011,15 @@ export function ChatPanel({ defaultProjectId, defaultDmUserId, defaultGroupRoomI
                                   className="p-1 rounded opacity-0 group-hover/room:opacity-100 hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-all"
                                   title="그룹 삭제"
                                 >
-                                  <Trash2 className="w-3.5 h-3.5" />
+                                  <Trash2 className="w-4 h-4 md:w-3.5 md:h-3.5" />
                                 </button>
                               </div>
                             </div>
                             {room.description && (
-                              <p className="text-xs text-muted-foreground truncate mt-0.5">{room.description}</p>
+                              <p className="text-sm md:text-xs text-muted-foreground truncate mt-0.5">{room.description}</p>
                             )}
                             {lastMsg && (
-                              <p className={`text-xs line-clamp-1 mt-0.5 ${roomUnread > 0 && !isSelected ? 'font-semibold text-foreground' : 'text-muted-foreground'}`}>{lastMsg.content}</p>
+                              <p className={`text-sm md:text-xs line-clamp-1 mt-0.5 ${roomUnread > 0 && !isSelected ? 'font-semibold text-foreground' : 'text-muted-foreground'}`}>{lastMsg.content}</p>
                             )}
                           </div>
                         </button>
@@ -2032,8 +2032,8 @@ export function ChatPanel({ defaultProjectId, defaultDmUserId, defaultGroupRoomI
               <TabsContent value="direct" className="m-0">
                 {filteredUsers.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-12 text-center">
-                    <Users className="w-8 h-8 text-muted-foreground mb-2" />
-                    <p className="text-xs text-muted-foreground">{t('noUsersFound')}</p>
+                    <Users className="w-10 h-10 md:w-8 md:h-8 text-muted-foreground mb-2" />
+                    <p className="text-sm md:text-xs text-muted-foreground">{t('noUsersFound')}</p>
                   </div>
                 ) : (
                   <div className="divide-y divide-border">
@@ -2046,11 +2046,11 @@ export function ChatPanel({ defaultProjectId, defaultDmUserId, defaultGroupRoomI
                         <button
                           key={user.id}
                           onClick={() => handleSelectDirectChat(user.id)}
-                          className={`w-full flex items-start gap-2.5 p-3 hover:bg-muted/50 transition-colors group text-left ${isSelected ? 'bg-muted' : ''}`}
+                          className={`w-full flex items-start gap-3 md:gap-2.5 p-4 md:p-3 hover:bg-muted/50 transition-colors group text-left ${isSelected ? 'bg-muted' : ''}`}
                         >
-                          <Avatar className="w-8 h-8 shrink-0">
+                          <Avatar className="w-12 h-12 md:w-8 md:h-8 shrink-0">
                             {user.avatar && <AvatarImage src={user.avatar} alt={user.name} />}
-                            <AvatarFallback className={`text-xs ${
+                            <AvatarFallback className={`text-sm md:text-xs ${
                               isBrainAIUser(user.id)
                                 ? 'bg-violet-100 dark:bg-violet-900/40 text-violet-700 dark:text-violet-300'
                                 : isAIPersonaUser(user.id)
@@ -2064,7 +2064,7 @@ export function ChatPanel({ defaultProjectId, defaultDmUserId, defaultGroupRoomI
                           </Avatar>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center justify-between gap-1">
-                              <h3 className="font-medium text-foreground text-xs flex items-center gap-1">
+                              <h3 className="font-semibold md:font-medium text-foreground text-sm md:text-xs flex items-center gap-1">
                                 {user.name}
                                 {isBrainAIUser(user.id) && (
                                   <span className="text-xs font-medium px-1 py-0.5 rounded-full font-medium bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300">
@@ -2088,7 +2088,7 @@ export function ChatPanel({ defaultProjectId, defaultDmUserId, defaultGroupRoomI
                                   </span>
                                 )}
                                 {dmUnread > 0 && !isSelected && (
-                                  <span className="min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-bold px-1">
+                                  <span className="min-w-[20px] md:min-w-[18px] h-[20px] md:h-[18px] flex items-center justify-center rounded-full bg-red-500 text-white text-[11px] md:text-[10px] font-bold px-1">
                                     {dmUnread > 99 ? '99+' : dmUnread}
                                   </span>
                                 )}
@@ -2098,7 +2098,7 @@ export function ChatPanel({ defaultProjectId, defaultDmUserId, defaultGroupRoomI
                               {user.department}
                             </p>
                             {lastDM && (
-                              <p className={`text-xs line-clamp-1 mt-0.5 ${dmUnread > 0 && !isSelected ? 'font-semibold text-foreground' : 'font-medium text-muted-foreground'}`}>
+                              <p className={`text-sm md:text-xs line-clamp-1 mt-0.5 ${dmUnread > 0 && !isSelected ? 'font-semibold text-foreground' : 'font-medium text-muted-foreground'}`}>
                                 {lastDM.content}
                               </p>
                             )}
@@ -2138,25 +2138,25 @@ export function ChatPanel({ defaultProjectId, defaultDmUserId, defaultGroupRoomI
             <Button
               variant="ghost"
               size="icon"
-              className="shrink-0 w-7 h-7"
+              className="shrink-0 w-10 h-10 md:w-7 md:h-7"
               onClick={handleBackToList}
               aria-label="Back to chat list"
             >
-              <ArrowLeft className="w-4 h-4" />
+              <ArrowLeft className="w-5 h-5 md:w-4 md:h-4" />
             </Button>
 
             {selectedChat.type === 'project' ? (
-              <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 overflow-hidden">
+              <div className="w-10 h-10 md:w-8 md:h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 overflow-hidden">
                 {selectedChatInfo?.thumbnail ? (
                   <img src={selectedChatInfo.thumbnail} alt="" className="w-full h-full object-cover" />
                 ) : (
-                  <FolderKanban className="w-4 h-4 text-primary" />
+                  <FolderKanban className="w-5 h-5 md:w-4 md:h-4 text-primary" />
                 )}
               </div>
             ) : (
-              <Avatar className="w-8 h-8">
+              <Avatar className="w-10 h-10 md:w-8 md:h-8">
                 {selectedChatInfo?.avatar && <AvatarImage src={selectedChatInfo.avatar} alt={selectedChatInfo?.name} />}
-                <AvatarFallback className={`text-xs ${
+                <AvatarFallback className={`text-sm md:text-xs ${
                   selectedChat?.id && isBrainAIUser(selectedChat.id)
                     ? 'bg-violet-100 dark:bg-violet-900/40 text-violet-700 dark:text-violet-300'
                     : 'bg-primary/10 text-primary'
@@ -2170,7 +2170,7 @@ export function ChatPanel({ defaultProjectId, defaultDmUserId, defaultGroupRoomI
 
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-1.5">
-                <h2 className="font-semibold text-foreground text-sm truncate">
+                <h2 className="font-semibold text-foreground text-base md:text-sm truncate">
                   {selectedChatInfo?.name}
                 </h2>
                 {brainIntelligenceEnabled && (
