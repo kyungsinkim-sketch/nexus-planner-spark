@@ -34,11 +34,22 @@ export const BRAIN_BOT_ID = '00000000-0000-0000-0000-000000000099';
 const BRIEFING_MARKER_OPEN = '<!--briefing:';
 const BRIEFING_MARKER_CLOSE = '-->';
 
+/**
+ * Briefing schema version. Bump whenever the briefing filter/content logic
+ * changes in a way that makes previously-persisted briefings incorrect. The
+ * existence check in `ensureTodaysBriefing` will then skip stale rows and
+ * regenerate a fresh briefing with the current code.
+ *
+ * v2 — Fixed TODO filter to exclude todos assigned to other users
+ *      (requested-by-me delegations were leaking into my briefing).
+ */
+const BRIEFING_VERSION = 'v2';
+
 // ── Marker helpers ────────────────────────────────────────────────────────
 
 /** Build the invisible marker for a given KST date key (YYYY-MM-DD). */
 export function buildBriefingMarker(dateKey: string): string {
-  return `${BRIEFING_MARKER_OPEN}${dateKey}${BRIEFING_MARKER_CLOSE}`;
+  return `${BRIEFING_MARKER_OPEN}${dateKey}:${BRIEFING_VERSION}${BRIEFING_MARKER_CLOSE}`;
 }
 
 /** True if the content string begins with a briefing marker. */

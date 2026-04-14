@@ -2716,6 +2716,9 @@ export const useAppStore = create<AppState>()(
       setWeatherSettingsOpen: (open) => set({ weatherSettingsOpen: open }),
       setNotificationSoundEnabled: (enabled) => set({ notificationSoundEnabled: enabled }),
       dismissNotification: (id) => {
+        // Look up the notification BEFORE mutating state so we can sync
+        // with the correct type/sourceId/projectId/roomId context.
+        const notif = get().appNotifications.find(n => n.id === id);
         set((state) => ({
           dismissedNotificationIds: [...state.dismissedNotificationIds, id].slice(-500),
         }));
@@ -2724,22 +2727,42 @@ export const useAppStore = create<AppState>()(
         if (userId) {
           import('@/services/notificationSyncService').then(({ syncNotificationRead, isSyncSuppressed }) => {
             if (!isSyncSuppressed()) {
-              syncNotificationRead(userId, id, 'company');
+              syncNotificationRead(
+                userId,
+                id,
+                notif?.type || 'company',
+                notif?.sourceId,
+                notif?.projectId,
+                notif?.roomId,
+              );
             }
           }).catch(() => {});
         }
       },
       dismissAllNotifications: (ids) => {
+        // Capture notification metadata BEFORE mutating state so bulk sync
+        // carries the correct type/sourceId/projectId/roomId for each.
+        const notifLookup = new Map(get().appNotifications.map(n => [n.id, n]));
         set((state) => ({
           dismissedNotificationIds: [...new Set([...state.dismissedNotificationIds, ...ids])].slice(-500),
         }));
         const userId = get().currentUser?.id;
-        if (userId) {
-          import('@/services/notificationSyncService').then(({ syncNotificationRead, isSyncSuppressed }) => {
+        if (userId && ids.length > 0) {
+          import('@/services/notificationSyncService').then(({ syncBulkNotificationRead, isSyncSuppressed }) => {
             if (!isSyncSuppressed()) {
-              for (const id of ids) {
-                syncNotificationRead(userId, id, 'company');
-              }
+              syncBulkNotificationRead(
+                userId,
+                ids.map(id => {
+                  const n = notifLookup.get(id);
+                  return {
+                    id,
+                    type: n?.type || 'company',
+                    sourceId: n?.sourceId,
+                    projectId: n?.projectId,
+                    roomId: n?.roomId,
+                  };
+                }),
+              );
             }
           }).catch(() => {});
         }

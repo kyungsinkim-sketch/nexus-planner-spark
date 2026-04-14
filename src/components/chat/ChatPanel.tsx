@@ -350,6 +350,25 @@ export function ChatPanel({ defaultProjectId, defaultDmUserId, defaultGroupRoomI
     }
   }, [messageIndex, selectedChat, currentUser]);
 
+  // Bug fix: when a new message arrives while the user is actively viewing
+  // a chat, the original `markChatRead` useEffect above only fires on chat
+  // SELECTION — not on new messages. Without this, unread counts reappear
+  // after reading because `chatLastReadTimestamps` stays stale while the
+  // user is still looking at the chat. Re-mark read whenever the visible
+  // message list grows for the currently-selected chat.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (!selectedChat || chatMessages.length === 0) return;
+    let key: string | null = null;
+    if (selectedChat.type === 'direct' || selectedChat.type === 'dm') {
+      key = `dm:${selectedChat.id}`;
+    } else if (selectedChat.roomId) {
+      key = `room:${selectedChat.roomId}`;
+    }
+    if (!key) return;
+    markChatRead(key);
+  }, [chatMessages.length, selectedChat?.type, selectedChat?.id, selectedChat?.roomId]);
+
   const getLastMessage = useCallback((projectId: string) => {
     const arr = messageIndex.byProject.get(projectId);
     return arr ? arr[arr.length - 1] : undefined;
