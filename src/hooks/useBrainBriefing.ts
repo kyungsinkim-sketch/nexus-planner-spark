@@ -1,12 +1,21 @@
 /**
- * useBrainBriefing — Shows a Brain AI briefing popup on first access each day.
- * Desktop equivalent of the mobile MobileAIChatView morning briefing.
- * Uses sonner toast.custom() via BrainPopupToast.
+ * useBrainBriefing — Ensures today's Brain AI briefing is persisted in the
+ * user's Brain DM chat, and shows a toast popup for the first access per day.
+ *
+ * Persistence is handled by `brainBriefingService.ensureTodaysBriefing`,
+ * which is idempotent at the DB level — calling it multiple times or from
+ * multiple devices never creates duplicate rows. The localStorage flag here
+ * is solely for toast-dedup: we don't want to nag the user with the popup
+ * on every remount, but the chat row itself should exist regardless.
  */
 
 import { useEffect } from 'react';
 import { useAppStore } from '@/stores/appStore';
 import { showBrainPopup } from '@/components/brain/BrainPopupToast';
+import {
+  ensureTodaysBriefing,
+  getTodayKstDateKey,
+} from '@/services/brainBriefingService';
 
 export function useBrainBriefing() {
   const currentUser = useAppStore((s) => s.currentUser);
@@ -14,88 +23,53 @@ export function useBrainBriefing() {
   useEffect(() => {
     if (!currentUser?.id) return;
 
-    // Check if already shown today
-    const todayKey = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Seoul' });
-    const storageKey = `brain_briefing_desktop_${currentUser.id}`;
-    const lastShown = localStorage.getItem(storageKey);
-    if (lastShown === todayKey) return;
-
-    // Delay to let data load first
-    const timer = setTimeout(() => {
+    // Delay so events/todos have time to load into the store.
+    const timer = setTimeout(async () => {
       const state = useAppStore.getState();
-      const myEvents = state.getMyEvents?.() || state.events || [];
-      const allTodos = state.personalTodos || [];
+      const events = state.getMyEvents?.() || state.events || [];
+      const todos = state.personalTodos || [];
+      const notifications = state.appNotifications || [];
 
-      // Filter today's events (KST)
-      const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Seoul' });
-      const todayEvents = myEvents.filter(e => {
-        const eDate = new Date(e.startAt).toLocaleDateString('en-CA', { timeZone: 'Asia/Seoul' });
-        return eDate === todayStr;
+      // Persist today's briefing as a Brain→user DM (idempotent). We pass
+      // the raw events list — the service handles KST-day filtering and
+      // "owned by / attended by" scoping itself.
+      const { text } = await ensureTodaysBriefing(currentUser, {
+        language: state.language,
+        events,
+        todos,
+        notifications,
       });
 
-      // Pending todos — only todos assigned to current user (exclude todos I requested for others)
-      const myId = currentUser.id;
-      const pendingTodos = allTodos.filter(t => {
-        const s = (t.status || '').toUpperCase();
-        if (s === 'COMPLETED' || s === 'DONE' || s === 'CANCELLED') return false;
-        const isAssignee = t.assigneeIds?.includes(myId);
-        if (!isAssignee) return false;
-        return true;
-      });
+      // Toast popup: only show once per day per device.
+      const todayKey = getTodayKstDateKey();
+      const storageKey = `brain_briefing_toast_${currentUser.id}`;
+      const lastShown = localStorage.getItem(storageKey);
+      if (lastShown === todayKey) return;
 
-      const dueTodayTodos = pendingTodos.filter(t => {
-        if (!t.dueDate) return false;
-        return new Date(t.dueDate).toLocaleDateString('en-CA', { timeZone: 'Asia/Seoul' }) === todayStr;
-      });
-
-      // Build briefing message
-      const lang = state.language || 'ko';
-      const name = currentUser.name?.split(' ')[0] || '';
-      const kstHour = parseInt(new Date().toLocaleTimeString('en-US', { timeZone: 'Asia/Seoul', hour: 'numeric', hour12: false }), 10);
+      const firstName = currentUser.name?.split(' ')[0] || '';
+      const kstHour = parseInt(
+        new Date().toLocaleTimeString('en-US', {
+          timeZone: 'Asia/Seoul',
+          hour: 'numeric',
+          hour12: false,
+        }),
+        10,
+      );
       const greeting = kstHour < 12 ? '좋은 아침' : kstHour < 18 ? '좋은 오후' : '좋은 저녁';
 
-      let message = '';
-      if (lang === 'ko') {
-        if (todayEvents.length > 0) {
-          const eventList = todayEvents
-            .sort((a, b) => a.startAt.localeCompare(b.startAt))
-            .slice(0, 3)
-            .map(e => {
-              const time = new Date(e.startAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Seoul', hour12: false });
-              return `${time} ${e.title}`;
-            })
-            .join(', ');
-          message += `📅 오늘 일정 ${todayEvents.length}건: ${eventList}`;
-          if (todayEvents.length > 3) message += ` 외 ${todayEvents.length - 3}건`;
-        } else {
-          message += '📅 오늘 예정된 일정이 없습니다.';
-        }
-
-        if (pendingTodos.length > 0) {
-          message += `\n✅ 할 일 ${pendingTodos.length}건`;
-          if (dueTodayTodos.length > 0) message += ` (오늘 마감 ${dueTodayTodos.length}건)`;
-        }
-      } else {
-        if (todayEvents.length > 0) {
-          message += `📅 ${todayEvents.length} event(s) today`;
-        } else {
-          message += '📅 No events scheduled today.';
-        }
-        if (pendingTodos.length > 0) {
-          message += `\n✅ ${pendingTodos.length} pending todo(s)`;
-        }
-      }
-
       showBrainPopup({
-        id: `briefing_${todayStr}`,
-        title: `${greeting}, ${name}님!`,
-        message,
+        id: `briefing_${todayKey}`,
+        title: `${greeting}, ${firstName}님!`,
+        message: text,
         source: 'briefing',
       });
 
       localStorage.setItem(storageKey, todayKey);
-    }, 3000); // 3s delay for data loading
+    }, 3000);
 
     return () => clearTimeout(timer);
+    // Intentionally key on currentUser?.id only — the rest of the currentUser
+    // object (name, language) is snapshotted inside the timer via getState().
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUser?.id]);
 }

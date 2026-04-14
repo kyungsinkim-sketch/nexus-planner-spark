@@ -23,6 +23,11 @@ import { cn } from '@/lib/utils';
 import { WEATHER_CITIES, CONDITION_ICONS, CONDITION_COLORS, CONDITION_LABELS_KO, CONDITION_LABELS_EN, generateForecast } from '@/components/widgets/weatherUtils';
 import type { AppNotification } from '@/types/core';
 import { renderBrainMessage } from '@/lib/formatBrainMessage';
+import {
+  ensureTodaysBriefing,
+  stripBriefingMarker,
+  isBriefingContent,
+} from '@/services/brainBriefingService';
 
 // ── Types ────────────────────────────────────────────────────
 
@@ -468,20 +473,54 @@ export function MobileAIChatView() {
   const inputRef = useRef<HTMLInputElement>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
-  // Load previous Brain AI conversation from DB
+  // Load previous Brain AI conversation from DB and pin today's briefing.
+  // The briefing is persisted as a Brain→user DM with an invisible marker
+  // prefix (see brainBriefingService), so we fetch the full history, pluck
+  // the most recent briefing for the pinned slot, and let the render layer
+  // strip markers. This replaces the old ephemeral `briefingMsg` + localStorage
+  // approach that made the briefing disappear after the first view.
   const loadBrainHistory = useCallback(async () => {
     if (!currentUser?.id) return;
     try {
+      // Ensure today's briefing is persisted before fetching (idempotent).
+      const state = useAppStore.getState();
+      await ensureTodaysBriefing(currentUser, {
+        language: state.language,
+        events: state.getMyEvents?.() || state.events || [],
+        todos: state.personalTodos || [],
+        notifications: state.appNotifications || [],
+      });
+
       const { getDirectMessages } = await import('@/services/chatService');
       const history = await getDirectMessages(currentUser.id, BRAIN_BOT_ID);
       if (history.length > 0) {
-        const recent = history.slice(-2); // Only last Q&A pair
-        setMessages(recent.map(m => ({
-          id: m.id,
-          role: m.userId === BRAIN_BOT_ID ? 'assistant' as const : 'user' as const,
-          content: m.content,
-          timestamp: new Date(m.createdAt),
-        })));
+        // Split into the pinned briefing (latest briefing-marked message)
+        // and the regular chat transcript (everything else).
+        let latestBriefing: ChatMessage | null = null;
+        const nonBriefing: typeof history = [];
+        for (const m of history) {
+          if (isBriefingContent(m.content)) {
+            latestBriefing = {
+              id: m.id,
+              role: 'assistant',
+              content: stripBriefingMarker(m.content),
+              timestamp: new Date(m.createdAt),
+            };
+          } else {
+            nonBriefing.push(m);
+          }
+        }
+        setBriefingMsg(latestBriefing);
+
+        const recent = nonBriefing.slice(-20);
+        setMessages(
+          recent.map((m) => ({
+            id: m.id,
+            role: m.userId === BRAIN_BOT_ID ? ('assistant' as const) : ('user' as const),
+            content: stripBriefingMarker(m.content),
+            timestamp: new Date(m.createdAt),
+          })),
+        );
         setHistoryLoaded(true);
       }
     } catch (err) {
@@ -493,161 +532,11 @@ export function MobileAIChatView() {
     loadBrainHistory();
   }, [loadBrainHistory]);
 
-  // ── Morning Briefing: generate once per day on first access ──
-  useEffect(() => {
-    if (!currentUser?.id) return;
-
-    const todayKey = new Date().toLocaleDateString('ko-KR', { timeZone: 'Asia/Seoul' });
-    const storageKey = `briefing_${currentUser.id}`;
-    const lastBriefing = localStorage.getItem(storageKey);
-    console.log('[Briefing] Check:', { todayKey, storageKey, lastBriefing, match: lastBriefing === todayKey });
-    if (lastBriefing === todayKey) return; // Already shown today
-
-    // Check if it's morning-ish (before 2 PM KST = before 05:00 UTC)
-    const kstHour = parseInt(new Date().toLocaleTimeString('en-US', { timeZone: 'Asia/Seoul', hour: 'numeric', hour12: false }), 10);
-    // Generate briefing anytime on first access of the day
-
-    const generateBriefing = async () => {
-      console.log('[Briefing] Generating...');
-      try {
-        const state = useAppStore.getState();
-        const myEvents = state.getMyEvents();
-        const myTodos = state.personalTodos || [];
-        const unreadNotifs = state.appNotifications.filter(n => !n.read);
-
-        // Build today's data
-        const today = new Date();
-        const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Seoul' }); // KST YYYY-MM-DD
-        const tomorrow = new Date(today.getTime() + 86400000);
-        const tomorrowStr = tomorrow.toLocaleDateString('en-CA', { timeZone: 'Asia/Seoul' });
-
-        const todayEvents = myEvents.filter(e => {
-          const eDate = e.startAt?.split('T')[0];
-          return eDate === todayStr;
-        });
-
-        const myId = currentUser.id;
-        const pendingTodos = myTodos.filter(t => {
-          const s = (t as any).status?.toUpperCase?.() || '';
-          if (s === 'COMPLETED' || s === 'DONE' || s === 'CANCELLED') return false;
-          // Only include todos assigned to me (exclude todos I requested for others)
-          if (!t.assigneeIds?.includes(myId)) return false;
-          return true;
-        });
-        const dueTodayTodos = pendingTodos.filter(t => {
-          if (!t.dueDate) return false;
-          return t.dueDate.split('T')[0] === todayStr;
-        });
-
-        const unreadChats = unreadNotifs.filter(n => n.type === 'chat');
-
-        // Build briefing text
-        const name = currentUser.name?.split(' ')[0] || '';
-        const greeting = (kstHour < 12) ? '🌅 Good Morning' : (kstHour < 18) ? '☀️ Good Afternoon' : '🌙 Good Evening';
-        const lang = state.language || 'ko';
-
-        let briefing = '';
-        if (lang === 'ko') {
-          briefing = `${greeting}, ${name}님!\n\n`;
-
-          // Events
-          if (todayEvents.length > 0) {
-            briefing += `📅 오늘 일정 (${todayEvents.length}건)\n`;
-            const seen = new Set<string>();
-            const uniqueEvents = todayEvents.filter(e => {
-              const key = `${e.title}|${e.startAt}`;
-              if (seen.has(key)) return false;
-              seen.add(key);
-              return true;
-            });
-            uniqueEvents.sort((a, b) => (a.startAt || '').localeCompare(b.startAt || ''));
-            for (const e of uniqueEvents.slice(0, 5)) {
-              const time = e.startAt ? new Date(e.startAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Seoul', hour12: false }) : '';
-              briefing += `• ${time} ${e.title}\n`;
-            }
-            briefing += '\n';
-          } else {
-            briefing += '📅 오늘 예정된 일정이 없습니다.\n\n';
-          }
-
-          // TODOs
-          if (pendingTodos.length > 0) {
-            briefing += `✅ 할 일 (${pendingTodos.length}건`;
-            if (dueTodayTodos.length > 0) briefing += `, 오늘 마감 ${dueTodayTodos.length}건`;
-            briefing += ')\n';
-            for (const t of (dueTodayTodos.length > 0 ? dueTodayTodos : pendingTodos).slice(0, 5)) {
-              briefing += `• ${t.title}${t.dueDate ? ` (마감: ${new Date(t.dueDate).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })})` : ''}\n`;
-            }
-            briefing += '\n';
-          }
-
-          // Unread
-          if (unreadChats.length > 0) {
-            briefing += `💬 읽지 않은 메시지 ${unreadChats.length}건\n\n`;
-          }
-
-          briefing += '오늘도 좋은 하루 보내세요! 궁금한 게 있으면 언제든 물어보세요 😊';
-        } else {
-          briefing = `${greeting}, ${name}!\n\n`;
-
-          if (todayEvents.length > 0) {
-            briefing += `📅 Today's Schedule (${todayEvents.length})\n`;
-            const seen2 = new Set<string>();
-            const uniqueEvents2 = todayEvents.filter(e => {
-              const key = `${e.title}|${e.startAt}`;
-              if (seen2.has(key)) return false;
-              seen2.add(key);
-              return true;
-            });
-            uniqueEvents2.sort((a, b) => (a.startAt || '').localeCompare(b.startAt || ''));
-            for (const e of uniqueEvents2.slice(0, 5)) {
-              const time = e.startAt ? new Date(e.startAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Seoul', hour12: true }) : '';
-              briefing += `• ${time} ${e.title}\n`;
-            }
-            briefing += '\n';
-          } else {
-            briefing += '📅 No events scheduled for today.\n\n';
-          }
-
-          if (pendingTodos.length > 0) {
-            briefing += `✅ To-dos (${pendingTodos.length}`;
-            if (dueTodayTodos.length > 0) briefing += `, ${dueTodayTodos.length} due today`;
-            briefing += ')\n';
-            for (const t of (dueTodayTodos.length > 0 ? dueTodayTodos : pendingTodos).slice(0, 5)) {
-              briefing += `• ${t.title}\n`;
-            }
-            briefing += '\n';
-          }
-
-          if (unreadChats.length > 0) {
-            briefing += `💬 ${unreadChats.length} unread message(s)\n\n`;
-          }
-
-          briefing += "Have a great day! Feel free to ask me anything 😊";
-        }
-
-        console.log('[Briefing] Generated text length:', briefing.length);
-        const bMsg: ChatMessage = {
-          id: `briefing_${todayStr}`,
-          role: 'assistant',
-          content: briefing,
-          timestamp: new Date(),
-        };
-        setBriefingMsg(bMsg);
-        console.log('[Briefing] Set as separate state!');
-
-        // Mark today as briefed
-        localStorage.setItem(storageKey, todayKey);
-      } catch (err) {
-        console.error('[Briefing] Failed:', err);
-      }
-    };
-
-    // Small delay to let data load first
-    const timer = setTimeout(generateBriefing, 2000);
-    return () => clearTimeout(timer);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentUser?.id]);
+  // Morning briefing is generated and persisted by `brainBriefingService`
+  // (called from `loadBrainHistory` and the desktop `useBrainBriefing` hook),
+  // so the mobile view no longer needs an inline generator. The briefing
+  // lives as a regular Brain→user DM in `chat_messages`, gets picked up by
+  // `loadBrainHistory`, and is pinned via `briefingMsg` state.
 
   // Realtime subscription for Brain AI DM messages
   useEffect(() => {
@@ -667,17 +556,24 @@ export function MobileAIChatView() {
           const msg = payload.new as Record<string, unknown>;
           // Only process Brain AI messages (not our own)
           if (msg.user_id === BRAIN_BOT_ID) {
+            const rawContent = msg.content as string;
             const newMsg: ChatMessage = {
               id: msg.id as string,
               role: 'assistant',
-              content: msg.content as string,
+              content: stripBriefingMarker(rawContent),
               timestamp: new Date(msg.created_at as string),
             };
-            setMessages(prev => {
-              // Avoid duplicates
-              if (prev.some(m => m.id === newMsg.id)) return prev;
-              return [...prev, newMsg];
-            });
+            // Briefings are pinned in a separate slot, not appended to the
+            // chat transcript — otherwise the briefing would duplicate the
+            // already-pinned card every time another device inserts one.
+            if (isBriefingContent(rawContent)) {
+              setBriefingMsg(newMsg);
+            } else {
+              setMessages(prev => {
+                if (prev.some(m => m.id === newMsg.id)) return prev;
+                return [...prev, newMsg];
+              });
+            }
             setHistoryLoaded(true);
           }
         })
