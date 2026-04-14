@@ -251,4 +251,37 @@ notifications (id, user_id, type, data, read, ...)
 
 ---
 
+## 배포 워크플로우 (빠불로 확정)
+
+Vercel production은 `main` 브랜치에서만 배포됩니다. 기능 브랜치 푸시만으로는
+프로덕션에 반영되지 않으니, 아래 규칙을 자동으로 따릅니다.
+
+### 작업 완료 시 자동 main 머지
+폴리시/버그픽스/소규모 개선(예: UI 수정, 스타일 통일, 반응형 대응,
+off-by-one, 오타, 마이그레이션 추가 등)은 feature 브랜치 작업 후 **자동으로**:
+
+1. feature 브랜치 커밋 + 푸시
+2. `git checkout main && git pull origin main`
+3. `git merge --no-ff <feature>` (머지 커밋에 변경 요약 포함)
+4. `git push -u origin main`
+5. feature 브랜치로 복귀
+6. 빠불로에게 Vercel 배포 + PWA 캐시 새로고침 안내
+
+### 예외 — 먼저 확인 받아야 하는 경우
+다음은 자동 머지 금지, 반드시 빠불로에게 먼저 확인:
+
+- **파괴적/비가역 변경**: DB 스키마 destructive migration, 데이터 삭제/이전
+- **대규모 리팩토링**: 100+ 파일 touch, 아키텍처 레벨 변경
+- **보안/권한 로직**: RLS 정책, 인증 흐름, API 키 취급
+- **비용/쿼터 영향**: LLM 호출량 크게 늘어나는 변경, 외부 API plan 영향
+- **빠불로가 "확인해줘" / "리뷰해줘" 라고 명시한 작업**
+
+### PWA 캐시 무효화
+SW bundle hash가 바뀌는 변경(JS/CSS 수정 등)이 있을 때, 이전 세션에서
+이미 낡은 index.html이 캐시돼 있을 가능성이 있으면 `public/sw.js`의
+`CACHE_NAME`을 bump (`re-be-vN` → `re-be-v(N+1)`). 이 파일도 같은
+main 머지에 포함.
+
+---
+
 *이 파일은 Re-Be.io 사내용 프로덕션 개발을 위한 컨텍스트입니다.*
