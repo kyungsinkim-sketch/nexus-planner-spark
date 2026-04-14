@@ -1799,7 +1799,7 @@ export function ChatPanel({ defaultProjectId, defaultDmUserId, defaultGroupRoomI
   }, [chatMessages]);
 
   return (
-    <div className="flex flex-col h-full bg-background overflow-hidden w-full max-w-full">
+    <div className={`flex flex-col h-full overflow-hidden w-full max-w-full ${isMobile ? 'bg-transparent' : 'bg-background'}`}>
       {/* When no chat selected: show chat list */}
       {!selectedChat ? (
         <div className={`flex flex-col h-full ${isMobile ? 'pb-20' : ''}`}>
@@ -1842,7 +1842,7 @@ export function ChatPanel({ defaultProjectId, defaultDmUserId, defaultGroupRoomI
               </TabsTrigger>
             </TabsList>
 
-            <ScrollArea className="flex-1">
+            <ScrollArea className="flex-1 chat-list-scroll">
               <TabsContent value="projects" className="m-0">
                 {filteredProjects.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-12 text-center">

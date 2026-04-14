@@ -1535,6 +1535,25 @@ body.keyboard-open .mobile-bottom-nav-wrapper {
 .chat-messages-scroll [data-radix-scroll-area-viewport] {
   overflow-x: clip !important;
 }
+
+/* ── Chat list (projects / groups / direct selection) overflow protection ──
+   Radix ScrollArea wraps children in `<div style="display: table; min-width: 100%">`
+   which lets `white-space: nowrap` descendants push the cell wider than its
+   parent, breaking `truncate` / `line-clamp-1` for sibling rows. On desktop
+   the same fix lives under `[data-widget-id="chat"]`, but on mobile ChatPanel
+   is mounted outside that wrapper (via MobileChatListView) so we need a
+   scoped override here. Affected symptom: project.client (truncate) inflates
+   the projects row, and the last-message preview overflows the viewport. */
+.chat-list-scroll [data-radix-scroll-area-viewport] {
+  overflow-x: hidden !important;
+}
+.chat-list-scroll [data-radix-scroll-area-viewport] > div {
+  display: block !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
 /* Force the inner content wrapper to respect viewport width */
 .chat-messages-scroll [data-radix-scroll-area-viewport] > div {
   max-width: 100% !important;

@@ -21,7 +21,7 @@ const ChatPanel = lazy(() =>
 
 function MobileChatListView() {
   return (
-    <div className="h-full flex flex-col bg-background">
+    <div className="h-full flex flex-col widget-area-bg">
       <Suspense fallback={
         <div className="flex items-center justify-center h-full">
           <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
