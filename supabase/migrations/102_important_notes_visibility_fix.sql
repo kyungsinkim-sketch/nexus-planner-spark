@@ -24,7 +24,8 @@ CREATE POLICY "Users can read notes for their projects"
 
 -- UPDATE: project members only (replaces migration 101's USING (true))
 DROP POLICY IF EXISTS "Users can update notes" ON important_notes;
-CREATE POLICY "Users can update notes"
+DROP POLICY IF EXISTS "Users can update notes for their projects" ON important_notes;
+CREATE POLICY "Users can update notes for their projects"
   ON important_notes FOR UPDATE
   TO authenticated
   USING (
@@ -44,6 +45,7 @@ CREATE POLICY "Users can update notes"
 
 -- DELETE: project members only (replaces mig 066's author-only policy)
 DROP POLICY IF EXISTS "Users can delete own notes" ON important_notes;
+DROP POLICY IF EXISTS "Users can delete notes for their projects" ON important_notes;
 CREATE POLICY "Users can delete notes for their projects"
   ON important_notes FOR DELETE
   TO authenticated
