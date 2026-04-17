@@ -25,35 +25,60 @@ function scrollWidgetIntoView(widgetId: string) {
 // ─── Notification Permission ────────────────────────────
 
 let _permissionGranted = false;
+let _webPermissionGranted = false;
 let _initialized = false;
 
 /**
  * Initialize native notification system.
  * Call once on app startup.
  * Requests permission and sets up click handler.
+ *
+ * On Tauri (desktop/mobile app): uses @tauri-apps/plugin-notification.
+ * On Web/PWA: uses the browser Notification API so users still get
+ * desktop notifications when the tab is in the background.
  */
 export async function initNativeNotifications(): Promise<boolean> {
-  if (!isTauriApp() || _initialized) return _permissionGranted;
+  if (isTauriApp()) {
+    if (_initialized) return _permissionGranted;
+    try {
+      const {
+        isPermissionGranted,
+        requestPermission,
+      } = await import('@tauri-apps/plugin-notification');
 
-  try {
-    const {
-      isPermissionGranted,
-      requestPermission,
-    } = await import('@tauri-apps/plugin-notification');
+      _permissionGranted = await isPermissionGranted();
 
-    _permissionGranted = await isPermissionGranted();
+      if (!_permissionGranted) {
+        const permission = await requestPermission();
+        _permissionGranted = permission === 'granted';
+      }
 
-    if (!_permissionGranted) {
-      const permission = await requestPermission();
-      _permissionGranted = permission === 'granted';
+      _initialized = true;
+      console.log('[NativeNotif] Tauri initialized, permission:', _permissionGranted);
+      return _permissionGranted;
+    } catch (error) {
+      console.warn('[NativeNotif] Tauri init failed:', error);
+      return false;
+    }
+  } else {
+    // Web PWA: browser Notification API
+    if (_initialized) return _webPermissionGranted;
+    if (typeof Notification === 'undefined') return false;
+
+    if (Notification.permission === 'granted') {
+      _webPermissionGranted = true;
+    } else if (Notification.permission === 'default') {
+      try {
+        const perm = await Notification.requestPermission();
+        _webPermissionGranted = perm === 'granted';
+      } catch {
+        // Safari may throw if called outside user gesture — that's ok
+      }
     }
 
     _initialized = true;
-    console.log('[NativeNotif] Initialized, permission:', _permissionGranted);
-    return _permissionGranted;
-  } catch (error) {
-    console.warn('[NativeNotif] Init failed:', error);
-    return false;
+    console.log('[NativeNotif] Web initialized, permission:', _webPermissionGranted);
+    return _webPermissionGranted;
   }
 }
 
@@ -78,38 +103,73 @@ interface NativeNotificationOptions {
 }
 
 /**
- * Send a native macOS notification.
+ * Send a notification.
  *
- * Shows in macOS Notification Center with the app icon.
- * Clicking the notification will navigate to the relevant chat/project.
+ * On Tauri: uses macOS/iOS native notification center.
+ * On Web/PWA: uses the browser Notification API (shows OS-level toast
+ * when the tab is backgrounded).
+ * Clicking the notification navigates to the relevant chat/project.
  */
 export async function sendNativeNotification(
   options: NativeNotificationOptions
 ): Promise<void> {
-  if (!isTauriApp() || !_permissionGranted) return;
+  if (isTauriApp()) {
+    if (!_permissionGranted) return;
 
-  try {
-    const { sendNotification } = await import('@tauri-apps/plugin-notification');
+    try {
+      const { sendNotification } = await import('@tauri-apps/plugin-notification');
 
-    // Build extra data payload for click handler
-    const extra: Record<string, string> = {};
-    if (options.notificationId) extra.notificationId = options.notificationId;
-    if (options.sourceId) extra.sourceId = options.sourceId;
-    if (options.projectId) extra.projectId = options.projectId;
-    if (options.roomId) extra.roomId = options.roomId;
-    if (options.type) extra.type = options.type;
+      const extra: Record<string, string> = {};
+      if (options.notificationId) extra.notificationId = options.notificationId;
+      if (options.sourceId) extra.sourceId = options.sourceId;
+      if (options.projectId) extra.projectId = options.projectId;
+      if (options.roomId) extra.roomId = options.roomId;
+      if (options.type) extra.type = options.type;
 
-    sendNotification({
-      title: options.title,
-      body: options.body,
-      sound: 'default',
-      ...(options.group ? { group: options.group } : {}),
-      ...(Object.keys(extra).length > 0 ? { extra } : {}),
-    });
+      sendNotification({
+        title: options.title,
+        body: options.body,
+        sound: 'default',
+        ...(options.group ? { group: options.group } : {}),
+        ...(Object.keys(extra).length > 0 ? { extra } : {}),
+      });
 
-    console.log('[NativeNotif] Sent:', options.title);
-  } catch (error) {
-    console.warn('[NativeNotif] Send failed:', error);
+      console.log('[NativeNotif] Tauri sent:', options.title);
+    } catch (error) {
+      console.warn('[NativeNotif] Tauri send failed:', error);
+    }
+  } else {
+    // Web PWA: browser Notification API
+    if (!_webPermissionGranted) return;
+    if (_isAppFocused) return; // Don't duplicate when tab is in foreground
+
+    try {
+      const notif = new Notification(options.title, {
+        body: options.body,
+        icon: '/icons/icon-192x192.png',
+        badge: '/icons/icon-72x72.png',
+        tag: options.group || options.type || 'rebe', // collapse same-type toasts
+        silent: false,
+      });
+
+      notif.onclick = () => {
+        window.focus();
+        // Navigate to the relevant chat using existing routing logic
+        const extra: Record<string, string> = {};
+        if (options.notificationId) extra.notificationId = options.notificationId;
+        if (options.sourceId) extra.sourceId = options.sourceId;
+        if (options.projectId) extra.projectId = options.projectId;
+        if (options.roomId) extra.roomId = options.roomId;
+        if (options.type) extra.type = options.type;
+        if (Object.keys(extra).length > 0) {
+          handleNotificationNavigation(extra);
+        }
+      };
+
+      console.log('[NativeNotif] Web sent:', options.title);
+    } catch (error) {
+      console.warn('[NativeNotif] Web send failed:', error);
+    }
   }
 }
 
