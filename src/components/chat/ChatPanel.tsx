@@ -356,6 +356,11 @@ export function ChatPanel({ defaultProjectId, defaultDmUserId, defaultGroupRoomI
   // after reading because `chatLastReadTimestamps` stays stale while the
   // user is still looking at the chat. Re-mark read whenever the visible
   // message list grows for the currently-selected chat.
+  //
+  // Debounced by 1s: in a busy group chat a burst of N incoming messages
+  // collapses into a single upsert to `chat_read_status` instead of N
+  // consecutive network writes.
+  const markReadTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!selectedChat || chatMessages.length === 0) return;
@@ -366,7 +371,18 @@ export function ChatPanel({ defaultProjectId, defaultDmUserId, defaultGroupRoomI
       key = `room:${selectedChat.roomId}`;
     }
     if (!key) return;
-    markChatRead(key);
+    if (markReadTimerRef.current) clearTimeout(markReadTimerRef.current);
+    const capturedKey = key;
+    markReadTimerRef.current = setTimeout(() => {
+      markChatRead(capturedKey);
+      markReadTimerRef.current = null;
+    }, 1000);
+    return () => {
+      if (markReadTimerRef.current) {
+        clearTimeout(markReadTimerRef.current);
+        markReadTimerRef.current = null;
+      }
+    };
   }, [chatMessages.length, selectedChat?.type, selectedChat?.id, selectedChat?.roomId]);
 
   const getLastMessage = useCallback((projectId: string) => {

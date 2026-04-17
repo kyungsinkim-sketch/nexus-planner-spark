@@ -237,7 +237,8 @@ export async function ensureTodaysBriefing(
   const dateKey = getTodayKstDateKey();
   const marker = buildBriefingMarker(dateKey);
 
-  // 1. Existence check — is there already a briefing for today?
+  // 1. Existence check — is there already a briefing for today at the
+  //    CURRENT version? If so, reuse it (idempotent).
   const { data: existing, error: selErr } = await supabase
     .from('chat_messages')
     .select('*')
@@ -267,6 +268,11 @@ export async function ensureTodaysBriefing(
   }
 
   // 2. Insert a new briefing — marker prefix + blank line + body.
+  //    Note: stale briefings from older schema versions (e.g. v1 without
+  //    a version suffix) cannot be deleted client-side — chat_messages
+  //    DELETE RLS only permits rows where `user_id = auth.uid()`, and
+  //    briefing rows are authored by BRAIN_BOT. A one-time SQL migration
+  //    cleans those up server-side; see `103_briefing_v1_cleanup.sql`.
   const content = `${marker}\n${text}`;
   try {
     const inserted = await sendDirectMessage(BRAIN_BOT_ID, currentUser.id, content);
