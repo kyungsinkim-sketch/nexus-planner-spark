@@ -27,9 +27,45 @@ function initPushAndSync(userId: string, get: () => AppState): void {
   // 1. Push notification token registration (iOS)
   import('@/services/pushNotificationService').then(({ initPushNotifications }) => {
     initPushNotifications(userId, (payload) => {
-      // Handle notification tap — navigate to the relevant chat/item
-      console.log('[Push] Notification tapped with payload:', payload);
-      // Future: implement navigation based on payload.projectId, payload.roomId, etc.
+      // APNs payload fields (set by fn_queue_push_on_chat_message trigger):
+      //   messageId, projectId, roomId, senderId, isDM
+      const messageId  = payload.messageId  as string | undefined;
+      const projectId  = payload.projectId  as string | undefined;
+      const roomId     = payload.roomId     as string | undefined;
+      const senderId   = payload.senderId   as string | undefined;
+      const isDM       = payload.isDM       as boolean | undefined;
+
+      console.log('[Push] Notification tapped:', payload);
+
+      // Deterministic appNotification id mirrors addAppNotification logic
+      if (messageId) {
+        get().markAppNotificationRead(`an-${messageId}`);
+      }
+
+      import('@/stores/widgetStore').then(({ useWidgetStore }) => {
+        const widgetStore = useWidgetStore.getState();
+        const state = get();
+
+        if (isDM && senderId) {
+          // DM: open the thread with the sender
+          widgetStore.openMobileDm(senderId);
+          state.setPendingChatNavigation({ type: 'direct', id: senderId });
+        } else if (roomId) {
+          // Room: check if it's a group or project room
+          const room = state.chatRooms.find(r => r.id === roomId);
+          if (room?.type === 'group') {
+            widgetStore.openMobileGroupChat(roomId);
+            state.setPendingChatNavigation({ type: 'group', id: roomId, roomId });
+          } else if (projectId) {
+            widgetStore.openMobileProjectChat(projectId);
+            state.setPendingChatNavigation({ type: 'project', id: projectId, roomId });
+          }
+        } else if (projectId) {
+          // Project-level chat without a room
+          widgetStore.openMobileProjectChat(projectId);
+          state.setPendingChatNavigation({ type: 'project', id: projectId });
+        }
+      }).catch(() => {});
     });
   }).catch(() => {});
 
