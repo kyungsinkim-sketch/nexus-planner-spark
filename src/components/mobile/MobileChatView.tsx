@@ -5,7 +5,7 @@
  * defaultProjectId 없이 호출 → ChatPanel 내부에서 프로젝트/DM 채팅 목록 표시.
  */
 
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useState, useEffect } from 'react';
 import { useWidgetStore } from '@/stores/widgetStore';
 import { useTranslation } from '@/hooks/useTranslation';
 import { ArrowLeft, MessageSquare } from 'lucide-react';
@@ -18,8 +18,31 @@ export function MobileChatView() {
   const { setMobileView } = useWidgetStore();
   const { language } = useTranslation();
 
+  const [viewH, setViewH] = useState(() => window.visualViewport?.height || window.innerHeight);
+  const [keyboardOpen, setKeyboardOpen] = useState(false);
+
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const initialH = vv.height;
+    const update = () => {
+      setViewH(vv.height);
+      setKeyboardOpen(initialH - vv.height > 100);
+      window.scrollTo(0, 0);
+    };
+    vv.addEventListener('resize', update);
+    vv.addEventListener('scroll', update);
+    return () => {
+      vv.removeEventListener('resize', update);
+      vv.removeEventListener('scroll', update);
+    };
+  }, []);
+
   return (
-    <div className="flex flex-col h-full bg-background">
+    <div
+      className={`flex flex-col bg-background overflow-hidden ${keyboardOpen ? 'fixed top-0 left-0 right-0' : 'h-full'}`}
+      style={keyboardOpen ? { height: `${viewH}px` } : undefined}
+    >
       {/* Header */}
       <div
         className="shrink-0 px-4 py-3 flex items-center gap-3"
@@ -48,7 +71,7 @@ export function MobileChatView() {
             <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
           </div>
         }>
-          <ChatPanel />
+          <ChatPanel keyboardOpen={keyboardOpen} />
         </Suspense>
       </div>
     </div>

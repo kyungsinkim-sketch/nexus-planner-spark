@@ -90,9 +90,29 @@ interface ChatPanelProps {
   onBackToList?: () => void;
 }
 
-export function ChatPanel({ defaultProjectId, defaultDmUserId, defaultGroupRoomId, keyboardOpen, onBackToList }: ChatPanelProps = {}) {
+export function ChatPanel({ defaultProjectId, defaultDmUserId, defaultGroupRoomId, keyboardOpen: keyboardOpenProp, onBackToList }: ChatPanelProps = {}) {
   const { t, language } = useTranslation();
   const isMobile = useIsMobile();
+
+  // Self-contained keyboard detection for mobile: if a parent passes
+  // keyboardOpen we honour it; otherwise we track the visual viewport
+  // ourselves. This ensures keyboard-aware layout in every host
+  // (MobileChatListView, MobileDmChatView, MobileChatView, etc.)
+  // without requiring every parent to duplicate the viewport logic.
+  const [internalKeyboardOpen, setInternalKeyboardOpen] = useState(false);
+  useEffect(() => {
+    if (!isMobile || keyboardOpenProp !== undefined) return;
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const initialH = vv.height;
+    const update = () => {
+      setInternalKeyboardOpen(initialH - vv.height > 100);
+    };
+    vv.addEventListener('resize', update);
+    return () => vv.removeEventListener('resize', update);
+  }, [isMobile, keyboardOpenProp]);
+  const keyboardOpen = keyboardOpenProp ?? internalKeyboardOpen;
+
   const {
     projects, users, currentUser, messages, chatRooms,
     sendProjectMessage, sendDirectMessage, sendRoomMessage,
