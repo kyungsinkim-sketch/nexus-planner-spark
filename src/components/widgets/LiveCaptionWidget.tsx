@@ -55,7 +55,7 @@ function LiveCaptionWidget(_props: { context: WidgetDataContext }) {
   const translateOnRef = useRef(true);
   const startTimeRef = useRef<number | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const endRef = useRef<HTMLDivElement>(null);
+  const transcriptRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => { translateOnRef.current = translateOn; }, [translateOn]);
 
@@ -64,8 +64,12 @@ function LiveCaptionWidget(_props: { context: WidgetDataContext }) {
     if (!SR) setSupported(false);
   }, []);
 
+  // Scroll only the internal transcript container — NEVER the ancestor page/dashboard.
+  // Previously used scrollIntoView which bubbles up through all scroll parents,
+  // causing the dashboard to auto-scroll the widget into view.
   useEffect(() => {
-    endRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    const el = transcriptRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
   }, [lines]);
 
   // Elapsed timer
@@ -405,7 +409,7 @@ function LiveCaptionWidget(_props: { context: WidgetDataContext }) {
       </div>
 
       {/* Transcript — selectable text */}
-      <div className="flex-1 overflow-y-auto px-3 py-2 space-y-1.5 select-text cursor-text">
+      <div ref={transcriptRef} className="flex-1 overflow-y-auto px-3 py-2 space-y-1.5 select-text cursor-text">
         {lines.map(line => {
           const time = new Date(line.timestamp);
           const timeStr = `${String(time.getHours()).padStart(2, '0')}:${String(time.getMinutes()).padStart(2, '0')}`;
@@ -437,7 +441,6 @@ function LiveCaptionWidget(_props: { context: WidgetDataContext }) {
             </div>
           );
         })}
-        <div ref={endRef} />
       </div>
     </div>
   );
