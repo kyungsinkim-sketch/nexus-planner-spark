@@ -2,10 +2,13 @@
  * translateService.ts — Real-time translation (Korean ↔ English).
  *
  * Provider chain (first success wins):
- * 1. Google Translate (unofficial free endpoint — fastest, most reliable)
- * 2. Lingva API instances (open-source Google Translate proxy)
- * 3. MyMemory API (free, no API key, 5000 words/day)
+ * 1. Supabase Edge Function `translate-text` (server-side, bypasses browser CORS)
+ * 2. Google Translate (unofficial free endpoint — may be CORS-blocked in browsers)
+ * 3. Lingva API instances (open-source Google Translate proxy)
+ * 4. MyMemory API (free, no API key, 5000 words/day)
  */
+
+import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 
 const LINGVA_INSTANCES = [
   'https://translate.plausibility.cloud',
@@ -23,7 +26,24 @@ export function detectLanguage(text: string): 'ko' | 'en' {
   return koChars / total > 0.3 ? 'ko' : 'en';
 }
 
-// ─── Provider 1: Google Translate (unofficial) ─────
+// ─── Provider 1: Supabase Edge Function (server-side proxy) ─────
+
+async function tryEdgeFunction(text: string, sourceLang: string, targetLang: string): Promise<string | null> {
+  if (!isSupabaseConfigured()) return null;
+  try {
+    const { data, error } = await supabase.functions.invoke('translate-text', {
+      body: { text, source_lang: sourceLang, target_lang: targetLang },
+    });
+    if (error) return null;
+    const translation = (data as { translation?: string | null } | null)?.translation;
+    return translation && typeof translation === 'string' ? translation : null;
+  } catch {
+    /* network / invocation error */
+    return null;
+  }
+}
+
+// ─── Provider 2: Google Translate (unofficial) ─────
 
 async function tryGoogleFree(text: string, sourceLang: string, targetLang: string): Promise<string | null> {
   try {
@@ -53,7 +73,7 @@ async function tryGoogleFree(text: string, sourceLang: string, targetLang: strin
   }
 }
 
-// ─── Provider 2: Lingva (open-source proxy) ────────
+// ─── Provider 3: Lingva (open-source proxy) ────────
 
 async function tryLingva(text: string, sourceLang: string, targetLang: string): Promise<string | null> {
   for (const instance of LINGVA_INSTANCES) {
@@ -78,7 +98,7 @@ async function tryLingva(text: string, sourceLang: string, targetLang: string): 
   return null;
 }
 
-// ─── Provider 3: MyMemory (free, 5000 words/day) ──
+// ─── Provider 4: MyMemory (free, 5000 words/day) ──
 
 async function tryMyMemory(text: string, sourceLang: string, targetLang: string): Promise<string | null> {
   try {
@@ -117,15 +137,19 @@ export async function translate(text: string): Promise<string | null> {
   const sourceLang = detectLanguage(text);
   const targetLang = sourceLang === 'ko' ? 'en' : 'ko';
 
-  // 1. Google Free (fastest, most reliable)
+  // 1. Edge Function (server-side, bypasses browser CORS)
+  const edgeResult = await tryEdgeFunction(text, sourceLang, targetLang);
+  if (edgeResult) return edgeResult;
+
+  // 2. Google Free (may be CORS-blocked in some browsers)
   const googleResult = await tryGoogleFree(text, sourceLang, targetLang);
   if (googleResult) return googleResult;
 
-  // 2. Lingva proxy
+  // 3. Lingva proxy
   const lingvaResult = await tryLingva(text, sourceLang, targetLang);
   if (lingvaResult) return lingvaResult;
 
-  // 3. MyMemory
+  // 4. MyMemory
   const myMemoryResult = await tryMyMemory(text, sourceLang, targetLang);
   if (myMemoryResult) return myMemoryResult;
 
