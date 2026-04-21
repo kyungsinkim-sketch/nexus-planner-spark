@@ -104,36 +104,63 @@ function LiveCaptionWidget(_props: { context: WidgetDataContext }) {
     recognition.maxAlternatives = 1;
 
     recognition.onresult = (event: any) => {
-      const newFinals: Array<{ id: number; text: string }> = [];
+      // Pre-compute IDs and actions OUTSIDE the state updater.
+      // React 18 defers updater execution (batching), so mutations
+      // inside the updater aren't visible after the setLines call.
+      type Entry =
+        | { type: 'final'; id: number; text: string; removeInterimId: number | null }
+        | { type: 'interim-new'; id: number; text: string }
+        | { type: 'interim-update'; id: number; text: string };
+
+      const entries: Entry[] = [];
+
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const result = event.results[i];
+        const text = (result[0].transcript || '').trim();
+        if (!text) continue;
+
+        if (result.isFinal) {
+          const removeId = interimIdRef.current;
+          interimIdRef.current = null;
+          const id = ++idRef.current;
+          entries.push({ type: 'final', id, text, removeInterimId: removeId });
+        } else {
+          if (interimIdRef.current !== null) {
+            entries.push({ type: 'interim-update', id: interimIdRef.current, text });
+          } else {
+            const id = ++idRef.current;
+            interimIdRef.current = id;
+            entries.push({ type: 'interim-new', id, text });
+          }
+        }
+      }
+
       setLines(prev => {
         let next = prev;
-        for (let i = event.resultIndex; i < event.results.length; i++) {
-          const result = event.results[i];
-          const text = (result[0].transcript || '').trim();
-          if (!text) continue;
-
-          if (result.isFinal) {
-            if (interimIdRef.current !== null) {
-              next = next.filter(l => l.id !== interimIdRef.current);
-              interimIdRef.current = null;
+        for (const entry of entries) {
+          if (entry.type === 'final') {
+            if (entry.removeInterimId !== null) {
+              next = next.filter(l => l.id !== entry.removeInterimId);
             }
-            const id = ++idRef.current;
-            next = [...next, { id, text, isFinal: true, timestamp: Date.now() }];
+            next = [...next, { id: entry.id, text: entry.text, isFinal: true, timestamp: Date.now() }];
             if (next.length > 200) next = next.slice(-200);
-            if (translateOnRef.current) newFinals.push({ id, text });
+          } else if (entry.type === 'interim-update') {
+            next = next.map(l => l.id === entry.id ? { ...l, text: entry.text } : l);
           } else {
-            if (interimIdRef.current !== null) {
-              next = next.map(l => l.id === interimIdRef.current ? { ...l, text } : l);
-            } else {
-              const id = ++idRef.current;
-              interimIdRef.current = id;
-              next = [...next, { id, text, isFinal: false, timestamp: Date.now() }];
-            }
+            next = [...next, { id: entry.id, text: entry.text, isFinal: false, timestamp: Date.now() }];
           }
         }
         return next;
       });
-      for (const { id, text } of newFinals) runTranslate(id, text);
+
+      // Trigger translation — IDs are pre-computed, safe outside updater
+      if (translateOnRef.current) {
+        for (const entry of entries) {
+          if (entry.type === 'final') {
+            runTranslate(entry.id, entry.text);
+          }
+        }
+      }
     };
 
     recognition.onerror = (event: any) => {
