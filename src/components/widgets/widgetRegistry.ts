@@ -36,6 +36,7 @@ import {
   Link2,
   Phone,
   Hash,
+  Languages,
 } from 'lucide-react';
 import type { WidgetDefinition, WidgetType, WidgetDataContext } from '@/types/widget';
 
@@ -71,6 +72,7 @@ export const WIDGET_COMPONENTS: Record<WidgetType, ComponentType<{ context: Widg
   projectLinks:   lazy(() => import('./LinksWidget')),
   slack:          lazy(() => import('./SlackWidget')),
   updates:        lazy(() => import('./UpdatesWidget')),
+  liveCaption:    lazy(() => import('./LiveCaptionWidget')),
   // call widget removed — call UI is in ActiveCallOverlay
 };
 
@@ -316,6 +318,14 @@ export const WIDGET_DEFINITIONS: Record<WidgetType, WidgetDefinition> = {
     icon: Bell,
     defaultSize: { w: 3, h: 3 },
     minSize: { w: 2, h: 2 },
+    contexts: ['dashboard', 'project'],
+  },
+  liveCaption: {
+    type: 'liveCaption',
+    titleKey: 'liveCaption',
+    icon: Languages,
+    defaultSize: { w: 4, h: 4 },
+    minSize: { w: 3, h: 3 },
     contexts: ['dashboard', 'project'],
   },
 };

@@ -39,6 +39,7 @@ export type WidgetType =
   | 'projectLinks'
   | 'slack'
   | 'updates'
+  | 'liveCaption'
 ;
 
 // Widget context — determines which data scope a widget uses
