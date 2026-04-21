@@ -31,14 +31,20 @@ export function detectLanguage(text: string): 'ko' | 'en' {
 async function tryEdgeFunction(text: string, sourceLang: string, targetLang: string): Promise<string | null> {
   if (!isSupabaseConfigured()) return null;
   try {
-    const { data, error } = await supabase.functions.invoke('translate-text', {
-      body: { text, source_lang: sourceLang, target_lang: targetLang },
-    });
-    if (error) return null;
-    const translation = (data as { translation?: string | null } | null)?.translation;
+    // Race against a timeout — functions.invoke has no built-in timeout
+    const result = await Promise.race([
+      supabase.functions.invoke('translate-text', {
+        body: { text, source_lang: sourceLang, target_lang: targetLang },
+      }),
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('timeout')), 5000),
+      ),
+    ]);
+    if (result.error) return null;
+    const translation = (result.data as { translation?: string | null } | null)?.translation;
     return translation && typeof translation === 'string' ? translation : null;
   } catch {
-    /* network / invocation error */
+    /* network / invocation error / timeout */
     return null;
   }
 }
@@ -76,26 +82,29 @@ async function tryGoogleFree(text: string, sourceLang: string, targetLang: strin
 // ─── Provider 3: Lingva (open-source proxy) ────────
 
 async function tryLingva(text: string, sourceLang: string, targetLang: string): Promise<string | null> {
-  for (const instance of LINGVA_INSTANCES) {
-    try {
+  try {
+    // Race instances in parallel — first success wins
+    const attempts = LINGVA_INSTANCES.map(async (instance) => {
       const encoded = encodeURIComponent(text);
       const url = `${instance}/api/v1/${sourceLang}/${targetLang}/${encoded}`;
 
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 3000);
-
-      const res = await fetch(url, { signal: controller.signal });
-      clearTimeout(timeout);
-
-      if (!res.ok) continue;
-
-      const data = await res.json();
-      if (data.translation) return data.translation;
-    } catch {
-      continue;
-    }
+      try {
+        const res = await fetch(url, { signal: controller.signal });
+        if (!res.ok) throw new Error('not_ok');
+        const data = await res.json();
+        if (!data.translation) throw new Error('no_translation');
+        return data.translation as string;
+      } finally {
+        clearTimeout(timeout);
+      }
+    });
+    return await Promise.any(attempts);
+  } catch {
+    /* all instances failed */
+    return null;
   }
-  return null;
 }
 
 // ─── Provider 4: MyMemory (free, 5000 words/day) ──
@@ -137,24 +146,28 @@ export async function translate(text: string): Promise<string | null> {
   const sourceLang = detectLanguage(text);
   const targetLang = sourceLang === 'ko' ? 'en' : 'ko';
 
-  // 1. Edge Function (server-side, bypasses browser CORS)
+  // 1. Edge Function first — when deployed, bypasses browser CORS cleanly
   const edgeResult = await tryEdgeFunction(text, sourceLang, targetLang);
   if (edgeResult) return edgeResult;
 
-  // 2. Google Free (may be CORS-blocked in some browsers)
-  const googleResult = await tryGoogleFree(text, sourceLang, targetLang);
-  if (googleResult) return googleResult;
-
-  // 3. Lingva proxy
-  const lingvaResult = await tryLingva(text, sourceLang, targetLang);
-  if (lingvaResult) return lingvaResult;
-
-  // 4. MyMemory
-  const myMemoryResult = await tryMyMemory(text, sourceLang, targetLang);
-  if (myMemoryResult) return myMemoryResult;
-
-  console.warn('[Translate] All providers failed for:', text.slice(0, 50));
-  return null;
+  // 2. Fallback: try all browser-side providers in PARALLEL.
+  //    Worst case becomes the longest single timeout (~5s) instead of
+  //    the sum of all (~18s).
+  try {
+    const fallbacks = [
+      tryGoogleFree(text, sourceLang, targetLang),
+      tryLingva(text, sourceLang, targetLang),
+      tryMyMemory(text, sourceLang, targetLang),
+    ].map(async (p) => {
+      const r = await p;
+      if (r === null) throw new Error('no_result');
+      return r;
+    });
+    return await Promise.any(fallbacks);
+  } catch {
+    console.warn('[Translate] All providers failed for:', text.slice(0, 50));
+    return null;
+  }
 }
 
 // ─── Batched translation for transcript lines ───────
