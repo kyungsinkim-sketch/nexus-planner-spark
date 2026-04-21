@@ -169,7 +169,7 @@ function LiveCaptionWidget(_props: { context: WidgetDataContext }) {
     wantRunningRef.current = false;
     const rec = recognitionRef.current;
     recognitionRef.current = null;
-    if (rec) { try { rec.stop(); } catch {} }
+    if (rec) { try { rec.stop(); } catch { /* already stopped */ } }
     setRunning(false);
   }, []);
 
@@ -188,7 +188,7 @@ function LiveCaptionWidget(_props: { context: WidgetDataContext }) {
       wantRunningRef.current = false;
       const rec = recognitionRef.current;
       recognitionRef.current = null;
-      if (rec) { try { rec.stop(); } catch {} }
+      if (rec) { try { rec.stop(); } catch { /* already stopped */ } }
     };
   }, []);
 
@@ -217,7 +217,7 @@ function LiveCaptionWidget(_props: { context: WidgetDataContext }) {
       await navigator.clipboard.writeText(allText);
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
-    } catch {}
+    } catch { /* clipboard blocked */ }
   }, [allText]);
 
   const downloadTxt = useCallback(() => {
