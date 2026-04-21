@@ -1,9 +1,10 @@
 /**
- * translateService.ts — Free real-time translation (Korean ↔ English).
+ * translateService.ts — Real-time translation (Korean ↔ English).
  *
- * Strategy:
- * 1. Lingva API instances (open-source Google Translate proxy)
- * 2. MyMemory API fallback (free, no API key, 5000 words/day)
+ * Provider chain (first success wins):
+ * 1. Google Translate (unofficial free endpoint — fastest, most reliable)
+ * 2. Lingva API instances (open-source Google Translate proxy)
+ * 3. MyMemory API (free, no API key, 5000 words/day)
  */
 
 const LINGVA_INSTANCES = [
@@ -16,15 +17,44 @@ const LINGVA_INSTANCES = [
  * Detect if text is primarily Korean or English.
  */
 export function detectLanguage(text: string): 'ko' | 'en' {
-  const koChars = (text.match(/[\uAC00-\uD7AF\u1100-\u11FF\u3130-\u318F]/g) || []).length;
+  const koChars = (text.match(/[가-힯ᄀ-ᇿ㄰-㆏]/g) || []).length;
   const total = text.replace(/\s/g, '').length;
   if (total === 0) return 'ko';
   return koChars / total > 0.3 ? 'ko' : 'en';
 }
 
-/**
- * Try Lingva instances.
- */
+// ─── Provider 1: Google Translate (unofficial) ─────
+
+async function tryGoogleFree(text: string, sourceLang: string, targetLang: string): Promise<string | null> {
+  try {
+    const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${sourceLang}&tl=${targetLang}&dt=t&q=${encodeURIComponent(text)}`;
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 4000);
+
+    const res = await fetch(url, { signal: controller.signal });
+    clearTimeout(timeout);
+
+    if (!res.ok) return null;
+
+    const data = await res.json();
+    // Response: [[["translated","original",null,null,1],...],null,"ko"]
+    if (Array.isArray(data) && Array.isArray(data[0])) {
+      const translated = data[0]
+        .filter((seg: unknown) => Array.isArray(seg) && seg.length > 0)
+        .map((seg: unknown[]) => seg[0])
+        .join('');
+      if (translated && translated !== text) return translated;
+    }
+    return null;
+  } catch {
+    /* network / CORS / timeout */
+    return null;
+  }
+}
+
+// ─── Provider 2: Lingva (open-source proxy) ────────
+
 async function tryLingva(text: string, sourceLang: string, targetLang: string): Promise<string | null> {
   for (const instance of LINGVA_INSTANCES) {
     try {
@@ -32,7 +62,7 @@ async function tryLingva(text: string, sourceLang: string, targetLang: string): 
       const url = `${instance}/api/v1/${sourceLang}/${targetLang}/${encoded}`;
 
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 4000);
+      const timeout = setTimeout(() => controller.abort(), 3000);
 
       const res = await fetch(url, { signal: controller.signal });
       clearTimeout(timeout);
@@ -40,9 +70,7 @@ async function tryLingva(text: string, sourceLang: string, targetLang: string): 
       if (!res.ok) continue;
 
       const data = await res.json();
-      if (data.translation) {
-        return data.translation;
-      }
+      if (data.translation) return data.translation;
     } catch {
       continue;
     }
@@ -50,13 +78,10 @@ async function tryLingva(text: string, sourceLang: string, targetLang: string): 
   return null;
 }
 
-/**
- * Try MyMemory API (free, no key needed).
- * Limit: 5000 words/day, 500 chars/request.
- */
+// ─── Provider 3: MyMemory (free, 5000 words/day) ──
+
 async function tryMyMemory(text: string, sourceLang: string, targetLang: string): Promise<string | null> {
   try {
-    // MyMemory uses full locale codes
     const langPair = `${sourceLang === 'ko' ? 'ko-KR' : 'en-US'}|${targetLang === 'ko' ? 'ko-KR' : 'en-US'}`;
     const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text.slice(0, 500))}&langpair=${langPair}`;
 
@@ -71,7 +96,6 @@ async function tryMyMemory(text: string, sourceLang: string, targetLang: string)
     const data = await res.json();
     if (data.responseStatus === 200 && data.responseData?.translatedText) {
       const translated = data.responseData.translatedText;
-      // MyMemory sometimes returns the original text in uppercase when it fails
       if (translated.toUpperCase() === text.toUpperCase()) return null;
       return translated;
     }
@@ -80,6 +104,8 @@ async function tryMyMemory(text: string, sourceLang: string, targetLang: string)
   }
   return null;
 }
+
+// ─── Main translate function ───────────────────────
 
 /**
  * Translate text between Korean and English.
@@ -91,11 +117,15 @@ export async function translate(text: string): Promise<string | null> {
   const sourceLang = detectLanguage(text);
   const targetLang = sourceLang === 'ko' ? 'en' : 'ko';
 
-  // Try Lingva first
+  // 1. Google Free (fastest, most reliable)
+  const googleResult = await tryGoogleFree(text, sourceLang, targetLang);
+  if (googleResult) return googleResult;
+
+  // 2. Lingva proxy
   const lingvaResult = await tryLingva(text, sourceLang, targetLang);
   if (lingvaResult) return lingvaResult;
 
-  // Fallback to MyMemory
+  // 3. MyMemory
   const myMemoryResult = await tryMyMemory(text, sourceLang, targetLang);
   if (myMemoryResult) return myMemoryResult;
 

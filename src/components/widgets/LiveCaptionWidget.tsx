@@ -43,7 +43,7 @@ function LiveCaptionWidget(_props: { context: WidgetDataContext }) {
   const [supported, setSupported] = useState(true);
   const [running, setRunning] = useState(false);
   const [lang, setLang] = useState<SpeechLang>('ko-KR');
-  const [translateOn, setTranslateOn] = useState(false);
+  const [translateOn, setTranslateOn] = useState(true);
   const [lines, setLines] = useState<CaptionLine[]>([]);
   const [copied, setCopied] = useState(false);
   const [elapsedSec, setElapsedSec] = useState(0);
@@ -52,7 +52,7 @@ function LiveCaptionWidget(_props: { context: WidgetDataContext }) {
   const idRef = useRef(0);
   const interimIdRef = useRef<number | null>(null);
   const wantRunningRef = useRef(false);
-  const translateOnRef = useRef(false);
+  const translateOnRef = useRef(true);
   const startTimeRef = useRef<number | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
@@ -86,9 +86,10 @@ function LiveCaptionWidget(_props: { context: WidgetDataContext }) {
 
   const runTranslate = useCallback((lineId: number, text: string) => {
     translate(text).then(result => {
-      if (!result) return;
-      setLines(prev => prev.map(l => l.id === lineId ? { ...l, translation: result } : l));
-    }).catch(() => {});
+      setLines(prev => prev.map(l => l.id === lineId ? { ...l, translation: result ?? null } : l));
+    }).catch(() => {
+      setLines(prev => prev.map(l => l.id === lineId ? { ...l, translation: null } : l));
+    });
   }, []);
 
   const start = useCallback(() => {
@@ -393,10 +394,16 @@ function LiveCaptionWidget(_props: { context: WidgetDataContext }) {
                   <div className={line.isFinal ? 'text-foreground' : 'text-muted-foreground italic'}>
                     {line.text}
                   </div>
-                  {translateOn && line.isFinal && line.translation && (
-                    <div className="text-blue-500/80 text-xs mt-0.5">
-                      → {line.translation}
-                    </div>
+                  {translateOn && line.isFinal && (
+                    line.translation ? (
+                      <div className="text-blue-500/80 text-xs mt-0.5">
+                        → {line.translation}
+                      </div>
+                    ) : line.translation === undefined ? (
+                      <div className="text-muted-foreground/40 text-xs mt-0.5 italic">
+                        {t('liveCaptionTranslating')}
+                      </div>
+                    ) : null
                   )}
                 </div>
               </div>
