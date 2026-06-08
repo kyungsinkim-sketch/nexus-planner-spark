@@ -4,5 +4,11 @@
 <dict>
 	<key>aps-environment</key>
 	<string>development</string>
+	<key>com.apple.developer.associated-domains</key>
+	<array>
+		<string>applinks:re-be.io</string>
+		<string>applinks:www.re-be.io</string>
+		<string>webcredentials:re-be.io</string>
+	</array>
 </dict>
 </plist>

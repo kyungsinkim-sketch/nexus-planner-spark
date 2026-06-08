@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "Re-Be.io",
-  "version": "0.7.0",
+  "version": "1.0.0",
   "identifier": "io.re-be.app",
   "build": {
     "frontendDist": "../dist",
@@ -40,7 +40,7 @@
       "minimumSystemVersion": "10.15"
     },
     "iOS": {
-      "minimumSystemVersion": "14.0"
+      "minimumSystemVersion": "15.0"
     },
     "android": {
       "minSdkVersion": 24
