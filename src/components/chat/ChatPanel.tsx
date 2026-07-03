@@ -527,11 +527,17 @@ export function ChatPanel({ defaultProjectId, defaultDmUserId, defaultGroupRoomI
     }
   };
 
-  // When keyboard opens/closes, scroll to bottom so latest messages stay visible
+  // When keyboard opens, keep the latest messages pinned to the bottom.
+  // A single scroll isn't enough: the container keeps shrinking through the
+  // ~500ms keyboard animation (rAF-driven height updates), which re-invalidates
+  // the scroll position — so re-pin instantly at several points until it settles.
   useEffect(() => {
-    if (keyboardOpen) {
-      setTimeout(() => scrollToBottom(false), 150);
-    }
+    if (!keyboardOpen) return;
+    const timers = [50, 250, 500, 800].map((ms) =>
+      setTimeout(() => scrollToBottom(true), ms),
+    );
+    return () => timers.forEach(clearTimeout);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [keyboardOpen]);
 
   // Load reactions for visible messages

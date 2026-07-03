@@ -25,7 +25,7 @@ function ChatWidget({ context }: { context: WidgetDataContext }) {
     <div
       className={
         breakout
-          ? 'fixed top-0 left-0 right-0 z-50 bg-background overflow-hidden'
+          ? 'fixed top-0 left-0 right-0 z-50 widget-area-bg overflow-hidden'
           : 'h-full min-h-[200px] overflow-hidden'
       }
       style={breakout ? { height: `${height}px`, transform: `translateY(${offsetTop}px)` } : undefined}
