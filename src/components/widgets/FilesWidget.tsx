@@ -158,7 +158,12 @@ function FilesWidget({ context }: { context: WidgetDataContext }) {
             if (prev.some((c) => c.id === newComment.id)) return prev;
             return [...prev, newComment];
           });
-          setTimeout(() => commentsEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 50);
+          // Scroll only the comment list container — scrollIntoView would also
+          // scroll the dashboard when another user's comment arrives via realtime.
+          setTimeout(() => {
+            const container = commentsEndRef.current?.parentElement;
+            if (container) container.scrollTop = container.scrollHeight;
+          }, 50);
         }
       },
       (deletedId) => {

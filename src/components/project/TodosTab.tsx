@@ -61,15 +61,23 @@ export function TodosTab({ projectId }: TodosTabProps) {
   const [newPriority, setNewPriority] = useState<TodoPriority>('NORMAL');
   const [filter, setFilter] = useState<'all' | 'pending' | 'completed'>('all');
 
-  // Filter todos for this project from real store data
+  // Filter todos for this project from real store data.
+  // Ownership guard (assignee or creator) matches TodosWidget — RLS only ever
+  // returns own rows, so anything else in the store is stale cache from a
+  // previous user session on this browser and must not be rendered.
   const projectTodos = useMemo(() => {
     return personalTodos
-      .filter((td) => td.projectId === projectId)
+      .filter(
+        (td) =>
+          td.projectId === projectId &&
+          (td.assigneeIds?.includes(currentUser?.id || '') ||
+            td.requestedById === currentUser?.id),
+      )
       .sort((a, b) => {
         if (a.status !== b.status) return a.status === 'PENDING' ? -1 : 1;
         return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
       });
-  }, [personalTodos, projectId]);
+  }, [personalTodos, projectId, currentUser?.id]);
 
   const filteredTodos = useMemo(() => {
     return projectTodos.filter((todo) => {

@@ -10,18 +10,23 @@ import type { WidgetDataContext } from '@/types/widget';
 
 function ActionsWidget({ context }: { context: WidgetDataContext }) {
   const { t } = useTranslation();
-  const { personalTodos, events } = useAppStore();
+  const { personalTodos, events, currentUser } = useAppStore();
 
   const overdueTodos = useMemo(() => {
     const now = new Date();
+    // Ownership guard: never render todos that aren't mine (stale cache from
+    // a previous user session on this browser could otherwise leak through).
     let todos = personalTodos.filter(
-      (t) => t.status !== 'COMPLETED' && t.dueDate && new Date(t.dueDate) < now,
+      (t) =>
+        (t.assigneeIds?.includes(currentUser?.id || '') ||
+          t.requestedById === currentUser?.id) &&
+        t.status !== 'COMPLETED' && t.dueDate && new Date(t.dueDate) < now,
     );
     if (context.type === 'project' && context.projectId) {
       todos = todos.filter((t) => t.projectId === context.projectId);
     }
     return todos.slice(0, 5);
-  }, [personalTodos, context]);
+  }, [personalTodos, context, currentUser?.id]);
 
   const upcomingEvents = useMemo(() => {
     const now = new Date();

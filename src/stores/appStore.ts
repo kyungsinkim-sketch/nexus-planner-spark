@@ -624,6 +624,7 @@ export const useAppStore = create<AppState>()(
             projects: [],
             events: [],
             messages: [],
+            personalTodos: [],
             importantNotes: [],
             appNotifications: [],
             gmailMessages: [],
@@ -2845,6 +2846,7 @@ export const useAppStore = create<AppState>()(
             sourceId: newNotif.sourceId,
             projectId: newNotif.projectId,
             roomId: newNotif.roomId,
+            directUserId: newNotif.directUserId,
           });
           // Update dock badge with total unread count
           const unreadCount = get().appNotifications.filter(n => !n.read).length;
