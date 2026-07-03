@@ -15,6 +15,7 @@ import { useState, useMemo, useRef, useCallback, useEffect } from 'react';
 import { useAppStore } from '@/stores/appStore';
 import { useWidgetStore } from '@/stores/widgetStore';
 import { useTranslation } from '@/hooks/useTranslation';
+import { useKeyboardViewport } from '@/hooks/useKeyboardViewport';
 import { format, parseISO, startOfDay, endOfDay, isBefore, isAfter } from 'date-fns';
 import { ko, enUS } from 'date-fns/locale';
 import { Brain, Send, Loader2, Mic, Cloud, Sun, CloudRain, CheckCircle2, Clock as ClockIcon, XCircle, MessageSquare, Bell, ChevronRight, Hash, AtSign, Sparkles, ListTodo, Calendar as CalIcon } from 'lucide-react';
@@ -636,24 +637,9 @@ export function MobileAIChatView() {
     };
   }, [loadEvents, loadTodos, loadBrainHistory]);
 
-  // iOS keyboard: track visual viewport height for fixed layout
-  const [viewH, setViewH] = useState(() => window.visualViewport?.height || window.innerHeight);
-  const [keyboardOpen, setKeyboardOpen] = useState(false);
-  useEffect(() => {
-    const vv = window.visualViewport;
-    if (!vv) return;
-    const initialH = vv.height;
-    const update = () => {
-      setViewH(vv.height);
-      // Keyboard open = viewport shrunk significantly from initial
-      setKeyboardOpen(initialH - vv.height > 100);
-      // Prevent iOS body scroll
-      window.scrollTo(0, 0);
-    };
-    vv.addEventListener('resize', update);
-    vv.addEventListener('scroll', update);
-    return () => { vv.removeEventListener('resize', update); vv.removeEventListener('scroll', update); };
-  }, []);
+  // Keyboard-aware viewport — translateY(offsetTop) tracks the iOS pan so
+  // the fixed container always covers exactly the visible area (see hook docs)
+  const { height: viewH, offsetTop, keyboardOpen } = useKeyboardViewport();
 
   useTypingReveal(messages, setMessages);
 
@@ -1038,7 +1024,7 @@ export function MobileAIChatView() {
   const formatTime = (d: Date) => d.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
 
   return (
-    <div className="fixed top-0 left-0 right-0 flex flex-col widget-area-bg overflow-hidden" style={{ height: `${viewH}px` }}>
+    <div className="fixed top-0 left-0 right-0 z-50 flex flex-col widget-area-bg overflow-hidden" style={{ height: `${viewH}px`, transform: `translateY(${offsetTop}px)` }}>
       {/* ═══ Single scrollable area: cards + messages in one flow ═══ */}
       <div className="flex-1 min-h-0 overflow-y-auto flex flex-col" style={{ overscrollBehavior: 'none' }}>
         {/* ── Profile Card + Updates ── */}

@@ -2,9 +2,10 @@
  * MobileDmChatView — Full-screen 1:1 DM chat triggered from member detail
  */
 
-import { lazy, Suspense, useState, useEffect } from 'react';
+import { lazy, Suspense } from 'react';
 import { useWidgetStore } from '@/stores/widgetStore';
 import { useAppStore } from '@/stores/appStore';
+import { useKeyboardViewport } from '@/hooks/useKeyboardViewport';
 
 const ChatPanel = lazy(() =>
   import('@/components/chat/ChatPanel').then(m => ({ default: m.ChatPanel }))
@@ -19,33 +20,14 @@ export function MobileDmChatView() {
   // desktop-styled Projects/Direct/Groups list.
   const handleBackToList = () => setMobileView('chat-list');
 
-  // Track visual viewport for keyboard handling
-  const [viewH, setViewH] = useState(() => window.visualViewport?.height || window.innerHeight);
-  const [keyboardOpen, setKeyboardOpen] = useState(false);
-
-  useEffect(() => {
-    const vv = window.visualViewport;
-    if (!vv) return;
-    // Capture initial height (before keyboard) as baseline
-    const initialH = vv.height;
-    const update = () => {
-      setViewH(vv.height);
-      // Keyboard open = viewport shrunk significantly from initial
-      setKeyboardOpen(initialH - vv.height > 100);
-      window.scrollTo(0, 0);
-    };
-    vv.addEventListener('resize', update);
-    vv.addEventListener('scroll', update);
-    return () => {
-      vv.removeEventListener('resize', update);
-      vv.removeEventListener('scroll', update);
-    };
-  }, []);
+  // Keyboard-aware viewport — translateY(offsetTop) tracks the iOS pan so
+  // the container always covers exactly the visible area (see hook docs)
+  const { height: viewH, offsetTop, keyboardOpen } = useKeyboardViewport();
 
   return (
     <div
-      className={`flex flex-col widget-area-bg overflow-hidden ${keyboardOpen ? 'fixed top-0 left-0 right-0' : 'h-full'}`}
-      style={keyboardOpen ? { height: `${viewH}px` } : undefined}
+      className={`flex flex-col widget-area-bg overflow-hidden ${keyboardOpen ? 'fixed top-0 left-0 right-0 z-50' : 'h-full'}`}
+      style={keyboardOpen ? { height: `${viewH}px`, transform: `translateY(${offsetTop}px)` } : undefined}
     >
       <div className="flex-1 min-h-0 overflow-hidden">
         <Suspense fallback={
