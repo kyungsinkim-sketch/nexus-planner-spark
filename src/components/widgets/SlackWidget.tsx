@@ -166,8 +166,11 @@ function SlackWidget({ context }: { context: WidgetDataContext }) {
   }, [loadMessages]);
 
   // ─── Scroll to bottom on new messages ───
+  // Scroll only the widget's message container — scrollIntoView would also
+  // scroll the dashboard when realtime messages arrive (widget jumps into view).
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    const container = messagesEndRef.current?.parentElement;
+    if (container) container.scrollTop = container.scrollHeight;
   }, [messages, threadMessages]);
 
   // ─── Realtime: auto-refresh on new Slack webhook messages ───

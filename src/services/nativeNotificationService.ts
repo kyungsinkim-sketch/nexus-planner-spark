@@ -100,6 +100,9 @@ interface NativeNotificationOptions {
   projectId?: string;
   /** Chat room ID for navigation */
   roomId?: string;
+  /** For DM notifications — the other user's id (enables direct navigation
+   *  without needing the source message in the local store) */
+  directUserId?: string;
 }
 
 /**
@@ -124,6 +127,7 @@ export async function sendNativeNotification(
       if (options.sourceId) extra.sourceId = options.sourceId;
       if (options.projectId) extra.projectId = options.projectId;
       if (options.roomId) extra.roomId = options.roomId;
+      if (options.directUserId) extra.directUserId = options.directUserId;
       if (options.type) extra.type = options.type;
 
       sendNotification({
@@ -160,6 +164,7 @@ export async function sendNativeNotification(
         if (options.sourceId) extra.sourceId = options.sourceId;
         if (options.projectId) extra.projectId = options.projectId;
         if (options.roomId) extra.roomId = options.roomId;
+        if (options.directUserId) extra.directUserId = options.directUserId;
         if (options.type) extra.type = options.type;
         if (Object.keys(extra).length > 0) {
           handleNotificationNavigation(extra);
@@ -237,7 +242,7 @@ function handleNotificationNavigation(extra: Record<string, string>): void {
     import('@/stores/widgetStore'),
   ]).then(([{ useAppStore }, { useWidgetStore }]) => {
     const store = useAppStore.getState();
-    const { notificationId, sourceId, projectId, roomId, type } = extra;
+    const { notificationId, sourceId, projectId, roomId, directUserId, type } = extra;
 
     // Mark notification as read
     if (notificationId) {
@@ -245,23 +250,31 @@ function handleNotificationNavigation(extra: Record<string, string>): void {
     }
 
     if (type === 'chat') {
-      // Find original message to determine DM vs project chat
+      // Find original message to determine DM vs project chat.
+      // directUserId from the payload is preferred — the source message may
+      // not be in the local store (backgrounded tab, unloaded conversation),
+      // and without it DM notifications silently failed to navigate.
       const sourceMsg = sourceId ? store.messages.find(m => m.id === sourceId) : null;
+      const dmUserId =
+        (directUserId && directUserId !== store.currentUser?.id ? directUserId : null) ||
+        (sourceMsg?.directChatUserId
+          ? (sourceMsg.userId === store.currentUser?.id ? sourceMsg.directChatUserId : sourceMsg.userId)
+          : null);
 
-      if (sourceMsg?.directChatUserId) {
+      if (dmUserId) {
         // DM → navigate to direct chat with the other user
-        const otherUserId = sourceMsg.userId === store.currentUser?.id
-          ? sourceMsg.directChatUserId
-          : sourceMsg.userId;
-        store.setPendingChatNavigation({ type: 'direct', id: otherUserId });
+        store.setPendingChatNavigation({ type: 'direct', id: dmUserId });
         store.setChatPanelCollapsed(false);
         // Scroll chat widget into view after navigation settles
         setTimeout(() => scrollWidgetIntoView('chat'), 300);
-      } else if (sourceMsg?.roomId || sourceMsg?.projectId || projectId) {
-        // Project chat → open project tab + navigate to room
-        const pid = sourceMsg?.projectId || projectId;
+      } else if (sourceMsg?.roomId || sourceMsg?.projectId || projectId || roomId) {
+        // Project or group chat → open project tab (if any) + navigate to room
+        const rid = sourceMsg?.roomId || roomId || undefined;
+        // Resolve project: explicit payload → source message → room lookup
+        const pid = sourceMsg?.projectId || projectId
+          || (rid ? store.chatRooms.find(r => r.id === rid)?.projectId : undefined);
+        const widgetStore = useWidgetStore.getState();
         if (pid) {
-          const widgetStore = useWidgetStore.getState();
           const project = store.projects.find(p => p.id === pid);
           if (project) {
             const existing = widgetStore.openTabs.find(t => t.projectId === pid);
@@ -275,10 +288,16 @@ function handleNotificationNavigation(extra: Record<string, string>): void {
           store.setPendingChatNavigation({
             type: 'project',
             id: pid,
-            roomId: sourceMsg?.roomId || roomId || undefined,
+            roomId: rid,
           });
           store.setChatPanelCollapsed(false);
           // Scroll chat widget into view after navigation settles
+          setTimeout(() => scrollWidgetIntoView('chat'), 300);
+        } else if (rid) {
+          // Pure group chat (no project) — same handling as NotificationsWidget
+          store.setPendingChatNavigation({ type: 'group', id: rid, roomId: rid });
+          store.setChatPanelCollapsed(false);
+          widgetStore.setActiveTab('dashboard');
           setTimeout(() => scrollWidgetIntoView('chat'), 300);
         }
       }
