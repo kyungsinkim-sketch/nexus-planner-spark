@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, memo } from 'react';
 import { createPortal } from 'react-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -134,7 +134,10 @@ interface ChatMessageBubbleProps {
   onReactionToggle?: (messageId: string, emoji: string) => void;
 }
 
-export function ChatMessageBubble({ message, isCurrentUser, onVoteDecision, onAcceptSchedule, onDelete, onEdit, onPin, onUnpin, onReply, onConfirmBrainAction, onRejectBrainAction, onReactionToggle }: ChatMessageBubbleProps) {
+// memo — rendered once per message; without it every ChatPanel re-render
+// (each keystroke, every store change chat subscribes to) re-rendered all
+// N bubbles. Handler props are useCallback'd in ChatPanel to keep it effective.
+export const ChatMessageBubble = memo(function ChatMessageBubble({ message, isCurrentUser, onVoteDecision, onAcceptSchedule, onDelete, onEdit, onPin, onUnpin, onReply, onConfirmBrainAction, onRejectBrainAction, onReactionToggle }: ChatMessageBubbleProps) {
   const { messageType } = message;
   // Field selectors — a storewide subscription here meant EVERY rendered
   // bubble (one per message) re-ran on ANY store change. Historic-message
@@ -274,7 +277,7 @@ export function ChatMessageBubble({ message, isCurrentUser, onVoteDecision, onAc
       </div>
     </MessageWrapper>
   );
-}
+});
 
 // Reaction display bar with consistent styling
 function ReactionBar({ reactions, messageId, onToggle, isCurrentUser }: {
