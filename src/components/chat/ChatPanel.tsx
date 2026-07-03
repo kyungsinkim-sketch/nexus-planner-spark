@@ -11,6 +11,7 @@
  */
 
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import { useAppStore } from '@/stores/appStore';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
@@ -113,6 +114,9 @@ export function ChatPanel({ defaultProjectId, defaultDmUserId, defaultGroupRoomI
   }, [isMobile, keyboardOpenProp]);
   const keyboardOpen = keyboardOpenProp ?? internalKeyboardOpen;
 
+  // useShallow — a storewide subscription re-rendered the whole chat panel
+  // (and every message bubble under it) on ANY store write, including gmail
+  // sync, notifications, and todo changes that chat doesn't render.
   const {
     projects, users, currentUser, messages, chatRooms,
     sendProjectMessage, sendDirectMessage, sendRoomMessage,
@@ -129,7 +133,43 @@ export function ChatPanel({ defaultProjectId, defaultDmUserId, defaultGroupRoomI
     setPendingChatNavigation,
     markChatRead,
     getUnreadCount,
-  } = useAppStore();
+  } = useAppStore(useShallow((s) => ({
+    projects: s.projects,
+    users: s.users,
+    currentUser: s.currentUser,
+    messages: s.messages,
+    chatRooms: s.chatRooms,
+    sendProjectMessage: s.sendProjectMessage,
+    sendDirectMessage: s.sendDirectMessage,
+    sendRoomMessage: s.sendRoomMessage,
+    loadChatRooms: s.loadChatRooms,
+    loadGroupRooms: s.loadGroupRooms,
+    createChatRoom: s.createChatRoom,
+    deleteChatRoom: s.deleteChatRoom,
+    getChatRoomsByProject: s.getChatRoomsByProject,
+    getGroupRooms: s.getGroupRooms,
+    getUserById: s.getUserById,
+    addMessage: s.addMessage,
+    addFileGroup: s.addFileGroup,
+    addFile: s.addFile,
+    getFileGroupsByProject: s.getFileGroupsByProject,
+    brainIntelligenceEnabled: s.brainIntelligenceEnabled,
+    loadEvents: s.loadEvents,
+    loadTodos: s.loadTodos,
+    addTodo: s.addTodo,
+    addEvent: s.addEvent,
+    updateEvent: s.updateEvent,
+    addBrainReport: s.addBrainReport,
+    addBrainNotification: s.addBrainNotification,
+    loadBoardData: s.loadBoardData,
+    addBoardTask: s.addBoardTask,
+    clearChatNotificationsForRoom: s.clearChatNotificationsForRoom,
+    setActiveChatContext: s.setActiveChatContext,
+    pendingChatNavigation: s.pendingChatNavigation,
+    setPendingChatNavigation: s.setPendingChatNavigation,
+    markChatRead: s.markChatRead,
+    getUnreadCount: s.getUnreadCount,
+  })));
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTab, setSelectedTab] = useState<'projects' | 'direct' | 'groups'>('projects');
   const [showCreateGroupRoom, setShowCreateGroupRoom] = useState(false);
@@ -1244,7 +1284,7 @@ export function ChatPanel({ defaultProjectId, defaultDmUserId, defaultGroupRoomI
   };
 
   // Brain action confirm/reject handlers
-  const handleConfirmBrainAction = async (actionId: string) => {
+  const handleConfirmBrainAction = useCallback(async (actionId: string) => {
     if (!currentUser) return;
     try {
       // First confirm, then execute
@@ -1326,9 +1366,10 @@ export function ChatPanel({ defaultProjectId, defaultDmUserId, defaultGroupRoomI
       console.error('Failed to execute brain action:', error);
       toast.error('Failed to execute action. Please try again.');
     }
-  };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUser, t, selectedChat?.roomId, addBrainNotification, loadBoardData, loadEvents, loadTodos]);
 
-  const handleRejectBrainAction = async (actionId: string) => {
+  const handleRejectBrainAction = useCallback(async (actionId: string) => {
     if (!currentUser) return;
     try {
       await brainService.updateActionStatus(actionId, 'rejected', currentUser.id);
@@ -1339,7 +1380,8 @@ export function ChatPanel({ defaultProjectId, defaultDmUserId, defaultGroupRoomI
       console.error('Failed to reject brain action:', error);
       toast.error('Failed to reject action.');
     }
-  };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUser]);
 
   /**
    * After executing/rejecting a brain action, update the parent chat_message's
@@ -1419,7 +1461,9 @@ export function ChatPanel({ defaultProjectId, defaultDmUserId, defaultGroupRoomI
     addRichMessage(`🗳️ ${data.title}`, { messageType: 'decision', decisionData: data });
   };
 
-  const handleVoteDecision = (messageId: string, optionId: string, reason: string) => {
+  // Bubble handlers are useCallback'd (reading via getState where possible)
+  // so props stay stable and memo(ChatMessageBubble) can skip re-renders.
+  const handleVoteDecision = useCallback((messageId: string, optionId: string, reason: string) => {
     if (!currentUser) return;
     const { messages: allMessages } = useAppStore.getState();
     const msgIndex = allMessages.findIndex(m => m.id === messageId);
@@ -1436,11 +1480,11 @@ export function ChatPanel({ defaultProjectId, defaultDmUserId, defaultGroupRoomI
     const updatedMessages = [...allMessages];
     updatedMessages[msgIndex] = updatedMsg;
     useAppStore.setState({ messages: updatedMessages });
-  };
+  }, [currentUser]);
 
-  const handleAcceptSchedule = (messageId: string) => {
+  const handleAcceptSchedule = useCallback((messageId: string) => {
     if (!currentUser) return;
-    const msg = messages.find(m => m.id === messageId);
+    const msg = useAppStore.getState().messages.find(m => m.id === messageId);
     if (!msg?.scheduleData) return;
 
     const { addEvent } = useAppStore.getState();
@@ -1452,9 +1496,9 @@ export function ChatPanel({ defaultProjectId, defaultDmUserId, defaultGroupRoomI
       ownerId: currentUser.id,
       source: 'PAULUS',
     });
-  };
+  }, [currentUser]);
 
-  const handleReactionToggle = async (messageId: string, emoji: string) => {
+  const handleReactionToggle = useCallback(async (messageId: string, emoji: string) => {
     if (!currentUser) return;
     try {
       const { toggleReaction } = await import('@/services/chatReactionService');
@@ -1486,9 +1530,9 @@ export function ChatPanel({ defaultProjectId, defaultDmUserId, defaultGroupRoomI
     } catch (err) {
       console.error('[Reaction] toggle failed:', err);
     }
-  };
+  }, [currentUser]);
 
-  const handleDeleteMessage = async (messageId: string) => {
+  const handleDeleteMessage = useCallback(async (messageId: string) => {
     try {
       const { deleteMessage } = useAppStore.getState();
       await deleteMessage(messageId);
@@ -1496,7 +1540,26 @@ export function ChatPanel({ defaultProjectId, defaultDmUserId, defaultGroupRoomI
     } catch {
       toast.error(t('failedToDeleteMessage'));
     }
-  };
+  }, [t]);
+
+  const handleEditMessage = useCallback(async (msgId: string, content: string) => {
+    try {
+      const { editMessage } = useAppStore.getState();
+      await editMessage(msgId, content);
+    } catch { /* ignore */ }
+  }, []);
+
+  const handlePinMessage = useCallback((msgId: string) => {
+    const msg = useAppStore.getState().messages.find(m => m.id === msgId);
+    if (msg) setPinnedAnnouncement(msg);
+  }, []);
+
+  const handleUnpinMessage = useCallback(() => setPinnedAnnouncement(null), []);
+
+  const handleReplyToMessage = useCallback((msgId: string) => {
+    const msg = useAppStore.getState().messages.find(m => m.id === msgId);
+    if (msg) setReplyingTo(msg);
+  }, []);
 
   // Drag & drop handlers
   const handleDragEnter = useCallback((e: React.DragEvent) => {
@@ -2401,21 +2464,10 @@ export function ChatPanel({ defaultProjectId, defaultDmUserId, defaultGroupRoomI
                                   onVoteDecision={handleVoteDecision}
                                   onAcceptSchedule={handleAcceptSchedule}
                                   onDelete={handleDeleteMessage}
-                                  onEdit={async (msgId, content) => {
-                                    try {
-                                      const { editMessage } = useAppStore.getState();
-                                      await editMessage(msgId, content);
-                                    } catch { /* ignore */ }
-                                  }}
-                                  onPin={(msgId) => {
-                                    const msg = chatMessages.find(m => m.id === msgId);
-                                    if (msg) setPinnedAnnouncement(msg);
-                                  }}
-                                  onUnpin={() => setPinnedAnnouncement(null)}
-                                  onReply={(msgId) => {
-                                    const msg = chatMessages.find(m => m.id === msgId);
-                                    if (msg) setReplyingTo(msg);
-                                  }}
+                                  onEdit={handleEditMessage}
+                                  onPin={handlePinMessage}
+                                  onUnpin={handleUnpinMessage}
+                                  onReply={handleReplyToMessage}
                                   onConfirmBrainAction={handleConfirmBrainAction}
                                   onRejectBrainAction={handleRejectBrainAction}
                                   onReactionToggle={handleReactionToggle}
