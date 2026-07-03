@@ -10,6 +10,7 @@
  */
 
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
@@ -28,8 +29,20 @@ import { syncGoogleCalendar, getGoogleCalendarStatus } from '@/services/googleCa
 import { isSupabaseConfigured } from '@/lib/supabase';
 
 function CalendarWidget({ context }: { context: WidgetDataContext }) {
-  const { projects, currentUser, getProjectById, updateEvent, deleteEvent, loadEvents, getMyEvents } = useAppStore();
-  const events = getMyEvents();
+  // useShallow — always-mounted widget; see TodosWidget.
+  // `allEvents` is selected (not just getMyEvents()) so the widget still
+  // re-renders when the events array changes.
+  const { projects, currentUser, getProjectById, updateEvent, deleteEvent, loadEvents, getMyEvents, allEvents } = useAppStore(useShallow((s) => ({
+    projects: s.projects,
+    currentUser: s.currentUser,
+    getProjectById: s.getProjectById,
+    updateEvent: s.updateEvent,
+    deleteEvent: s.deleteEvent,
+    loadEvents: s.loadEvents,
+    getMyEvents: s.getMyEvents,
+    allEvents: s.events,
+  })));
+  const events = useMemo(() => getMyEvents(), [getMyEvents, allEvents, currentUser?.id]);
   const isMobile = useIsMobile();
   const { language } = useTranslation();
 

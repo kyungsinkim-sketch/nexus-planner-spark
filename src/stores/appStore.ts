@@ -118,21 +118,26 @@ function initPushAndSync(userId: string, get: () => AppState): void {
   import('@/lib/supabase').then(({ supabase, isSupabaseConfigured }) => {
     if (!isSupabaseConfigured()) return;
 
-    // Calendar events — reload on any INSERT/UPDATE/DELETE
+    // Calendar events — reload on any INSERT/UPDATE/DELETE.
+    // Debounced: the table is org-wide (no filter), so bursts of changes by
+    // any user would otherwise trigger one full loadEvents() (up to 10k rows)
+    // per row change.
+    let eventsReloadTimer: ReturnType<typeof setTimeout> | null = null;
     supabase
       .channel('realtime_calendar_events')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'calendar_events' }, () => {
-        get().loadEvents();
+        if (eventsReloadTimer) clearTimeout(eventsReloadTimer);
+        eventsReloadTimer = setTimeout(() => {
+          eventsReloadTimer = null;
+          get().loadEvents();
+        }, 2000);
       })
       .subscribe();
 
-    // Todos — reload on any INSERT/UPDATE/DELETE
-    supabase
-      .channel('realtime_todos')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'personal_todos' }, () => {
-        get().loadTodos();
-      })
-      .subscribe();
+    // NOTE: personal_todos realtime is handled by useTodoSync (App.tsx),
+    // which applies row deltas with an ownership guard. The full-refetch
+    // channel that used to live here was a duplicate subscription that
+    // re-downloaded all todos on any user's change.
 
     // Chat read status — cross-device sync
     supabase

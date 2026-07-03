@@ -136,12 +136,18 @@ interface ChatMessageBubbleProps {
 
 export function ChatMessageBubble({ message, isCurrentUser, onVoteDecision, onAcceptSchedule, onDelete, onEdit, onPin, onUnpin, onReply, onConfirmBrainAction, onRejectBrainAction, onReactionToggle }: ChatMessageBubbleProps) {
   const { messageType } = message;
-  const { currentUser, messages: allMessages, language } = useAppStore();
+  // Field selectors — a storewide subscription here meant EVERY rendered
+  // bubble (one per message) re-ran on ANY store change. Historic-message
+  // lookups below read a getState() snapshot instead of subscribing.
+  const currentUser = useAppStore((s) => s.currentUser);
+  const language = useAppStore((s) => s.language);
 
   // For AI messages (persona_response, brain_action), check if the current user
   // was the one who triggered the AI by finding the preceding user message
   const isAiMessageCaller = (messageType === 'persona_response' || messageType === 'brain_action') && currentUser
     ? (() => {
+        // Snapshot read — preceding messages are historical and immutable
+        const allMessages = useAppStore.getState().messages;
         const msgIndex = allMessages.findIndex(m => m.id === message.id);
         if (msgIndex <= 0) return false;
         // Walk backwards to find the user message that triggered this AI response
@@ -238,7 +244,7 @@ export function ChatMessageBubble({ message, isCurrentUser, onVoteDecision, onAc
   }
 
   // Default text message (with optional reply quote)
-  const replyMsg = message.replyToMessage || (message.replyToMessageId ? allMessages.find(m => m.id === message.replyToMessageId) : null);
+  const replyMsg = message.replyToMessage || (message.replyToMessageId ? useAppStore.getState().messages.find(m => m.id === message.replyToMessageId) : null);
 
   return (
     <MessageWrapper isCurrentUser={isCurrentUser} onDelete={onDelete} onPin={onPin} onUnpin={onUnpin} onEdit={onEdit} onReply={onReply} messageId={message.id} content={message.content} reactions={message.reactions} onReactionToggle={onReactionToggle}>
@@ -277,7 +283,8 @@ function ReactionBar({ reactions, messageId, onToggle, isCurrentUser }: {
   onToggle?: (messageId: string, emoji: string) => void;
   isCurrentUser?: boolean;
 }) {
-  const { currentUser, getUserById } = useAppStore();
+  const currentUser = useAppStore((s) => s.currentUser);
+  const getUserById = useAppStore((s) => s.getUserById);
   if (!reactions || reactions.length === 0) return null;
 
   return (
@@ -1007,7 +1014,8 @@ function DecisionBubble({ data, messageId, isCurrentUser, onVote }: {
   isCurrentUser: boolean;
   onVote: (optionId: string, reason: string) => void;
 }) {
-  const { currentUser, getUserById } = useAppStore();
+  const currentUser = useAppStore((s) => s.currentUser);
+  const getUserById = useAppStore((s) => s.getUserById);
   const { t } = useTranslation();
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const [reason, setReason] = useState('');

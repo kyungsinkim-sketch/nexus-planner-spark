@@ -109,7 +109,9 @@ export function IncomingCallDialog() {
     }
   }, [currentUser?.id, users, incoming]);
 
-  // Poll every 3 seconds
+  // Poll every 3 seconds (visible tab) / 15 seconds (hidden tab).
+  // Each tick is 2 queries; at a constant 3s this was ~2,400 requests per
+  // user-hour even for backgrounded tabs.
   useEffect(() => {
     if (!isSupabaseConfigured() || !currentUser?.id) return;
 
@@ -118,12 +120,28 @@ export function IncomingCallDialog() {
     // Initial check
     checkIncomingCalls();
 
-    // Poll every 3s
-    const pollInterval = setInterval(checkIncomingCalls, 3000);
+    let lastCheck = Date.now();
+    const pollInterval = setInterval(() => {
+      const period = document.visibilityState === 'visible' ? 3000 : 15000;
+      if (Date.now() - lastCheck >= period - 100) {
+        lastCheck = Date.now();
+        checkIncomingCalls();
+      }
+    }, 3000);
+
+    // Catch up immediately when the tab becomes visible again
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        lastCheck = Date.now();
+        checkIncomingCalls();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
 
     return () => {
       console.log('[IncomingCall] 🔴 Polling stopped');
       clearInterval(pollInterval);
+      document.removeEventListener('visibilitychange', handleVisibility);
     };
   }, [currentUser?.id, checkIncomingCalls]);
 

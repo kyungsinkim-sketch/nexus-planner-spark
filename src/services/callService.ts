@@ -8,17 +8,23 @@
  * - Pipeline trigger on call end
  */
 
-import {
+import type {
   Room,
-  RoomEvent,
-  Track,
   RemoteTrack,
   RemoteTrackPublication,
   RemoteParticipant,
-  LocalParticipant,
   ConnectionState,
 } from 'livekit-client';
 import { supabase } from '@/lib/supabase';
+
+// livekit-client is ~200KB gzipped and this module is reachable from the
+// always-mounted call overlays — load it only when a call actually connects
+// so it stays out of the initial bundle.
+let lk: typeof import('livekit-client') | null = null;
+async function loadLiveKit(): Promise<typeof import('livekit-client')> {
+  if (!lk) lk = await import('livekit-client');
+  return lk;
+}
 
 // ─── Types ───────────────────────────────────────────
 
@@ -302,6 +308,8 @@ export async function joinCall(roomId: string): Promise<void> {
 
 async function connectToRoom(wsUrl: string, token: string): Promise<void> {
   setState({ status: 'connecting' });
+
+  const { Room, RoomEvent, Track, ConnectionState } = await loadLiveKit();
 
   const room = new Room({
     adaptiveStream: true,
@@ -773,9 +781,9 @@ async function startRecording(room: Room) {
       });
     });
 
-    // Listen for new remote tracks
-    room.on(RoomEvent.TrackSubscribed, (track: RemoteTrack) => {
-      if (track.kind === Track.Kind.Audio) {
+    // Listen for new remote tracks (lk is loaded — we're post-connect here)
+    room.on(lk!.RoomEvent.TrackSubscribed, (track: RemoteTrack) => {
+      if (track.kind === lk!.Track.Kind.Audio) {
         const stream = getMediaStreamFromTrack(track);
         if (stream) {
           const source = audioContext.createMediaStreamSource(stream);

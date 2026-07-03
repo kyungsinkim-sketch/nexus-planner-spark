@@ -88,12 +88,15 @@ function AttendanceWidget({ context: _context }: { context: WidgetDataContext })
       });
   }, []);
 
-  // Time ticker + periodic attendance refresh (every 60s)
+  // Time ticker + periodic attendance refresh (every 60s, visible tab only —
+  // no point re-downloading the whole team's attendance for a hidden tab)
   useEffect(() => {
     loadAttendance(); // Initial load
     const timer = setInterval(() => {
       setNow(Date.now());
-      loadAttendance(); // Refresh attendance data from DB each tick
+      if (document.visibilityState === 'visible') {
+        loadAttendance(); // Refresh attendance data from DB each tick
+      }
     }, 60_000);
     return () => clearInterval(timer);
   }, [loadAttendance]);

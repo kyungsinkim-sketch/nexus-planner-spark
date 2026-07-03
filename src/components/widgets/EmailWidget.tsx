@@ -11,6 +11,7 @@
  */
 
 import { useEffect, useCallback, useState, useMemo } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import { useAppStore } from '@/stores/appStore';
 import { useTranslation } from '@/hooks/useTranslation';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -344,6 +345,7 @@ function EmailItem({
 function EmailWidget({ context: _context }: { context: WidgetDataContext }) {
   const { t } = useTranslation();
   const isMobile = useIsMobile();
+  // useShallow — always-mounted widget; see TodosWidget
   const {
     currentUser,
     gmailMessages,
@@ -355,7 +357,18 @@ function EmailWidget({ context: _context }: { context: WidgetDataContext }) {
     markEmailAsRead,
     analyzeEmail,
     rejectEmailSuggestion,
-  } = useAppStore();
+  } = useAppStore(useShallow((s) => ({
+    currentUser: s.currentUser,
+    gmailMessages: s.gmailMessages,
+    emailSuggestions: s.emailSuggestions,
+    gmailSyncing: s.gmailSyncing,
+    gmailLastSyncAt: s.gmailLastSyncAt,
+    syncGmail: s.syncGmail,
+    trashEmail: s.trashEmail,
+    markEmailAsRead: s.markEmailAsRead,
+    analyzeEmail: s.analyzeEmail,
+    rejectEmailSuggestion: s.rejectEmailSuggestion,
+  })));
 
   const [isConnected, setIsConnected] = useState<boolean | null>(null);
   const [replyDialogSuggestionId, setReplyDialogSuggestionId] = useState<string | null>(null);
@@ -371,25 +384,36 @@ function EmailWidget({ context: _context }: { context: WidgetDataContext }) {
     });
   }, [currentUser]);
 
-  // Auto-sync on mount + 1-minute interval + visibility-based sync
+  // Auto-sync on mount + 1-minute interval + visibility-based sync.
+  // Throttled: focus + visibilitychange fire together on Alt-Tab, and the
+  // interval can land right after — each sync also triggers a Brain analysis
+  // call (rate-limited upstream), so we cap auto-syncs to one per 30s and
+  // skip interval ticks while the tab is hidden.
   useEffect(() => {
     if (!currentUser || isConnected === false) return;
+    let lastAutoSync = Date.now();
+    const throttledSync = () => {
+      if (Date.now() - lastAutoSync < 30 * 1000) return;
+      lastAutoSync = Date.now();
+      syncGmail();
+    };
     // Initial sync — force full fetch to ensure new emails appear
     syncGmail(true);
-    // Polling every 60 seconds for near-realtime feel
-    const interval = setInterval(() => syncGmail(), 60 * 1000);
+    // Polling every 60 seconds for near-realtime feel (visible tab only)
+    const interval = setInterval(() => {
+      if (document.visibilityState === 'visible') throttledSync();
+    }, 60 * 1000);
     // Sync when tab regains visibility (user returns from another app/tab)
     const handleVisibility = () => {
-      if (document.visibilityState === 'visible') syncGmail();
+      if (document.visibilityState === 'visible') throttledSync();
     };
     document.addEventListener('visibilitychange', handleVisibility);
     // Sync on window focus (e.g. Alt-Tab back)
-    const handleFocus = () => syncGmail();
-    window.addEventListener('focus', handleFocus);
+    window.addEventListener('focus', throttledSync);
     return () => {
       clearInterval(interval);
       document.removeEventListener('visibilitychange', handleVisibility);
-      window.removeEventListener('focus', handleFocus);
+      window.removeEventListener('focus', throttledSync);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUser, isConnected]);
