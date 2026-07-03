@@ -8,6 +8,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useWidgetStore, type MobileView } from '@/stores/widgetStore';
 import { useAppStore } from '@/stores/appStore';
 import { useTranslation } from '@/hooks/useTranslation';
+import { useKeyboardViewport } from '@/hooks/useKeyboardViewport';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Sparkles, FolderKanban, MessageSquare, Calendar, Sun, Moon, Languages, Settings } from 'lucide-react';
@@ -32,6 +33,11 @@ export function MobileBottomNav() {
   const isSubRoute = location.pathname !== '/';
   const isDark = theme === 'dark';
 
+  // Hide the nav while the on-screen keyboard is open — the keyboard-mode
+  // chat containers are also fixed at z-50, and the nav (later in the DOM)
+  // would overlay the message input.
+  const { keyboardOpen } = useKeyboardViewport();
+
   // Close popup on outside click
   useEffect(() => {
     if (!popupOpen) return;
@@ -51,6 +57,8 @@ export function MobileBottomNav() {
     setMobileView(view);
     if (isSubRoute) navigate('/');
   };
+
+  if (keyboardOpen) return null;
 
   return (
     <div

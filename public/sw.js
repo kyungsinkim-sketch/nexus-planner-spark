@@ -3,7 +3,7 @@
  * Provides offline support and caching for PWA functionality
  */
 
-const CACHE_NAME = 're-be-v24';
+const CACHE_NAME = 're-be-v25';
 const STATIC_ASSETS = [
     '/',
     '/index.html',
