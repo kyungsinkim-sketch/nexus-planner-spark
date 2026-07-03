@@ -8,10 +8,20 @@
  * containers end up partially above the visible area, leaving a dead gap
  * between the input and the keyboard.
  *
- * Instead of fighting the pan, track it: `offsetTop` is how far the visual
- * viewport is panned inside the layout viewport. Fixed containers should
- * apply `transform: translateY(offsetTop)` so they always cover exactly the
- * visible area.
+ * Two mechanisms work together:
+ *
+ * 1. PAN TRACKING — `offsetTop` is how far the visual viewport is panned
+ *    inside the layout viewport. Fixed containers apply
+ *    `transform: translateY(offsetTop)` so they always cover exactly the
+ *    visible area, wherever iOS pans it.
+ *
+ * 2. FOCUS-FIRST DETECTION — on the FIRST keyboard open after page load,
+ *    iOS fires visualViewport events late/mid-animation, so a breakout
+ *    driven only by viewport resize loses the race (first tap broken,
+ *    second tap fine — geometry is cached by then). `focusin` on an
+ *    editable element fires synchronously on tap, so we flip keyboardOpen
+ *    immediately and then burst-track geometry through the ~1s animation
+ *    window with rAF.
  *
  * Usage:
  *   const { height, offsetTop, keyboardOpen } = useKeyboardViewport();
@@ -32,6 +42,15 @@ export interface KeyboardViewport {
   keyboardOpen: boolean;
 }
 
+function isEditable(el: EventTarget | null): boolean {
+  if (!(el instanceof HTMLElement)) return false;
+  return (
+    el.tagName === 'INPUT' ||
+    el.tagName === 'TEXTAREA' ||
+    el.isContentEditable
+  );
+}
+
 export function useKeyboardViewport(): KeyboardViewport {
   const [state, setState] = useState<KeyboardViewport>(() => ({
     height: window.visualViewport?.height || window.innerHeight,
@@ -43,39 +62,80 @@ export function useKeyboardViewport(): KeyboardViewport {
     const vv = window.visualViewport;
     if (!vv) return;
 
-    let settleTimer: ReturnType<typeof setTimeout> | null = null;
+    let editableFocused = false;
     let wasOpen = false;
+    let burstRaf: number | null = null;
+    let burstUntil = 0;
 
     const read = () => {
-      // window.innerHeight (layout viewport) does NOT shrink when the iOS
-      // keyboard opens, while vv.height does — a stable signal that doesn't
-      // depend on a stale "initial height" captured at mount (which broke
-      // after URL-bar collapse or orientation changes).
-      const keyboardOpen = window.innerHeight - vv.height > 100;
-      setState({ height: vv.height, offsetTop: vv.offsetTop, keyboardOpen });
+      // Editable focus is the primary signal (fires synchronously on tap,
+      // before iOS pans). The innerHeight/vv.height gap is the fallback for
+      // cases like keyboard dismissal via the OS bar without a blur.
+      const heightGap = window.innerHeight - vv.height > 100;
+      const keyboardOpen = editableFocused || heightGap;
+      setState((prev) => {
+        const next = { height: vv.height, offsetTop: vv.offsetTop, keyboardOpen };
+        if (
+          prev.height === next.height &&
+          prev.offsetTop === next.offsetTop &&
+          prev.keyboardOpen === next.keyboardOpen
+        ) return prev; // avoid re-render churn during the rAF burst
+        return next;
+      });
 
       // When the keyboard closes, restore any leftover pan once.
       if (wasOpen && !keyboardOpen) window.scrollTo(0, 0);
       wasOpen = keyboardOpen;
     };
 
-    const update = () => {
-      read();
-      // iOS fires resize mid-animation; re-read after the pan settles
-      if (settleTimer) clearTimeout(settleTimer);
-      settleTimer = setTimeout(read, 250);
+    // Track geometry continuously through the keyboard show/hide animation —
+    // iOS fires resize/scroll sparsely (or late) during the FIRST animation
+    // after page load, so event-driven reads alone arrive too late.
+    const burst = (durationMs: number) => {
+      burstUntil = performance.now() + durationMs;
+      if (burstRaf !== null) return; // already running — just extended
+      const tick = () => {
+        read();
+        if (performance.now() < burstUntil) {
+          burstRaf = requestAnimationFrame(tick);
+        } else {
+          burstRaf = null;
+        }
+      };
+      burstRaf = requestAnimationFrame(tick);
     };
 
-    vv.addEventListener('resize', update);
-    vv.addEventListener('scroll', update);
-    // Keyboard can dismiss without a final resize event (e.g. "Done" button)
-    document.addEventListener('focusout', update);
+    const onViewportChange = () => {
+      read();
+      burst(300); // keep tracking briefly after each event settles
+    };
+
+    const onFocusIn = (e: FocusEvent) => {
+      if (!isEditable(e.target)) return;
+      editableFocused = true;
+      read();       // flip keyboardOpen NOW, before iOS pans
+      burst(1000);  // then follow the whole keyboard animation
+    };
+
+    const onFocusOut = () => {
+      editableFocused = false;
+      // Delay slightly — focus may be moving between inputs (blur→focus)
+      setTimeout(read, 50);
+      burst(600);
+    };
+
+    vv.addEventListener('resize', onViewportChange);
+    vv.addEventListener('scroll', onViewportChange);
+    document.addEventListener('focusin', onFocusIn);
+    document.addEventListener('focusout', onFocusOut);
 
     return () => {
-      vv.removeEventListener('resize', update);
-      vv.removeEventListener('scroll', update);
-      document.removeEventListener('focusout', update);
-      if (settleTimer) clearTimeout(settleTimer);
+      vv.removeEventListener('resize', onViewportChange);
+      vv.removeEventListener('scroll', onViewportChange);
+      document.removeEventListener('focusin', onFocusIn);
+      document.removeEventListener('focusout', onFocusOut);
+      if (burstRaf !== null) cancelAnimationFrame(burstRaf);
+      burstUntil = 0;
     };
   }, []);
 
