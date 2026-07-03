@@ -105,9 +105,10 @@ export function ChatPanel({ defaultProjectId, defaultDmUserId, defaultGroupRoomI
     if (!isMobile || keyboardOpenProp !== undefined) return;
     const vv = window.visualViewport;
     if (!vv) return;
-    const initialH = vv.height;
     const update = () => {
-      setInternalKeyboardOpen(initialH - vv.height > 100);
+      // innerHeight (layout viewport) doesn't shrink with the keyboard —
+      // more reliable than a baseline captured at mount (see useKeyboardViewport)
+      setInternalKeyboardOpen(window.innerHeight - vv.height > 100);
     };
     vv.addEventListener('resize', update);
     return () => vv.removeEventListener('resize', update);

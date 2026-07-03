@@ -5,9 +5,10 @@
  * defaultProjectId 없이 호출 → ChatPanel 내부에서 프로젝트/DM 채팅 목록 표시.
  */
 
-import { lazy, Suspense, useState, useEffect } from 'react';
+import { lazy, Suspense } from 'react';
 import { useWidgetStore } from '@/stores/widgetStore';
 import { useTranslation } from '@/hooks/useTranslation';
+import { useKeyboardViewport } from '@/hooks/useKeyboardViewport';
 import { ArrowLeft, MessageSquare } from 'lucide-react';
 
 const ChatPanel = lazy(() =>
@@ -18,30 +19,14 @@ export function MobileChatView() {
   const { setMobileView } = useWidgetStore();
   const { language } = useTranslation();
 
-  const [viewH, setViewH] = useState(() => window.visualViewport?.height || window.innerHeight);
-  const [keyboardOpen, setKeyboardOpen] = useState(false);
-
-  useEffect(() => {
-    const vv = window.visualViewport;
-    if (!vv) return;
-    const initialH = vv.height;
-    const update = () => {
-      setViewH(vv.height);
-      setKeyboardOpen(initialH - vv.height > 100);
-      window.scrollTo(0, 0);
-    };
-    vv.addEventListener('resize', update);
-    vv.addEventListener('scroll', update);
-    return () => {
-      vv.removeEventListener('resize', update);
-      vv.removeEventListener('scroll', update);
-    };
-  }, []);
+  // Keyboard-aware viewport — translateY(offsetTop) tracks the iOS pan so
+  // the container always covers exactly the visible area (see hook docs)
+  const { height: viewH, offsetTop, keyboardOpen } = useKeyboardViewport();
 
   return (
     <div
-      className={`flex flex-col bg-background overflow-hidden ${keyboardOpen ? 'fixed top-0 left-0 right-0' : 'h-full'}`}
-      style={keyboardOpen ? { height: `${viewH}px` } : undefined}
+      className={`flex flex-col bg-background overflow-hidden ${keyboardOpen ? 'fixed top-0 left-0 right-0 z-50' : 'h-full'}`}
+      style={keyboardOpen ? { height: `${viewH}px`, transform: `translateY(${offsetTop}px)` } : undefined}
     >
       {/* Header */}
       <div
