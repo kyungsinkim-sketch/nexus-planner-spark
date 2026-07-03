@@ -49,7 +49,10 @@ const MobileBottomNav = lazy(() => import('@/components/mobile/MobileBottomNav')
 
 export function TabLayout() {
   const { openTabs, activeTabId, mobileView } = useWidgetStore();
-  const { projects, projectCreateDialogOpen, setProjectCreateDialogOpen } = useAppStore();
+  // Field selectors — always-mounted (see AppLayout)
+  const projects = useAppStore((s) => s.projects);
+  const projectCreateDialogOpen = useAppStore((s) => s.projectCreateDialogOpen);
+  const setProjectCreateDialogOpen = useAppStore((s) => s.setProjectCreateDialogOpen);
   const location = useLocation();
   const isMobile = useIsMobile();
 

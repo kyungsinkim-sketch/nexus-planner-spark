@@ -242,12 +242,15 @@ export const getMessagesByRoom = async (roomId: string): Promise<ChatMessage[]> 
         throw new Error('Supabase not configured');
     }
 
+    // Latest 200 only — an unbounded query re-downloaded the full room
+    // history on every load. Fetch newest-first then restore ascending order.
     const { data, error } = await withSupabaseRetry(
         () => supabase
             .from('chat_messages')
             .select('*')
             .eq('room_id', roomId)
-            .order('created_at', { ascending: true }),
+            .order('created_at', { ascending: false })
+            .limit(200),
         { label: 'getMessagesByRoom' },
     );
 
@@ -255,7 +258,7 @@ export const getMessagesByRoom = async (roomId: string): Promise<ChatMessage[]> 
         throw new Error(handleSupabaseError(error));
     }
 
-    return (data as MessageRow[]).map(transformMessage);
+    return (data as MessageRow[]).map(transformMessage).reverse();
 };
 
 // Send message to a room (supports rich message types)

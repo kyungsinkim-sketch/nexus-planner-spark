@@ -41,6 +41,9 @@ export default defineConfig(({ mode }) => ({
           'vendor-charts': ['recharts'],
           'vendor-calendar': ['@fullcalendar/react', '@fullcalendar/daygrid', '@fullcalendar/timegrid', '@fullcalendar/interaction', '@fullcalendar/list'],
           'vendor-supabase': ['@supabase/supabase-js'],
+          // Reached only via dynamic import in callService — named chunk
+          // for stable long-term caching across deploys
+          'vendor-livekit': ['livekit-client'],
         },
       },
     },

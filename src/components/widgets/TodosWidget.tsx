@@ -11,6 +11,7 @@
  */
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import { useAppStore } from '@/stores/appStore';
 import { useTranslation } from '@/hooks/useTranslation';
 import { CheckCircle2, Circle, Trash2 } from 'lucide-react';
@@ -39,11 +40,25 @@ const priorityDot: Record<string, string> = {
 const PRIORITIES = ['HIGH', 'NORMAL', 'LOW'] as const;
 
 function TodosWidget({ context }: { context: WidgetDataContext }) {
+  // useShallow — storewide subscription re-rendered this always-mounted
+  // widget on every store write (incl. each realtime chat message)
   const {
     personalTodos, currentUser, users, projects,
     addTodo, completeTodo, updateTodo, deleteTodo, addEvent,
     todoCreateDialogOpen, setTodoCreateDialogOpen,
-  } = useAppStore();
+  } = useAppStore(useShallow((s) => ({
+    personalTodos: s.personalTodos,
+    currentUser: s.currentUser,
+    users: s.users,
+    projects: s.projects,
+    addTodo: s.addTodo,
+    completeTodo: s.completeTodo,
+    updateTodo: s.updateTodo,
+    deleteTodo: s.deleteTodo,
+    addEvent: s.addEvent,
+    todoCreateDialogOpen: s.todoCreateDialogOpen,
+    setTodoCreateDialogOpen: s.setTodoCreateDialogOpen,
+  })));
   const { t, language } = useTranslation();
 
   // Create dialog state

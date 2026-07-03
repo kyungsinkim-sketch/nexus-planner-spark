@@ -51,7 +51,15 @@ const workStatusConfig: Record<UserWorkStatus, { labelKey: TranslationKey; icon:
 };
 
 export function Sidebar() {
-  const { currentUser, sidebarCollapsed, toggleSidebar, userWorkStatus, setUserWorkStatus, signOut, theme, toggleTheme } = useAppStore();
+  // Field selectors — always-mounted (see AppLayout)
+  const currentUser = useAppStore((s) => s.currentUser);
+  const sidebarCollapsed = useAppStore((s) => s.sidebarCollapsed);
+  const toggleSidebar = useAppStore((s) => s.toggleSidebar);
+  const userWorkStatus = useAppStore((s) => s.userWorkStatus);
+  const setUserWorkStatus = useAppStore((s) => s.setUserWorkStatus);
+  const signOut = useAppStore((s) => s.signOut);
+  const theme = useAppStore((s) => s.theme);
+  const toggleTheme = useAppStore((s) => s.toggleTheme);
   const { setActiveTab } = useWidgetStore();
   const location = useLocation();
   const navigate = useNavigate();

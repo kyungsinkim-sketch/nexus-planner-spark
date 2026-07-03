@@ -23,7 +23,13 @@ import { MessageSquare, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 export function AppLayout() {
-  const { sidebarCollapsed, chatPanelCollapsed, setChatPanelCollapsed, projectCreateDialogOpen, setProjectCreateDialogOpen } = useAppStore();
+  // Field selectors — always-mounted; a storewide subscription re-rendered
+  // the whole layout on every store write (incl. each realtime message)
+  const sidebarCollapsed = useAppStore((s) => s.sidebarCollapsed);
+  const chatPanelCollapsed = useAppStore((s) => s.chatPanelCollapsed);
+  const setChatPanelCollapsed = useAppStore((s) => s.setChatPanelCollapsed);
+  const projectCreateDialogOpen = useAppStore((s) => s.projectCreateDialogOpen);
+  const setProjectCreateDialogOpen = useAppStore((s) => s.setProjectCreateDialogOpen);
   const [isLargeScreen, setIsLargeScreen] = useState(false);
 
   // Detect screen size for responsive layout

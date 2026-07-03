@@ -9,6 +9,7 @@
  */
 
 import { useMemo, useCallback } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import { useAppStore } from '@/stores/appStore';
 import { useWidgetStore } from '@/stores/widgetStore';
 import { useTranslation } from '@/hooks/useTranslation';
@@ -17,12 +18,23 @@ import type { WidgetDataContext } from '@/types/widget';
 
 function NotificationsWidget({ context }: { context: WidgetDataContext }) {
   const { t } = useTranslation();
+  // useShallow — always-mounted widget; see TodosWidget
   const {
     events, currentUser, getUserById,
     companyNotifications, brainNotifications,
     dismissedNotificationIds, dismissNotification, dismissAllNotifications,
     appNotifications,
-  } = useAppStore();
+  } = useAppStore(useShallow((s) => ({
+    events: s.events,
+    currentUser: s.currentUser,
+    getUserById: s.getUserById,
+    companyNotifications: s.companyNotifications,
+    brainNotifications: s.brainNotifications,
+    dismissedNotificationIds: s.dismissedNotificationIds,
+    dismissNotification: s.dismissNotification,
+    dismissAllNotifications: s.dismissAllNotifications,
+    appNotifications: s.appNotifications,
+  })));
 
 
   const dismissedSet = useMemo(() => new Set(dismissedNotificationIds), [dismissedNotificationIds]);

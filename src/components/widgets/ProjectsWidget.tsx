@@ -24,7 +24,7 @@ function getInitials(title: string): string {
 }
 
 function ProjectsWidget({ context: _context }: { context: WidgetDataContext }) {
-  const { projects } = useAppStore();
+  const projects = useAppStore((s) => s.projects);
   const projectSearchOpen = useAppStore((s) => s.projectSearchOpen);
   const setProjectSearchOpen = useAppStore((s) => s.setProjectSearchOpen);
   const { openProjectTab } = useWidgetStore();
