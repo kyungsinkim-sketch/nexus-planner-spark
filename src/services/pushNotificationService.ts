@@ -35,7 +35,10 @@ async function registerToken(userId: string, token: string, env?: string): Promi
   if (!isSupabaseConfigured()) return;
 
   const platform = getPlatformForDB();
-  const environment = env || 'sandbox';
+  // Default to 'production' — TestFlight and App Store builds use the
+  // production APNs environment. (Xcode-run development builds would need
+  // 'sandbox'; see docs/ios-testflight-guide.md push section.)
+  const environment = env || 'production';
   const bundleId = 'io.re-be.app';
 
   try {
@@ -140,7 +143,13 @@ export function initPushNotifications(
   onTap?: (payload: Record<string, unknown>) => void,
 ): void {
   if (_initialized) return;
-  if (!isTauriApp()) return; // Web doesn't use APNs
+  // NOTE: We intentionally do NOT gate on isTauriApp() here. In the iOS
+  // "thin shell" build the webview loads the remote re-be.io page, which has
+  // no Tauri IPC, so isTauriApp() is false — but the native APNsSetup.swift
+  // layer still injects window.__APNS_DEVICE_TOKEN__ / dispatches 'apns-token'
+  // via WKWebView JS injection. Setting up the listener unconditionally is a
+  // harmless no-op on plain web (the event never fires) and enables push in
+  // the native shell.
 
   _userId = userId;
   _onNotificationTap = onTap || null;
@@ -179,14 +188,15 @@ export function cleanupPushNotifications(): void {
 // ─── Helpers ────────────────────────────────────────
 
 function getPlatformForDB(): string {
-  if (!isTauriApp()) return 'web';
-  if (isMobileApp()) {
-    // Detect iOS vs Android
-    const ua = navigator.userAgent.toLowerCase();
-    if (ua.includes('android')) return 'android';
-    return 'ios';
-  }
-  return 'macos';
+  // An APNs device token is ONLY ever injected by the iOS native shell, so
+  // its presence is a definitive iOS signal (works even though the thin-shell
+  // remote page reports isTauriApp() === false).
+  if (window.__APNS_DEVICE_TOKEN__) return 'ios';
+  const ua = navigator.userAgent.toLowerCase();
+  if (/iphone|ipad|ipod/.test(ua)) return 'ios';
+  if (ua.includes('android')) return 'android';
+  if (isTauriApp() && !isMobileApp()) return 'macos';
+  return 'web';
 }
 
 function getDeviceName(): string {
@@ -201,5 +211,5 @@ function getDeviceName(): string {
 }
 
 function getAppVersion(): string {
-  return '0.2.0';
+  return '1.0.0';
 }

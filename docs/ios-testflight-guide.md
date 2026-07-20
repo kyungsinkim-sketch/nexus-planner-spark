@@ -123,18 +123,71 @@ App Store Connect → 해당 앱 → **TestFlight** 탭:
 
 ---
 
+## 채팅 푸시 알림 (APNs) 설정 — 중요
+
+씬 셸이어도 **네이티브 푸시는 작동합니다.** 네이티브 Swift 레이어
+(`APNsSetup.swift`)가 로드된 페이지(원격 re-be.io 포함)에 디바이스 토큰을
+주입하고, 웹앱이 이를 `device_tokens` 테이블에 등록 → Edge Function이 APNs로
+발송하는 구조가 이미 구현되어 있습니다.
+
+푸시가 실제로 울리려면 **아래 백엔드/서명 설정이 필요**합니다:
+
+### 1. APNs 인증 키 생성 (Apple Developer, 최초 1회)
+1. https://developer.apple.com/account → **Certificates, IDs & Profiles** → **Keys**
+2. `+` → 이름 입력 → **Apple Push Notifications service (APNs)** 체크 → Continue
+3. **.p8 키 파일 다운로드** (한 번만 받을 수 있음, 잘 보관)
+4. 메모: **Key ID** (예: `ABC123DEFG`), **Team ID** (계정 우상단 10자리)
+
+### 2. Xcode에서 Push Notifications capability 추가
+1. `re-be-app.xcodeproj` → **re-be-app_iOS** 타겟 → **Signing & Capabilities**
+2. **+ Capability** → **Push Notifications** 추가
+3. 엔타이틀먼트의 `aps-environment`는 이미 `production`으로 설정됨(TestFlight용)
+
+### 3. Supabase Edge Function 시크릿 등록
+Supabase 대시보드 → Project Settings → Edge Functions → Secrets, 또는 CLI:
+```bash
+supabase secrets set APNS_KEY_ID=ABC123DEFG \
+  APNS_TEAM_ID=YOUR_TEAM_ID \
+  APNS_ENVIRONMENT=production \
+  --project-ref ciuzbyjiqvtkwdlqovst
+# .p8 파일 내용(PEM 전체)을 그대로:
+supabase secrets set APNS_PRIVATE_KEY="$(cat AuthKey_ABC123DEFG.p8)" \
+  --project-ref ciuzbyjiqvtkwdlqovst
+```
+
+### 4. Edge Function 배포 + 마이그레이션 적용
+```bash
+supabase functions deploy push-notification --project-ref ciuzbyjiqvtkwdlqovst
+# DB 트리거/큐(070) + 그룹방 푸시(105)가 프로덕션에 적용됐는지 확인
+supabase db push   # 또는 대시보드 SQL 에디터로 105_group_room_push.sql 실행
+```
+
+### 5. 동작 확인
+- TestFlight 빌드 설치 → 앱 실행 → **알림 권한 허용** 팝업 수락
+- 다른 계정에서 채팅 메시지 전송 → 백그라운드에서 푸시 배너 확인
+- 안 오면: Supabase `device_tokens`에 `platform='ios'` 토큰이 등록됐는지,
+  Edge Function 로그에 APNs 응답(200 vs 400/410) 확인
+
+> **환경 주의**: TestFlight/App Store 빌드는 **production APNs**를 씁니다
+> (`aps-environment=production` + 토큰 `environment='production'` + 시크릿
+> `APNS_ENVIRONMENT=production`, 세 곳이 일치해야 함). Xcode에서 기기로 직접
+> 실행(development 서명)해 푸시를 테스트하려면 세 값을 `development`/`sandbox`로
+> 맞춰야 합니다. **팀 배포는 TestFlight(production)로 하는 게 가장 단순합니다.**
+
+---
+
 ## 알려진 제약 / 후속 작업
 
 | 항목 | 현재 상태 | 비고 |
 |------|-----------|------|
 | 로그인·채팅·프로젝트·할일·캘린더·연동 | ✅ 정상 | 웹과 100% 동일 |
 | 웹 업데이트 반영 | ✅ 자동 | 앱 재빌드 불필요 |
-| 네이티브 푸시(APNs) | ⚠️ 미지원 | 씬 셸은 웹뷰라 웹 푸시 제한. 필요 시 네이티브 브리지 추가(후속) |
+| **채팅 푸시(APNs)** | ✅ 지원 | 위 "채팅 푸시 알림" 설정 완료 시 DM·프로젝트·그룹방 모두 |
 | 세이프에어리어/상태바 여백 | ⚠️ 확인 필요 | 첫 설치 후 시각 이슈 있으면 **웹에서 수정**하면 앱에도 자동 반영 |
 | 로컬 RAG(Be.Ark) | 서버 모드 | 웹과 동일하게 서버 경유 |
 
-> 씬 셸의 장점: 위 시각/기능 이슈 대부분은 **웹 배포만으로** 앱에 반영됩니다.
-> 앱을 다시 빌드/업로드할 필요가 없습니다.
+> 씬 셸의 장점: 시각/기능 이슈 대부분은 **웹 배포만으로** 앱에 반영됩니다.
+> (푸시 백엔드 설정만 위 5단계로 최초 1회 필요.)
 
 ---
 
